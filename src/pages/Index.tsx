@@ -16,19 +16,19 @@ const howItWorks = [
   {
     step: 1,
     title: "Browse Products",
-    description: "Explore outfits from verified local sellers",
+    description: "Explore outfits from verified local sellers on our marketplace",
     icon: Package,
   },
   {
     step: 2,
-    title: "Message on WhatsApp",
-    description: "Contact seller to confirm details and arrange meetup",
+    title: "Message the Seller",
+    description: "Contact the seller on WhatsApp to confirm details and arrange meetup",
     icon: MessageCircle,
   },
   {
     step: 3,
     title: "Meet & Pay",
-    description: "Meet the vendor at a safe location and pay in cash",
+    description: "The seller meets you at a safe location — pay them directly in cash",
     icon: MapPin,
   },
 ];
@@ -37,17 +37,17 @@ const trustPoints = [
   {
     icon: ShieldCheck,
     title: "Verified Sellers",
-    description: "Every vendor is vetted before joining",
+    description: "Every vendor is vetted before joining our marketplace",
   },
   {
     icon: Users,
-    title: "Clear Rules",
-    description: "Transparent policies for buyers and sellers",
+    title: "Marketplace Platform",
+    description: "We connect you with local sellers who handle meetups & delivery",
   },
   {
     icon: Package,
     title: "Luut Certified",
-    description: "Platform-backed quality assurance",
+    description: "Luut SLU also sells as a certified vendor on the platform",
   },
 ];
 
@@ -65,7 +65,7 @@ export default function Index() {
                 <span className="text-primary">LUUT</span> SLU
               </h1>
               <p className="mb-8 font-body text-lg text-muted-foreground md:text-xl">
-                Saint Lucia's streetwear marketplace. Shop local vendors, meet up locally, pay on pickup.
+                Saint Lucia's streetwear marketplace. We connect you with verified local sellers — they handle meetups & delivery, you pay on pickup.
               </p>
               <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
                 <Button asChild size="lg" className="font-body">

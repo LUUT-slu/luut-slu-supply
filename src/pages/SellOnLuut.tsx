@@ -8,17 +8,17 @@ const benefits = [
   {
     icon: Users,
     title: "Access Local Customers",
-    description: "Reach buyers across Saint Lucia through our platform",
+    description: "Luut SLU drives traffic — you handle meetups & delivery",
   },
   {
     icon: DollarSign,
     title: "Low Commission",
-    description: "Only 10% commission - keep more of your earnings",
+    description: "Only 10% commission to the platform — keep more of your earnings",
   },
   {
     icon: TrendingUp,
     title: "Grow Your Brand",
-    description: "Build your reputation with verified seller status",
+    description: "Build your reputation as a verified seller on our marketplace",
   },
 ];
 
@@ -44,8 +44,7 @@ export default function SellOnLuut() {
                 SELL ON <span className="text-primary">LUUT</span>
               </h1>
               <p className="mb-8 font-body text-lg text-muted-foreground">
-                Join Saint Lucia's streetwear marketplace. List your products,
-                connect with customers on WhatsApp, and handle meetups yourself.
+                Luut SLU is a marketplace platform — we own the brand and drive the traffic. You list your products, handle your own meetups & delivery, and pay us a 10% commission. We also operate as a certified seller ourselves.
               </p>
               <WhatsAppButton
                 message="Hi! I'm interested in becoming a vendor on Luut SLU."
