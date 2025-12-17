@@ -101,11 +101,12 @@ export default function Shop() {
         <section className="px-4 py-8 md:py-12">
           <div className="container">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 md:gap-4">
-              {fitCategories.map((category) => (
+              {fitCategories.map((category, index) => (
                 <Link
                   key={category.path}
                   to={category.path}
-                  className="group relative aspect-square overflow-hidden rounded-lg bg-muted ring-1 ring-border/50 transition-all duration-300 hover:ring-2 hover:ring-primary/50 hover:shadow-lg hover:shadow-primary/10"
+                  className="group relative aspect-square overflow-hidden rounded-lg bg-muted ring-1 ring-border/50 transition-all duration-300 hover:ring-2 hover:ring-primary/50 hover:shadow-lg hover:shadow-primary/10 animate-fade-in opacity-0"
+                  style={{ animationDelay: `${index * 80}ms`, animationFillMode: 'forwards' }}
                 >
                   {/* Image with zoom effect */}
                   <img
