@@ -8,7 +8,7 @@ import { BackButton } from "@/components/BackButton";
 const categoryMap: Record<string, { title: string; query: string }> = {
   beanies: { title: "BEANIES", query: "product_type:beanies OR title:beanie" },
   hats: { title: "HATS", query: "product_type:hats OR title:hat" },
-  facewear: { title: "SKI MASKS / FACEWEAR", query: "product_type:facewear OR title:ski mask OR title:face" },
+  facewear: { title: "SKI MASKS / FACEWEAR", query: "product_type:\"Ski Masks / Facewear\" OR product_type:facewear OR title:ski mask OR title:face" },
   shirts: { title: "SHIRTS", query: "product_type:shirts OR title:shirt OR title:tee" },
   jackets: { title: "JACKETS", query: "product_type:jackets OR title:jacket" },
   hoodies: { title: "HOODIES", query: "product_type:hoodies OR title:hoodie" },
