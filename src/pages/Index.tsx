@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { ProductGrid } from "@/components/ProductGrid";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import storefrontHero from "@/assets/storefront-hero.png";
+import { useEffect, useState } from "react";
 
 const meetupLocations = [
   { name: "Castries", description: "Capital city, central location" },
@@ -53,6 +54,16 @@ const trustPoints = [
 ];
 
 export default function Index() {
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -60,12 +71,13 @@ export default function Index() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
-          {/* Background Image */}
+          {/* Background Image with Parallax & Zoom */}
           <div className="absolute inset-0">
             <img 
               src={storefrontHero} 
               alt="Luut SLU storefront" 
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover animate-hero-zoom"
+              style={{ transform: `translateY(${scrollY * 0.3}px) scale(1.1)` }}
             />
             {/* Dark gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
