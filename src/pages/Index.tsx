@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, MapPin, ShieldCheck, Users, Package, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,12 @@ import { Footer } from "@/components/Footer";
 import { ProductGrid } from "@/components/ProductGrid";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import storefrontHero from "@/assets/storefront-hero.png";
+
+const heroImages = [
+  storefrontHero,
+  storefrontHero, // Add more images here as you upload them
+  storefrontHero,
+];
 
 const meetupLocations = [
   { name: "Castries", description: "Capital city, central location" },
@@ -53,6 +60,16 @@ const trustPoints = [
 ];
 
 export default function Index() {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
+    }, 5000); // Change image every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -60,16 +77,23 @@ export default function Index() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative min-h-[90vh] flex flex-col justify-end overflow-hidden">
-          {/* Background Image - Static */}
-          <div className="absolute inset-0">
-            <img 
-              src={storefrontHero} 
-              alt="Luut SLU storefront" 
-              className="w-full h-full object-cover"
-            />
-            {/* Dark gradient overlay - lighter at top, stronger at bottom */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/90" />
-          </div>
+          {/* Background Images - Dynamic with crossfade */}
+          {heroImages.map((image, index) => (
+            <div
+              key={index}
+              className={`absolute inset-0 transition-opacity duration-1000 ${
+                index === currentImageIndex ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <img 
+                src={image} 
+                alt={`Luut SLU storefront ${index + 1}`} 
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ))}
+          {/* Dark gradient overlay - lighter at top, stronger at bottom */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/90" />
           
           {/* Bottom Content - Description, Buttons, Link */}
           <div className="container relative z-10 px-4 pb-8 md:pb-12">
