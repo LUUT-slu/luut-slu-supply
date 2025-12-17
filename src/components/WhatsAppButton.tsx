@@ -9,7 +9,7 @@ interface WhatsAppButtonProps {
   children?: React.ReactNode;
 }
 
-const WHATSAPP_NUMBER = "17584848888"; // Saint Lucia country code + number
+const WHATSAPP_NUMBER = "17587185478"; // Saint Lucia country code + number
 
 export function WhatsAppButton({
   message = "Hi! I'm interested in shopping on Luut SLU.",
