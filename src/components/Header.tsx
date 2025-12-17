@@ -32,8 +32,8 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between md:h-20">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <span className="font-display text-2xl tracking-wider text-primary md:text-3xl">
-            HOME
+          <span className="font-display text-2xl tracking-wide md:text-3xl">
+            <span className="text-primary">Home</span>
           </span>
         </Link>
 
@@ -79,7 +79,7 @@ export function Header() {
             <SheetContent side="left" className="w-80 bg-background p-0">
               <div className="flex flex-col">
                 <div className="border-b border-border p-6">
-                  <span className="font-display text-2xl text-primary">HOME</span>
+                  <span className="font-display text-2xl text-primary">Home</span>
                 </div>
                 
                 <nav className="flex flex-col p-4">
