@@ -105,21 +105,21 @@ export default function Shop() {
                 <Link
                   key={category.path}
                   to={category.path}
-                  className="group relative aspect-square overflow-hidden rounded-lg bg-muted"
+                  className="group relative aspect-square overflow-hidden rounded-lg bg-muted ring-1 ring-border/50 transition-all duration-300 hover:ring-2 hover:ring-primary/50 hover:shadow-lg hover:shadow-primary/10"
                 >
-                  {/* Image */}
+                  {/* Image with zoom effect */}
                   <img
                     src={category.image}
                     alt={category.name}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
                   />
                   
-                  {/* Gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  {/* Gradient overlay - intensifies on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-opacity duration-300 group-hover:from-black/70" />
                   
-                  {/* Category label */}
-                  <div className="absolute bottom-3 left-3 right-3">
-                    <span className="inline-block rounded-full bg-background/90 px-3 py-1.5 font-display text-xs tracking-wide text-foreground backdrop-blur-sm md:text-sm">
+                  {/* Category label with animation */}
+                  <div className="absolute bottom-3 left-3 right-3 transition-transform duration-300 ease-out group-hover:translate-y-[-4px]">
+                    <span className="inline-block rounded-full bg-background/90 px-3 py-1.5 font-display text-xs tracking-wide text-foreground backdrop-blur-sm transition-all duration-300 group-hover:bg-primary group-hover:text-primary-foreground md:text-sm">
                       {category.name}
                     </span>
                   </div>
