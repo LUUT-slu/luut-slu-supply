@@ -11,7 +11,7 @@ export function Footer() {
           <div className="space-y-4">
             <span className="font-display text-3xl text-primary">LUUT SLU</span>
             <p className="font-body text-sm text-muted-foreground">
-              Saint Lucia's streetwear marketplace. Shop local, meet local.
+              Saint Lucia's streetwear marketplace. We connect buyers with verified local sellers who handle meetups & delivery.
             </p>
             <div className="flex gap-4">
               <a
