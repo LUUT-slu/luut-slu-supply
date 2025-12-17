@@ -59,7 +59,7 @@ export default function Index() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
+        <section className="relative min-h-[85vh] flex flex-col overflow-hidden">
           {/* Background Image - Static */}
           <div className="absolute inset-0">
             <img 
@@ -67,16 +67,25 @@ export default function Index() {
               alt="Luut SLU storefront" 
               className="w-full h-full object-cover"
             />
-            {/* Dark gradient overlay - increased opacity */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/75 to-black/90" />
+            {/* Dark gradient overlay - stronger at top and bottom, lighter in center */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/40 to-black/90" />
           </div>
           
-          {/* Content */}
-          <div className="container relative z-10 px-4 py-20 md:py-32">
+          {/* Top Content - Headline */}
+          <div className="container relative z-10 px-4 pt-24 md:pt-32">
             <div className="mx-auto max-w-3xl text-center">
-              <h1 className="mb-6 font-display text-5xl tracking-wider text-white md:text-7xl lg:text-8xl">
+              <h1 className="font-display text-5xl tracking-wider text-white md:text-7xl lg:text-8xl">
                 <span className="text-primary">LUUT</span> SLU
               </h1>
+            </div>
+          </div>
+          
+          {/* Spacer to let background show */}
+          <div className="flex-1" />
+          
+          {/* Bottom Content - Description, Buttons, Link */}
+          <div className="container relative z-10 px-4 pb-16 md:pb-24">
+            <div className="mx-auto max-w-3xl text-center">
               <p className="mb-8 font-body text-lg text-white/90 md:text-xl">
                 Saint Lucia's streetwear marketplace. We connect you with verified local sellers — they handle meetups & delivery, you pay on pickup.
               </p>
