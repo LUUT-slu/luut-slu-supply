@@ -5,13 +5,13 @@ import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { ProductGrid } from "@/components/ProductGrid";
 import { ShieldCheck } from "lucide-react";
 
-// Simulated sellers - in production, this would come from vendor data
+// Sellers on the marketplace - in production, this would come from vendor data
 const sellers = [
   {
     id: "luut-slu",
     name: "Luut SLU",
     badge: "Certified Seller",
-    description: "Official Luut SLU collection. Platform-verified quality.",
+    description: "The official Luut SLU collection. As the platform owner, we also operate as a certified seller with our own curated streetwear.",
     isCertified: true,
   },
 ];
@@ -26,7 +26,7 @@ export default function Sellers() {
           <div className="container">
             <h1 className="font-display text-3xl md:text-5xl">OUR SELLERS</h1>
             <p className="mt-4 font-body text-muted-foreground">
-              Verified vendors in the Luut SLU marketplace
+              Browse verified vendors on the Luut SLU marketplace. Each seller handles their own meetups & delivery.
             </p>
           </div>
         </section>
