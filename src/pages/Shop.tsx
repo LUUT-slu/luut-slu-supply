@@ -2,93 +2,78 @@ import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
-import { ArrowRight } from "lucide-react";
 
-// Fit Builder categories in exact order - DO NOT CHANGE
+// Fit categories in exact order - DO NOT CHANGE
 const fitCategories = [
   { 
     name: "Beanies", 
     path: "/shop/beanies",
-    emoji: "🧢",
-    description: "Top off your fit"
+    image: "https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?w=600&h=600&fit=crop"
   },
   { 
     name: "Hats", 
     path: "/shop/hats",
-    emoji: "🎩",
-    description: "Cap it right"
+    image: "https://images.unsplash.com/photo-1521369909029-2afed882baee?w=600&h=600&fit=crop"
   },
   { 
     name: "Ski Masks / Facewear", 
     path: "/shop/facewear",
-    emoji: "🎭",
-    description: "Cover up in style"
+    image: "https://images.unsplash.com/photo-1544966503-7cc5ac882d5a?w=600&h=600&fit=crop"
   },
   { 
     name: "Shirts", 
     path: "/shop/shirts",
-    emoji: "👕",
-    description: "Layer one"
+    image: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&h=600&fit=crop"
   },
   { 
     name: "Jackets", 
     path: "/shop/jackets",
-    emoji: "🧥",
-    description: "Outer layer"
+    image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600&h=600&fit=crop"
   },
   { 
     name: "Hoodies", 
     path: "/shop/hoodies",
-    emoji: "🪝",
-    description: "Stay cozy"
+    image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600&h=600&fit=crop"
   },
   { 
     name: "Pants", 
     path: "/shop/pants",
-    emoji: "👖",
-    description: "Bottom half"
+    image: "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&h=600&fit=crop"
   },
   { 
     name: "Shorts", 
     path: "/shop/shorts",
-    emoji: "🩳",
-    description: "Keep it cool"
+    image: "https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=600&h=600&fit=crop"
   },
   { 
     name: "Boxers", 
     path: "/shop/boxers",
-    emoji: "🩲",
-    description: "Underneath"
+    image: "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=600&h=600&fit=crop"
   },
   { 
     name: "Bags", 
     path: "/shop/bags",
-    emoji: "🎒",
-    description: "Carry your essentials"
+    image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&h=600&fit=crop"
   },
   { 
     name: "Shoes", 
     path: "/shop/shoes",
-    emoji: "👟",
-    description: "Step out fresh"
+    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=600&fit=crop"
   },
   { 
     name: "Slippers", 
     path: "/shop/slippers",
-    emoji: "🥿",
-    description: "Slide into comfort"
+    image: "https://images.unsplash.com/photo-1603487742131-4160ec999306?w=600&h=600&fit=crop"
   },
   { 
     name: "Sandals", 
     path: "/shop/sandals",
-    emoji: "🩴",
-    description: "Island vibes"
+    image: "https://images.unsplash.com/photo-1603487742131-4160ec999306?w=600&h=600&fit=crop&sat=-100"
   },
   { 
     name: "Socks", 
     path: "/shop/socks",
-    emoji: "🧦",
-    description: "Complete the fit"
+    image: "https://images.unsplash.com/photo-1586350977771-b3b0abd50c82?w=600&h=600&fit=crop"
   },
 ];
 
@@ -99,79 +84,47 @@ export default function Shop() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="border-b border-border bg-gradient-to-b from-card to-background px-4 py-12 md:py-20">
+        <section className="border-b border-border bg-card px-4 py-10 md:py-14">
           <div className="container">
             <div className="mx-auto max-w-2xl text-center">
-              <h1 className="mb-4 font-display text-4xl tracking-wider md:text-6xl lg:text-7xl">
-                BUILD YOUR <span className="text-primary">FIT</span>
+              <h1 className="font-display text-4xl tracking-wider md:text-5xl lg:text-6xl">
+                CREATE A <span className="text-primary">FIT</span>
               </h1>
-              <p className="font-body text-lg text-muted-foreground md:text-xl">
-                Scroll down to build your outfit from head to toe. <br className="hidden md:block" />
-                Click any category to explore products.
+              <p className="mt-3 font-body text-muted-foreground md:text-lg">
+                Pick your pieces. Build your look.
               </p>
             </div>
           </div>
         </section>
 
-        {/* Fit Builder - Vertical scroll */}
-        <section className="py-8 md:py-12">
-          <div className="container max-w-3xl">
-            <div className="space-y-6 md:space-y-8">
-              {fitCategories.map((category, index) => (
+        {/* Visual Grid Gallery */}
+        <section className="px-4 py-8 md:py-12">
+          <div className="container">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 md:gap-4">
+              {fitCategories.map((category) => (
                 <Link
                   key={category.path}
                   to={category.path}
-                  className="group relative block overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5"
+                  className="group relative aspect-square overflow-hidden rounded-lg bg-muted"
                 >
-                  <div className="flex items-center justify-between p-6 md:p-8">
-                    {/* Left side - Number & Name */}
-                    <div className="flex items-center gap-4 md:gap-6">
-                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-lg text-primary/50 md:h-14 md:w-14 md:text-xl">
-                        {String(index + 1).padStart(2, "0")}
-                      </div>
-                      <div>
-                        <h2 className="font-display text-xl tracking-wide md:text-2xl lg:text-3xl">
-                          {category.name.toUpperCase()}
-                        </h2>
-                        <p className="mt-1 font-body text-sm text-muted-foreground md:text-base">
-                          {category.description}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Right side - Emoji & Arrow */}
-                    <div className="flex items-center gap-4">
-                      <span className="text-4xl md:text-5xl lg:text-6xl opacity-80 transition-transform duration-300 group-hover:scale-110">
-                        {category.emoji}
-                      </span>
-                      <ArrowRight className="h-5 w-5 text-muted-foreground transition-all duration-300 group-hover:translate-x-1 group-hover:text-primary md:h-6 md:w-6" />
-                    </div>
+                  {/* Image */}
+                  <img
+                    src={category.image}
+                    alt={category.name}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  
+                  {/* Category label */}
+                  <div className="absolute bottom-3 left-3 right-3">
+                    <span className="inline-block rounded-full bg-background/90 px-3 py-1.5 font-display text-xs tracking-wide text-foreground backdrop-blur-sm md:text-sm">
+                      {category.name}
+                    </span>
                   </div>
-
-                  {/* Hover gradient line */}
-                  <div className="absolute bottom-0 left-0 h-0.5 w-full origin-left scale-x-0 bg-gradient-to-r from-primary to-primary/50 transition-transform duration-300 group-hover:scale-x-100" />
                 </Link>
               ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Bottom CTA */}
-        <section className="border-t border-border bg-card py-12 md:py-16">
-          <div className="container">
-            <div className="mx-auto max-w-xl text-center">
-              <h2 className="mb-4 font-display text-2xl md:text-3xl">
-                NEED HELP BUILDING YOUR FIT?
-              </h2>
-              <p className="mb-6 font-body text-muted-foreground">
-                Message us on WhatsApp and we'll help you put together the perfect outfit
-              </p>
-              <WhatsAppButton 
-                size="lg" 
-                message="Hi! I need help building a fit. Can you recommend some pieces?"
-              >
-                Get Fit Advice
-              </WhatsAppButton>
             </div>
           </div>
         </section>
