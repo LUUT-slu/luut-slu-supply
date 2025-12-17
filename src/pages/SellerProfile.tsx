@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
@@ -24,6 +24,7 @@ const getSellerInfo = (id: string) => {
 
 export default function SellerProfile() {
   const { sellerId } = useParams<{ sellerId: string }>();
+  const navigate = useNavigate();
   const seller = sellerId ? getSellerInfo(sellerId) : null;
 
   if (!seller) {
@@ -51,11 +52,9 @@ export default function SellerProfile() {
         {/* Seller header */}
         <section className="border-b border-border bg-card px-4 py-12">
           <div className="container">
-            <Button asChild variant="ghost" className="mb-6">
-              <Link to="/sellers">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                All Sellers
-              </Link>
+            <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
             </Button>
 
             <div className="flex items-center gap-4">
