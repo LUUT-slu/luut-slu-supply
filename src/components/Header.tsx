@@ -33,7 +33,7 @@ export function Header() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <span className="font-display text-2xl tracking-wider text-primary md:text-3xl">
-            LUUT SLU
+            HOME
           </span>
         </Link>
 
@@ -79,7 +79,7 @@ export function Header() {
             <SheetContent side="left" className="w-80 bg-background p-0">
               <div className="flex flex-col">
                 <div className="border-b border-border p-6">
-                  <span className="font-display text-2xl text-primary">LUUT SLU</span>
+                  <span className="font-display text-2xl text-primary">HOME</span>
                 </div>
                 
                 <nav className="flex flex-col p-4">
