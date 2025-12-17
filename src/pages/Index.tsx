@@ -59,13 +59,25 @@ export default function Index() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-background to-card px-4 py-16 md:py-24">
-          <div className="container relative z-10">
+        <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
+          {/* Background Image */}
+          <div className="absolute inset-0">
+            <img 
+              src={storefrontHero} 
+              alt="Luut SLU storefront" 
+              className="w-full h-full object-cover"
+            />
+            {/* Dark gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
+          </div>
+          
+          {/* Content */}
+          <div className="container relative z-10 px-4 py-20 md:py-32">
             <div className="mx-auto max-w-3xl text-center">
-              <h1 className="mb-6 font-display text-5xl tracking-wider text-foreground md:text-7xl lg:text-8xl">
+              <h1 className="mb-6 font-display text-5xl tracking-wider text-white md:text-7xl lg:text-8xl">
                 <span className="text-primary">LUUT</span> SLU
               </h1>
-              <p className="mb-8 font-body text-lg text-muted-foreground md:text-xl">
+              <p className="mb-8 font-body text-lg text-white/90 md:text-xl">
                 Saint Lucia's streetwear marketplace. We connect you with verified local sellers — they handle meetups & delivery, you pay on pickup.
               </p>
               <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
@@ -75,10 +87,10 @@ export default function Index() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="font-body">
+                <Button asChild variant="outline" size="lg" className="font-body border-white/30 text-white hover:bg-white/10">
                   <Link to="/shop?filter=new">New Arrivals</Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="font-body">
+                <Button asChild variant="outline" size="lg" className="font-body border-white/30 text-white hover:bg-white/10">
                   <Link to="/shop?filter=best">Best Sellers</Link>
                 </Button>
               </div>
@@ -91,19 +103,7 @@ export default function Index() {
                 </Link>
               </div>
             </div>
-            
-            {/* Storefront Image */}
-            <div className="mt-12 overflow-hidden rounded-2xl border border-border shadow-2xl">
-              <img 
-                src={storefrontHero} 
-                alt="Welcome to Luut SLU - Premium streetwear store interior" 
-                className="w-full h-auto object-cover"
-              />
-            </div>
           </div>
-          {/* Decorative elements */}
-          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
-          <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
         </section>
 
         {/* Meet-up Locations */}
