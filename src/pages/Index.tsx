@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductGrid } from "@/components/ProductGrid";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
+import storefrontHero from "@/assets/storefront-hero.png";
 
 const meetupLocations = [
   { name: "Castries", description: "Capital city, central location" },
@@ -89,6 +90,15 @@ export default function Index() {
                   Want to sell? Join as a vendor →
                 </Link>
               </div>
+            </div>
+            
+            {/* Storefront Image */}
+            <div className="mt-12 overflow-hidden rounded-2xl border border-border shadow-2xl">
+              <img 
+                src={storefrontHero} 
+                alt="Welcome to Luut SLU - Premium streetwear store interior" 
+                className="w-full h-auto object-cover"
+              />
             </div>
           </div>
           {/* Decorative elements */}
