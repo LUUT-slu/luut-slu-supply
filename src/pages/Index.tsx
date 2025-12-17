@@ -59,7 +59,7 @@ export default function Index() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative min-h-[85vh] flex flex-col overflow-hidden">
+        <section className="relative min-h-[90vh] flex flex-col justify-between overflow-hidden">
           {/* Background Image - Static */}
           <div className="absolute inset-0">
             <img 
@@ -80,13 +80,10 @@ export default function Index() {
             </div>
           </div>
           
-          {/* Spacer to let background show */}
-          <div className="flex-1" />
-          
           {/* Bottom Content - Description, Buttons, Link */}
-          <div className="container relative z-10 px-4 pb-16 md:pb-24">
+          <div className="container relative z-10 px-4 pb-8 md:pb-12">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="mb-8 font-body text-lg text-white/90 md:text-xl">
+              <p className="mb-6 font-body text-lg text-white/90 md:text-xl">
                 Saint Lucia's streetwear marketplace. We connect you with verified local sellers — they handle meetups & delivery, you pay on pickup.
               </p>
               <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
@@ -103,7 +100,7 @@ export default function Index() {
                   <Link to="/shop?filter=best">Best Sellers</Link>
                 </Button>
               </div>
-              <div className="mt-6">
+              <div className="mt-5">
                 <Link
                   to="/sell"
                   className="font-body text-sm text-primary underline-offset-4 hover:underline"
