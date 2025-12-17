@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ShoppingBag, Minus, Plus, Check } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 export default function ProductDetail() {
   const { handle } = useParams<{ handle: string }>();
+  const navigate = useNavigate();
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
@@ -103,11 +104,9 @@ export default function ProductDetail() {
       <main className="flex-1">
         <div className="container py-6">
           {/* Back button */}
-          <Button asChild variant="ghost" className="mb-6">
-            <Link to="/shop">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Shop
-            </Link>
+          <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
           </Button>
 
           <div className="grid gap-8 lg:grid-cols-2">

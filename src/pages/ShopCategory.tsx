@@ -3,6 +3,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductGrid } from "@/components/ProductGrid";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { BackButton } from "@/components/BackButton";
 
 const categoryMap: Record<string, { title: string; query: string }> = {
   beanies: { title: "BEANIES", query: "product_type:beanies OR title:beanie" },
@@ -44,6 +45,7 @@ export default function ShopCategory() {
       <main className="flex-1">
         <section className="border-b border-border bg-card px-4 py-8 md:py-12">
           <div className="container">
+            <BackButton />
             <h1 className="font-display text-3xl md:text-5xl">{cat.title}</h1>
             <p className="mt-2 font-body text-muted-foreground">
               Shop {cat.title.toLowerCase()} from local vendors
