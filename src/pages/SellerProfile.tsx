@@ -6,7 +6,7 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { ShieldCheck, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// In production, this would fetch from a vendor database
+// Seller data - in production, this would fetch from a vendor database
 const getSellerInfo = (id: string) => {
   if (id === "luut-slu") {
     return {
@@ -14,7 +14,7 @@ const getSellerInfo = (id: string) => {
       name: "Luut SLU",
       badge: "Certified Seller",
       description:
-        "The official Luut SLU collection. Platform-verified quality streetwear for Saint Lucia.",
+        "As the platform owner, Luut SLU also operates as a certified seller with our own curated streetwear collection. Shop directly from the source with platform-guaranteed quality.",
       isCertified: true,
       vendorQuery: "vendor:Luut SLU",
     };
@@ -64,7 +64,7 @@ export default function SellerProfile() {
               </div>
               <div>
                 <h1 className="font-display text-3xl md:text-4xl">
-                  {seller.name}
+                  {seller.name} {seller.isCertified && "(Certified Seller)"}
                 </h1>
                 {seller.isCertified && (
                   <div className="mt-2 flex items-center gap-2 text-trust">
