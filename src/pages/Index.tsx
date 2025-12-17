@@ -59,7 +59,7 @@ export default function Index() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative min-h-[90vh] flex flex-col justify-between overflow-hidden">
+        <section className="relative min-h-[90vh] flex flex-col justify-end overflow-hidden">
           {/* Background Image - Static */}
           <div className="absolute inset-0">
             <img 
@@ -67,17 +67,8 @@ export default function Index() {
               alt="Luut SLU storefront" 
               className="w-full h-full object-cover"
             />
-            {/* Dark gradient overlay - stronger at top and bottom, lighter in center */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/40 to-black/90" />
-          </div>
-          
-          {/* Top Content - Headline */}
-          <div className="container relative z-10 px-4 pt-24 md:pt-32">
-            <div className="mx-auto max-w-3xl text-center">
-              <h1 className="font-display text-5xl tracking-wider text-white md:text-7xl lg:text-8xl">
-                <span className="text-primary">LUUT</span> SLU
-              </h1>
-            </div>
+            {/* Dark gradient overlay - lighter at top, stronger at bottom */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/90" />
           </div>
           
           {/* Bottom Content - Description, Buttons, Link */}
