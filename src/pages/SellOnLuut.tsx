@@ -10,7 +10,7 @@ export default function SellOnLuut() {
       <main className="flex-1">
         <section className="px-4 py-16 md:py-24">
           <div className="container">
-            <div className="mx-auto max-w-2xl">
+            <div className="mx-auto max-w-2xl text-center">
               <h1 className="mb-8 font-display text-4xl md:text-5xl">
                 WHERE BRANDS <span className="text-primary">GROW</span>
               </h1>
@@ -27,7 +27,7 @@ export default function SellOnLuut() {
 
                 <div className="rounded-lg border border-border bg-card p-6">
                   <h2 className="mb-4 font-display text-lg">HOW IT WORKS</h2>
-                  <ul className="space-y-3 text-sm">
+                  <ul className="inline-block space-y-3 text-left text-sm">
                     <li className="flex items-start gap-3">
                       <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground">1</span>
                       <span>Your products are listed on the platform</span>
