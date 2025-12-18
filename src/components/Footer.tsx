@@ -72,12 +72,14 @@ export function Footer() {
           </div>
 
           {/* Contact */}
-          <div className="space-y-4">
+          <div className="space-y-4 text-center md:text-left">
             <h4 className="font-display text-lg">CONTACT</h4>
             <p className="font-body text-sm text-muted-foreground">
               WhatsApp is our main communication channel.
             </p>
-            <WhatsAppButton size="sm" />
+            <div className="flex justify-center md:justify-start">
+              <WhatsAppButton size="sm" />
+            </div>
             <p className="font-body text-xs text-muted-foreground">
               Based in Saint Lucia 🇱🇨
             </p>
