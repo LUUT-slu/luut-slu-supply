@@ -76,7 +76,7 @@ export default function Index() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative min-h-[90vh] flex flex-col overflow-hidden">
+        <section className="relative min-h-[90vh] flex flex-col justify-end overflow-hidden">
           {/* Background Images - Dynamic with crossfade */}
           {heroImages.map((image, index) => (
             <div
@@ -92,21 +92,15 @@ export default function Index() {
               />
             </div>
           ))}
-          {/* Dark gradient overlay - stronger at top and bottom, lighter in center */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/20 to-black/80" />
+          {/* Dark gradient overlay - lighter at top, stronger at bottom */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/90" />
           
-          {/* Top Content - Tagline */}
-          <div className="container relative z-10 px-4 pt-24 md:pt-32">
+          {/* Bottom Content - Description, Buttons, Link */}
+          <div className="container relative z-10 px-4 pb-8 md:pb-12">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="font-body text-lg font-medium text-white md:text-xl">
+              <p className="mb-6 font-body text-lg font-medium text-white md:text-xl">
                 Saint Lucia's streetwear marketplace. We connect you with verified local sellers — they handle meetups & delivery, you pay on pickup.
               </p>
-            </div>
-          </div>
-          
-          {/* Bottom Content - Buttons, Link */}
-          <div className="container relative z-10 px-4 pb-8 md:pb-12 mt-auto">
-            <div className="mx-auto max-w-3xl text-center">
               <div className="flex flex-col gap-4 sm:flex-row sm:justify-center sm:items-center">
                 <Button asChild size="lg" className="font-body text-base px-8 py-6 shadow-lg">
                   <Link to="/shop">
