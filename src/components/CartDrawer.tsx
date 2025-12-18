@@ -1,4 +1,5 @@
-import { ShoppingBag, Minus, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { ShoppingBag, Minus, Plus, Trash2, ArrowLeft, MapPin, CreditCard, MessageCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import {
@@ -9,18 +10,18 @@ import {
   SheetTrigger,
 } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
-import { WhatsAppButton } from "./WhatsAppButton";
-import { toast } from "sonner";
+
+const WHATSAPP_NUMBER = "17586947599";
+const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
 
 export function CartDrawer() {
+  const [step, setStep] = useState<'cart' | 'review'>('cart');
   const {
     items,
-    isLoading,
     isOpen,
     setOpen,
     updateQuantity,
     removeItem,
-    createCheckout,
     getTotalItems,
     getTotalPrice,
   } = useCartStore();
@@ -28,25 +29,39 @@ export function CartDrawer() {
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
 
-  const handleCheckout = async () => {
-    const checkoutUrl = await createCheckout();
-    if (checkoutUrl) {
-      window.open(checkoutUrl, '_blank');
-      setOpen(false);
-    } else {
-      toast.error("Failed to create checkout. Please try WhatsApp instead.");
+  const handleOpenChange = (open: boolean) => {
+    setOpen(open);
+    if (!open) {
+      setStep('cart');
     }
   };
 
   const getWhatsAppMessage = () => {
-    const itemsList = items
-      .map(item => `- ${item.product.node.title} (${item.variantTitle}) x${item.quantity}`)
+    const productList = items
+      .map(item => `${item.product.node.title}${item.variantTitle !== 'Default Title' ? ` (${item.variantTitle})` : ''}${item.quantity > 1 ? ` x${item.quantity}` : ''}`)
       .join('\n');
-    return `Hi! I'd like to order:\n\n${itemsList}\n\nTotal: $${totalPrice.toFixed(2)} XCD`;
+    
+    const totalEC = totalPrice.toFixed(2);
+    
+    return `Hi Luut SLU 👋
+I'm ready to confirm my order.
+
+Product:
+${productList}
+
+Price: EC$${totalEC}
+Location: [Castries / Gros Islet / Rodney Bay]
+
+Please let me know availability and the best time to meet.`;
+  };
+
+  const handleConfirmOnWhatsApp = () => {
+    const message = encodeURIComponent(getWhatsAppMessage());
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={setOpen}>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <ShoppingBag className="h-5 w-5" />
@@ -60,7 +75,9 @@ export function CartDrawer() {
 
       <SheetContent className="flex h-full w-full flex-col bg-background sm:max-w-lg">
         <SheetHeader className="flex-shrink-0">
-          <SheetTitle className="font-display text-xl">Your Cart</SheetTitle>
+          <SheetTitle className="font-display text-xl">
+            {step === 'cart' ? 'Your Cart' : 'Review Order'}
+          </SheetTitle>
         </SheetHeader>
 
         <div className="flex flex-1 flex-col pt-4 min-h-0">
@@ -72,7 +89,8 @@ export function CartDrawer() {
                 Browse our outfits and add items to your cart
               </p>
             </div>
-          ) : (
+          ) : step === 'cart' ? (
+            // Cart View
             <>
               <div className="flex-1 overflow-y-auto pr-2">
                 <div className="space-y-4">
@@ -95,15 +113,14 @@ export function CartDrawer() {
                         <h4 className="font-body text-sm font-medium line-clamp-2">
                           {item.product.node.title}
                         </h4>
-                        <p className="text-xs text-muted-foreground">
-                          {item.selectedOptions.map(o => o.value).join(' • ')}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Sold by: {item.product.node.vendor || 'Luut SLU'}
-                        </p>
+                        {item.variantTitle !== 'Default Title' && (
+                          <p className="text-xs text-muted-foreground">
+                            {item.selectedOptions.map(o => o.value).join(' • ')}
+                          </p>
+                        )}
                         <div className="mt-auto flex items-center justify-between">
                           <span className="font-body font-semibold text-primary">
-                            ${parseFloat(item.price.amount).toFixed(2)}
+                            EC${parseFloat(item.price.amount).toFixed(2)}
                           </span>
                           <div className="flex items-center gap-2">
                             <Button
@@ -143,43 +160,111 @@ export function CartDrawer() {
                 <div className="flex items-center justify-between">
                   <span className="font-body text-lg">Total</span>
                   <span className="font-display text-2xl text-primary">
-                    ${totalPrice.toFixed(2)} XCD
+                    EC${totalPrice.toFixed(2)}
                   </span>
                 </div>
 
-                <div className="space-y-2">
-                  <WhatsAppButton
-                    message={getWhatsAppMessage()}
-                    className="w-full"
-                    size="lg"
-                  >
-                    Message on WhatsApp
-                  </WhatsAppButton>
+                <Button
+                  onClick={() => setStep('review')}
+                  className="w-full"
+                  size="lg"
+                >
+                  Proceed to Checkout
+                </Button>
+              </div>
+            </>
+          ) : (
+            // Review View
+            <>
+              <div className="flex-1 overflow-y-auto pr-2">
+                <div className="space-y-6">
+                  {/* Order Summary */}
+                  <div className="space-y-3">
+                    <h3 className="font-body font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+                      Order Summary
+                    </h3>
+                    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                      {items.map((item) => (
+                        <div key={item.variantId} className="flex justify-between items-start">
+                          <div>
+                            <p className="font-body text-sm font-medium">
+                              {item.product.node.title}
+                              {item.quantity > 1 && ` × ${item.quantity}`}
+                            </p>
+                            {item.variantTitle !== 'Default Title' && (
+                              <p className="text-xs text-muted-foreground">
+                                {item.variantTitle}
+                              </p>
+                            )}
+                          </div>
+                          <span className="font-body text-sm">
+                            EC${(parseFloat(item.price.amount) * item.quantity).toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="border-t border-border pt-3 flex justify-between">
+                        <span className="font-body font-semibold">Total</span>
+                        <span className="font-display text-lg text-primary font-semibold">
+                          EC${totalPrice.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-                  <Button
-                    onClick={handleCheckout}
-                    variant="outline"
-                    className="w-full"
-                    size="lg"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating Checkout...
-                      </>
-                    ) : (
-                      <>
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Checkout Online
-                      </>
-                    )}
-                  </Button>
+                  {/* Payment Method */}
+                  <div className="space-y-3">
+                    <h3 className="font-body font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+                      Payment Method
+                    </h3>
+                    <div className="rounded-lg border border-border bg-card p-4 flex items-center gap-3">
+                      <CreditCard className="h-5 w-5 text-primary" />
+                      <span className="font-body text-sm">Pay on meetup (cash)</span>
+                    </div>
+                  </div>
+
+                  {/* Meetup Locations */}
+                  <div className="space-y-3">
+                    <h3 className="font-body font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+                      Available Meetup Locations
+                    </h3>
+                    <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+                      {MEETUP_LOCATIONS.map((location) => (
+                        <div key={location} className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-primary" />
+                          <span className="font-body text-sm">{location}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Note */}
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                    <p className="font-body text-sm text-muted-foreground">
+                      <strong className="text-foreground">Note:</strong> Final availability and meetup time will be confirmed on WhatsApp.
+                    </p>
+                  </div>
                 </div>
+              </div>
 
-                <p className="text-center text-xs text-muted-foreground">
-                  Pay on meetup (cash) or deposit for pre-orders
-                </p>
+              <div className="flex-shrink-0 space-y-3 border-t border-border pt-4">
+                <Button
+                  onClick={handleConfirmOnWhatsApp}
+                  className="w-full gap-2"
+                  size="lg"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  Confirm Order on WhatsApp
+                </Button>
+                
+                <Button
+                  onClick={() => setStep('cart')}
+                  variant="ghost"
+                  className="w-full gap-2"
+                  size="sm"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Cart
+                </Button>
               </div>
             </>
           )}
