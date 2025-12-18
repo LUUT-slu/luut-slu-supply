@@ -102,10 +102,10 @@ export default function Index() {
                 Saint Lucia's streetwear marketplace. We connect you with verified local sellers — they handle meetups & delivery, you pay on pickup.
               </p>
               <div className="flex flex-col gap-4 sm:flex-row sm:justify-center sm:items-center">
-                <Button asChild size="lg" className="font-body text-base px-8 py-6 shadow-lg">
+                <Button asChild size="lg" className="font-body text-base px-8 py-6 shadow-[0_0_20px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_30px_hsl(var(--primary)/0.6)] transition-all duration-300 animate-pulse-subtle">
                   <Link to="/shop">
                     Shop Outfits
-                    <ArrowRight className="ml-2 h-5 w-5" />
+                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </Button>
                 <Button asChild variant="ghost" size="sm" className="font-body text-white/80 hover:text-white hover:bg-white/10">

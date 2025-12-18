@@ -100,6 +100,10 @@ export default {
           "0%": { transform: "scale(1.2)" },
           "100%": { transform: "scale(1.1)" },
         },
+        "pulse-subtle": {
+          "0%, 100%": { boxShadow: "0 0 20px hsl(var(--primary) / 0.4)" },
+          "50%": { boxShadow: "0 0 30px hsl(var(--primary) / 0.6)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -108,6 +112,7 @@ export default {
         "slide-in": "slide-in 0.3s ease-out",
         pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "hero-zoom": "hero-zoom 1.5s ease-out forwards",
+        "pulse-subtle": "pulse-subtle 2s ease-in-out infinite",
       },
     },
   },
