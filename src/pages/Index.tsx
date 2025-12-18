@@ -99,20 +99,20 @@ export default function Index() {
           <div className="container relative z-10 px-4 pb-8 md:pb-12">
             <div className="mx-auto max-w-3xl text-center">
               <div className="flex flex-col gap-4 sm:flex-row sm:justify-center sm:items-center">
-                <Button asChild size="lg" className="font-body text-base px-8 py-6 shadow-lg">
+                <Button asChild size="lg" className="font-body text-base px-8 py-6 shadow-lg animate-fade-in opacity-0" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
                   <Link to="/shop">
                     Shop Outfits
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
-                <Button asChild variant="ghost" size="sm" className="font-body text-white/80 hover:text-white hover:bg-white/10">
+                <Button asChild variant="ghost" size="sm" className="font-body text-white/80 hover:text-white hover:bg-white/10 animate-fade-in opacity-0" style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}>
                   <Link to="/shop?filter=new">New Arrivals</Link>
                 </Button>
-                <Button asChild variant="ghost" size="sm" className="font-body text-white/80 hover:text-white hover:bg-white/10">
+                <Button asChild variant="ghost" size="sm" className="font-body text-white/80 hover:text-white hover:bg-white/10 animate-fade-in opacity-0" style={{ animationDelay: "0.6s", animationFillMode: "forwards" }}>
                   <Link to="/shop?filter=best">Best Sellers</Link>
                 </Button>
               </div>
-              <div className="mt-5">
+              <div className="mt-5 animate-fade-in opacity-0" style={{ animationDelay: "0.8s", animationFillMode: "forwards" }}>
                 <Link
                   to="/sell"
                   className="font-body text-sm text-primary underline-offset-4 hover:underline"
