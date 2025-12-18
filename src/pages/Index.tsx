@@ -98,9 +98,6 @@ export default function Index() {
           {/* Bottom Content - Description, Buttons, Link */}
           <div className="container relative z-10 px-4 pb-8 md:pb-12">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="mb-6 font-body text-lg font-medium text-white md:text-xl">
-                Saint Lucia's streetwear marketplace. We connect you with verified local sellers — they handle meetups & delivery, you pay on pickup.
-              </p>
               <div className="flex flex-col gap-4 sm:flex-row sm:justify-center sm:items-center">
                 <Button asChild size="lg" className="font-body text-base px-8 py-6 shadow-lg">
                   <Link to="/shop">
