@@ -1,34 +1,6 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, DollarSign, Users, TrendingUp } from "lucide-react";
-
-const benefits = [
-  {
-    icon: Users,
-    title: "Access Local Customers",
-    description: "Luut SLU drives traffic — you handle meetups & delivery",
-  },
-  {
-    icon: DollarSign,
-    title: "Low Commission",
-    description: "Only 10% commission to the platform — keep more of your earnings",
-  },
-  {
-    icon: TrendingUp,
-    title: "Grow Your Brand",
-    description: "Build your reputation as a verified seller on our marketplace",
-  },
-];
-
-const requirements = [
-  "Based in Saint Lucia",
-  "Able to meet with customers locally",
-  "Active WhatsApp Business account (personal WhatsApp won't work)",
-  "Active online presence — Instagram, Facebook, or any platform where customers can find you",
-  "Clear, good-quality product photos",
-];
 
 export default function SellOnLuut() {
   return (
@@ -36,141 +8,62 @@ export default function SellOnLuut() {
       <Header />
 
       <main className="flex-1">
-        {/* Hero */}
-        <section className="border-b border-border bg-gradient-to-b from-card to-background px-4 py-16 md:py-24">
+        <section className="px-4 py-16 md:py-24">
           <div className="container">
-            <div className="mx-auto max-w-2xl text-center">
-              <h1 className="mb-6 font-display text-4xl md:text-6xl">
-                SELL ON <span className="text-primary">LUUT</span>
+            <div className="mx-auto max-w-2xl">
+              <h1 className="mb-8 font-display text-4xl md:text-5xl">
+                WHERE BRANDS <span className="text-primary">GROW</span>
               </h1>
-              <p className="mb-8 font-body text-lg text-muted-foreground">
-                Luut SLU is a marketplace platform — we own the brand and drive the traffic. You list your products, handle your own meetups & delivery, and pay us a 10% commission. We also operate as a certified seller ourselves.
-              </p>
-              <WhatsAppButton
-                message="Hi! I'm interested in becoming a vendor on Luut SLU."
-                size="lg"
-              >
-                Apply to Sell
-              </WhatsAppButton>
-            </div>
-          </div>
-        </section>
 
-        {/* Benefits */}
-        <section className="py-12 md:py-16">
-          <div className="container">
-            <h2 className="mb-10 text-center font-display text-2xl md:text-3xl">
-              WHY SELL WITH US
-            </h2>
-            <div className="grid gap-6 md:grid-cols-3">
-              {benefits.map(({ icon: Icon, title, description }) => (
-                <div
-                  key={title}
-                  className="rounded-lg border border-border bg-card p-6 text-center"
-                >
-                  <Icon className="mx-auto mb-4 h-10 w-10 text-primary" />
-                  <h3 className="mb-2 font-display text-lg">{title}</h3>
-                  <p className="font-body text-sm text-muted-foreground">
-                    {description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+              <div className="space-y-6 font-body text-muted-foreground">
+                <p className="text-lg">
+                  This space is built for local creators, resellers, and brand builders who want to grow.
+                </p>
 
-        {/* How it works */}
-        <section className="border-y border-border bg-card py-12 md:py-16">
-          <div className="container">
-            <h2 className="mb-10 text-center font-display text-2xl md:text-3xl">
-              HOW IT WORKS
-            </h2>
-            <div className="mx-auto max-w-2xl space-y-6">
-              <div className="flex gap-4">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary font-display text-primary-foreground">
-                  1
-                </div>
-                <div>
-                  <h3 className="font-display text-lg">Apply via WhatsApp</h3>
-                  <p className="font-body text-sm text-muted-foreground">
-                    Message us with your details and products
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary font-display text-primary-foreground">
-                  2
-                </div>
-                <div>
-                  <h3 className="font-display text-lg">Get Verified</h3>
-                  <p className="font-body text-sm text-muted-foreground">
-                    We verify your ID and products for quality
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary font-display text-primary-foreground">
-                  3
-                </div>
-                <div>
-                  <h3 className="font-display text-lg">List & Sell</h3>
-                  <p className="font-body text-sm text-muted-foreground">
-                    Your products go live. Customers find you through Luut.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary font-display text-primary-foreground">
-                  4
-                </div>
-                <div>
-                  <h3 className="font-display text-lg">Meet & Collect</h3>
-                  <p className="font-body text-sm text-muted-foreground">
-                    Handle meetups yourself. Pay Luut 10% commission.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+                <p>
+                  You keep your own identity, your own pages, and your own way of selling.
+                  The platform exists to make growth simpler — helping customers discover your products and connect with you faster, especially through WhatsApp.
+                </p>
 
-        {/* Requirements */}
-        <section className="py-12 md:py-16">
-          <div className="container">
-            <h2 className="mb-10 text-center font-display text-2xl md:text-3xl">
-              REQUIREMENTS
-            </h2>
-            <div className="mx-auto max-w-xl">
-              <div className="rounded-lg border border-border bg-card p-6">
-                <ul className="space-y-3">
-                  {requirements.map((req) => (
-                    <li key={req} className="flex items-start gap-3">
-                      <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-trust" />
-                      <span className="font-body text-sm">{req}</span>
+                <div className="rounded-lg border border-border bg-card p-6">
+                  <h2 className="mb-4 font-display text-lg">HOW IT WORKS</h2>
+                  <ul className="space-y-3 text-sm">
+                    <li className="flex items-start gap-3">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground">1</span>
+                      <span>Your products are listed on the platform</span>
                     </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
+                    <li className="flex items-start gap-3">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground">2</span>
+                      <span>Platform ads drive traffic directly to your product page</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground">3</span>
+                      <span>Customers click and message you on WhatsApp</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground">4</span>
+                      <span>You handle the conversation, meetup, and sale</span>
+                    </li>
+                  </ul>
+                </div>
 
-        {/* CTA */}
-        <section className="border-t border-border bg-card py-12 md:py-16">
-          <div className="container">
-            <div className="mx-auto max-w-xl text-center">
-              <h2 className="mb-4 font-display text-2xl md:text-3xl">
-                READY TO START?
-              </h2>
-              <p className="mb-6 font-body text-muted-foreground">
-                Message us on WhatsApp to begin the vendor application process
-              </p>
-              <WhatsAppButton
-                message="Hi! I want to become a vendor on Luut SLU. Here are my details:"
-                size="lg"
-              >
-                Apply Now
-              </WhatsAppButton>
+                <p>
+                  You're still free to promote your products on your own — share your link, repost your product page, or run ads to your page on the platform.
+                </p>
+
+                <p className="text-sm">
+                  A small platform commission supports visibility, ads, and operations. Full details are shared during onboarding.
+                </p>
+              </div>
+
+              <div className="mt-10">
+                <WhatsAppButton
+                  message="Hi! I'm interested in selling on the platform."
+                  size="lg"
+                >
+                  Apply to Sell
+                </WhatsAppButton>
+              </div>
             </div>
           </div>
         </section>
