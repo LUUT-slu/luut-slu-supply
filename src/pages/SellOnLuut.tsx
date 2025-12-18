@@ -23,11 +23,11 @@ const benefits = [
 ];
 
 const requirements = [
-  "Must be based in Saint Lucia",
-  "Valid ID for verification",
-  "Ability to meet customers in Castries, Gros Islet, or Rodney Bay",
-  "WhatsApp for customer communication",
-  "Quality products only - no counterfeits",
+  "Based in Saint Lucia",
+  "Able to meet with customers locally",
+  "Active WhatsApp Business account (personal WhatsApp won't work)",
+  "Active online presence — Instagram, Facebook, or any platform where customers can find you",
+  "Clear, good-quality product photos",
 ];
 
 export default function SellOnLuut() {
