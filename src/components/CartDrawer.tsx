@@ -11,7 +11,7 @@ import {
 } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
 
-const WHATSAPP_NUMBER = "17586947599";
+const WHATSAPP_NUMBER = "17587185478"; // Saint Lucia country code + number
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
 
 export function CartDrawer() {
