@@ -98,7 +98,7 @@ export default function Index() {
           {/* Top Content - Tagline */}
           <div className="container relative z-10 px-4 pt-24 md:pt-32">
             <div className="mx-auto max-w-3xl text-center">
-              <p className="font-body text-lg font-medium text-white md:text-xl" style={{ textShadow: '0 0 20px rgba(200, 210, 255, 0.25), 0 0 40px rgba(180, 190, 255, 0.15)' }}>
+              <p className="font-body text-lg font-medium text-white md:text-xl">
                 Saint Lucia's streetwear marketplace. We connect you with verified local sellers — they handle meetups & delivery, you pay on pickup.
               </p>
             </div>
