@@ -1,7 +1,31 @@
 import { useState } from "react";
-import { ShoppingBag, Minus, Plus, Trash2, ArrowLeft, MapPin, CreditCard, MessageCircle } from "lucide-react";
+import { format } from "date-fns";
+import { 
+  ShoppingBag, 
+  Minus, 
+  Plus, 
+  Trash2, 
+  ArrowLeft, 
+  MapPin, 
+  User, 
+  Calendar, 
+  MessageSquare,
+  Check,
+  Circle,
+  Package
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { Label } from "./ui/label";
+import { Calendar as CalendarComponent } from "./ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "./ui/popover";
 import {
   Sheet,
   SheetContent,
@@ -10,12 +34,49 @@ import {
   SheetTrigger,
 } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
+import { cn } from "@/lib/utils";
 
 const WHATSAPP_NUMBER = "17587185478"; // Saint Lucia country code + number
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
 
+interface ChecklistItemProps {
+  completed: boolean;
+  label: string;
+  children: React.ReactNode;
+}
+
+function ChecklistItem({ completed, label, children }: ChecklistItemProps) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        {completed ? (
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary">
+            <Check className="h-3 w-3 text-primary-foreground" />
+          </div>
+        ) : (
+          <Circle className="h-5 w-5 text-muted-foreground" />
+        )}
+        <span className={cn(
+          "font-body text-sm font-medium",
+          completed ? "text-foreground" : "text-muted-foreground"
+        )}>
+          {label}
+        </span>
+      </div>
+      <div className="ml-7">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function CartDrawer() {
-  const [step, setStep] = useState<'cart' | 'review'>('cart');
+  const [step, setStep] = useState<'cart' | 'builder'>('cart');
+  const [customerName, setCustomerName] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [note, setNote] = useState('');
+  
   const {
     items,
     isOpen,
@@ -29,10 +90,21 @@ export function CartDrawer() {
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
 
+  // Validation checks
+  const isNameValid = customerName.trim().length >= 2;
+  const isLocationValid = selectedLocation !== '';
+  const isDateValid = selectedDate !== undefined;
+  const isFormComplete = isNameValid && isLocationValid && isDateValid;
+
   const handleOpenChange = (open: boolean) => {
     setOpen(open);
     if (!open) {
       setStep('cart');
+      // Reset form when closing
+      setCustomerName('');
+      setSelectedLocation('');
+      setSelectedDate(undefined);
+      setNote('');
     }
   };
 
@@ -42,23 +114,37 @@ export function CartDrawer() {
       .join('\n');
     
     const totalEC = totalPrice.toFixed(2);
+    const formattedDate = selectedDate ? format(selectedDate, 'EEEE, MMMM d') : '';
     
-    return `Hi Luut SLU 👋
+    let message = `Hi Luut SLU 👋
 I'm ready to confirm my order.
+
+Name: ${customerName}
 
 Product:
 ${productList}
 
 Price: EC$${totalEC}
-Location: [Castries / Gros Islet / Rodney Bay]
+Location: ${selectedLocation}
+Preferred Date: ${formattedDate}`;
 
-Please let me know availability and the best time to meet.`;
+    if (note.trim()) {
+      message += `\n\nNote: ${note.trim()}`;
+    }
+
+    message += `\n\nPlease confirm availability and time. Thank you!`;
+    
+    return message;
   };
 
   const handleConfirmOnWhatsApp = () => {
     const message = encodeURIComponent(getWhatsAppMessage());
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
   };
+
+  // Get tomorrow as minimum date
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
 
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
@@ -76,7 +162,7 @@ Please let me know availability and the best time to meet.`;
       <SheetContent className="flex h-full w-full flex-col bg-background sm:max-w-lg">
         <SheetHeader className="flex-shrink-0">
           <SheetTitle className="font-display text-xl">
-            {step === 'cart' ? 'Your Cart' : 'Review Order'}
+            {step === 'cart' ? 'Your Cart' : 'Complete Your Order'}
           </SheetTitle>
         </SheetHeader>
 
@@ -165,7 +251,7 @@ Please let me know availability and the best time to meet.`;
                 </div>
 
                 <Button
-                  onClick={() => setStep('review')}
+                  onClick={() => setStep('builder')}
                   className="w-full"
                   size="lg"
                 >
@@ -174,85 +260,147 @@ Please let me know availability and the best time to meet.`;
               </div>
             </>
           ) : (
-            // Review View
+            // Order Builder View
             <>
               <div className="flex-1 overflow-y-auto pr-2">
                 <div className="space-y-6">
+                  {/* Your Name */}
+                  <ChecklistItem completed={isNameValid} label="Your Name">
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Enter your name"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </ChecklistItem>
+
                   {/* Order Summary */}
-                  <div className="space-y-3">
-                    <h3 className="font-body font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                      Order Summary
-                    </h3>
-                    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                  <ChecklistItem completed={true} label="Order Summary">
+                    <div className="rounded-lg border border-border bg-card p-3 space-y-2">
                       {items.map((item) => (
-                        <div key={item.variantId} className="flex justify-between items-start">
-                          <div>
-                            <p className="font-body text-sm font-medium">
+                        <div key={item.variantId} className="flex items-start gap-2">
+                          <Package className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-body text-sm truncate">
                               {item.product.node.title}
                               {item.quantity > 1 && ` × ${item.quantity}`}
                             </p>
                             {item.variantTitle !== 'Default Title' && (
-                              <p className="text-xs text-muted-foreground">
-                                {item.variantTitle}
-                              </p>
+                              <p className="text-xs text-muted-foreground">{item.variantTitle}</p>
                             )}
                           </div>
-                          <span className="font-body text-sm">
+                          <span className="text-sm font-medium">
                             EC${(parseFloat(item.price.amount) * item.quantity).toFixed(2)}
                           </span>
                         </div>
                       ))}
-                      <div className="border-t border-border pt-3 flex justify-between">
-                        <span className="font-body font-semibold">Total</span>
-                        <span className="font-display text-lg text-primary font-semibold">
+                      <div className="border-t border-border pt-2 mt-2 flex justify-between">
+                        <span className="font-semibold">Total</span>
+                        <span className="font-display text-primary font-semibold">
                           EC${totalPrice.toFixed(2)}
                         </span>
                       </div>
                     </div>
-                  </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Payment: Cash on meetup
+                    </p>
+                  </ChecklistItem>
 
-                  {/* Payment Method */}
-                  <div className="space-y-3">
-                    <h3 className="font-body font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                      Payment Method
-                    </h3>
-                    <div className="rounded-lg border border-border bg-card p-4 flex items-center gap-3">
-                      <CreditCard className="h-5 w-5 text-primary" />
-                      <span className="font-body text-sm">Pay on meetup (cash)</span>
-                    </div>
-                  </div>
-
-                  {/* Meetup Locations */}
-                  <div className="space-y-3">
-                    <h3 className="font-body font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                      Available Meetup Locations
-                    </h3>
-                    <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+                  {/* Meetup Location */}
+                  <ChecklistItem completed={isLocationValid} label="Meetup Location">
+                    <RadioGroup
+                      value={selectedLocation}
+                      onValueChange={setSelectedLocation}
+                      className="space-y-2"
+                    >
                       {MEETUP_LOCATIONS.map((location) => (
-                        <div key={location} className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-primary" />
-                          <span className="font-body text-sm">{location}</span>
+                        <div
+                          key={location}
+                          className={cn(
+                            "flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors",
+                            selectedLocation === location
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:bg-muted/50"
+                          )}
+                          onClick={() => setSelectedLocation(location)}
+                        >
+                          <RadioGroupItem value={location} id={location} />
+                          <Label htmlFor={location} className="flex items-center gap-2 cursor-pointer flex-1">
+                            <MapPin className="h-4 w-4 text-primary" />
+                            {location}
+                          </Label>
                         </div>
                       ))}
-                    </div>
-                  </div>
+                    </RadioGroup>
+                  </ChecklistItem>
 
-                  {/* Note */}
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                    <p className="font-body text-sm text-muted-foreground">
-                      <strong className="text-foreground">Note:</strong> Final availability and meetup time will be confirmed on WhatsApp.
+                  {/* Preferred Date */}
+                  <ChecklistItem completed={isDateValid} label="Preferred Meetup Date">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !selectedDate && "text-muted-foreground"
+                          )}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {selectedDate ? format(selectedDate, "EEEE, MMMM d, yyyy") : "Select a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={setSelectedDate}
+                          disabled={(date) => date < tomorrow}
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Final time will be confirmed on WhatsApp
                     </p>
-                  </div>
+                  </ChecklistItem>
+
+                  {/* Optional Note */}
+                  <ChecklistItem completed={note.trim().length > 0} label="Add a Note (optional)">
+                    <div className="relative">
+                      <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Textarea
+                        placeholder="Any special requests or questions?"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        className="pl-10 min-h-[80px] resize-none"
+                        maxLength={200}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 text-right">
+                      {note.length}/200
+                    </p>
+                  </ChecklistItem>
                 </div>
               </div>
 
               <div className="flex-shrink-0 space-y-3 border-t border-border pt-4">
+                {!isFormComplete && (
+                  <p className="text-center text-sm text-muted-foreground">
+                    Complete all required fields to continue
+                  </p>
+                )}
+                
                 <Button
                   onClick={handleConfirmOnWhatsApp}
                   className="w-full gap-2"
                   size="lg"
+                  disabled={!isFormComplete}
                 >
-                  <MessageCircle className="h-5 w-5" />
+                  <Check className="h-5 w-5" />
                   Confirm Order on WhatsApp
                 </Button>
                 
