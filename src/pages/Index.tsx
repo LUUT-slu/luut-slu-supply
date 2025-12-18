@@ -101,17 +101,17 @@ export default function Index() {
               <p className="mb-6 font-body text-lg font-medium text-white md:text-xl">
                 Saint Lucia's streetwear marketplace. We connect you with verified local sellers — they handle meetups & delivery, you pay on pickup.
               </p>
-              <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
-                <Button asChild size="lg" className="font-body">
+              <div className="flex flex-col gap-4 sm:flex-row sm:justify-center sm:items-center">
+                <Button asChild size="lg" className="font-body text-base px-8 py-6 shadow-lg">
                   <Link to="/shop">
                     Shop Outfits
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="font-body border-white/30 text-white hover:bg-white/10">
+                <Button asChild variant="ghost" size="sm" className="font-body text-white/80 hover:text-white hover:bg-white/10">
                   <Link to="/shop?filter=new">New Arrivals</Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="font-body border-white/30 text-white hover:bg-white/10">
+                <Button asChild variant="ghost" size="sm" className="font-body text-white/80 hover:text-white hover:bg-white/10">
                   <Link to="/shop?filter=best">Best Sellers</Link>
                 </Button>
               </div>
