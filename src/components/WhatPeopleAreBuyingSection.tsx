@@ -127,10 +127,12 @@ export function WhatPeopleAreBuyingSection() {
       <div className="container">
         {/* Section Header */}
         <div className="mb-8">
-          <h2 className="font-display text-2xl md:text-3xl text-foreground">
-            WHAT PEOPLE ARE BUYING
-          </h2>
-          <p className="mt-2 font-body text-sm text-muted-foreground">
+          <div className="inline-block">
+            <h2 className="font-display text-2xl md:text-3xl text-primary-foreground bg-primary px-4 py-2 inline-block">
+              WHAT PEOPLE ARE BUYING
+            </h2>
+          </div>
+          <p className="mt-3 font-body text-sm text-muted-foreground">
             See what's moving in your community right now
           </p>
         </div>
