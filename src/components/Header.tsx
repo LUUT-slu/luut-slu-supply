@@ -135,9 +135,9 @@ export function Header() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 bg-background p-0">
-              <div className="flex flex-col">
-                <div className="border-b border-border p-6">
+            <SheetContent side="left" className="w-80 bg-background p-0 overflow-y-auto">
+              <div className="flex flex-col min-h-full">
+                <div className="border-b border-border p-6 sticky top-0 bg-background z-10">
                   <span className="font-display text-2xl text-primary">Home</span>
                 </div>
                 

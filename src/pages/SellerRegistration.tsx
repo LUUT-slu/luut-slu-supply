@@ -67,9 +67,9 @@ export default function SellerRegistration() {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="flex min-h-screen flex-col bg-background">
         <Header />
-        <main className="container flex flex-col items-center justify-center py-16">
+        <main className="container flex flex-1 flex-col items-center justify-center py-16">
           <Card className="w-full max-w-md text-center">
             <CardHeader>
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
@@ -96,10 +96,10 @@ export default function SellerRegistration() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
       
-      <main className="container py-8">
+      <main className="container flex-1 py-8">
         <div className="mx-auto max-w-lg">
           <div className="mb-6">
             <BackButton />
