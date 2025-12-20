@@ -86,10 +86,10 @@ export default function MyOrders() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
       
-      <main className="container py-8">
+      <main className="container flex-1 py-8">
         <div className="mb-6 flex items-center gap-4">
           <BackButton />
           <div>
