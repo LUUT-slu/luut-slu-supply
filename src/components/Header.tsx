@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, ShoppingBag } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
 import { CartDrawer } from "./CartDrawer";
+import { Badge } from "./ui/badge";
 
 const outfitCategories = [
   { name: "Beanies", path: "/shop/beanies" },
@@ -25,7 +26,19 @@ const outfitCategories = [
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const [orderCount, setOrderCount] = useState(0);
   const totalItems = useCartStore((state) => state.getTotalItems());
+  const confirmedOrder = useCartStore((state) => state.confirmedOrder);
+
+  useEffect(() => {
+    const updateOrderCount = () => {
+      const savedOrderIds = JSON.parse(localStorage.getItem("luut-my-orders") || "[]");
+      setOrderCount(Math.min(savedOrderIds.length, 10));
+    };
+    
+    updateOrderCount();
+    // Re-check when confirmedOrder changes (new order placed)
+  }, [confirmedOrder]);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -39,9 +52,14 @@ export function Header() {
           </Link>
           <Link
             to="/my-orders"
-            className="font-display text-lg tracking-wide text-primary transition-colors hover:text-primary/80"
+            className="relative font-display text-lg tracking-wide text-primary transition-colors hover:text-primary/80"
           >
             My Orders
+            {orderCount > 0 && (
+              <Badge className="absolute -right-5 -top-2 h-5 min-w-5 justify-center rounded-full px-1.5 text-xs">
+                {orderCount === 10 ? "10+" : orderCount}
+              </Badge>
+            )}
           </Link>
         </div>
 
