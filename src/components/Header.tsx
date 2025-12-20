@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X, ShoppingBag } from "lucide-react";
+import { Menu, X, ShoppingBag, DollarSign } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
@@ -115,6 +115,11 @@ export function Header() {
 
         {/* Right side actions */}
         <div className="flex items-center gap-2">
+          <Link to="/admin">
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+              <DollarSign className="h-5 w-5" />
+            </Button>
+          </Link>
           <CartDrawer />
 
           {/* Mobile menu */}
