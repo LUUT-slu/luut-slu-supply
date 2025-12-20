@@ -139,6 +139,27 @@ export default function Index() {
           </div>
         </section>
 
+        {/* Luut SLU Products */}
+        <section className="py-12 md:py-16 bg-card/50">
+          <div className="container">
+            <div className="mb-8 flex items-center justify-between">
+              <div>
+                <h2 className="font-display text-2xl md:text-3xl">FROM LUUT SLU</h2>
+                <p className="mt-1 font-body text-sm text-muted-foreground">
+                  Our own curated collection
+                </p>
+              </div>
+              <Button asChild variant="ghost" className="font-body">
+                <Link to="/shop?vendor=luut-slu">
+                  View All
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+            <ProductGrid query="vendor:Luut SLU" limit={4} />
+          </div>
+        </section>
+
         {/* Trust Section */}
         <section className="border-t border-border bg-card py-12 md:py-16">
           <div className="container">
