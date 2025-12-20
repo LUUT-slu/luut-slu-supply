@@ -94,8 +94,8 @@ export function AdminAuth({ children }: AdminAuthProps) {
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                 <Lock className="h-6 w-6 text-primary" />
               </div>
-              <CardTitle>Admin Access</CardTitle>
-              <CardDescription>Enter the admin password to continue</CardDescription>
+              <CardTitle>Seller Portal Access</CardTitle>
+              <CardDescription>Enter the password to continue</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
@@ -121,7 +121,7 @@ export function AdminAuth({ children }: AdminAuthProps) {
                   className="w-full" 
                   disabled={isLoading || !password || attempts >= 5}
                 >
-                  {isLoading ? "Checking..." : "Enter Admin"}
+                  {isLoading ? "Checking..." : "Enter Seller Portal"}
                 </Button>
               </form>
               
@@ -144,7 +144,7 @@ export function AdminAuth({ children }: AdminAuthProps) {
     <div>
       <div className="fixed right-4 top-20 z-50">
         <Button variant="outline" size="sm" onClick={handleLogout}>
-          Logout Admin
+          Logout
         </Button>
       </div>
       {children}
