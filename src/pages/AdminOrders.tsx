@@ -1,0 +1,274 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+import { BackButton } from "@/components/BackButton";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Package, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+
+interface Order {
+  id: string;
+  order_number: number;
+  customer_name: string;
+  location: string;
+  preferred_date: string;
+  note: string | null;
+  status: string;
+  total_price: number;
+  currency_code: string;
+  line_items: Array<{
+    title: string;
+    quantity: number;
+    price: string;
+  }>;
+  created_at: string;
+}
+
+const statusOptions = [
+  { value: "pending", label: "Pending", icon: Clock, color: "bg-yellow-500" },
+  { value: "confirmed", label: "Confirmed", icon: CheckCircle, color: "bg-blue-500" },
+  { value: "completed", label: "Completed", icon: CheckCircle, color: "bg-green-500" },
+  { value: "cancelled", label: "Cancelled", icon: XCircle, color: "bg-red-500" },
+];
+
+export default function AdminOrders() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error("Failed to load orders");
+      console.error(error);
+    } else {
+      setOrders((data || []) as unknown as Order[]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    setUpdating(orderId);
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: newStatus })
+      .eq("id", orderId);
+
+    if (error) {
+      toast.error("Failed to update order status");
+    } else {
+      toast.success("Order status updated");
+      setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    }
+    setUpdating(null);
+  };
+
+  const formatOrderNumber = (num: number) => `#L${String(num).padStart(4, '0')}`;
+  
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = statusOptions.find(s => s.value === status) || statusOptions[0];
+    return (
+      <Badge variant="outline" className="gap-1">
+        <span className={`h-2 w-2 rounded-full ${statusConfig.color}`} />
+        {statusConfig.label}
+      </Badge>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      
+      <main className="container py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <BackButton />
+            <div>
+              <h1 className="font-display text-3xl">Admin Orders</h1>
+              <p className="text-muted-foreground">Manage all incoming orders</p>
+            </div>
+          </div>
+          <Button onClick={fetchOrders} variant="outline" size="sm" className="gap-2">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{orders.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {orders.filter(o => o.status === "pending").length}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Confirmed</CardTitle>
+              <CheckCircle className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {orders.filter(o => o.status === "confirmed").length}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {orders.filter(o => o.status === "completed").length}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Orders Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>All Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Package className="mb-4 h-12 w-12 text-muted-foreground" />
+                <h3 className="font-medium">No orders yet</h3>
+                <p className="text-sm text-muted-foreground">Orders will appear here when customers place them</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">
+                          {formatOrderNumber(order.order_number)}
+                          <div className="text-xs text-muted-foreground">
+                            {formatDate(order.created_at)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {order.customer_name}
+                          {order.note && (
+                            <div className="text-xs text-muted-foreground">
+                              Note: {order.note}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>{order.location}</TableCell>
+                        <TableCell>{order.preferred_date}</TableCell>
+                        <TableCell>
+                          <div className="max-w-[200px]">
+                            {order.line_items.map((item, i) => (
+                              <div key={i} className="text-sm">
+                                {item.title} x{item.quantity}
+                              </div>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          EC${order.total_price.toFixed(2)}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(order.status)}</TableCell>
+                        <TableCell>
+                          <Select
+                            value={order.status}
+                            onValueChange={(value) => updateOrderStatus(order.id, value)}
+                            disabled={updating === order.id}
+                          >
+                            <SelectTrigger className="w-[130px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {statusOptions.map((status) => (
+                                <SelectItem key={status.value} value={status.value}>
+                                  {status.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}

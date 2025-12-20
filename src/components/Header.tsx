@@ -30,12 +30,20 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between md:h-20">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <span className="font-display text-2xl tracking-wide md:text-3xl">
-            <span className="text-primary">Home</span>
-          </span>
-        </Link>
+        {/* Logo and My Orders */}
+        <div className="flex items-center gap-4">
+          <Link to="/" className="flex items-center gap-2">
+            <span className="font-display text-2xl tracking-wide md:text-3xl">
+              <span className="text-primary">Home</span>
+            </span>
+          </Link>
+          <Link
+            to="/my-orders"
+            className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
+          >
+            My Orders
+          </Link>
+        </div>
 
         {/* Desktop Navigation */}
         <nav className="hidden items-center gap-6 lg:flex">
