@@ -43,7 +43,7 @@ import { useCartStore, OrderConfirmation } from "@/stores/cartStore";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-const WHATSAPP_NUMBER = "17587185478";
+const WHATSAPP_NUMBER = "17587185478"; // +1 (758) 718-5478
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
 
 interface ChecklistItemProps {
@@ -144,14 +144,38 @@ function OrderConfirmationView({ order, onClose }: { order: OrderConfirmation; o
             What's Next?
           </h3>
           <ol className="text-sm space-y-1 text-muted-foreground list-decimal list-inside">
-            <li>We sent your order to the seller via WhatsApp</li>
+            <li>WhatsApp opened with your order — tap Send</li>
             <li>Meet at {order.location} on your preferred date</li>
             <li>Pay cash on meetup</li>
           </ol>
         </div>
 
-        {/* Action Button */}
-        <div className="w-full max-w-sm">
+        {/* Action Buttons */}
+        <div className="w-full max-w-sm space-y-3">
+          <Button 
+            onClick={() => {
+              const itemsList = order.lineItems
+                .map(item => `${item.title}${item.quantity > 1 ? ` x${item.quantity}` : ''}`)
+                .join('\n');
+              const message = encodeURIComponent(
+                `🛒 *NEW ORDER ${order.name}*\n\n` +
+                `👤 Customer: ${order.customerName}\n` +
+                `📍 Location: ${order.location}\n` +
+                `📅 Date: ${order.preferredDate}\n` +
+                `${order.note ? `📝 Note: ${order.note}\n` : ''}` +
+                `\n*Items:*\n${itemsList}\n\n` +
+                `💰 Total: EC$${parseFloat(order.totalPrice).toFixed(2)}\n\n` +
+                `Please confirm the meetup time. Thank you!`
+              );
+              window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
+            }}
+            variant="outline" 
+            className="w-full gap-2" 
+            size="lg"
+          >
+            <MessageCircle className="h-5 w-5" />
+            Didn't open? Tap here
+          </Button>
           <Button onClick={onClose} className="w-full" size="lg">
             Done
           </Button>
