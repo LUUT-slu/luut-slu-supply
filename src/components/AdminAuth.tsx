@@ -127,7 +127,7 @@ export function AdminAuth({ children }: AdminAuthProps) {
               
               <div className="mt-4 text-center">
                 <Link 
-                  to="/sell" 
+                  to="/register-seller" 
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Want to sell? Register as a seller
