@@ -73,6 +73,21 @@ export default function Index() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative min-h-[90vh] flex flex-col justify-end overflow-hidden">
+          {/* Lighting effect - dark overlay that fades out from center */}
+          <div 
+            className="absolute inset-0 z-[1] pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse at center, transparent 0%, hsl(0 0% 0%) 70%)',
+              animation: 'light-reveal 2s ease-out forwards',
+            }}
+          />
+          <div 
+            className="absolute inset-0 z-[1] pointer-events-none bg-black"
+            style={{
+              animation: 'light-center-fade 1.5s ease-out forwards',
+            }}
+          />
+          
           {/* Background Images - Dynamic with crossfade */}
           {heroImages.map((image, index) => (
             <div
