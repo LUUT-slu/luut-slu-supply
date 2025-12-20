@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
 import { CartDrawer } from "./CartDrawer";
 import { Badge } from "./ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 
 const outfitCategories = [
   { name: "Beanies", path: "/shop/beanies" },
@@ -31,13 +32,34 @@ export function Header() {
   const confirmedOrder = useCartStore((state) => state.confirmedOrder);
 
   useEffect(() => {
-    const updateOrderCount = () => {
+    const fetchActiveOrderCount = async () => {
       const savedOrderIds = JSON.parse(localStorage.getItem("luut-my-orders") || "[]");
-      setOrderCount(Math.min(savedOrderIds.length, 10));
+      
+      if (savedOrderIds.length === 0) {
+        setOrderCount(0);
+        return;
+      }
+
+      // Fetch actual order statuses from database
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, status")
+        .in("id", savedOrderIds);
+
+      if (error) {
+        console.error("Failed to fetch order statuses:", error);
+        return;
+      }
+
+      // Count non-completed orders
+      const activeOrders = (data || []).filter(
+        (order) => order.status !== "completed" && order.status !== "cancelled"
+      );
+      
+      setOrderCount(Math.min(activeOrders.length, 10));
     };
     
-    updateOrderCount();
-    // Re-check when confirmedOrder changes (new order placed)
+    fetchActiveOrderCount();
   }, [confirmedOrder]);
 
   return (
