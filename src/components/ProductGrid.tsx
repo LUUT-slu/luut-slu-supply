@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShopifyProduct, fetchProducts } from "@/lib/shopify";
+import { ShopifyProduct, fetchProducts, ProductSortKey } from "@/lib/shopify";
 import { ProductCard } from "./ProductCard";
 import { Loader2 } from "lucide-react";
 
@@ -7,9 +7,11 @@ interface ProductGridProps {
   query?: string;
   limit?: number;
   title?: string;
+  sortKey?: ProductSortKey;
+  reverse?: boolean;
 }
 
-export function ProductGrid({ query, limit = 20, title }: ProductGridProps) {
+export function ProductGrid({ query, limit = 20, title, sortKey = 'CREATED_AT', reverse = true }: ProductGridProps) {
   const [products, setProducts] = useState<ShopifyProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +20,7 @@ export function ProductGrid({ query, limit = 20, title }: ProductGridProps) {
     async function loadProducts() {
       try {
         setLoading(true);
-        const data = await fetchProducts(limit, query);
+        const data = await fetchProducts(limit, query, sortKey, reverse);
         setProducts(data);
       } catch (err) {
         setError("Failed to load products");
@@ -29,7 +31,7 @@ export function ProductGrid({ query, limit = 20, title }: ProductGridProps) {
     }
 
     loadProducts();
-  }, [query, limit]);
+  }, [query, limit, sortKey, reverse]);
 
   if (loading) {
     return (

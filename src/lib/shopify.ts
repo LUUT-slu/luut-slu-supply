@@ -14,6 +14,7 @@ export interface ShopifyProduct {
     vendor: string;
     productType: string;
     tags: string[];
+    createdAt: string;
     priceRange: {
       minVariantPrice: {
         amount: string;
@@ -83,8 +84,8 @@ export async function storefrontApiRequest(query: string, variables: Record<stri
 }
 
 const PRODUCTS_QUERY = `
-  query GetProducts($first: Int!, $query: String) {
-    products(first: $first, query: $query) {
+  query GetProducts($first: Int!, $query: String, $sortKey: ProductSortKeys, $reverse: Boolean) {
+    products(first: $first, query: $query, sortKey: $sortKey, reverse: $reverse) {
       edges {
         node {
           id
@@ -94,6 +95,7 @@ const PRODUCTS_QUERY = `
           vendor
           productType
           tags
+          createdAt
           priceRange {
             minVariantPrice {
               amount
@@ -184,8 +186,15 @@ const PRODUCT_BY_HANDLE_QUERY = `
   }
 `;
 
-export async function fetchProducts(first: number = 50, query?: string): Promise<ShopifyProduct[]> {
-  const data = await storefrontApiRequest(PRODUCTS_QUERY, { first, query });
+export type ProductSortKey = 'TITLE' | 'PRODUCT_TYPE' | 'VENDOR' | 'UPDATED_AT' | 'CREATED_AT' | 'BEST_SELLING' | 'PRICE';
+
+export async function fetchProducts(
+  first: number = 50, 
+  query?: string,
+  sortKey: ProductSortKey = 'CREATED_AT',
+  reverse: boolean = true
+): Promise<ShopifyProduct[]> {
+  const data = await storefrontApiRequest(PRODUCTS_QUERY, { first, query, sortKey, reverse });
   if (!data) return [];
   return data.data.products.edges;
 }
