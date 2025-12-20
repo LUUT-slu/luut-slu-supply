@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      orders: {
+        Row: {
+          created_at: string
+          currency_code: string
+          customer_name: string
+          id: string
+          line_items: Json
+          location: string
+          note: string | null
+          order_number: number
+          preferred_date: string
+          status: string
+          total_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency_code?: string
+          customer_name: string
+          id?: string
+          line_items: Json
+          location: string
+          note?: string | null
+          order_number?: number
+          preferred_date: string
+          status?: string
+          total_price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency_code?: string
+          customer_name?: string
+          id?: string
+          line_items?: Json
+          location?: string
+          note?: string | null
+          order_number?: number
+          preferred_date?: string
+          status?: string
+          total_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_sales: {
         Row: {
           created_at: string
@@ -72,7 +117,7 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      format_order_number: { Args: { order_num: number }; Returns: string }
     }
     Enums: {
       [_ in never]: never
