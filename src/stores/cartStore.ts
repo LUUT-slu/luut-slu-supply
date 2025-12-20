@@ -148,6 +148,13 @@ export const useCartStore = create<CartStore>()(
           const confirmedOrder = data.order as OrderConfirmation;
           set({ confirmedOrder, items: [] });
           
+          // Save order ID to localStorage for "My Orders" page
+          const savedOrderIds = JSON.parse(localStorage.getItem("luut-my-orders") || "[]");
+          if (data.orderId && !savedOrderIds.includes(data.orderId)) {
+            savedOrderIds.unshift(data.orderId);
+            localStorage.setItem("luut-my-orders", JSON.stringify(savedOrderIds.slice(0, 50)));
+          }
+          
           return confirmedOrder;
         } catch (error) {
           console.error('Failed to create order:', error);

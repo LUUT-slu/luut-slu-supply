@@ -81,6 +81,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
+        orderId: order.id, // For localStorage tracking
         order: {
           id: order.id,
           name: formattedOrderNumber,
