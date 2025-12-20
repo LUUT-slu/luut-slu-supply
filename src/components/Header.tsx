@@ -39,7 +39,7 @@ export function Header() {
           </Link>
           <Link
             to="/my-orders"
-            className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
+            className="font-display text-lg tracking-wide text-primary transition-colors hover:text-primary/80"
           >
             My Orders
           </Link>
