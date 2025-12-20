@@ -296,6 +296,12 @@ export default function ProductDetail() {
                   <MessageCircle className="mr-2 h-5 w-5" />
                   Ask a Question
                 </WhatsAppButton>
+                <Link 
+                  to="/admin" 
+                  className="block text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Seller Portal
+                </Link>
               </div>
 
               <Separator />
