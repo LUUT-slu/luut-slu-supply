@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X, ShoppingBag, DollarSign } from "lucide-react";
+import { Menu, X, ShoppingBag, DollarSign, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
 import { CartDrawer } from "./CartDrawer";
 import { Badge } from "./ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const outfitCategories = [
   { name: "Beanies", path: "/shop/beanies" },
@@ -28,8 +29,21 @@ const outfitCategories = [
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [orderCount, setOrderCount] = useState(0);
+  const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
   const totalItems = useCartStore((state) => state.getTotalItems());
   const confirmedOrder = useCartStore((state) => state.confirmedOrder);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setCurrentUser(session?.user ?? null);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const fetchActiveOrderCount = async () => {
@@ -121,6 +135,11 @@ export function Header() {
 
         {/* Right side actions */}
         <div className="flex items-center gap-2">
+          <Link to={currentUser ? "/account" : "/customer-auth"}>
+            <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
+              <User className="h-5 w-5" />
+            </Button>
+          </Link>
           <Link to="/admin">
             <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
               <DollarSign className="h-5 w-5" />
@@ -195,6 +214,15 @@ export function Header() {
                     className="py-3 font-body text-lg font-medium text-primary"
                   >
                     Sell on Luut
+                  </Link>
+                  
+                  <Link
+                    to={currentUser ? "/account" : "/customer-auth"}
+                    onClick={() => setIsOpen(false)}
+                    className="py-3 font-body text-lg font-medium text-foreground flex items-center gap-2"
+                  >
+                    <User className="h-5 w-5" />
+                    {currentUser ? "My Account" : "Sign In"}
                   </Link>
                 </nav>
               </div>
