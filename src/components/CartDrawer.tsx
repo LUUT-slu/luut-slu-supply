@@ -12,7 +12,11 @@ import {
   MessageSquare,
   Check,
   Circle,
-  Package
+  Package,
+  Loader2,
+  CheckCircle2,
+  Copy,
+  MessageCircle
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -33,10 +37,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
-import { useCartStore } from "@/stores/cartStore";
+import { useCartStore, OrderConfirmation } from "@/stores/cartStore";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-const WHATSAPP_NUMBER = "17587185478"; // Saint Lucia country code + number
+const WHATSAPP_NUMBER = "17587185478";
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
 
 interface ChecklistItemProps {
@@ -70,8 +75,101 @@ function ChecklistItem({ completed, label, children }: ChecklistItemProps) {
   );
 }
 
+function OrderConfirmationView({ order, onClose }: { order: OrderConfirmation; onClose: () => void }) {
+  const handleCopyOrderNumber = () => {
+    navigator.clipboard.writeText(order.name);
+    toast.success("Order number copied!");
+  };
+
+  const handleWhatsAppMessage = () => {
+    const message = encodeURIComponent(
+      `Hi Luut SLU 👋\n\nMy order ${order.name} has been placed!\n\nName: ${order.customerName}\nLocation: ${order.location}\nPreferred Date: ${order.preferredDate}\n\nPlease confirm the meetup time. Thank you!`
+    );
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
+  };
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center text-center px-4">
+      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+        <CheckCircle2 className="h-10 w-10 text-primary" />
+      </div>
+      
+      <h2 className="font-display text-2xl mb-2">Order Confirmed!</h2>
+      <p className="text-muted-foreground mb-6">Your order has been created successfully</p>
+      
+      {/* Order Number */}
+      <div className="mb-6 rounded-lg border border-border bg-card p-4 w-full max-w-sm">
+        <p className="text-sm text-muted-foreground mb-1">Order Number</p>
+        <div className="flex items-center justify-center gap-2">
+          <span className="font-display text-3xl text-primary">{order.name}</span>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyOrderNumber}>
+            <Copy className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Order Summary */}
+      <div className="rounded-lg border border-border bg-card p-4 w-full max-w-sm text-left mb-6">
+        <h3 className="font-semibold mb-3">Order Details</h3>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Customer</span>
+            <span>{order.customerName}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Location</span>
+            <span>{order.location}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Date</span>
+            <span>{order.preferredDate}</span>
+          </div>
+          <div className="border-t border-border pt-2 mt-2">
+            {order.lineItems.map((item, idx) => (
+              <div key={idx} className="flex justify-between py-1">
+                <span className="truncate flex-1 pr-2">
+                  {item.title} {item.quantity > 1 && `×${item.quantity}`}
+                </span>
+                <span>EC${parseFloat(item.price).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-border pt-2 mt-2 flex justify-between font-semibold">
+            <span>Total</span>
+            <span className="text-primary">EC${parseFloat(order.totalPrice).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Next Steps */}
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 w-full max-w-sm text-left mb-6">
+        <h3 className="font-semibold mb-2 flex items-center gap-2">
+          <MessageCircle className="h-4 w-4 text-primary" />
+          Next Steps
+        </h3>
+        <ol className="text-sm space-y-1 text-muted-foreground list-decimal list-inside">
+          <li>Message us on WhatsApp to confirm meetup time</li>
+          <li>Meet at {order.location} on your preferred date</li>
+          <li>Pay cash on meetup</li>
+        </ol>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="w-full max-w-sm space-y-3">
+        <Button onClick={handleWhatsAppMessage} className="w-full gap-2" size="lg">
+          <MessageCircle className="h-5 w-5" />
+          Confirm on WhatsApp
+        </Button>
+        <Button onClick={onClose} variant="outline" className="w-full" size="lg">
+          Done
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function CartDrawer() {
-  const [step, setStep] = useState<'cart' | 'builder'>('cart');
+  const [step, setStep] = useState<'cart' | 'builder' | 'confirmed'>('cart');
   const [customerName, setCustomerName] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -79,12 +177,16 @@ export function CartDrawer() {
   
   const {
     items,
+    isLoading,
     isOpen,
     setOpen,
     updateQuantity,
     removeItem,
     getTotalItems,
     getTotalPrice,
+    createOrder,
+    confirmedOrder,
+    clearConfirmedOrder,
   } = useCartStore();
 
   const totalItems = getTotalItems();
@@ -96,50 +198,45 @@ export function CartDrawer() {
   const isDateValid = selectedDate !== undefined;
   const isFormComplete = isNameValid && isLocationValid && isDateValid;
 
+  const resetForm = () => {
+    setStep('cart');
+    setCustomerName('');
+    setSelectedLocation('');
+    setSelectedDate(undefined);
+    setNote('');
+  };
+
   const handleOpenChange = (open: boolean) => {
     setOpen(open);
     if (!open) {
-      setStep('cart');
-      // Reset form when closing
-      setCustomerName('');
-      setSelectedLocation('');
-      setSelectedDate(undefined);
-      setNote('');
+      resetForm();
+      clearConfirmedOrder();
     }
   };
 
-  const getWhatsAppMessage = () => {
-    const productList = items
-      .map(item => `${item.product.node.title}${item.variantTitle !== 'Default Title' ? ` (${item.variantTitle})` : ''}${item.quantity > 1 ? ` x${item.quantity}` : ''}`)
-      .join('\n');
-    
-    const totalEC = totalPrice.toFixed(2);
-    const formattedDate = selectedDate ? format(selectedDate, 'EEEE, MMMM d') : '';
-    
-    let message = `Hi Luut SLU 👋
-I'm ready to confirm my order.
+  const handleConfirmOrder = async () => {
+    if (!isFormComplete || !selectedDate) return;
 
-Name: ${customerName}
+    try {
+      const order = await createOrder({
+        customerName: customerName.trim(),
+        location: selectedLocation,
+        preferredDate: format(selectedDate, 'EEEE, MMMM d, yyyy'),
+        note: note.trim() || undefined,
+      });
 
-Product:
-${productList}
-
-Price: EC$${totalEC}
-Location: ${selectedLocation}
-Preferred Date: ${formattedDate}`;
-
-    if (note.trim()) {
-      message += `\n\nNote: ${note.trim()}`;
+      if (order) {
+        setStep('confirmed');
+        toast.success(`Order ${order.name} created!`);
+      }
+    } catch (error) {
+      console.error('Order creation failed:', error);
+      toast.error("Failed to create order. Please try again.");
     }
-
-    message += `\n\nPlease confirm availability and time. Thank you!`;
-    
-    return message;
   };
 
-  const handleConfirmOnWhatsApp = () => {
-    const message = encodeURIComponent(getWhatsAppMessage());
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
+  const handleClose = () => {
+    handleOpenChange(false);
   };
 
   // Get tomorrow as minimum date
@@ -162,21 +259,31 @@ Preferred Date: ${formattedDate}`;
       <SheetContent className="flex h-full w-full flex-col bg-background sm:max-w-lg">
         <SheetHeader className="flex-shrink-0">
           <SheetTitle className="font-display text-xl">
-            {step === 'cart' ? 'Your Cart' : 'Complete Your Order'}
+            {step === 'cart' && 'Your Cart'}
+            {step === 'builder' && 'Complete Your Order'}
+            {step === 'confirmed' && 'Order Placed'}
           </SheetTitle>
         </SheetHeader>
 
         <div className="flex flex-1 flex-col pt-4 min-h-0">
-          {items.length === 0 ? (
+          {/* Confirmation View */}
+          {step === 'confirmed' && confirmedOrder && (
+            <OrderConfirmationView order={confirmedOrder} onClose={handleClose} />
+          )}
+
+          {/* Empty Cart View */}
+          {step !== 'confirmed' && items.length === 0 && !confirmedOrder && (
             <div className="flex flex-1 flex-col items-center justify-center text-center">
               <ShoppingBag className="mb-4 h-16 w-16 text-muted-foreground" />
               <p className="mb-2 font-body text-lg">Your cart is empty</p>
               <p className="text-sm text-muted-foreground">
-                Browse our outfits and add items to your cart
+                Browse our products and add items to your cart
               </p>
             </div>
-          ) : step === 'cart' ? (
-            // Cart View
+          )}
+
+          {/* Cart View */}
+          {step === 'cart' && items.length > 0 && (
             <>
               <div className="flex-1 overflow-y-auto pr-2">
                 <div className="space-y-4">
@@ -259,8 +366,10 @@ Preferred Date: ${formattedDate}`;
                 </Button>
               </div>
             </>
-          ) : (
-            // Order Builder View
+          )}
+
+          {/* Order Builder View */}
+          {step === 'builder' && items.length > 0 && (
             <>
               <div className="flex-1 overflow-y-auto pr-2">
                 <div className="space-y-6">
@@ -395,13 +504,22 @@ Preferred Date: ${formattedDate}`;
                 )}
                 
                 <Button
-                  onClick={handleConfirmOnWhatsApp}
+                  onClick={handleConfirmOrder}
                   className="w-full gap-2"
                   size="lg"
-                  disabled={!isFormComplete}
+                  disabled={!isFormComplete || isLoading}
                 >
-                  <Check className="h-5 w-5" />
-                  Confirm Order on WhatsApp
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Creating Order...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-5 w-5" />
+                      Confirm Order
+                    </>
+                  )}
                 </Button>
                 
                 <Button
@@ -409,6 +527,7 @@ Preferred Date: ${formattedDate}`;
                   variant="ghost"
                   className="w-full gap-2"
                   size="sm"
+                  disabled={isLoading}
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back to Cart
