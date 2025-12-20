@@ -12,6 +12,7 @@ import type { User } from "@supabase/supabase-js";
 interface SellerProfile {
   id: string;
   seller_name: string;
+  seller_id: string | null;
   is_approved: boolean;
   whatsapp: string | null;
   location: string | null;
@@ -148,7 +149,14 @@ export default function SellerDashboard() {
                 <Store className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h1 className="font-display text-2xl md:text-3xl">{profile?.seller_name}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-display text-2xl md:text-3xl">{profile?.seller_name}</h1>
+                  {profile?.seller_id && (
+                    <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
+                      {profile.seller_id}
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {profile?.is_approved ? "Verified Seller" : "Pending Approval"}
                 </p>
