@@ -86,16 +86,18 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-border pt-6 flex items-center justify-between">
+        <div className="mt-12 border-t border-border pt-6 flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
           <p className="font-body text-xs text-muted-foreground">
             © {new Date().getFullYear()} Luut SLU. All rights reserved.
           </p>
-          <Link 
-            to="/admin" 
-            className="font-body text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-          >
-            •
-          </Link>
+          <nav className="flex gap-4">
+            <Link 
+              to="/admin" 
+              className="font-body text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Seller Portal
+            </Link>
+          </nav>
         </div>
       </div>
     </footer>
