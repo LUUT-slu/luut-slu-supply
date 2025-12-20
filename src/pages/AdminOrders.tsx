@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { AdminAuth } from "@/components/AdminAuth";
 import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,8 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Package, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react";
+import { Package, Clock, CheckCircle, XCircle, RefreshCw, Users } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 interface Order {
   id: string;
@@ -113,23 +115,32 @@ export default function AdminOrders() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="container py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <BackButton />
-            <div>
-              <h1 className="font-display text-3xl">Admin Orders</h1>
-              <p className="text-muted-foreground">Manage all incoming orders</p>
+    <AdminAuth>
+      <div className="min-h-screen bg-background">
+        <Header />
+        
+        <main className="container py-8">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <BackButton />
+              <div>
+                <h1 className="font-display text-3xl">Admin Orders</h1>
+                <p className="text-muted-foreground">Manage all incoming orders</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/admin/sellers" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Sellers
+                </Link>
+              </Button>
+              <Button onClick={fetchOrders} variant="outline" size="sm" className="gap-2">
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
             </div>
           </div>
-          <Button onClick={fetchOrders} variant="outline" size="sm" className="gap-2">
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
 
         {/* Stats Cards */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -266,9 +277,10 @@ export default function AdminOrders() {
             )}
           </CardContent>
         </Card>
-      </main>
+        </main>
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </AdminAuth>
   );
 }
