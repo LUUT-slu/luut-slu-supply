@@ -118,31 +118,6 @@ export default function Index() {
           </div>
         </section>
 
-        {/* How it Works */}
-        <section className="border-b border-border bg-card py-12 md:py-16">
-          <div className="container">
-            <h2 className="mb-10 text-center font-display text-2xl md:text-3xl">
-              HOW IT WORKS
-            </h2>
-            <div className="grid gap-8 md:grid-cols-3">
-              {howItWorks.map(({ step, title, description, icon: Icon }) => (
-                <div key={step} className="text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                    <Icon className="h-8 w-8 text-primary" />
-                  </div>
-                  <div className="mb-2 font-display text-4xl text-primary/30">
-                    0{step}
-                  </div>
-                  <h3 className="mb-2 font-display text-xl">{title}</h3>
-                  <p className="font-body text-sm text-muted-foreground">
-                    {description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* Products */}
         <section className="py-12 md:py-16">
           <div className="container">
@@ -182,8 +157,33 @@ export default function Index() {
           </div>
         </section>
 
+        {/* How it Works */}
+        <section className="border-y border-border py-12 md:py-16">
+          <div className="container">
+            <h2 className="mb-10 text-center font-display text-2xl md:text-3xl">
+              HOW IT WORKS
+            </h2>
+            <div className="grid gap-8 md:grid-cols-3">
+              {howItWorks.map(({ step, title, description, icon: Icon }) => (
+                <div key={step} className="text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                    <Icon className="h-8 w-8 text-primary" />
+                  </div>
+                  <div className="mb-2 font-display text-4xl text-primary/30">
+                    0{step}
+                  </div>
+                  <h3 className="mb-2 font-display text-xl">{title}</h3>
+                  <p className="font-body text-sm text-muted-foreground">
+                    {description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* CTA Section */}
-        <section className="border-t border-border py-12 md:py-16">
+        <section className="py-12 md:py-16">
           <div className="container">
             <div className="mx-auto max-w-2xl rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 p-8 text-center md:p-12">
               <h2 className="mb-4 font-display text-2xl md:text-3xl">
