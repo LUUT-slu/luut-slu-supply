@@ -106,6 +106,12 @@ export function Header() {
             Best Sellers
           </Link>
           <Link
+            to="/sellers"
+            className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
+          >
+            Sellers
+          </Link>
+          <Link
             to="/sell"
             className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
           >
@@ -156,6 +162,13 @@ export function Header() {
                     className="py-3 font-body text-lg font-medium text-foreground"
                   >
                     Best Sellers
+                  </Link>
+                  <Link
+                    to="/sellers"
+                    onClick={() => setIsOpen(false)}
+                    className="py-3 font-body text-lg font-medium text-foreground"
+                  >
+                    Sellers
                   </Link>
                   
                   <div className="my-4 border-t border-border" />

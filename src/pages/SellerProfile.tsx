@@ -2,30 +2,44 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
-import { ProductGrid } from "@/components/ProductGrid";
-import { ShieldCheck, ArrowLeft } from "lucide-react";
+import { ShieldCheck, ArrowLeft, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-// Seller data - in production, this would fetch from a vendor database
-const getSellerInfo = (id: string) => {
-  if (id === "luut-slu") {
-    return {
-      id: "luut-slu",
-      name: "Luut SLU",
-      badge: "Certified Seller",
-      description:
-        "As the platform owner, Luut SLU also operates as a certified seller with our own curated streetwear collection. Shop directly from the source with platform-guaranteed quality.",
-      isCertified: true,
-      vendorQuery: "vendor:Luut SLU",
-    };
-  }
-  return null;
-};
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function SellerProfile() {
   const { sellerId } = useParams<{ sellerId: string }>();
   const navigate = useNavigate();
-  const seller = sellerId ? getSellerInfo(sellerId) : null;
+
+  const { data: seller, isLoading } = useQuery({
+    queryKey: ["seller", sellerId],
+    queryFn: async () => {
+      if (!sellerId) return null;
+      
+      const { data, error } = await supabase
+        .from("verified_sellers")
+        .select("*")
+        .eq("id", sellerId)
+        .eq("is_active", true)
+        .single();
+      
+      if (error) return null;
+      return data;
+    },
+    enabled: !!sellerId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background">
+        <Header />
+        <main className="flex flex-1 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!seller) {
     return (
@@ -63,36 +77,55 @@ export default function SellerProfile() {
               </div>
               <div>
                 <h1 className="font-display text-3xl md:text-4xl">
-                  {seller.name} {seller.isCertified && "(Certified Seller)"}
+                  {seller.name}
                 </h1>
-                {seller.isCertified && (
-                  <div className="mt-2 flex items-center gap-2 text-trust">
-                    <ShieldCheck className="h-5 w-5" />
-                    <span className="font-body text-sm">{seller.badge}</span>
-                  </div>
-                )}
+                <div className="mt-2 flex items-center gap-2 text-trust">
+                  <ShieldCheck className="h-5 w-5" />
+                  <span className="font-body text-sm">Verified Seller</span>
+                </div>
               </div>
             </div>
-            <p className="mt-4 max-w-2xl font-body text-muted-foreground">
-              {seller.description}
-            </p>
-            <div className="mt-6">
+
+            {seller.location && (
+              <div className="mt-4 flex items-center gap-2 text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                <span className="font-body">{seller.location}</span>
+              </div>
+            )}
+
+            {seller.description && (
+              <p className="mt-4 max-w-2xl font-body text-muted-foreground">
+                {seller.description}
+              </p>
+            )}
+
+            <div className="mt-6 flex flex-wrap gap-3">
               <WhatsAppButton
-                message={`Hi! I'm interested in products from ${seller.name}.`}
+                message={`Hi! I'm interested in products from ${seller.name} on Luut SLU.`}
               >
-                Contact Seller
+                Contact on WhatsApp
               </WhatsAppButton>
+              {seller.phone && (
+                <Button variant="outline" asChild>
+                  <a href={`tel:${seller.phone}`}>
+                    <Phone className="mr-2 h-4 w-4" />
+                    Call Seller
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
         </section>
 
-        {/* Seller products */}
+        {/* Seller info section */}
         <section className="py-12">
           <div className="container">
-            <h2 className="mb-8 font-display text-2xl">
-              PRODUCTS BY {seller.name.toUpperCase()}
-            </h2>
-            <ProductGrid query={seller.vendorQuery} limit={50} />
+            <div className="rounded-lg border border-border bg-card p-8 text-center">
+              <h2 className="mb-2 font-display text-xl">SELLER PRODUCTS</h2>
+              <p className="text-muted-foreground">
+                Product listings coming soon. Contact the seller directly for available items.
+              </p>
+            </div>
           </div>
         </section>
       </main>
