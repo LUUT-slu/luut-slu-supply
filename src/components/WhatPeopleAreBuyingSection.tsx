@@ -66,8 +66,22 @@ function ProductCard({ product, index }: ProductCardProps) {
           <h3 className="font-body text-sm font-medium text-foreground/90 line-clamp-1 mb-1">
             {node.title}
           </h3>
-          <p className="font-display text-lg text-primary/90">
+          <p className="font-display text-lg text-primary/90 mb-1">
             {formatPrice(price.amount, price.currencyCode)}
+          </p>
+          <p className="text-[10px] text-muted-foreground/60">
+            <span className="text-muted-foreground/40">·</span>{" "}
+            Sold by:{" "}
+            <span
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = `/seller/${encodeURIComponent((node.vendor || 'luut-slu').toLowerCase().replace(/\s+/g, '-'))}`;
+              }}
+              className="text-muted-foreground/70 hover:text-muted-foreground cursor-pointer transition-colors"
+            >
+              {node.vendor || "Luut SLU"}
+            </span>
           </p>
         </div>
 

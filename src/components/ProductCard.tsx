@@ -60,13 +60,10 @@ export function ProductCard({ product }: ProductCardProps) {
       </div>
 
       <div className="p-4">
-        <p className="mb-1 text-xs text-muted-foreground">
-          Sold by: <span className="text-foreground">{vendor}</span>
-        </p>
-        <h3 className="mb-2 font-body text-sm font-medium line-clamp-2 group-hover:text-primary">
+        <h3 className="mb-1 font-body text-sm font-medium line-clamp-2 group-hover:text-primary">
           {node.title}
         </h3>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-2">
           <span className="font-display text-lg text-primary">
             ${parseFloat(price.amount).toFixed(2)} {price.currencyCode}
           </span>
@@ -78,6 +75,20 @@ export function ProductCard({ product }: ProductCardProps) {
             <ShoppingBag className="h-4 w-4" />
           </Button>
         </div>
+        <p className="text-[11px] text-muted-foreground/70">
+          <span className="text-muted-foreground/50">·</span>{" "}
+          Sold by:{" "}
+          <span
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.location.href = `/seller/${encodeURIComponent(vendor.toLowerCase().replace(/\s+/g, '-'))}`;
+            }}
+            className="text-muted-foreground/80 hover:text-muted-foreground cursor-pointer transition-colors"
+          >
+            {vendor}
+          </span>
+        </p>
       </div>
     </Link>
   );
