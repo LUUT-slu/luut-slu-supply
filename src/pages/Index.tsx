@@ -123,21 +123,6 @@ export default function Index() {
         {/* What People Are Buying - Social proof section */}
         <WhatPeopleAreBuyingSection />
 
-        {/* Products */}
-        <section className="py-12 md:py-16">
-          <div className="container">
-            <div className="mb-8 flex items-center justify-between">
-              <h2 className="font-display text-2xl md:text-3xl">LATEST DROPS</h2>
-              <Button asChild variant="ghost" className="font-body">
-                <Link to="/shop">
-                  View All
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-            <ProductGrid limit={8} />
-          </div>
-        </section>
 
         {/* Luut SLU Products */}
         <section className="py-12 md:py-16 bg-card/50">
