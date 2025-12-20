@@ -60,7 +60,7 @@ export function ProductCard({ product }: ProductCardProps) {
       </div>
 
       <div className="p-4">
-        <h3 className="mb-1 font-body text-sm font-semibold line-clamp-2 group-hover:text-primary">
+        <h3 className="mb-1 font-body text-base font-semibold line-clamp-2 group-hover:text-primary">
           {node.title}
         </h3>
         <div className="flex items-center justify-between mb-2">
