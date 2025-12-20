@@ -16,7 +16,9 @@ import {
   Loader2,
   CheckCircle2,
   Copy,
-  MessageCircle
+  MessageCircle,
+  Shield,
+  Wallet
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -350,6 +352,22 @@ export function CartDrawer() {
               </div>
 
               <div className="flex-shrink-0 space-y-4 border-t border-border pt-4">
+                {/* Trust indicators */}
+                <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Shield className="h-3 w-3 text-primary/60" />
+                    Verified Sellers
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Wallet className="h-3 w-3 text-primary/60" />
+                    Pay on Meetup
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-primary/60" />
+                    Local Pickup
+                  </span>
+                </div>
+                
                 <div className="flex items-center justify-between">
                   <span className="font-body text-lg">Total</span>
                   <span className="font-display text-2xl text-primary">
