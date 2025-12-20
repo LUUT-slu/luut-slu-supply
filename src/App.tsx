@@ -20,6 +20,8 @@ import MyOrders from "./pages/MyOrders";
 import AdminOrders from "./pages/AdminOrders";
 import AdminSellers from "./pages/AdminSellers";
 import SellerRegistration from "./pages/SellerRegistration";
+import SellerAuth from "./pages/SellerAuth";
+import SellerDashboard from "./pages/SellerDashboard";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +46,8 @@ const App = () => (
           <Route path="/contact" element={<Contact />} />
           <Route path="/my-orders" element={<MyOrders />} />
           <Route path="/register-seller" element={<SellerRegistration />} />
+          <Route path="/seller-auth" element={<SellerAuth />} />
+          <Route path="/seller-dashboard" element={<SellerDashboard />} />
           <Route path="/admin" element={<AdminOrders />} />
           <Route path="/admin/sellers" element={<AdminSellers />} />
           <Route path="*" element={<NotFound />} />

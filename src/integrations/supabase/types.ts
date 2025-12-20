@@ -94,6 +94,7 @@ export type Database = {
           product_image_url: string | null
           product_title: string
           quantity: number
+          seller_user_id: string | null
           sold_at: string
           variant_id: string
         }
@@ -107,6 +108,7 @@ export type Database = {
           product_image_url?: string | null
           product_title: string
           quantity?: number
+          seller_user_id?: string | null
           sold_at?: string
           variant_id: string
         }
@@ -120,8 +122,42 @@ export type Database = {
           product_image_url?: string | null
           product_title?: string
           quantity?: number
+          seller_user_id?: string | null
           sold_at?: string
           variant_id?: string
+        }
+        Relationships: []
+      }
+      seller_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          is_approved: boolean
+          location: string | null
+          seller_name: string
+          updated_at: string
+          user_id: string
+          whatsapp: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_approved?: boolean
+          location?: string | null
+          seller_name: string
+          updated_at?: string
+          user_id: string
+          whatsapp?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_approved?: boolean
+          location?: string | null
+          seller_name?: string
+          updated_at?: string
+          user_id?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
