@@ -63,7 +63,7 @@ function ProductCard({ product, index }: ProductCardProps) {
 
         {/* Product Info */}
         <div className="p-4">
-          <h3 className="font-body text-sm font-medium text-foreground/90 line-clamp-1 mb-1">
+          <h3 className="font-body text-sm font-semibold text-foreground/90 line-clamp-1 mb-1">
             {node.title}
           </h3>
           <p className="font-display text-lg text-primary/90 mb-1">
