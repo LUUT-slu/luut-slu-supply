@@ -134,6 +134,7 @@ export type Database = {
           id: string
           is_approved: boolean
           location: string | null
+          seller_id: string | null
           seller_name: string
           updated_at: string
           user_id: string
@@ -144,6 +145,7 @@ export type Database = {
           id?: string
           is_approved?: boolean
           location?: string | null
+          seller_id?: string | null
           seller_name: string
           updated_at?: string
           user_id: string
@@ -154,6 +156,7 @@ export type Database = {
           id?: string
           is_approved?: boolean
           location?: string | null
+          seller_id?: string | null
           seller_name?: string
           updated_at?: string
           user_id?: string

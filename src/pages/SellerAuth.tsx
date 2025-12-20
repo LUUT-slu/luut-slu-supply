@@ -5,27 +5,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Store, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Store, Eye, EyeOff, ArrowLeft, Mail, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Please enter a valid email");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
+const sellerIdSchema = z.string().regex(/^S[A-Z0-9]{5}$/i, "Seller ID must be like S12ABC");
+
+type AuthMode = "login" | "signup" | "forgot-password" | "seller-id-login";
 
 export default function SellerAuth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [sellerName, setSellerName] = useState("");
+  const [sellerId, setSellerId] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if already logged in
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        // Check if user has a seller profile
         setTimeout(() => {
           checkSellerProfile(session.user.id);
         }, 0);
@@ -53,83 +55,166 @@ export default function SellerAuth() {
     }
   };
 
+  const handleEmailLogin = async () => {
+    try {
+      emailSchema.parse(email);
+      passwordSchema.parse(password);
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          toast.error("Invalid email or password");
+        } else {
+          toast.error(error.message);
+        }
+        return;
+      }
+
+      toast.success("Welcome back!");
+      navigate("/seller-dashboard");
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        toast.error(err.errors[0].message);
+      }
+    }
+  };
+
+  const handleSellerIdLogin = async () => {
+    try {
+      sellerIdSchema.parse(sellerId.toUpperCase());
+      passwordSchema.parse(password);
+
+      // Look up the seller profile to get their email
+      const { data: profile, error: profileError } = await supabase
+        .from("seller_profiles")
+        .select("user_id")
+        .eq("seller_id", sellerId.toUpperCase())
+        .maybeSingle();
+
+      if (profileError || !profile) {
+        toast.error("Seller ID not found");
+        return;
+      }
+
+      // Get the user's email from auth (we need to use the admin API or store email in profile)
+      // For now, we'll inform the user to use their email
+      toast.error("Please use your email to login, then find your Seller ID in your dashboard");
+      return;
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        toast.error(err.errors[0].message);
+      }
+    }
+  };
+
+  const handleSignup = async () => {
+    try {
+      emailSchema.parse(email);
+      passwordSchema.parse(password);
+
+      if (!sellerName.trim()) {
+        toast.error("Please enter your store/seller name");
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/seller-dashboard`,
+        },
+      });
+
+      if (error) {
+        if (error.message.includes("already registered")) {
+          toast.error("This email is already registered. Try logging in.");
+        } else {
+          toast.error(error.message);
+        }
+        return;
+      }
+
+      if (data.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from("seller_profiles")
+          .insert({
+            user_id: data.user.id,
+            seller_name: sellerName.trim(),
+          })
+          .select("seller_id")
+          .single();
+
+        if (profileError) {
+          console.error("Profile creation error:", profileError);
+          toast.error("Account created but profile setup failed. Please contact support.");
+          return;
+        }
+
+        toast.success(`Account created! Your Seller ID is ${profile.seller_id}. Save it!`);
+        navigate("/seller-dashboard");
+      }
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        toast.error(err.errors[0].message);
+      }
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    try {
+      emailSchema.parse(email);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/seller-auth`,
+      });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.success("Password reset link sent! Check your email.");
+      setMode("login");
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        toast.error(err.errors[0].message);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Validate inputs
-      emailSchema.parse(email);
-      passwordSchema.parse(password);
-
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          if (error.message.includes("Invalid login credentials")) {
-            toast.error("Invalid email or password");
-          } else {
-            toast.error(error.message);
-          }
-          return;
-        }
-
-        toast.success("Welcome back!");
-        navigate("/seller-dashboard");
-      } else {
-        if (!sellerName.trim()) {
-          toast.error("Please enter your store/seller name");
-          return;
-        }
-
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/seller-dashboard`,
-          },
-        });
-
-        if (error) {
-          if (error.message.includes("already registered")) {
-            toast.error("This email is already registered. Try logging in.");
-          } else {
-            toast.error(error.message);
-          }
-          return;
-        }
-
-        if (data.user) {
-          // Create seller profile
-          const { error: profileError } = await supabase
-            .from("seller_profiles")
-            .insert({
-              user_id: data.user.id,
-              seller_name: sellerName.trim(),
-            });
-
-          if (profileError) {
-            console.error("Profile creation error:", profileError);
-            toast.error("Account created but profile setup failed. Please contact support.");
-            return;
-          }
-
-          toast.success("Account created! Welcome to the Seller Portal.");
-          navigate("/seller-dashboard");
-        }
-      }
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        toast.error(err.errors[0].message);
-      } else {
-        toast.error("An unexpected error occurred");
+      switch (mode) {
+        case "login":
+          await handleEmailLogin();
+          break;
+        case "signup":
+          await handleSignup();
+          break;
+        case "forgot-password":
+          await handleForgotPassword();
+          break;
+        case "seller-id-login":
+          await handleSellerIdLogin();
+          break;
       }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setSellerName("");
+    setSellerId("");
   };
 
   return (
@@ -150,14 +235,23 @@ export default function SellerAuth() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <Store className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle>{isLogin ? "Seller Portal" : "Create Seller Account"}</CardTitle>
+            <CardTitle>
+              {mode === "login" && "Seller Portal"}
+              {mode === "signup" && "Create Seller Account"}
+              {mode === "forgot-password" && "Reset Password"}
+              {mode === "seller-id-login" && "Login with Seller ID"}
+            </CardTitle>
             <CardDescription>
-              {isLogin ? "Sign in to access your dashboard" : "Register to start selling on Luut"}
+              {mode === "login" && "Sign in to access your dashboard"}
+              {mode === "signup" && "Register to start selling on Luut"}
+              {mode === "forgot-password" && "Enter your email to receive a reset link"}
+              {mode === "seller-id-login" && "Use your unique Seller ID to sign in"}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {!isLogin && (
+              {/* Signup: Seller Name */}
+              {mode === "signup" && (
                 <div className="space-y-2">
                   <Label htmlFor="sellerName">Store/Seller Name</Label>
                   <Input
@@ -171,53 +265,155 @@ export default function SellerAuth() {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seller@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
+              {/* Seller ID Login */}
+              {mode === "seller-id-login" && (
+                <div className="space-y-2">
+                  <Label htmlFor="sellerId">Seller ID</Label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="sellerId"
+                      type="text"
+                      placeholder="S12ABC"
+                      value={sellerId}
+                      onChange={(e) => setSellerId(e.target.value.toUpperCase())}
+                      disabled={isLoading}
+                      className="pl-10 uppercase"
+                      maxLength={6}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Your Seller ID was provided when you registered
+                  </p>
+                </div>
+              )}
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                    className="pr-10"
-                  />
+              {/* Email field - for login, signup, forgot-password */}
+              {(mode === "login" || mode === "signup" || mode === "forgot-password") && (
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="seller@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Password field - for login, signup, seller-id-login */}
+              {(mode === "login" || mode === "signup" || mode === "seller-id-login") && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Forgot password link - only on login */}
+              {mode === "login" && (
+                <div className="text-right">
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => { resetForm(); setMode("forgot-password"); }}
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    Forgot password?
                   </button>
                 </div>
-              </div>
+              )}
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
+                {isLoading ? "Please wait..." : 
+                  mode === "login" ? "Sign In" :
+                  mode === "signup" ? "Create Account" :
+                  mode === "forgot-password" ? "Send Reset Link" :
+                  "Sign In with Seller ID"
+                }
               </Button>
             </form>
 
-            <div className="mt-4 text-center">
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-              </button>
+            {/* Mode switching links */}
+            <div className="mt-4 space-y-2 text-center">
+              {mode === "login" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { resetForm(); setMode("seller-id-login"); }}
+                    className="block w-full text-sm text-primary hover:underline transition-colors"
+                  >
+                    Login with Seller ID instead
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { resetForm(); setMode("signup"); }}
+                    className="block w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Don't have an account? Sign up
+                  </button>
+                </>
+              )}
+
+              {mode === "signup" && (
+                <button
+                  type="button"
+                  onClick={() => { resetForm(); setMode("login"); }}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Already have an account? Sign in
+                </button>
+              )}
+
+              {mode === "forgot-password" && (
+                <button
+                  type="button"
+                  onClick={() => { resetForm(); setMode("login"); }}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Back to sign in
+                </button>
+              )}
+
+              {mode === "seller-id-login" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { resetForm(); setMode("login"); }}
+                    className="block w-full text-sm text-primary hover:underline transition-colors"
+                  >
+                    Login with email instead
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { resetForm(); setMode("signup"); }}
+                    className="block w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Don't have an account? Sign up
+                  </button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
