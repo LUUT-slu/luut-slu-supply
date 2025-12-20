@@ -14,10 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      product_sales: {
+        Row: {
+          created_at: string
+          currency_code: string
+          id: string
+          price_amount: number
+          product_handle: string
+          product_id: string
+          product_image_url: string | null
+          product_title: string
+          quantity: number
+          sold_at: string
+          variant_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency_code?: string
+          id?: string
+          price_amount: number
+          product_handle: string
+          product_id: string
+          product_image_url?: string | null
+          product_title: string
+          quantity?: number
+          sold_at?: string
+          variant_id: string
+        }
+        Update: {
+          created_at?: string
+          currency_code?: string
+          id?: string
+          price_amount?: number
+          product_handle?: string
+          product_id?: string
+          product_image_url?: string | null
+          product_title?: string
+          quantity?: number
+          sold_at?: string
+          variant_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      weekly_best_sellers: {
+        Row: {
+          currency_code: string | null
+          price: number | null
+          product_handle: string | null
+          product_id: string | null
+          product_image_url: string | null
+          product_title: string | null
+          total_sold: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

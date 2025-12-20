@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductGrid } from "@/components/ProductGrid";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { BestSellersSection } from "@/components/BestSellersSection";
 import storefrontHero from "@/assets/storefront-hero.png";
 
 const heroImages = [
@@ -156,6 +157,9 @@ export default function Index() {
             </div>
           </div>
         </section>
+
+        {/* Best Sellers This Week */}
+        <BestSellersSection />
 
         {/* How it Works */}
         <section className="border-y border-border py-12 md:py-16">
