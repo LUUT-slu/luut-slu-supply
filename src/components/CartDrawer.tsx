@@ -83,88 +83,79 @@ function OrderConfirmationView({ order, onClose }: { order: OrderConfirmation; o
     toast.success("Order number copied!");
   };
 
-  const handleWhatsAppMessage = () => {
-    const message = encodeURIComponent(
-      `Hi Luut SLU 👋\n\nMy order ${order.name} has been placed!\n\nName: ${order.customerName}\nLocation: ${order.location}\nPreferred Date: ${order.preferredDate}\n\nPlease confirm the meetup time. Thank you!`
-    );
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
-  };
-
   return (
-    <div className="flex flex-1 flex-col items-center justify-center text-center px-4">
-      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-        <CheckCircle2 className="h-10 w-10 text-primary" />
-      </div>
-      
-      <h2 className="font-display text-2xl mb-2">Order Confirmed!</h2>
-      <p className="text-muted-foreground mb-6">Your order has been created successfully</p>
-      
-      {/* Order Number */}
-      <div className="mb-6 rounded-lg border border-border bg-card p-4 w-full max-w-sm">
-        <p className="text-sm text-muted-foreground mb-1">Order Number</p>
-        <div className="flex items-center justify-center gap-2">
-          <span className="font-display text-3xl text-primary">{order.name}</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyOrderNumber}>
-            <Copy className="h-4 w-4" />
+    <div className="flex flex-1 flex-col min-h-0 overflow-y-auto">
+      <div className="flex flex-col items-center text-center px-4 py-6">
+        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+          <CheckCircle2 className="h-10 w-10 text-primary" />
+        </div>
+        
+        <h2 className="font-display text-2xl mb-2">Order Confirmed!</h2>
+        <p className="text-muted-foreground mb-6">Your order has been created successfully</p>
+        
+        {/* Order Number */}
+        <div className="mb-6 rounded-lg border border-border bg-card p-4 w-full max-w-sm">
+          <p className="text-sm text-muted-foreground mb-1">Order Number</p>
+          <div className="flex items-center justify-center gap-2">
+            <span className="font-display text-3xl text-primary">{order.name}</span>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyOrderNumber}>
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Order Summary */}
+        <div className="rounded-lg border border-border bg-card p-4 w-full max-w-sm text-left mb-6">
+          <h3 className="font-semibold mb-3">Order Details</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Customer</span>
+              <span>{order.customerName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Location</span>
+              <span>{order.location}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Date</span>
+              <span>{order.preferredDate}</span>
+            </div>
+            <div className="border-t border-border pt-2 mt-2">
+              {order.lineItems.map((item, idx) => (
+                <div key={idx} className="flex justify-between py-1">
+                  <span className="truncate flex-1 pr-2">
+                    {item.title} {item.quantity > 1 && `×${item.quantity}`}
+                  </span>
+                  <span>EC${parseFloat(item.price).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-border pt-2 mt-2 flex justify-between font-semibold">
+              <span>Total</span>
+              <span className="text-primary">EC${parseFloat(order.totalPrice).toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Next Steps */}
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 w-full max-w-sm text-left mb-6">
+          <h3 className="font-semibold mb-2 flex items-center gap-2">
+            <MessageCircle className="h-4 w-4 text-primary" />
+            What's Next?
+          </h3>
+          <ol className="text-sm space-y-1 text-muted-foreground list-decimal list-inside">
+            <li>We sent your order to the seller via WhatsApp</li>
+            <li>Meet at {order.location} on your preferred date</li>
+            <li>Pay cash on meetup</li>
+          </ol>
+        </div>
+
+        {/* Action Button */}
+        <div className="w-full max-w-sm">
+          <Button onClick={onClose} className="w-full" size="lg">
+            Done
           </Button>
         </div>
-      </div>
-
-      {/* Order Summary */}
-      <div className="rounded-lg border border-border bg-card p-4 w-full max-w-sm text-left mb-6">
-        <h3 className="font-semibold mb-3">Order Details</h3>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Customer</span>
-            <span>{order.customerName}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Location</span>
-            <span>{order.location}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Date</span>
-            <span>{order.preferredDate}</span>
-          </div>
-          <div className="border-t border-border pt-2 mt-2">
-            {order.lineItems.map((item, idx) => (
-              <div key={idx} className="flex justify-between py-1">
-                <span className="truncate flex-1 pr-2">
-                  {item.title} {item.quantity > 1 && `×${item.quantity}`}
-                </span>
-                <span>EC${parseFloat(item.price).toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-border pt-2 mt-2 flex justify-between font-semibold">
-            <span>Total</span>
-            <span className="text-primary">EC${parseFloat(order.totalPrice).toFixed(2)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Next Steps */}
-      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 w-full max-w-sm text-left mb-6">
-        <h3 className="font-semibold mb-2 flex items-center gap-2">
-          <MessageCircle className="h-4 w-4 text-primary" />
-          Next Steps
-        </h3>
-        <ol className="text-sm space-y-1 text-muted-foreground list-decimal list-inside">
-          <li>Message us on WhatsApp to confirm meetup time</li>
-          <li>Meet at {order.location} on your preferred date</li>
-          <li>Pay cash on meetup</li>
-        </ol>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="w-full max-w-sm space-y-3">
-        <Button onClick={handleWhatsAppMessage} className="w-full gap-2" size="lg">
-          <MessageCircle className="h-5 w-5" />
-          Confirm on WhatsApp
-        </Button>
-        <Button onClick={onClose} variant="outline" className="w-full" size="lg">
-          Done
-        </Button>
       </div>
     </div>
   );
@@ -220,16 +211,38 @@ export function CartDrawer() {
     if (!isFormComplete || !selectedDate) return;
 
     try {
+      const formattedDate = format(selectedDate, 'EEEE, MMMM d, yyyy');
       const order = await createOrder({
         customerName: customerName.trim(),
         location: selectedLocation,
-        preferredDate: format(selectedDate, 'EEEE, MMMM d, yyyy'),
+        preferredDate: formattedDate,
         note: note.trim() || undefined,
       });
 
       if (order) {
         setStep('confirmed');
         toast.success(`Order ${order.name} created!`);
+        
+        // Auto-open WhatsApp with order details
+        const itemsList = items
+          .map(item => `${item.product.node.title}${item.quantity > 1 ? ` x${item.quantity}` : ''}`)
+          .join('\n');
+        
+        const message = encodeURIComponent(
+          `🛒 *NEW ORDER ${order.name}*\n\n` +
+          `👤 Customer: ${customerName.trim()}\n` +
+          `📍 Location: ${selectedLocation}\n` +
+          `📅 Date: ${formattedDate}\n` +
+          `${note.trim() ? `📝 Note: ${note.trim()}\n` : ''}` +
+          `\n*Items:*\n${itemsList}\n\n` +
+          `💰 Total: EC$${getTotalPrice().toFixed(2)}\n\n` +
+          `Please confirm the meetup time. Thank you!`
+        );
+        
+        // Small delay to ensure confirmation shows first
+        setTimeout(() => {
+          window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
+        }, 500);
       }
     } catch (error) {
       console.error('Order creation failed:', error);
