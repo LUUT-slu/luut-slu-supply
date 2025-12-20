@@ -76,10 +76,10 @@ Looking forward to getting started.`;
                 </div>
               </div>
 
-              {/* WHO CAN SELL HERE */}
+              {/* REQUIREMENTS */}
               <div className="mb-16">
                 <h2 className="mb-6 text-center font-display text-2xl md:text-3xl">
-                  WHO CAN SELL HERE
+                  REQUIREMENTS
                 </h2>
 
                 <div className="rounded-lg border border-border bg-card p-6">
