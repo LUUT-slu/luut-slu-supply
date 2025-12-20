@@ -94,17 +94,17 @@ export default function Index() {
           {/* Bottom Content - Description, Buttons, Link */}
           <div className="container relative z-10 px-4 pb-8 md:pb-12">
             <div className="mx-auto max-w-3xl text-center">
-              <div className="flex flex-col gap-4 sm:flex-row sm:justify-center sm:items-center">
-                <Button asChild size="default" className="font-body shadow-lg animate-fade-in opacity-0" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+                <Button asChild size="default" className="w-auto font-body shadow-lg animate-fade-in opacity-0" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
                   <Link to="/shop">
                     Shop Outfits
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button asChild variant="ghost" size="sm" className="font-body text-white/80 hover:text-white hover:bg-white/10 animate-fade-in opacity-0" style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}>
+                <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10 animate-fade-in opacity-0" style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}>
                   <Link to="/shop?filter=new">New Arrivals</Link>
                 </Button>
-                <Button asChild variant="ghost" size="sm" className="font-body text-white/80 hover:text-white hover:bg-white/10 animate-fade-in opacity-0" style={{ animationDelay: "0.6s", animationFillMode: "forwards" }}>
+                <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10 animate-fade-in opacity-0" style={{ animationDelay: "0.6s", animationFillMode: "forwards" }}>
                   <Link to="/shop?filter=best">Best Sellers</Link>
                 </Button>
               </div>
