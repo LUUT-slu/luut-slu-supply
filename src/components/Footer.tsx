@@ -86,10 +86,16 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-border pt-6">
-          <p className="text-center font-body text-xs text-muted-foreground">
+        <div className="mt-12 border-t border-border pt-6 flex items-center justify-between">
+          <p className="font-body text-xs text-muted-foreground">
             © {new Date().getFullYear()} Luut SLU. All rights reserved.
           </p>
+          <Link 
+            to="/admin" 
+            className="font-body text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          >
+            •
+          </Link>
         </div>
       </div>
     </footer>
