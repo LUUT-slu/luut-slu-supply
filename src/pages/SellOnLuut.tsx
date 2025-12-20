@@ -1,5 +1,6 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { BackButton } from "@/components/BackButton";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 
 export default function SellOnLuut() {
@@ -22,6 +23,7 @@ Looking forward to getting started.`;
         <section className="px-4 py-16 md:py-24">
           <div className="container">
             <div className="mx-auto max-w-2xl">
+              <BackButton />
               {/* WHERE BRANDS GROW */}
               <div className="mb-16 text-center">
                 <h1 className="mb-8 font-display text-4xl md:text-5xl">

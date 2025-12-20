@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { BackButton } from "@/components/BackButton";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 
 // Fit categories in exact order - DO NOT CHANGE
@@ -86,6 +87,7 @@ export default function Shop() {
         {/* Hero */}
         <section className="border-b border-border bg-card px-4 py-10 md:py-14">
           <div className="container">
+            <BackButton />
             <div className="mx-auto max-w-2xl text-center">
               <h1 className="font-display text-4xl tracking-wider md:text-5xl lg:text-6xl">
                 CREATE A <span className="text-primary">FIT</span>

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { BackButton } from "@/components/BackButton";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { ShieldCheck, MapPin } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -28,6 +29,7 @@ export default function Sellers() {
       <main className="flex-1">
         <section className="border-b border-border bg-card px-4 py-12">
           <div className="container">
+            <BackButton />
             <h1 className="font-display text-3xl md:text-5xl">OUR SELLERS</h1>
             <p className="mt-4 font-body text-muted-foreground">
               Browse verified vendors on the Luut SLU marketplace. Each seller handles their own meetups & delivery.

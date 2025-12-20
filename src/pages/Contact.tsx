@@ -1,5 +1,6 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { BackButton } from "@/components/BackButton";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { MapPin, MessageCircle, Instagram, Facebook } from "lucide-react";
 
@@ -11,6 +12,7 @@ export default function Contact() {
       <main className="flex-1">
         <section className="border-b border-border bg-card px-4 py-12">
           <div className="container">
+            <BackButton />
             <h1 className="font-display text-3xl md:text-5xl">CONTACT US</h1>
             <p className="mt-4 font-body text-muted-foreground">
               Get in touch with Luut SLU
