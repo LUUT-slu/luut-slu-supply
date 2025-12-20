@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { ShopifyProduct, createStorefrontCheckout } from '@/lib/shopify';
+import { recordSale } from '@/hooks/useBestSellers';
 
 export interface CartItem {
   product: ShopifyProduct;
@@ -104,6 +105,21 @@ export const useCartStore = create<CartStore>()(
             }))
           );
           setCheckoutUrl(checkoutUrl);
+          
+          // Record sales for tracking best sellers
+          for (const item of items) {
+            await recordSale({
+              productId: item.product.node.id,
+              productTitle: item.product.node.title,
+              productHandle: item.product.node.handle,
+              productImageUrl: item.product.node.images?.edges?.[0]?.node?.url || null,
+              variantId: item.variantId,
+              quantity: item.quantity,
+              priceAmount: parseFloat(item.price.amount),
+              currencyCode: item.price.currencyCode,
+            });
+          }
+          
           return checkoutUrl;
         } catch (error) {
           console.error('Failed to create checkout:', error);
