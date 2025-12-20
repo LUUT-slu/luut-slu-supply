@@ -116,7 +116,7 @@ export function Header() {
         {/* Right side actions */}
         <div className="flex items-center gap-2">
           <Link to="/admin">
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+            <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
               <DollarSign className="h-5 w-5" />
             </Button>
           </Link>
