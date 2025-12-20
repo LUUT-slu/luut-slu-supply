@@ -7,6 +7,7 @@ import { Footer } from "@/components/Footer";
 import { ProductGrid } from "@/components/ProductGrid";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { BestSellersSection } from "@/components/BestSellersSection";
+import { WhatPeopleAreBuyingSection } from "@/components/WhatPeopleAreBuyingSection";
 import storefrontHero from "@/assets/storefront-hero.png";
 
 const heroImages = [
@@ -118,6 +119,9 @@ export default function Index() {
             </div>
           </div>
         </section>
+
+        {/* What People Are Buying - Social proof section */}
+        <WhatPeopleAreBuyingSection />
 
         {/* Products */}
         <section className="py-12 md:py-16">
