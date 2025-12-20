@@ -14,12 +14,6 @@ const heroImages = [
   storefrontHero,
 ];
 
-const meetupLocations = [
-  { name: "Castries", description: "Capital city, central location" },
-  { name: "Gros Islet", description: "Northern area, Friday night street party" },
-  { name: "Rodney Bay", description: "Tourist area, shopping centers" },
-];
-
 const howItWorks = [
   {
     step: 1,
@@ -120,31 +114,6 @@ export default function Index() {
                   Want to sell? Join as a vendor →
                 </Link>
               </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Meet-up Locations */}
-        <section className="border-b border-border py-12 md:py-16">
-          <div className="container">
-            <h2 className="mb-8 text-center font-display text-2xl md:text-3xl">
-              MEET-UP LOCATIONS
-            </h2>
-            <div className="grid gap-4 md:grid-cols-3">
-              {meetupLocations.map((location) => (
-                <div
-                  key={location.name}
-                  className="flex items-center gap-4 rounded-lg border border-border bg-card p-6 transition-colors hover:border-primary/50"
-                >
-                  <MapPin className="h-8 w-8 flex-shrink-0 text-primary" />
-                  <div>
-                    <h3 className="font-display text-lg">{location.name}</h3>
-                    <p className="font-body text-sm text-muted-foreground">
-                      {location.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </section>
