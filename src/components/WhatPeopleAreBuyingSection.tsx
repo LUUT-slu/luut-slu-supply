@@ -38,21 +38,21 @@ function ProductCard({ product, index }: ProductCardProps) {
         animationFillMode: "forwards" 
       }}
     >
-      <div className="relative overflow-hidden rounded-xl bg-card border border-border/30 transition-all duration-300 group-hover:border-primary/40 group-hover:shadow-[0_0_30px_hsl(43_74%_49%/0.15)] group-hover:-translate-y-1">
-        {/* Badge */}
+      <div className="relative overflow-hidden rounded-lg bg-card/50 border border-border/20 transition-all duration-300 group-hover:border-primary/20 group-hover:-translate-y-0.5">
+        {/* Badge - subtle */}
         <div className="absolute top-3 right-3 z-10">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-medium uppercase tracking-wider bg-primary/20 text-primary border border-primary/30 backdrop-blur-sm">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-medium uppercase tracking-wider bg-primary/10 text-primary/80 border border-primary/15 backdrop-blur-sm">
             {badge}
           </span>
         </div>
 
         {/* Image */}
-        <div className="aspect-square overflow-hidden bg-muted">
+        <div className="aspect-square overflow-hidden bg-muted/30">
           {imageUrl ? (
             <img
               src={imageUrl}
               alt={node.title}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-103"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
@@ -63,16 +63,16 @@ function ProductCard({ product, index }: ProductCardProps) {
 
         {/* Product Info */}
         <div className="p-4">
-          <h3 className="font-body text-sm font-medium text-foreground line-clamp-1 mb-1">
+          <h3 className="font-body text-sm font-medium text-foreground/90 line-clamp-1 mb-1">
             {node.title}
           </h3>
-          <p className="font-display text-lg text-primary">
+          <p className="font-display text-lg text-primary/90">
             {formatPrice(price.amount, price.currencyCode)}
           </p>
         </div>
 
-        {/* Subtle neon glow effect on hover */}
-        <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-primary/0 transition-all duration-300 group-hover:ring-primary/20 pointer-events-none" />
+        {/* Very subtle neon ring on hover */}
+        <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-primary/0 transition-all duration-300 group-hover:ring-primary/10 pointer-events-none" />
       </div>
     </Link>
   );
@@ -123,16 +123,21 @@ export function WhatPeopleAreBuyingSection() {
   }
 
   return (
-    <section className="py-12 md:py-16 bg-background overflow-hidden">
-      <div className="container">
-        {/* Section Header */}
-        <div className="mb-8">
-          <div className="inline-block">
-            <h2 className="font-display text-2xl md:text-3xl text-primary-foreground bg-primary px-4 py-2 inline-block">
-              WHAT PEOPLE ARE BUYING
-            </h2>
-          </div>
-          <p className="mt-3 font-body text-sm text-muted-foreground">
+    <section className="relative py-12 md:py-16 overflow-hidden">
+      {/* Subtle gradient wash behind section */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
+      
+      {/* Thin neon divider line at top */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+      
+      <div className="container relative">
+        {/* Section Header - refined */}
+        <div className="mb-10">
+          <h2 className="font-display text-2xl md:text-3xl tracking-[0.15em] text-foreground/90" style={{ textShadow: '0 0 30px hsl(43 74% 49% / 0.15)' }}>
+            WHAT PEOPLE ARE BUYING
+          </h2>
+          <div className="mt-2 w-16 h-px bg-gradient-to-r from-primary/40 to-transparent" />
+          <p className="mt-4 font-body text-sm text-muted-foreground/70">
             See what's moving in your community right now
           </p>
         </div>
