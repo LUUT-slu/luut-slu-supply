@@ -48,16 +48,19 @@ export default function MyOrders() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .in("id", savedOrderIds)
-        .order("created_at", { ascending: false });
+      try {
+        // Use edge function to fetch orders (bypasses RLS securely)
+        const { data, error } = await supabase.functions.invoke('get-my-orders', {
+          body: { orderIds: savedOrderIds }
+        });
 
-      if (error) {
-        console.error("Failed to fetch orders:", error);
-      } else {
-        setOrders((data || []) as unknown as Order[]);
+        if (error) {
+          console.error("Failed to fetch orders:", error);
+        } else {
+          setOrders((data?.orders || []) as Order[]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch orders:", err);
       }
       setLoading(false);
     };
