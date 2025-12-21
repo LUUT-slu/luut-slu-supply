@@ -133,12 +133,12 @@ export default function ProductDetail() {
           <div className="grid gap-8 lg:grid-cols-2">
             {/* ========== PRODUCT IMAGES ========== */}
             <div className="space-y-4">
-              <div className="aspect-square overflow-hidden rounded-xl bg-card border border-border">
+              <div className="relative aspect-square w-full max-w-full overflow-hidden rounded-xl bg-card border border-border">
                 {product.images.edges[selectedImage]?.node ? (
                   <img
                     src={product.images.edges[selectedImage].node.url}
                     alt={product.images.edges[selectedImage].node.altText || product.title}
-                    className="h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-contain"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center">
