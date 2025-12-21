@@ -17,14 +17,13 @@ export function BackButton() {
   };
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
+    <button
+      type="button"
       onClick={handleBack}
-      className="mb-4"
+      className="mb-4 inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 touch-manipulation"
     >
-      <ArrowLeft className="mr-2 h-4 w-4" />
+      <ArrowLeft className="h-4 w-4" />
       Back
-    </Button>
+    </button>
   );
 }
