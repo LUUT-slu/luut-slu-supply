@@ -24,6 +24,7 @@ import SellerAuth from "./pages/SellerAuth";
 import SellerDashboard from "./pages/SellerDashboard";
 import CustomerAuth from "./pages/CustomerAuth";
 import AccountSettings from "./pages/AccountSettings";
+import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
           <Route path="/seller-dashboard" element={<SellerDashboard />} />
           <Route path="/customer-auth" element={<CustomerAuth />} />
           <Route path="/account" element={<AccountSettings />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/admin" element={<AdminOrders />} />
           <Route path="/admin/sellers" element={<AdminSellers />} />
           <Route path="*" element={<NotFound />} />
