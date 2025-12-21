@@ -80,40 +80,38 @@ export default function Auth() {
             <h1 className="font-display text-2xl text-center mb-6">My Accounts</h1>
             
             {/* Customer Account */}
-            <Card 
-              className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
-              onClick={() => navigate("/account")}
-            >
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <User className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-display text-lg">Customer Account</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {customerProfile ? "View & manage your profile" : "Set up your customer profile"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <Link to="/account" className="block">
+              <Card className="transition-all hover:border-primary hover:shadow-md active:scale-[0.98]">
+                <CardContent className="flex items-center gap-4 p-6">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                    <User className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-display text-lg">Customer Account</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {customerProfile ? "View & manage your profile" : "Set up your customer profile"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
 
             {/* Seller Account */}
-            <Card 
-              className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
-              onClick={() => sellerProfile ? navigate("/seller-dashboard") : navigate("/seller-auth")}
-            >
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
-                  <Store className="h-6 w-6 text-accent-foreground" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-display text-lg">Seller Account</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {sellerProfile ? "Go to your seller dashboard" : "Register as a seller"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <Link to={sellerProfile ? "/seller-dashboard" : "/seller-auth"} className="block">
+              <Card className="transition-all hover:border-primary hover:shadow-md active:scale-[0.98]">
+                <CardContent className="flex items-center gap-4 p-6">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
+                    <Store className="h-6 w-6 text-accent-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-display text-lg">Seller Account</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {sellerProfile ? "Go to your seller dashboard" : "Register as a seller"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
 
             {/* Sign Out */}
             <Button
@@ -154,40 +152,38 @@ export default function Auth() {
           </div>
 
           {/* Sign in as Customer */}
-          <Card 
-            className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
-            onClick={() => navigate("/customer-auth")}
-          >
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                <User className="h-7 w-7 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-display text-lg">Sign in as Customer</h3>
-                <p className="text-sm text-muted-foreground">
-                  Shop, track orders & manage preferences
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <Link to="/customer-auth" className="block">
+            <Card className="transition-all hover:border-primary hover:shadow-md active:scale-[0.98]">
+              <CardContent className="flex items-center gap-4 p-6">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                  <User className="h-7 w-7 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-display text-lg">Sign in as Customer</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Shop, track orders & manage preferences
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Sign in as Seller */}
-          <Card 
-            className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
-            onClick={() => navigate("/seller-auth")}
-          >
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent/10">
-                <Store className="h-7 w-7 text-accent-foreground" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-display text-lg">Sign in as Seller</h3>
-                <p className="text-sm text-muted-foreground">
-                  Access your seller dashboard & products
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <Link to="/seller-auth" className="block">
+            <Card className="transition-all hover:border-primary hover:shadow-md active:scale-[0.98]">
+              <CardContent className="flex items-center gap-4 p-6">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent/10">
+                  <Store className="h-7 w-7 text-accent-foreground" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-display text-lg">Sign in as Seller</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Access your seller dashboard & products
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </main>
       <Footer />
