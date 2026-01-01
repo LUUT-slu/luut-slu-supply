@@ -46,7 +46,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <Link
       to={`/product/${node.handle}`}
-      className="group block overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg"
+      className="group block overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg touch-manipulation"
     >
       {/* Image with trust badge overlay */}
       <div className="relative aspect-square overflow-hidden bg-muted">

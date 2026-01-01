@@ -147,12 +147,12 @@ export default function ProductDetail() {
                 )}
               </div>
               {product.images.edges.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
+                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth touch-pan-x">
                   {product.images.edges.map((img, idx) => (
                     <button
                       key={idx}
                       onClick={() => setSelectedImage(idx)}
-                      className={`h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+                      className={`h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all touch-manipulation snap-start ${
                         selectedImage === idx
                           ? "border-primary ring-2 ring-primary/20"
                           : "border-border hover:border-muted-foreground"
@@ -161,7 +161,7 @@ export default function ProductDetail() {
                       <img
                         src={img.node.url}
                         alt={img.node.altText || `${product.title} ${idx + 1}`}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover pointer-events-none"
                       />
                     </button>
                   ))}
