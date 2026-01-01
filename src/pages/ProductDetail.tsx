@@ -190,14 +190,14 @@ export default function ProductDetail() {
               </div>
 
               {/* Product Title */}
-              <h1 className="font-display text-3xl md:text-4xl leading-tight">
+              <h1 className="font-display text-xl md:text-2xl leading-tight">
                 {product.title}
               </h1>
 
               {/* Price */}
               {currentVariant && (
                 <div className="flex items-baseline gap-2">
-                  <span className="font-display text-4xl text-primary">
+                  <span className="font-display text-2xl md:text-3xl text-primary">
                     EC${parseFloat(currentVariant.price.amount).toFixed(2)}
                   </span>
                   <span className="text-sm text-muted-foreground">
