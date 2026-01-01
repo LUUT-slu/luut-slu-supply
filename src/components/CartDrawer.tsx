@@ -18,7 +18,8 @@ import {
   Copy,
   MessageCircle,
   Shield,
-  Wallet
+  Wallet,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -27,6 +28,7 @@ import { Textarea } from "./ui/textarea";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Label } from "./ui/label";
 import { Calendar as CalendarComponent } from "./ui/calendar";
+import { Checkbox } from "./ui/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -191,6 +193,7 @@ export function CartDrawer() {
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [note, setNote] = useState('');
+  const [depositAcknowledged, setDepositAcknowledged] = useState(false);
   
   const {
     items,
@@ -213,7 +216,8 @@ export function CartDrawer() {
   const isNameValid = customerName.trim().length >= 2;
   const isLocationValid = selectedLocation !== '';
   const isDateValid = selectedDate !== undefined;
-  const isFormComplete = isNameValid && isLocationValid && isDateValid;
+  const isDepositAcknowledged = depositAcknowledged;
+  const isFormComplete = isNameValid && isLocationValid && isDateValid && isDepositAcknowledged;
 
   const resetForm = () => {
     setStep('cart');
@@ -221,6 +225,7 @@ export function CartDrawer() {
     setSelectedLocation('');
     setSelectedDate(undefined);
     setNote('');
+    setDepositAcknowledged(false);
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -547,6 +552,37 @@ export function CartDrawer() {
                     <p className="text-xs text-muted-foreground mt-1 text-right">
                       {note.length}/200
                     </p>
+                  </ChecklistItem>
+
+                  {/* Deposit Acknowledgment - Required */}
+                  <ChecklistItem completed={isDepositAcknowledged} label="Deposit Policy (required)">
+                    <div 
+                      className={cn(
+                        "flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-colors",
+                        depositAcknowledged
+                          ? "border-primary bg-primary/5"
+                          : "border-destructive/50 bg-destructive/5"
+                      )}
+                      onClick={() => setDepositAcknowledged(!depositAcknowledged)}
+                    >
+                      <Checkbox 
+                        id="deposit-acknowledgment"
+                        checked={depositAcknowledged}
+                        onCheckedChange={(checked) => setDepositAcknowledged(checked === true)}
+                        className="mt-0.5"
+                      />
+                      <Label 
+                        htmlFor="deposit-acknowledgment" 
+                        className="cursor-pointer text-sm leading-relaxed"
+                      >
+                        <span className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                          <span>
+                            Deposits are non-refundable. If I do not show up at the agreed pickup time, my deposit is forfeited and the item will be immediately resold.
+                          </span>
+                        </span>
+                      </Label>
+                    </div>
                   </ChecklistItem>
                 </div>
               </div>
