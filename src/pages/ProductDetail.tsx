@@ -287,15 +287,18 @@ export default function ProductDetail() {
                   <ShoppingBag className="mr-2 h-5 w-5" />
                   Add to Cart — EC${currentVariant ? (parseFloat(currentVariant.price.amount) * quantity).toFixed(2) : '0.00'}
                 </Button>
-                <WhatsAppButton
-                  message={whatsappMessage}
-                  className="w-full"
+                <Button
                   size="lg"
                   variant="outline"
+                  className="w-full text-base"
+                  onClick={() => {
+                    handleAddToCart();
+                  }}
+                  disabled={!currentVariant?.availableForSale}
                 >
-                  <MessageCircle className="mr-2 h-5 w-5" />
-                  Ask a Question
-                </WhatsAppButton>
+                  <CreditCard className="mr-2 h-5 w-5" />
+                  Buy Now
+                </Button>
               </div>
 
               <Separator />
