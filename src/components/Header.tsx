@@ -31,7 +31,6 @@ export function Header() {
   const [orderCount, setOrderCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
   const totalItems = useCartStore((state) => state.getTotalItems());
-  const confirmedOrder = useCartStore((state) => state.confirmedOrder);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -74,7 +73,7 @@ export function Header() {
     };
     
     fetchActiveOrderCount();
-  }, [confirmedOrder]);
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
