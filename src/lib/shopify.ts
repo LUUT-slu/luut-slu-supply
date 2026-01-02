@@ -205,7 +205,7 @@ export async function fetchProductByHandle(handle: string): Promise<ShopifyProdu
   return data.data.productByHandle;
 }
 
-// Cart checkout
+// Cart checkout with note support
 const CART_CREATE_MUTATION = `
   mutation cartCreate($input: CartInput!) {
     cartCreate(input: $input) {
@@ -228,14 +228,36 @@ const CART_CREATE_MUTATION = `
   }
 `;
 
-export async function createStorefrontCheckout(items: { variantId: string; quantity: number }[]): Promise<string> {
+export interface MeetupDetails {
+  customerName: string;
+  location: string;
+  preferredDate: string;
+  note?: string;
+}
+
+export async function createStorefrontCheckout(
+  items: { variantId: string; quantity: number }[],
+  meetupDetails?: MeetupDetails
+): Promise<string> {
   const lines = items.map(item => ({
     quantity: item.quantity,
     merchandiseId: item.variantId,
   }));
 
+  // Build note with meetup details
+  let note = '';
+  if (meetupDetails) {
+    note = `📍 Meetup Location: ${meetupDetails.location}\n📅 Preferred Date: ${meetupDetails.preferredDate}\n👤 Customer: ${meetupDetails.customerName}`;
+    if (meetupDetails.note) {
+      note += `\n📝 Note: ${meetupDetails.note}`;
+    }
+  }
+
   const cartData = await storefrontApiRequest(CART_CREATE_MUTATION, {
-    input: { lines },
+    input: { 
+      lines,
+      note: note || undefined,
+    },
   });
 
   if (!cartData) {
