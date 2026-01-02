@@ -33,7 +33,7 @@ export default function ProductDetail() {
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(2);
+  const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
 
   const addItem = useCartStore((state) => state.addItem);
