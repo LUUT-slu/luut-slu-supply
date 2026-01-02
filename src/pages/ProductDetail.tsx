@@ -132,8 +132,8 @@ export default function ProductDetail() {
 
           <div className="grid gap-8 lg:grid-cols-2">
             {/* ========== PRODUCT IMAGES ========== */}
-            <div className="space-y-4">
-              <div className="relative aspect-square w-full max-h-[400px] md:max-h-[500px] overflow-hidden rounded-xl bg-card border border-border">
+            <div className="space-y-4 w-full max-w-full overflow-hidden">
+              <div className="relative w-full h-[300px] sm:h-[350px] md:h-[450px] overflow-hidden rounded-xl bg-card border border-border">
                 {product.images.edges[selectedImage]?.node ? (
                   <img
                     src={product.images.edges[selectedImage].node.url}
@@ -147,12 +147,12 @@ export default function ProductDetail() {
                 )}
               </div>
               {product.images.edges.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth touch-pan-x">
+                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth touch-pan-x max-w-full">
                   {product.images.edges.map((img, idx) => (
                     <button
                       key={idx}
                       onClick={() => setSelectedImage(idx)}
-                      className={`h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all touch-manipulation snap-start ${
+                      className={`h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all touch-manipulation snap-start ${
                         selectedImage === idx
                           ? "border-primary ring-2 ring-primary/20"
                           : "border-border hover:border-muted-foreground"
