@@ -23,6 +23,7 @@ import { Separator } from "@/components/ui/separator";
 import { fetchProductByHandle, ShopifyProduct } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 // Meetup locations - can be extracted from product description or configured per seller
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
@@ -133,11 +134,31 @@ export default function ProductDetail() {
           <div className="grid gap-8 lg:grid-cols-2">
             {/* ========== PRODUCT IMAGES ========== */}
             <div className="space-y-4 w-full max-w-full overflow-hidden">
-              <div className="relative w-full h-[300px] sm:h-[350px] md:h-[450px] overflow-hidden rounded-xl bg-card border border-border">
-                {product.images.edges[selectedImage]?.node ? (
+              {/* Main Image - Fixed aspect ratio container */}
+              <div className="relative w-full aspect-[4/5] max-h-[70vh] overflow-hidden rounded-xl bg-card border border-border">
+                {product.images.edges.length > 1 ? (
+                  // Swipeable gallery for multiple images
+                  <div 
+                    className="flex h-full w-full snap-x snap-mandatory overflow-x-auto scroll-smooth touch-pan-x scrollbar-hide"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {product.images.edges.map((img, idx) => (
+                      <div 
+                        key={idx} 
+                        className="h-full w-full flex-shrink-0 snap-center"
+                      >
+                        <img
+                          src={img.node.url}
+                          alt={img.node.altText || `${product.title} ${idx + 1}`}
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : product.images.edges[0]?.node ? (
                   <img
-                    src={product.images.edges[selectedImage].node.url}
-                    alt={product.images.edges[selectedImage].node.altText || product.title}
+                    src={product.images.edges[0].node.url}
+                    alt={product.images.edges[0].node.altText || product.title}
                     className="h-full w-full object-contain"
                   />
                 ) : (
@@ -146,13 +167,30 @@ export default function ProductDetail() {
                   </div>
                 )}
               </div>
+              
+              {/* Image indicators for swipe gallery */}
               {product.images.edges.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth touch-pan-x max-w-full">
+                <div className="flex justify-center gap-1.5">
+                  {product.images.edges.map((_, idx) => (
+                    <div
+                      key={idx}
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full transition-colors",
+                        selectedImage === idx ? "bg-primary" : "bg-muted-foreground/30"
+                      )}
+                    />
+                  ))}
+                </div>
+              )}
+              
+              {/* Thumbnail strip for desktop */}
+              {product.images.edges.length > 1 && (
+                <div className="hidden md:flex gap-2 overflow-x-auto pb-2">
                   {product.images.edges.map((img, idx) => (
                     <button
                       key={idx}
                       onClick={() => setSelectedImage(idx)}
-                      className={`h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all touch-manipulation snap-start ${
+                      className={`h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
                         selectedImage === idx
                           ? "border-primary ring-2 ring-primary/20"
                           : "border-border hover:border-muted-foreground"
