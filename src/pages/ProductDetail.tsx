@@ -133,39 +133,41 @@ export default function ProductDetail() {
 
           <div className="grid gap-8 lg:grid-cols-2">
             {/* ========== PRODUCT IMAGES ========== */}
-            <div className="space-y-4 w-full max-w-full overflow-hidden">
-              {/* Main Image - Fixed aspect ratio container */}
-              <div className="relative w-full aspect-[4/5] max-h-[70vh] rounded-xl bg-card border border-border">
+            <div className="space-y-4 w-full max-w-full">
+              {/* Main Image - Fixed aspect ratio container with padding */}
+              <div className="relative w-full aspect-square rounded-2xl bg-card border border-border p-3 md:p-4">
                 {product.images.edges.length > 1 ? (
                   // Swipeable gallery for multiple images
                   <div 
-                    className="flex h-full w-full snap-x snap-mandatory overflow-x-scroll overscroll-x-contain"
+                    className="flex h-full w-full snap-x snap-mandatory overflow-x-scroll overscroll-x-contain rounded-xl"
                     style={{ 
                       WebkitOverflowScrolling: 'touch',
                       scrollbarWidth: 'none',
                       msOverflowStyle: 'none'
                     }}
                   >
-                    <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
+                    <style>{`div::-webkit-scrollbar { display: none; }`}</style>
                     {product.images.edges.map((img, idx) => (
                       <div 
                         key={idx} 
-                        className="h-full min-w-full flex-shrink-0 snap-center"
+                        className="h-full min-w-full flex-shrink-0 snap-center flex items-center justify-center"
                       >
                         <img
                           src={img.node.url}
                           alt={img.node.altText || `${product.title} ${idx + 1}`}
-                          className="h-full w-full object-contain pointer-events-none"
+                          className="max-h-full max-w-full object-contain rounded-lg pointer-events-none"
                         />
                       </div>
                     ))}
                   </div>
                 ) : product.images.edges[0]?.node ? (
-                  <img
-                    src={product.images.edges[0].node.url}
-                    alt={product.images.edges[0].node.altText || product.title}
-                    className="h-full w-full object-contain"
-                  />
+                  <div className="h-full w-full flex items-center justify-center">
+                    <img
+                      src={product.images.edges[0].node.url}
+                      alt={product.images.edges[0].node.altText || product.title}
+                      className="max-h-full max-w-full object-contain rounded-lg"
+                    />
+                  </div>
                 ) : (
                   <div className="flex h-full items-center justify-center">
                     <ShoppingBag className="h-20 w-20 text-muted-foreground" />
