@@ -135,22 +135,27 @@ export default function ProductDetail() {
             {/* ========== PRODUCT IMAGES ========== */}
             <div className="space-y-4 w-full max-w-full overflow-hidden">
               {/* Main Image - Fixed aspect ratio container */}
-              <div className="relative w-full aspect-[4/5] max-h-[70vh] overflow-hidden rounded-xl bg-card border border-border">
+              <div className="relative w-full aspect-[4/5] max-h-[70vh] rounded-xl bg-card border border-border">
                 {product.images.edges.length > 1 ? (
                   // Swipeable gallery for multiple images
                   <div 
-                    className="flex h-full w-full snap-x snap-mandatory overflow-x-auto scroll-smooth touch-pan-x scrollbar-hide"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    className="flex h-full w-full snap-x snap-mandatory overflow-x-scroll overscroll-x-contain"
+                    style={{ 
+                      WebkitOverflowScrolling: 'touch',
+                      scrollbarWidth: 'none',
+                      msOverflowStyle: 'none'
+                    }}
                   >
+                    <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
                     {product.images.edges.map((img, idx) => (
                       <div 
                         key={idx} 
-                        className="h-full w-full flex-shrink-0 snap-center"
+                        className="h-full min-w-full flex-shrink-0 snap-center"
                       >
                         <img
                           src={img.node.url}
                           alt={img.node.altText || `${product.title} ${idx + 1}`}
-                          className="h-full w-full object-contain"
+                          className="h-full w-full object-contain pointer-events-none"
                         />
                       </div>
                     ))}
