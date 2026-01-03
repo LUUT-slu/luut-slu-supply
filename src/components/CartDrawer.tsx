@@ -1,16 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { 
   ShoppingBag, 
   Minus, 
   Plus, 
   Trash2, 
-  Loader2,
   Shield,
   Wallet,
   MapPin,
-  ExternalLink,
   ArrowLeft,
   User,
   Calendar,
@@ -18,7 +15,7 @@ import {
   Check,
   Circle,
   Package,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -41,11 +38,11 @@ import {
   SheetTrigger,
 } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
-import { createStorefrontCheckout } from "@/lib/shopify";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort"];
+const WHATSAPP_NUMBER = "17587185478";
 
 interface ChecklistItemProps {
   completed: boolean;
@@ -78,15 +75,20 @@ function ChecklistItem({ completed, label, children }: ChecklistItemProps) {
   );
 }
 
+// Generate a simple local order number
+function generateOrderNumber(): string {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `LUUT-${timestamp.slice(-4)}${random}`;
+}
+
 export function CartDrawer() {
-  const navigate = useNavigate();
   const [step, setStep] = useState<'cart' | 'builder'>('cart');
   const [customerName, setCustomerName] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [note, setNote] = useState('');
   const [depositAcknowledged, setDepositAcknowledged] = useState(false);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
   
   const {
     items,
@@ -129,63 +131,46 @@ export function CartDrawer() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const handleCheckout = async () => {
+  const handleConfirmOrder = () => {
     if (!isFormComplete || !selectedDate) return;
 
-    setIsCheckingOut(true);
-    try {
-      const formattedDate = format(selectedDate, 'EEEE, MMMM d, yyyy');
-      
-      const checkoutItems = items.map(item => ({
-        variantId: item.variantId,
-        quantity: item.quantity,
-      }));
+    const orderNumber = generateOrderNumber();
+    const formattedDate = format(selectedDate, 'EEEE, MMMM d, yyyy');
+    
+    // Build product list
+    const productList = items.map(item => {
+      const itemTotal = (parseFloat(item.price.amount) * item.quantity).toFixed(2);
+      return `• ${item.product.node.title}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — EC$${itemTotal}`;
+    }).join('\n');
 
-      // Store order data for the confirmation page
-      const pendingOrderData = {
-        customerName: customerName.trim(),
-        location: selectedLocation,
-        preferredDate: formattedDate,
-        note: note.trim() || undefined,
-        items: items.map(item => ({
-          title: item.product.node.title,
-          quantity: item.quantity,
-          price: (parseFloat(item.price.amount) * item.quantity).toFixed(2),
-        })),
-        totalPrice: getTotalPrice(),
-        timestamp: Date.now(),
-      };
-      localStorage.setItem("luut-pending-order", JSON.stringify(pendingOrderData));
-
-      // Create Shopify checkout with meetup details in note
-      const checkoutUrl = await createStorefrontCheckout(checkoutItems, {
-        customerName: customerName.trim(),
-        location: selectedLocation,
-        preferredDate: formattedDate,
-        note: note.trim() || undefined,
-      });
-      
-      // Clear cart and close drawer
-      clearCart();
-      setOpen(false);
-      resetForm();
-      
-      toast.success("Redirecting to Shopify checkout...", {
-        description: "Complete payment, then return to confirm your meetup.",
-      });
-
-      // Open Shopify checkout in new tab
-      window.open(checkoutUrl, '_blank');
-      
-      // Navigate to order complete page
-      navigate('/order-complete');
-      
-    } catch (error) {
-      console.error('Checkout failed:', error);
-      toast.error("Failed to create checkout. Please try again.");
-    } finally {
-      setIsCheckingOut(false);
+    // Build WhatsApp message
+    let message = `🛒 *NEW ORDER: ${orderNumber}*\n\n`;
+    message += `👤 Name: ${customerName.trim()}\n\n`;
+    message += `📦 *Products:*\n${productList}\n\n`;
+    message += `💰 *Total: EC$${totalPrice.toFixed(2)}*\n\n`;
+    message += `📍 Meetup Location: ${selectedLocation}\n`;
+    message += `📅 Preferred Date: ${formattedDate}\n`;
+    
+    if (note.trim()) {
+      message += `\n📝 Note: ${note.trim()}`;
     }
+
+    // Encode and open WhatsApp
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+
+    // Clear cart and close drawer
+    clearCart();
+    setOpen(false);
+    resetForm();
+
+    toast.success(`Order ${orderNumber} created!`, {
+      description: "Opening WhatsApp to confirm your order...",
+      position: "top-center",
+    });
+
+    // Auto-open WhatsApp
+    window.open(whatsappUrl, '_blank');
   };
 
   return (
@@ -488,33 +473,13 @@ export function CartDrawer() {
                 )}
                 
                 <Button
-                  onClick={handleCheckout}
-                  className="w-full gap-2"
+                  onClick={handleConfirmOrder}
+                  className="w-full"
                   size="lg"
-                  disabled={!isFormComplete || isCheckingOut}
+                  disabled={!isFormComplete}
                 >
-                  {isCheckingOut ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Creating Checkout...
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="h-5 w-5" />
-                      Checkout with Shopify
-                    </>
-                  )}
-                </Button>
-                
-                <Button
-                  onClick={() => setStep('cart')}
-                  variant="ghost"
-                  className="w-full gap-2"
-                  size="sm"
-                  disabled={isCheckingOut}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Cart
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Confirm Order via WhatsApp
                 </Button>
               </div>
             </>
