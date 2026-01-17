@@ -88,6 +88,7 @@ export function CartDrawer() {
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [note, setNote] = useState('');
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [depositAcknowledged, setDepositAcknowledged] = useState(false);
   
   const {
@@ -386,7 +387,7 @@ export function CartDrawer() {
 
                   {/* Preferred Date */}
                   <ChecklistItem completed={isDateValid} label="Preferred Meetup Date">
-                    <Popover>
+                    <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -403,7 +404,10 @@ export function CartDrawer() {
                         <CalendarComponent
                           mode="single"
                           selected={selectedDate}
-                          onSelect={setSelectedDate}
+                          onSelect={(date) => {
+                            setSelectedDate(date);
+                            setCalendarOpen(false);
+                          }}
                           disabled={(date) => date < tomorrow}
                           initialFocus
                           className="p-3 pointer-events-auto"
