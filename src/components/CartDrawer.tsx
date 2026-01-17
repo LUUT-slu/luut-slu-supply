@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
 import { 
   ShoppingBag, 
   Minus, 
@@ -133,95 +132,46 @@ export function CartDrawer() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const handleConfirmOrder = async () => {
+  const handleConfirmOrder = () => {
     if (!isFormComplete || !selectedDate) return;
 
+    const orderNumber = generateOrderNumber();
     const formattedDate = format(selectedDate, 'EEEE, MMMM d, yyyy');
-    const isoDate = format(selectedDate, 'yyyy-MM-dd');
     
-    // Build line items for the edge function
-    const lineItems = items.map(item => ({
-      variant_id: item.variantId,
-      product_id: item.product.node.id,
-      quantity: item.quantity,
-      title: item.product.node.title,
-      price: item.price.amount,
-    }));
+    // Build product list
+    const productList = items.map(item => {
+      const itemTotal = (parseFloat(item.price.amount) * item.quantity).toFixed(2);
+      return `• ${item.product.node.title}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — EC$${itemTotal}`;
+    }).join('\n');
 
-    // Show loading state
-    toast.loading("Creating your order...", { id: "order-creation" });
-
-    try {
-      // Call edge function to create order in database and Shopify
-      const { data, error } = await supabase.functions.invoke('create-order', {
-        body: {
-          customerName: customerName.trim(),
-          location: selectedLocation,
-          preferredDate: isoDate,
-          note: note.trim() || undefined,
-          lineItems,
-          totalPrice,
-        },
-      });
-
-      if (error) {
-        console.error("Order creation error:", error);
-        toast.error("Failed to create order", { 
-          id: "order-creation",
-          description: "Please try again or contact support.",
-        });
-        return;
-      }
-
-      const orderNumber = data?.order?.name || generateOrderNumber();
-      const shopifyOrderName = data?.shopifyOrderName;
-
-      // Build product list for WhatsApp
-      const productList = items.map(item => {
-        const itemTotal = (parseFloat(item.price.amount) * item.quantity).toFixed(2);
-        return `• ${item.product.node.title}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — EC$${itemTotal}`;
-      }).join('\n');
-
-      // Build WhatsApp message
-      let message = `🛒 *NEW ORDER: ${orderNumber}*\n`;
-      if (shopifyOrderName) {
-        message += `📋 Shopify: ${shopifyOrderName}\n`;
-      }
-      message += `\n👤 Name: ${customerName.trim()}\n\n`;
-      message += `📦 *Products:*\n${productList}\n\n`;
-      message += `💰 *Total: EC$${totalPrice.toFixed(2)}*\n\n`;
-      message += `📍 Meetup Location: ${selectedLocation}\n`;
-      message += `📅 Preferred Date: ${formattedDate}\n`;
-      
-      if (note.trim()) {
-        message += `\n📝 Note: ${note.trim()}`;
-      }
-
-      // Encode and open WhatsApp
-      const encodedMessage = encodeURIComponent(message);
-      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
-
-      // Clear cart and close drawer
-      clearCart();
-      setOpen(false);
-      resetForm();
-
-      toast.success(`Order ${orderNumber} created!`, {
-        id: "order-creation",
-        description: shopifyOrderName 
-          ? `Shopify order ${shopifyOrderName} created. Opening WhatsApp...`
-          : "Opening WhatsApp to confirm your order...",
-      });
-
-      // Auto-open WhatsApp
-      window.open(whatsappUrl, '_blank');
-    } catch (err) {
-      console.error("Order submission error:", err);
-      toast.error("Something went wrong", { 
-        id: "order-creation",
-        description: "Please try again.",
-      });
+    // Build WhatsApp message
+    let message = `🛒 *NEW ORDER: ${orderNumber}*\n\n`;
+    message += `👤 Name: ${customerName.trim()}\n\n`;
+    message += `📦 *Products:*\n${productList}\n\n`;
+    message += `💰 *Total: EC$${totalPrice.toFixed(2)}*\n\n`;
+    message += `📍 Meetup Location: ${selectedLocation}\n`;
+    message += `📅 Preferred Date: ${formattedDate}\n`;
+    
+    if (note.trim()) {
+      message += `\n📝 Note: ${note.trim()}`;
     }
+
+    // Encode and open WhatsApp
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+
+    // Clear cart and close drawer
+    clearCart();
+    setOpen(false);
+    resetForm();
+
+    toast.success(`Order ${orderNumber} created!`, {
+      description: "Opening WhatsApp to confirm your order...",
+      position: "top-center",
+    });
+
+    // Auto-open WhatsApp
+    window.open(whatsappUrl, '_blank');
   };
 
   return (
