@@ -24,9 +24,12 @@ const categoryMap: Record<string, { title: string; query: string }> = {
 
 export default function ShopCategory() {
   const { category } = useParams<{ category: string }>();
-  const cat = category ? categoryMap[category] : null;
+  
+  // Handle "all" category - show all products
+  const isAllProducts = category === "all";
+  const cat = category && !isAllProducts ? categoryMap[category] : null;
 
-  if (!cat) {
+  if (!cat && !isAllProducts) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
@@ -38,6 +41,11 @@ export default function ShopCategory() {
     );
   }
 
+  const title = isAllProducts ? "ALL PRODUCTS" : cat!.title;
+  const description = isAllProducts 
+    ? "Browse our complete collection from local vendors" 
+    : `Shop ${cat!.title.toLowerCase()} from local vendors`;
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -46,16 +54,16 @@ export default function ShopCategory() {
         <section className="border-b border-border bg-card px-4 py-8 md:py-12">
           <div className="container">
             <BackButton />
-            <h1 className="font-display text-3xl md:text-5xl">{cat.title}</h1>
+            <h1 className="font-display text-3xl md:text-5xl">{title}</h1>
             <p className="mt-2 font-body text-muted-foreground">
-              Shop {cat.title.toLowerCase()} from local vendors
+              {description}
             </p>
           </div>
         </section>
 
         <section className="py-8 md:py-12">
           <div className="container">
-            <ProductGrid query={cat.query} limit={50} />
+            <ProductGrid query={isAllProducts ? undefined : cat!.query} limit={100} />
           </div>
         </section>
       </main>

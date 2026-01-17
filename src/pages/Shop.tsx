@@ -99,8 +99,32 @@ export default function Shop() {
           </div>
         </section>
 
+        {/* All Products Link */}
+        <section className="px-4 pt-8 md:pt-12">
+          <div className="container">
+            <Link
+              to="/shop/all"
+              className="group relative block w-full overflow-hidden rounded-lg bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 ring-1 ring-primary/30 transition-all duration-300 hover:ring-2 hover:ring-primary hover:shadow-lg hover:shadow-primary/20 animate-fade-in"
+            >
+              <div className="flex items-center justify-center gap-3 px-6 py-5 md:py-6">
+                <span className="font-display text-lg tracking-wider text-foreground transition-colors group-hover:text-primary md:text-xl">
+                  VIEW ALL PRODUCTS
+                </span>
+                <svg 
+                  className="h-5 w-5 text-primary transition-transform duration-300 group-hover:translate-x-1" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </div>
+            </Link>
+          </div>
+        </section>
+
         {/* Visual Grid Gallery */}
-        <section className="px-4 py-8 md:py-12">
+        <section className="px-4 py-6 md:py-8">
           <div className="container">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 md:gap-4">
               {fitCategories.map((category, index) => (
