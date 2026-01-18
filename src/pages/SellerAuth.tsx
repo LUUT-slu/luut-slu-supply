@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Store, Eye, EyeOff, ArrowLeft, Mail, KeyRound } from "lucide-react";
+import { Store, Eye, EyeOff, ArrowLeft, Mail, KeyRound, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -29,29 +29,44 @@ export default function SellerAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setTimeout(() => {
-          checkSellerProfile(session.user.id);
+          checkUserRoleAndRedirect(session.user.id);
         }, 0);
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        checkSellerProfile(session.user.id);
+        checkUserRoleAndRedirect(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const checkSellerProfile = async (userId: string) => {
-    const { data } = await supabase
+  const checkUserRoleAndRedirect = async (userId: string) => {
+    // Check for partner role first
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+
+    const isPartner = roles?.some(r => (r.role as string) === "partner");
+    
+    if (isPartner) {
+      navigate("/partner");
+      return;
+    }
+
+    // Check for seller profile
+    const { data: sellerProfile } = await supabase
       .from("seller_profiles")
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
     
-    if (data) {
+    if (sellerProfile) {
       navigate("/seller-dashboard");
+      return;
     }
   };
 
@@ -60,7 +75,7 @@ export default function SellerAuth() {
       emailSchema.parse(email);
       passwordSchema.parse(password);
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -72,6 +87,22 @@ export default function SellerAuth() {
           toast.error(error.message);
         }
         return;
+      }
+
+      // Check user role and redirect accordingly
+      if (data.user) {
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id);
+
+        const isPartner = roles?.some(r => (r.role as string) === "partner");
+        
+        if (isPartner) {
+          toast.success("Welcome back, Partner!");
+          navigate("/partner");
+          return;
+        }
       }
 
       toast.success("Welcome back!");
@@ -236,7 +267,7 @@ export default function SellerAuth() {
               <Store className="h-6 w-6 text-primary" />
             </div>
             <CardTitle>
-              {mode === "login" && "Seller Portal"}
+              {mode === "login" && "Seller & Partner Portal"}
               {mode === "signup" && "Create Seller Account"}
               {mode === "forgot-password" && "Reset Password"}
               {mode === "seller-id-login" && "Login with Seller ID"}
@@ -247,6 +278,12 @@ export default function SellerAuth() {
               {mode === "forgot-password" && "Enter your email to receive a reset link"}
               {mode === "seller-id-login" && "Use your unique Seller ID to sign in"}
             </CardDescription>
+            {mode === "login" && (
+              <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><Store className="h-3 w-3" /> Sellers</span>
+                <span className="flex items-center gap-1"><Truck className="h-3 w-3" /> Partners</span>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
