@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
+// Primary admin email that auto-approves as primary seller
+export const PRIMARY_ADMIN_EMAIL = "usual.suspect.118@gmail.com";
+
 interface SellerApprovalStatus {
   isLoading: boolean;
   isApproved: boolean;
@@ -10,6 +13,7 @@ interface SellerApprovalStatus {
   isBanned: boolean;
   sellerStatus: string | null;
   isPrimarySeller: boolean;
+  isAdmin: boolean;
 }
 
 export function useSellerApproval(user: User | null): SellerApprovalStatus {
@@ -21,6 +25,7 @@ export function useSellerApproval(user: User | null): SellerApprovalStatus {
     isBanned: false,
     sellerStatus: null,
     isPrimarySeller: false,
+    isAdmin: false,
   });
 
   useEffect(() => {
@@ -33,13 +38,39 @@ export function useSellerApproval(user: User | null): SellerApprovalStatus {
         isBanned: false,
         sellerStatus: null,
         isPrimarySeller: false,
+        isAdmin: false,
       });
       return;
     }
 
     const checkApprovalStatus = async () => {
       try {
-        // Check seller profile
+        // Check if user is admin - admins bypass all approval requirements
+        const { data: adminRole } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        const isAdmin = !!adminRole || user.email === PRIMARY_ADMIN_EMAIL;
+
+        // Admins are automatically approved with full access
+        if (isAdmin) {
+          setStatus({
+            isLoading: false,
+            isApproved: true,
+            isPending: false,
+            isRejected: false,
+            isBanned: false,
+            sellerStatus: "approved",
+            isPrimarySeller: user.email === PRIMARY_ADMIN_EMAIL,
+            isAdmin: true,
+          });
+          return;
+        }
+
+        // Check seller profile for non-admins
         const { data: profile } = await supabase
           .from("seller_profiles")
           .select("seller_status, is_approved, is_primary_seller")
@@ -56,6 +87,7 @@ export function useSellerApproval(user: User | null): SellerApprovalStatus {
             isBanned: sellerStatus === "banned",
             sellerStatus,
             isPrimarySeller: profile.is_primary_seller || false,
+            isAdmin: false,
           });
           return;
         }
@@ -78,6 +110,7 @@ export function useSellerApproval(user: User | null): SellerApprovalStatus {
             isBanned: application.status === "banned",
             sellerStatus: application.status,
             isPrimarySeller: false,
+            isAdmin: false,
           });
           return;
         }
@@ -91,6 +124,7 @@ export function useSellerApproval(user: User | null): SellerApprovalStatus {
           isBanned: false,
           sellerStatus: null,
           isPrimarySeller: false,
+          isAdmin: false,
         });
       } catch (error) {
         console.error("Error checking seller approval:", error);
@@ -102,6 +136,7 @@ export function useSellerApproval(user: User | null): SellerApprovalStatus {
           isBanned: false,
           sellerStatus: null,
           isPrimarySeller: false,
+          isAdmin: false,
         });
       }
     };
@@ -111,9 +146,6 @@ export function useSellerApproval(user: User | null): SellerApprovalStatus {
 
   return status;
 }
-
-// Primary admin email that auto-approves as primary seller
-export const PRIMARY_ADMIN_EMAIL = "usual.suspect.118@gmail.com";
 
 export async function ensurePrimarySellerSetup(userId: string, email: string) {
   if (email !== PRIMARY_ADMIN_EMAIL) return;
