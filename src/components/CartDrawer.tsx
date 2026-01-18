@@ -45,7 +45,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort"];
-const WHATSAPP_NUMBER = "17587185478";
+const WHATSAPP_NUMBER = "7587185478";
 
 interface ChecklistItemProps {
   completed: boolean;
