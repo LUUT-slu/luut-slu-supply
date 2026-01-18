@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,45 +8,100 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Shield } from "lucide-react";
 
+const ADMIN_EMAIL = "usual.suspect.118@gmail.com";
+
 export default function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSignup, setIsSignup] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  useEffect(() => {
+    // Check if already logged in as admin
+    const checkSession = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        
+        if (roles?.some(r => r.role === "admin")) {
+          navigate("/admin-orders");
+        }
+      }
+    };
+    checkSession();
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      toast.error(error.message);
-      setLoading(false);
-      return;
-    }
-
-    if (data.user) {
-      // Check if user has admin role
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.user.id);
-
-      const isAdmin = roles?.some(r => r.role === "admin");
-
-      if (!isAdmin) {
-        await supabase.auth.signOut();
-        toast.error("Access denied. Admin credentials required.");
+    if (isSignup) {
+      // Check if email is the authorized admin email
+      if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+        toast.error("This email is not authorized for admin access");
         setLoading(false);
         return;
       }
 
-      toast.success("Welcome, Admin");
-      navigate("/admin-orders");
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast.error(error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        // Add admin role
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({ user_id: data.user.id, role: "admin" });
+
+        if (roleError) {
+          console.error("Failed to assign admin role:", roleError);
+          toast.error("Account created but role assignment failed. Contact support.");
+        } else {
+          toast.success("Admin account created! Redirecting...");
+          navigate("/admin-orders");
+        }
+      }
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast.error(error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id);
+
+        const isAdmin = roles?.some(r => r.role === "admin");
+
+        if (!isAdmin) {
+          await supabase.auth.signOut();
+          toast.error("Access denied. Admin credentials required.");
+          setLoading(false);
+          return;
+        }
+
+        toast.success("Welcome, Admin");
+        navigate("/admin-orders");
+      }
     }
 
     setLoading(false);
@@ -62,7 +117,7 @@ export default function AdminLogin() {
           <CardTitle className="font-display text-xl">Admin Portal</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -89,13 +144,22 @@ export default function AdminLogin() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  {isSignup ? "Creating..." : "Signing in..."}
                 </>
               ) : (
-                "Sign In"
+                isSignup ? "Create Admin Account" : "Sign In"
               )}
             </Button>
           </form>
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setIsSignup(!isSignup)}
+              className="text-sm text-muted-foreground hover:text-primary"
+            >
+              {isSignup ? "Already have an account? Sign in" : "First time? Create admin account"}
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>
