@@ -25,26 +25,30 @@ interface DraftOrderRequest {
   totalPrice: number;
 }
 
-const SHOPIFY_STORE_DOMAIN = "lovable-project-yf43m.myshopify.com";
-const SHOPIFY_API_VERSION = "2025-01";
 const WHATSAPP_NUMBER = "17587185478";
 
 // Format WhatsApp message for merchant notification
-function formatMerchantMessage(draftOrder: any, orderNumber: string, preferredDate: string, location: string, note?: string): string {
-  const itemsList = draftOrder.line_items.map((item: any) => 
+function formatMerchantMessage(order: any, action: "NEW" | "CANCELLED" | "UPDATED"): string {
+  const orderNumber = `#L${String(order.order_number).padStart(4, '0')}`;
+  
+  const itemsList = order.line_items.map((item: LineItem) => 
     `• ${item.title} x${item.quantity} — EC$${parseFloat(item.price).toFixed(2)}`
   ).join('\n');
 
-  let message = `🆕 *NEW ORDER ${orderNumber}*\n\n`;
-  message += `👤 Name: ${draftOrder.customer?.first_name || 'Customer'}\n`;
-  message += `📱 Phone: ${draftOrder.customer?.phone || draftOrder.note?.match(/Phone: ([^\n]+)/)?.[1] || 'Not provided'}\n`;
-  message += `📍 Location: ${location}\n`;
-  message += `📅 Date: ${preferredDate}\n\n`;
+  let emoji = action === "NEW" ? "🆕" : action === "CANCELLED" ? "❌" : "📝";
+  let prefix = action === "NEW" ? "NEW ORDER" : action === "CANCELLED" ? "ORDER CANCELLED" : "ORDER UPDATED";
+
+  let message = `${emoji} *${prefix} ${orderNumber}*\n\n`;
+  message += `👤 Name: ${order.customer_name}\n`;
+  message += `📱 Phone: ${order.customer_phone || 'Not provided'}\n`;
+  message += `📍 Location: ${order.location}\n`;
+  message += `📅 Date: ${order.preferred_date}\n\n`;
   message += `📦 *Items:*\n${itemsList}\n\n`;
-  message += `💰 *Total: EC$${parseFloat(draftOrder.total_price).toFixed(2)}*`;
+  message += `💰 *Total: EC$${parseFloat(order.total_price).toFixed(2)}*`;
+  message += `\n\n💳 Payment: Pay on pickup`;
   
-  if (note) {
-    message += `\n\n📝 Note: ${note}`;
+  if (order.note) {
+    message += `\n\n📝 Note: ${order.note}`;
   }
 
   return message;
@@ -57,14 +61,9 @@ serve(async (req) => {
   }
 
   try {
-    const shopifyAccessToken = Deno.env.get("SHOPIFY_ACCESS_TOKEN");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    if (!shopifyAccessToken) {
-      throw new Error("Missing Shopify access token");
-    }
-
     if (!supabaseUrl || !supabaseKey) {
       throw new Error("Missing Supabase configuration");
     }
@@ -82,67 +81,10 @@ serve(async (req) => {
       );
     }
 
-    console.log("Creating draft order for:", customerName, "phone:", customerPhone);
+    console.log("Creating order for:", customerName, "phone:", customerPhone, "at", location);
 
-    // Build the note for Shopify
-    let shopifyNote = `📍 Pickup Location: ${location}\n📅 Preferred Date: ${preferredDate}\n👤 Customer: ${customerName}\n📱 Phone: ${customerPhone}`;
-    if (note) {
-      shopifyNote += `\n📝 Note: ${note}`;
-    }
-    shopifyNote += `\n\n💳 Payment: Pay on pickup`;
-
-    // Convert line items to Shopify format
-    const shopifyLineItems = lineItems.map(item => {
-      // Extract numeric variant ID from global ID (gid://shopify/ProductVariant/123456)
-      const variantIdMatch = item.variant_id.match(/\/(\d+)$/);
-      const variantId = variantIdMatch ? variantIdMatch[1] : item.variant_id;
-      
-      return {
-        variant_id: parseInt(variantId),
-        quantity: item.quantity,
-      };
-    });
-
-    // Create draft order via Shopify Admin API
-    const shopifyUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders.json`;
-    
-    const draftOrderPayload = {
-      draft_order: {
-        line_items: shopifyLineItems,
-        note: shopifyNote,
-        customer: {
-          first_name: customerName.split(' ')[0],
-          last_name: customerName.split(' ').slice(1).join(' ') || '',
-          phone: customerPhone,
-        },
-        use_customer_default_address: false,
-        tags: `pickup-${location.toLowerCase().replace(/\s+/g, '-')}, pending-pickup`,
-      }
-    };
-
-    console.log("Sending to Shopify:", JSON.stringify(draftOrderPayload, null, 2));
-
-    const shopifyResponse = await fetch(shopifyUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": shopifyAccessToken,
-      },
-      body: JSON.stringify(draftOrderPayload),
-    });
-
-    const shopifyData = await shopifyResponse.json();
-
-    if (!shopifyResponse.ok) {
-      console.error("Shopify API error:", shopifyData);
-      throw new Error(shopifyData.errors ? JSON.stringify(shopifyData.errors) : "Failed to create draft order");
-    }
-
-    const draftOrder = shopifyData.draft_order;
-    console.log("Draft order created:", draftOrder.id, draftOrder.name);
-
-    // Also save to our local orders table for My Orders tracking
-    const { data: localOrder, error: insertError } = await supabase
+    // Insert order into database
+    const { data: order, error: insertError } = await supabase
       .from("orders")
       .insert({
         customer_name: customerName,
@@ -160,29 +102,36 @@ serve(async (req) => {
 
     if (insertError) {
       console.error("Database error:", insertError);
-      // Don't fail the whole request if local save fails - draft order was created in Shopify
+      throw new Error(`Failed to create order: ${insertError.message}`);
     }
 
+    console.log("Order created:", order);
+
+    // Format order number as #L0001, #L0002, etc.
+    const formattedOrderNumber = `#L${String(order.order_number).padStart(4, '0')}`;
+
     // Generate WhatsApp URL for merchant notification
-    const merchantMessage = formatMerchantMessage(draftOrder, draftOrder.name, preferredDate, location, note);
+    const merchantMessage = formatMerchantMessage(order, "NEW");
     const merchantWhatsAppUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(merchantMessage)}`;
 
-    // Return success response
+    console.log("Order token:", order.order_token);
+
+    // Return order confirmation with format matching what CartDrawer expects
     return new Response(
       JSON.stringify({
         success: true,
+        // For compatibility with CartDrawer expecting draftOrder
         draftOrder: {
-          id: draftOrder.id,
-          name: draftOrder.name,
-          status: draftOrder.status,
-          totalPrice: draftOrder.total_price,
-          currency: draftOrder.currency,
-          createdAt: draftOrder.created_at,
-          invoiceUrl: draftOrder.invoice_url,
-          lineItems: draftOrder.line_items,
+          id: order.id,
+          name: formattedOrderNumber,
+          status: order.status,
+          totalPrice: order.total_price.toString(),
+          currency: order.currency_code,
+          createdAt: order.created_at,
+          lineItems: order.line_items,
         },
-        localOrderId: localOrder?.id,
-        localOrderToken: localOrder?.order_token,
+        localOrderId: order.id,
+        localOrderToken: order.order_token,
         merchantWhatsAppUrl,
         customerMessage: merchantMessage,
       }),
@@ -191,10 +140,10 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error creating draft order:", error);
+    console.error("Error creating order:", error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Failed to create draft order" 
+        error: error instanceof Error ? error.message : "Failed to create order" 
       }),
       {
         status: 500,
