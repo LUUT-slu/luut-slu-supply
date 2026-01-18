@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -108,6 +108,7 @@ export function CartDrawer() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [depositAcknowledged, setDepositAcknowledged] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   
   const {
     items,
@@ -122,6 +123,40 @@ export function CartDrawer() {
 
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
+
+  // Auto-fill customer info from profile when proceeding to checkout
+  useEffect(() => {
+    const loadCustomerProfile = async () => {
+      if (step !== 'builder' || profileLoaded) return;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('customer_profiles')
+        .select('full_name, phone, preferred_location, meetup_notes')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profile) {
+        if (profile.full_name && !customerName) {
+          setCustomerName(profile.full_name);
+        }
+        if (profile.phone && !customerPhone) {
+          setCustomerPhone(profile.phone);
+        }
+        if (profile.preferred_location && !selectedLocation && MEETUP_LOCATIONS.includes(profile.preferred_location)) {
+          setSelectedLocation(profile.preferred_location);
+        }
+        if (profile.meetup_notes && !note) {
+          setNote(profile.meetup_notes);
+        }
+        setProfileLoaded(true);
+      }
+    };
+
+    loadCustomerProfile();
+  }, [step, profileLoaded, customerName, customerPhone, selectedLocation, note]);
 
   // Validation checks
   const isNameValid = customerName.trim().length >= 2;
@@ -140,6 +175,7 @@ export function CartDrawer() {
     setNote('');
     setDepositAcknowledged(false);
     setIsSubmitting(false);
+    setProfileLoaded(false);
   };
 
   const handleOpenChange = (open: boolean) => {
