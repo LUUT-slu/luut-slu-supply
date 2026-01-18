@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   MessageSquare,
   ChevronRight,
+  Home,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -308,6 +309,9 @@ export default function PartnerPortal() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button onClick={() => navigate("/")} variant="ghost" size="icon" className="h-9 w-9">
+              <Home className="h-4 w-4" />
+            </Button>
             <Button onClick={fetchOrders} variant="ghost" size="icon" className="h-9 w-9">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
