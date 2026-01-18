@@ -23,65 +23,97 @@ export default function SellerAuth() {
   const [sellerId, setSellerId] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true;
+
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user && isMounted) {
+        await checkUserRoleAndRedirect(session.user.id, session.user.email);
+      }
+      
+      if (isMounted) {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkSession();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        setTimeout(() => {
-          checkUserRoleAndRedirect(session.user.id);
-        }, 0);
+      // Only handle SIGNED_IN event to avoid duplicate redirects
+      if (event === "SIGNED_IN" && session?.user && isMounted) {
+        checkUserRoleAndRedirect(session.user.id, session.user.email);
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        checkUserRoleAndRedirect(session.user.id);
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+  const checkUserRoleAndRedirect = async (userId: string, userEmail?: string | null) => {
+    try {
+      // Check for user roles
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+
+      // Check if admin - redirect to admin hub
+      const isAdmin = roles?.some(r => (r.role as string) === "admin");
+      if (isAdmin) {
+        navigate("/admin-hub", { replace: true });
+        return;
       }
-    });
 
-    return () => subscription.unsubscribe();
-  }, []);
+      // Check for partner role
+      const isPartner = roles?.some(r => (r.role as string) === "partner");
+      if (isPartner) {
+        navigate("/partner", { replace: true });
+        return;
+      }
 
-  const checkUserRoleAndRedirect = async (userId: string) => {
-    // Check for user roles
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
+      // Check for seller profile
+      const { data: sellerProfile } = await supabase
+        .from("seller_profiles")
+        .select("seller_status, is_approved")
+        .eq("user_id", userId)
+        .maybeSingle();
+      
+      if (sellerProfile) {
+        navigate("/seller-dashboard", { replace: true });
+        return;
+      }
 
-    // Check if admin - redirect to admin hub
-    const isAdmin = roles?.some(r => (r.role as string) === "admin");
-    if (isAdmin) {
-      navigate("/admin-hub");
-      return;
-    }
-
-    // Check for partner role
-    const isPartner = roles?.some(r => (r.role as string) === "partner");
-    if (isPartner) {
-      navigate("/partner");
-      return;
-    }
-
-    // Check for seller profile
-    const { data: sellerProfile } = await supabase
-      .from("seller_profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle();
-    
-    if (sellerProfile) {
-      navigate("/seller-dashboard");
-      return;
+      // No specific role - stay on auth page (they might need to sign up as seller)
+    } catch (error) {
+      console.error("Error checking user role:", error);
     }
   };
+
+  // Show loading while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleEmailLogin = async () => {
     try {
       emailSchema.parse(email);
       passwordSchema.parse(password);
 
+      setIsLoading(true);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -107,20 +139,34 @@ export default function SellerAuth() {
         const isAdmin = roles?.some(r => (r.role as string) === "admin");
         if (isAdmin) {
           toast.success("Welcome back, Admin!");
-          navigate("/admin-hub");
+          navigate("/admin-hub", { replace: true });
           return;
         }
 
         const isPartner = roles?.some(r => (r.role as string) === "partner");
         if (isPartner) {
           toast.success("Welcome back, Partner!");
-          navigate("/partner");
+          navigate("/partner", { replace: true });
           return;
         }
-      }
 
-      toast.success("Welcome back!");
-      navigate("/seller-dashboard");
+        // Check for seller profile
+        const { data: sellerProfile } = await supabase
+          .from("seller_profiles")
+          .select("id")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+
+        if (sellerProfile) {
+          toast.success("Welcome back!");
+          navigate("/seller-dashboard", { replace: true });
+          return;
+        }
+
+        // No seller profile - they need to apply
+        toast.success("Logged in! Please apply to become a seller.");
+        navigate("/register-seller", { replace: true });
+      }
     } catch (err) {
       if (err instanceof z.ZodError) {
         toast.error(err.errors[0].message);
