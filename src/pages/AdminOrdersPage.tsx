@@ -218,7 +218,8 @@ export default function AdminOrdersPage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/admin-login");
+    toast.success("Logged out successfully");
+    navigate("/", { replace: true });
   };
 
   const toggleSelectOrder = (orderId: string) => {
