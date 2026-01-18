@@ -145,7 +145,7 @@ serve(async (req) => {
               phone: customerPhone,
             },
             use_customer_default_address: false,
-            tags: `pickup-${location.toLowerCase().replace(/\s+/g, '-')}, pending-pickup, local-order-${localOrder.id}`,
+            tags: `pickup-${location.toLowerCase().replace(/\s+/g, '-').slice(0, 25)}, pending-pickup`,
           }
         };
 
