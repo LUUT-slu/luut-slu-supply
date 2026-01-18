@@ -105,15 +105,18 @@ export default function AdminHome() {
 
   if (!isAdmin) return null;
 
-  const adminModules = [
+  const statsChips = [
+    { label: "Orders", count: stats.totalOrders, icon: Package, color: "text-muted-foreground" },
+    { label: "Pending", count: stats.pendingOrders, icon: ClipboardList, color: "text-blue-500" },
+    { label: "Requests", count: stats.pendingSellerRequests, icon: UserCheck, color: "text-yellow-500" },
+    { label: "Sellers", count: stats.activeSellers, icon: Store, color: "text-green-500" },
+  ];
+
+  const actionCards = [
     {
       title: "Manage Sellers",
-      description: "Approve applications & manage seller profiles",
+      description: "Approve applications & manage profiles",
       icon: Users,
-      href: "/admin/approvals",
-      stat: stats.pendingSellerRequests > 0 
-        ? `${stats.pendingSellerRequests} pending` 
-        : `${stats.activeSellers} active`,
       color: "text-green-500",
       bgColor: "bg-green-500/10",
       highlight: stats.pendingSellerRequests > 0,
@@ -127,7 +130,6 @@ export default function AdminHome() {
       description: "Assign orders to delivery partners",
       icon: ClipboardList,
       href: "/admin-orders",
-      stat: stats.pendingOrders > 0 ? `${stats.pendingOrders} pending` : "All assigned",
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
       highlight: stats.pendingOrders > 0,
@@ -137,18 +139,8 @@ export default function AdminHome() {
       description: "Browse complete order history",
       icon: Package,
       href: "/admin/orders",
-      stat: `${stats.totalOrders} total`,
       color: "text-purple-500",
       bgColor: "bg-purple-500/10",
-    },
-    {
-      title: "Switch to Seller View",
-      description: "Access your own seller dashboard",
-      icon: TrendingUp,
-      href: "/seller",
-      stat: "View sales",
-      color: "text-primary",
-      bgColor: "bg-primary/10",
     },
   ];
 
@@ -156,105 +148,69 @@ export default function AdminHome() {
     <div className="flex min-h-screen flex-col bg-background">
       {/* Custom Admin Header */}
       <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between md:h-20">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="font-display text-2xl tracking-wide md:text-3xl text-primary">
-              Home
-            </Link>
-            <Button onClick={handleLogout} variant="destructive" size="sm" className="gap-2">
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </Button>
-          </div>
+        <div className="container flex h-14 items-center justify-between">
+          <Link to="/" className="font-display text-xl tracking-wide text-primary">
+            Home
+          </Link>
+          <Button onClick={handleLogout} variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-destructive">
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">Logout</span>
+          </Button>
         </div>
       </header>
 
-      <main className="container flex-1 py-8">
-        <BackButton to="/" label="Back" />
-        {/* Page Title */}
-        <div className="mb-8 flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-            <ShieldCheck className="h-7 w-7 text-primary" />
-          </div>
-          <div>
-            <h1 className="font-display text-2xl md:text-3xl">Admin Home</h1>
-            <p className="text-sm text-muted-foreground">
-              Central control panel for Luut SLU
-            </p>
-          </div>
+      <main className="container flex-1 py-4 md:py-6">
+        {/* Page Title - Compact */}
+        <div className="mb-4">
+          <h1 className="font-display text-xl md:text-2xl">Admin Control Panel</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Approve sellers, assign orders, track drops.
+          </p>
         </div>
 
-        {/* Quick Stats */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loading ? "..." : stats.totalOrders}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
-              <ClipboardList className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loading ? "..." : stats.pendingOrders}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Seller Requests</CardTitle>
-              <UserCheck className="h-4 w-4 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loading ? "..." : stats.pendingSellerRequests}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Active Sellers</CardTitle>
-              <Store className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loading ? "..." : stats.activeSellers}</div>
-            </CardContent>
-          </Card>
+        {/* Compact Stats Bar - 2x2 Grid */}
+        <div className="mb-5 grid grid-cols-2 gap-2">
+          {statsChips.map((chip) => (
+            <div
+              key={chip.label}
+              className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-card/50 px-3 py-2.5 h-14"
+            >
+              <chip.icon className={`h-4 w-4 ${chip.color} shrink-0`} />
+              <div className="flex items-baseline gap-1.5 min-w-0">
+                <span className="text-xs text-muted-foreground truncate">{chip.label}</span>
+                <span className="font-semibold text-sm">{loading ? "..." : chip.count}</span>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Admin Modules */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {adminModules.map((module) => (
+        {/* Action Cards */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {actionCards.map((card) => (
             <Card
-              key={module.title}
-              className={`transition-all hover:border-primary/50 hover:shadow-md ${
-                module.highlight ? "border-yellow-500/50 bg-yellow-500/5" : ""
+              key={card.title}
+              className={`transition-all hover:border-primary/50 ${
+                card.highlight ? "border-yellow-500/50 bg-yellow-500/5" : ""
               }`}
             >
-              <CardHeader className="flex flex-row items-start gap-4">
-                <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${module.bgColor}`}>
-                  <module.icon className={`h-6 w-6 ${module.color}`} />
+              <CardHeader className="flex flex-row items-start gap-3 pb-2 pt-4 px-4">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${card.bgColor} shrink-0`}>
+                  <card.icon className={`h-5 w-5 ${card.color}`} />
                 </div>
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{module.title}</CardTitle>
-                  <CardDescription className="mt-1">{module.description}</CardDescription>
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-base">{card.title}</CardTitle>
+                  <CardDescription className="text-xs mt-0.5 line-clamp-1">{card.description}</CardDescription>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm font-medium ${module.highlight ? "text-yellow-600" : "text-muted-foreground"}`}>
-                    {module.stat}
-                  </span>
-                </div>
-                {module.subLinks ? (
+              <CardContent className="px-4 pb-4 pt-2">
+                {card.subLinks ? (
                   <div className="flex flex-wrap gap-2">
-                    {module.subLinks.map((link) => (
+                    {card.subLinks.map((link) => (
                       <Button
                         key={link.href}
                         variant="outline"
                         size="sm"
+                        className="text-xs h-8"
                         onClick={() => navigate(link.href)}
                       >
                         {link.label}
@@ -265,8 +221,8 @@ export default function AdminHome() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full"
-                    onClick={() => navigate(module.href)}
+                    className="w-full text-xs h-8"
+                    onClick={() => navigate(card.href!)}
                   >
                     Open →
                   </Button>
