@@ -32,6 +32,7 @@ import PartnerDashboard from "./pages/PartnerDashboard";
 import ManagePartners from "./pages/ManagePartners";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
 import AssignedOrdersPage from "./pages/AssignedOrdersPage";
+import AdminLogin from "./pages/AdminLogin";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
           <Route path="/admin/sellers" element={<AdminSellers />} />
           <Route path="/connect" element={<LuutConnectAdmin />} />
           <Route path="/partner" element={<AssignedOrdersPage />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/admin-orders" element={<AdminOrdersPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
