@@ -41,6 +41,7 @@ import {
   LogOut,
   Trash2,
   Home,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -312,6 +313,10 @@ export default function AdminOrdersPage() {
             <p className="text-sm text-muted-foreground">Assign partners and track all orders</p>
           </div>
           <div className="flex gap-2">
+            <Button onClick={() => navigate("/admin")} variant="outline" size="sm" className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Admin Hub</span>
+            </Button>
             <Button onClick={() => navigate("/")} variant="outline" size="sm" className="gap-2">
               <Home className="h-4 w-4" />
               <span className="hidden sm:inline">Home</span>
