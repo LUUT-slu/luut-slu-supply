@@ -188,7 +188,7 @@ export default function AdminSellers() {
         <main className="container flex-1 py-8">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <BackButton />
+              <BackButton to="/admin" label="Admin Hub" />
               <div>
                 <h1 className="font-display text-3xl">Verified Sellers</h1>
                 <p className="text-muted-foreground">Manage your trusted seller network</p>

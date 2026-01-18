@@ -298,7 +298,7 @@ export default function AdminSellerRequests() {
           {/* Header */}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <BackButton />
+              <BackButton to="/admin" label="Admin Hub" />
               <div>
                 <h1 className="font-display text-2xl md:text-3xl">Seller Requests</h1>
                 <p className="text-sm text-muted-foreground">
