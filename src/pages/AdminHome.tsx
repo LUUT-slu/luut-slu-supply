@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Footer } from "@/components/Footer";
+import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -170,6 +171,7 @@ export default function AdminHome() {
       </header>
 
       <main className="container flex-1 py-8">
+        <BackButton to="/" label="Back" />
         {/* Page Title */}
         <div className="mb-8 flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
