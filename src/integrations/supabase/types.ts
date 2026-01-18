@@ -76,55 +76,100 @@ export type Database = {
       }
       orders: {
         Row: {
+          assigned_partner_id: string | null
           cancelled_at: string | null
           created_at: string
           currency_code: string
           customer_name: string
           customer_phone: string | null
+          customer_user_id: string | null
           id: string
           line_items: Json
           location: string
           note: string | null
           order_number: number
           order_token: string | null
+          pickup_time_window: string | null
           preferred_date: string
           status: string
           total_price: number
           updated_at: string
         }
         Insert: {
+          assigned_partner_id?: string | null
           cancelled_at?: string | null
           created_at?: string
           currency_code?: string
           customer_name: string
           customer_phone?: string | null
+          customer_user_id?: string | null
           id?: string
           line_items: Json
           location: string
           note?: string | null
           order_number?: number
           order_token?: string | null
+          pickup_time_window?: string | null
           preferred_date: string
           status?: string
           total_price: number
           updated_at?: string
         }
         Update: {
+          assigned_partner_id?: string | null
           cancelled_at?: string | null
           created_at?: string
           currency_code?: string
           customer_name?: string
           customer_phone?: string | null
+          customer_user_id?: string | null
           id?: string
           line_items?: Json
           location?: string
           note?: string | null
           order_number?: number
           order_token?: string | null
+          pickup_time_window?: string | null
           preferred_date?: string
           status?: string
           total_price?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      partner_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          location: string | null
+          partner_name: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+          whatsapp: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          partner_name: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+          whatsapp?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          partner_name?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -290,6 +335,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_partner: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
