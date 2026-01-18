@@ -24,6 +24,7 @@ export default function SellerAuth() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [hasRedirected, setHasRedirected] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function SellerAuth() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (session?.user && isMounted) {
+      if (session?.user && isMounted && !hasRedirected) {
         await checkUserRoleAndRedirect(session.user.id, session.user.email);
       }
       
@@ -44,9 +45,13 @@ export default function SellerAuth() {
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Skip if already redirected to prevent flickering
+      if (hasRedirected) return;
+      
       // Only handle SIGNED_IN event to avoid duplicate redirects
       if (event === "SIGNED_IN" && session?.user && isMounted) {
-        checkUserRoleAndRedirect(session.user.id, session.user.email);
+        // Don't call checkUserRoleAndRedirect here - let handleEmailLogin handle it
+        // This prevents double redirect attempts
       }
     });
 
@@ -54,9 +59,11 @@ export default function SellerAuth() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, hasRedirected]);
 
   const checkUserRoleAndRedirect = async (userId: string, userEmail?: string | null) => {
+    if (hasRedirected) return;
+    
     try {
       // Check for user roles
       const { data: roles } = await supabase
@@ -64,9 +71,10 @@ export default function SellerAuth() {
         .select("role")
         .eq("user_id", userId);
 
-      // Check if admin - redirect to admin hub
+      // Check if admin - redirect ONLY to admin hub (they access everything from there)
       const isAdmin = roles?.some(r => (r.role as string) === "admin");
       if (isAdmin) {
+        setHasRedirected(true);
         navigate("/admin-hub", { replace: true });
         return;
       }
@@ -74,6 +82,7 @@ export default function SellerAuth() {
       // Check for partner role
       const isPartner = roles?.some(r => (r.role as string) === "partner");
       if (isPartner) {
+        setHasRedirected(true);
         navigate("/partner", { replace: true });
         return;
       }
@@ -86,6 +95,7 @@ export default function SellerAuth() {
         .maybeSingle();
       
       if (sellerProfile) {
+        setHasRedirected(true);
         navigate("/seller-dashboard", { replace: true });
         return;
       }
@@ -135,9 +145,10 @@ export default function SellerAuth() {
           .select("role")
           .eq("user_id", data.user.id);
 
-        // Check if admin - redirect to admin hub
+        // Check if admin - redirect ONLY to admin hub (single destination)
         const isAdmin = roles?.some(r => (r.role as string) === "admin");
         if (isAdmin) {
+          setHasRedirected(true);
           toast.success("Welcome back, Admin!");
           navigate("/admin-hub", { replace: true });
           return;
@@ -145,6 +156,7 @@ export default function SellerAuth() {
 
         const isPartner = roles?.some(r => (r.role as string) === "partner");
         if (isPartner) {
+          setHasRedirected(true);
           toast.success("Welcome back, Partner!");
           navigate("/partner", { replace: true });
           return;
@@ -158,12 +170,14 @@ export default function SellerAuth() {
           .maybeSingle();
 
         if (sellerProfile) {
+          setHasRedirected(true);
           toast.success("Welcome back!");
           navigate("/seller-dashboard", { replace: true });
           return;
         }
 
         // No seller profile - they need to apply
+        setHasRedirected(true);
         toast.success("Logged in! Please apply to become a seller.");
         navigate("/register-seller", { replace: true });
       }
