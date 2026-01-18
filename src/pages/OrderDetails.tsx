@@ -288,32 +288,27 @@ export default function OrderDetails() {
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
       
-      <main className="container flex-1 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <main className="container flex-1 py-8 px-4">
+        <div className="mb-6">
+          <div className="flex flex-wrap items-start gap-3">
             <BackButton />
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="font-display text-3xl">{formatOrderNumber(order.order_number)}</h1>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-2xl sm:text-3xl">{formatOrderNumber(order.order_number)}</h1>
                 <Badge variant="outline" className="gap-1">
                   <span className={`h-2 w-2 rounded-full ${statusConfig[order.status]?.bgColor}`} />
                   {statusConfig[order.status]?.label}
                 </Badge>
               </div>
-              <p className="text-muted-foreground">Placed on {formatDate(order.created_at)}</p>
+              <p className="text-sm text-muted-foreground">Placed on {formatDate(order.created_at)}</p>
             </div>
+            {canModifyOrder && orderToken && !isEditing && (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="shrink-0">
+                <Edit2 className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            )}
           </div>
-          
-          {canModifyOrder && orderToken && (
-            <div className="flex gap-2">
-              {!isEditing && (
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  Edit Details
-                </Button>
-              )}
-            </div>
-          )}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
