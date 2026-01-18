@@ -25,30 +25,29 @@ interface DraftOrderRequest {
   totalPrice: number;
 }
 
+const SHOPIFY_STORE_DOMAIN = "lovable-project-yf43m.myshopify.com";
+const SHOPIFY_API_VERSION = "2025-01";
 const WHATSAPP_NUMBER = "17587185478";
 
 // Format WhatsApp message for merchant notification
-function formatMerchantMessage(order: any, action: "NEW" | "CANCELLED" | "UPDATED"): string {
-  const orderNumber = `#L${String(order.order_number).padStart(4, '0')}`;
+function formatMerchantMessage(draftOrder: any, localOrder: any, preferredDate: string, location: string, note?: string): string {
+  const orderNumber = draftOrder?.name || `#L${String(localOrder.order_number).padStart(4, '0')}`;
   
-  const itemsList = order.line_items.map((item: LineItem) => 
+  const itemsList = (draftOrder?.line_items || localOrder.line_items).map((item: any) => 
     `• ${item.title} x${item.quantity} — EC$${parseFloat(item.price).toFixed(2)}`
   ).join('\n');
 
-  let emoji = action === "NEW" ? "🆕" : action === "CANCELLED" ? "❌" : "📝";
-  let prefix = action === "NEW" ? "NEW ORDER" : action === "CANCELLED" ? "ORDER CANCELLED" : "ORDER UPDATED";
-
-  let message = `${emoji} *${prefix} ${orderNumber}*\n\n`;
-  message += `👤 Name: ${order.customer_name}\n`;
-  message += `📱 Phone: ${order.customer_phone || 'Not provided'}\n`;
-  message += `📍 Location: ${order.location}\n`;
-  message += `📅 Date: ${order.preferred_date}\n\n`;
+  let message = `🆕 *NEW ORDER ${orderNumber}*\n\n`;
+  message += `👤 Name: ${localOrder.customer_name}\n`;
+  message += `📱 Phone: ${localOrder.customer_phone || 'Not provided'}\n`;
+  message += `📍 Location: ${location}\n`;
+  message += `📅 Date: ${preferredDate}\n\n`;
   message += `📦 *Items:*\n${itemsList}\n\n`;
-  message += `💰 *Total: EC$${parseFloat(order.total_price).toFixed(2)}*`;
+  message += `💰 *Total: EC$${parseFloat(draftOrder?.total_price || localOrder.total_price).toFixed(2)}*`;
   message += `\n\n💳 Payment: Pay on pickup`;
   
-  if (order.note) {
-    message += `\n\n📝 Note: ${order.note}`;
+  if (note) {
+    message += `\n\n📝 Note: ${note}`;
   }
 
   return message;
@@ -61,6 +60,7 @@ serve(async (req) => {
   }
 
   try {
+    const shopifyAdminToken = Deno.env.get("SHOPIFY_ADMIN_TOKEN");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
@@ -83,8 +83,8 @@ serve(async (req) => {
 
     console.log("Creating order for:", customerName, "phone:", customerPhone, "at", location);
 
-    // Insert order into database
-    const { data: order, error: insertError } = await supabase
+    // First, save to local database
+    const { data: localOrder, error: insertError } = await supabase
       .from("orders")
       .insert({
         customer_name: customerName,
@@ -105,33 +105,104 @@ serve(async (req) => {
       throw new Error(`Failed to create order: ${insertError.message}`);
     }
 
-    console.log("Order created:", order);
+    console.log("Local order created:", localOrder.id);
 
-    // Format order number as #L0001, #L0002, etc.
-    const formattedOrderNumber = `#L${String(order.order_number).padStart(4, '0')}`;
+    let draftOrder = null;
+
+    // Try to create Shopify draft order if admin token is available
+    if (shopifyAdminToken) {
+      try {
+        // Build the note for Shopify
+        let shopifyNote = `📍 Pickup Location: ${location}\n📅 Preferred Date: ${preferredDate}\n👤 Customer: ${customerName}\n📱 Phone: ${customerPhone}`;
+        if (note) {
+          shopifyNote += `\n📝 Note: ${note}`;
+        }
+        shopifyNote += `\n\n💳 Payment: Pay on pickup`;
+        shopifyNote += `\n\nLocal Order ID: ${localOrder.id}`;
+
+        // Convert line items to Shopify format
+        const shopifyLineItems = lineItems.map(item => {
+          // Extract numeric variant ID from global ID (gid://shopify/ProductVariant/123456)
+          const variantIdMatch = item.variant_id.match(/\/(\d+)$/);
+          const variantId = variantIdMatch ? variantIdMatch[1] : item.variant_id;
+          
+          return {
+            variant_id: parseInt(variantId),
+            quantity: item.quantity,
+          };
+        });
+
+        // Create draft order via Shopify Admin API
+        const shopifyUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders.json`;
+        
+        const draftOrderPayload = {
+          draft_order: {
+            line_items: shopifyLineItems,
+            note: shopifyNote,
+            customer: {
+              first_name: customerName.split(' ')[0],
+              last_name: customerName.split(' ').slice(1).join(' ') || '',
+              phone: customerPhone,
+            },
+            use_customer_default_address: false,
+            tags: `pickup-${location.toLowerCase().replace(/\s+/g, '-')}, pending-pickup, local-order-${localOrder.id}`,
+          }
+        };
+
+        console.log("Sending to Shopify Draft Order API...");
+
+        const shopifyResponse = await fetch(shopifyUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": shopifyAdminToken,
+          },
+          body: JSON.stringify(draftOrderPayload),
+        });
+
+        const shopifyData = await shopifyResponse.json();
+
+        if (shopifyResponse.ok && shopifyData.draft_order) {
+          draftOrder = shopifyData.draft_order;
+          console.log("Shopify draft order created:", draftOrder.id, draftOrder.name);
+        } else {
+          console.error("Shopify API error (non-fatal):", shopifyData);
+          // Continue without Shopify draft order - local order is still valid
+        }
+      } catch (shopifyError) {
+        console.error("Shopify draft order creation failed (non-fatal):", shopifyError);
+        // Continue without Shopify draft order
+      }
+    } else {
+      console.log("No Shopify admin token configured, skipping draft order creation");
+    }
+
+    // Format order number
+    const formattedOrderNumber = draftOrder?.name || `#L${String(localOrder.order_number).padStart(4, '0')}`;
 
     // Generate WhatsApp URL for merchant notification
-    const merchantMessage = formatMerchantMessage(order, "NEW");
+    const merchantMessage = formatMerchantMessage(draftOrder, localOrder, preferredDate, location, note);
     const merchantWhatsAppUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(merchantMessage)}`;
 
-    console.log("Order token:", order.order_token);
+    console.log("Order complete. Local:", localOrder.id, "Shopify:", draftOrder?.id || "none");
 
-    // Return order confirmation with format matching what CartDrawer expects
+    // Return order confirmation
     return new Response(
       JSON.stringify({
         success: true,
-        // For compatibility with CartDrawer expecting draftOrder
         draftOrder: {
-          id: order.id,
+          id: draftOrder?.id || localOrder.id,
           name: formattedOrderNumber,
-          status: order.status,
-          totalPrice: order.total_price.toString(),
-          currency: order.currency_code,
-          createdAt: order.created_at,
-          lineItems: order.line_items,
+          status: draftOrder?.status || localOrder.status,
+          totalPrice: (draftOrder?.total_price || localOrder.total_price).toString(),
+          currency: draftOrder?.currency || localOrder.currency_code,
+          createdAt: draftOrder?.created_at || localOrder.created_at,
+          invoiceUrl: draftOrder?.invoice_url || null,
+          lineItems: draftOrder?.line_items || localOrder.line_items,
+          shopifyDraftOrderId: draftOrder?.id || null,
         },
-        localOrderId: order.id,
-        localOrderToken: order.order_token,
+        localOrderId: localOrder.id,
+        localOrderToken: localOrder.order_token,
         merchantWhatsAppUrl,
         customerMessage: merchantMessage,
       }),
