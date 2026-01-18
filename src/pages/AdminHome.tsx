@@ -108,14 +108,20 @@ export default function AdminHome() {
 
   const adminModules = [
     {
-      title: "Approve Sellers",
-      description: "Review and approve seller applications",
-      icon: UserCheck,
+      title: "Manage Sellers",
+      description: "Approve applications & manage seller profiles",
+      icon: Users,
       href: "/admin/approvals",
-      stat: stats.pendingSellerRequests > 0 ? `${stats.pendingSellerRequests} pending` : "All reviewed",
+      stat: stats.pendingSellerRequests > 0 
+        ? `${stats.pendingSellerRequests} pending` 
+        : `${stats.activeSellers} active`,
       color: "text-green-500",
       bgColor: "bg-green-500/10",
       highlight: stats.pendingSellerRequests > 0,
+      subLinks: [
+        { label: "Approve Requests", href: "/admin/approvals" },
+        { label: "View Sellers", href: "/admin/sellers" },
+      ],
     },
     {
       title: "Assign Orders",
@@ -126,15 +132,6 @@ export default function AdminHome() {
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
       highlight: stats.pendingOrders > 0,
-    },
-    {
-      title: "View Sellers",
-      description: "Manage approved seller profiles",
-      icon: Store,
-      href: "/admin/sellers",
-      stat: `${stats.activeSellers} active`,
-      color: "text-orange-500",
-      bgColor: "bg-orange-500/10",
     },
     {
       title: "View All Orders",
@@ -230,11 +227,10 @@ export default function AdminHome() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {adminModules.map((module) => (
             <Card
-              key={module.href}
-              className={`cursor-pointer transition-all hover:border-primary/50 hover:shadow-md ${
+              key={module.title}
+              className={`transition-all hover:border-primary/50 hover:shadow-md ${
                 module.highlight ? "border-yellow-500/50 bg-yellow-500/5" : ""
               }`}
-              onClick={() => navigate(module.href)}
             >
               <CardHeader className="flex flex-row items-start gap-4">
                 <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${module.bgColor}`}>
@@ -246,14 +242,34 @@ export default function AdminHome() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-2">
                   <span className={`text-sm font-medium ${module.highlight ? "text-yellow-600" : "text-muted-foreground"}`}>
                     {module.stat}
                   </span>
-                  <Button variant="ghost" size="sm">
+                </div>
+                {module.subLinks ? (
+                  <div className="flex flex-wrap gap-2">
+                    {module.subLinks.map((link) => (
+                      <Button
+                        key={link.href}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(link.href)}
+                      >
+                        {link.label}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => navigate(module.href)}
+                  >
                     Open →
                   </Button>
-                </div>
+                )}
               </CardContent>
             </Card>
           ))}
