@@ -27,6 +27,9 @@ import SellerDashboard from "./pages/SellerDashboard";
 import CustomerAuth from "./pages/CustomerAuth";
 import AccountSettings from "./pages/AccountSettings";
 import Auth from "./pages/Auth";
+import LuutConnectAdmin from "./pages/LuutConnectAdmin";
+import PartnerDashboard from "./pages/PartnerDashboard";
+import ManagePartners from "./pages/ManagePartners";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +63,9 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin" element={<AdminOrders />} />
           <Route path="/admin/sellers" element={<AdminSellers />} />
+          <Route path="/connect" element={<LuutConnectAdmin />} />
+          <Route path="/connect/partners" element={<ManagePartners />} />
+          <Route path="/partner" element={<PartnerDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
