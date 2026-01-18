@@ -19,22 +19,19 @@ import NotFound from "./pages/NotFound";
 import MyOrders from "./pages/MyOrders";
 import OrderDetails from "./pages/OrderDetails";
 import OrderComplete from "./pages/OrderComplete";
-import AdminOrders from "./pages/AdminOrders";
 import AdminSellers from "./pages/AdminSellers";
 import AdminSellerRequests from "./pages/AdminSellerRequests";
-import AdminHub from "./pages/AdminHub";
+import AdminHome from "./pages/AdminHome";
 import SellerRegistration from "./pages/SellerRegistration";
 import SellerAuth from "./pages/SellerAuth";
 import SellerDashboard from "./pages/SellerDashboard";
+import SellerPending from "./pages/SellerPending";
 import CustomerAuth from "./pages/CustomerAuth";
 import AccountSettings from "./pages/AccountSettings";
 import Auth from "./pages/Auth";
 import LuutConnectAdmin from "./pages/LuutConnectAdmin";
-import PartnerDashboard from "./pages/PartnerDashboard";
-import ManagePartners from "./pages/ManagePartners";
-import AdminOrdersPage from "./pages/AdminOrdersPage";
 import PartnerPortal from "./pages/PartnerPortal";
-import AdminLogin from "./pages/AdminLogin";
+import AdminOrdersPage from "./pages/AdminOrdersPage";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +43,7 @@ const App = () => (
       <BrowserRouter>
         <ScrollToTop />
         <Routes>
+          {/* Public Routes */}
           <Route path="/" element={<Index />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/shop/:category" element={<ShopCategory />} />
@@ -60,20 +58,30 @@ const App = () => (
           <Route path="/my-orders" element={<MyOrders />} />
           <Route path="/order/:orderId" element={<OrderDetails />} />
           <Route path="/order-complete" element={<OrderComplete />} />
-          <Route path="/register-seller" element={<SellerRegistration />} />
+          
+          {/* Auth Routes */}
           <Route path="/seller-auth" element={<SellerAuth />} />
-          <Route path="/seller-dashboard" element={<SellerDashboard />} />
           <Route path="/customer-auth" element={<CustomerAuth />} />
-          <Route path="/account" element={<AccountSettings />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/admin" element={<AdminOrders />} />
+          <Route path="/account" element={<AccountSettings />} />
+          <Route path="/register-seller" element={<SellerRegistration />} />
+          
+          {/* Seller Routes */}
+          <Route path="/seller" element={<SellerDashboard />} />
+          <Route path="/seller/pending" element={<SellerPending />} />
+          <Route path="/seller-dashboard" element={<SellerDashboard />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminHome />} />
+          <Route path="/admin/approvals" element={<AdminSellerRequests />} />
           <Route path="/admin/sellers" element={<AdminSellers />} />
-          <Route path="/admin-sellers" element={<AdminSellerRequests />} />
-          <Route path="/admin-hub" element={<AdminHub />} />
-          <Route path="/connect" element={<LuutConnectAdmin />} />
-          <Route path="/partner" element={<PartnerPortal />} />
-          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/admin/orders" element={<AdminOrdersPage />} />
           <Route path="/admin-orders" element={<AdminOrdersPage />} />
+          
+          {/* Partner Routes */}
+          <Route path="/partner" element={<PartnerPortal />} />
+          <Route path="/connect" element={<LuutConnectAdmin />} />
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
