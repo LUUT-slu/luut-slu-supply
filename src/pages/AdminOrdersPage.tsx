@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -19,6 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Package, 
   Clock, 
@@ -28,6 +39,7 @@ import {
   RefreshCw, 
   Filter,
   LogOut,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -79,6 +91,8 @@ export default function AdminOrdersPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const checkAdminAccess = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -202,7 +216,44 @@ export default function AdminOrdersPage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/auth");
+    navigate("/admin-login");
+  };
+
+  const toggleSelectOrder = (orderId: string) => {
+    const newSelected = new Set(selectedOrders);
+    if (newSelected.has(orderId)) {
+      newSelected.delete(orderId);
+    } else {
+      newSelected.add(orderId);
+    }
+    setSelectedOrders(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedOrders.size === filteredOrders.length) {
+      setSelectedOrders(new Set());
+    } else {
+      setSelectedOrders(new Set(filteredOrders.map(o => o.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const orderIds = Array.from(selectedOrders);
+    
+    const { error } = await supabase
+      .from("orders")
+      .delete()
+      .in("id", orderIds);
+
+    if (error) {
+      toast.error("Failed to delete orders");
+      console.error(error);
+    } else {
+      toast.success(`${orderIds.length} order(s) deleted`);
+      setOrders(orders.filter(o => !selectedOrders.has(o.id)));
+      setSelectedOrders(new Set());
+    }
+    setDeleteDialogOpen(false);
   };
 
   const formatOrderNumber = (num: number) => `#L${String(num).padStart(4, '0')}`;
@@ -260,6 +311,17 @@ export default function AdminOrdersPage() {
             <p className="text-sm text-muted-foreground">Assign partners and track all orders</p>
           </div>
           <div className="flex gap-2">
+            {selectedOrders.size > 0 && (
+              <Button 
+                onClick={() => setDeleteDialogOpen(true)} 
+                variant="destructive" 
+                size="sm" 
+                className="gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete ({selectedOrders.size})
+              </Button>
+            )}
             <Button onClick={() => { fetchOrders(); fetchPartners(); }} variant="outline" size="sm" className="gap-2">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
@@ -365,6 +427,12 @@ export default function AdminOrdersPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[50px]">
+                        <Checkbox
+                          checked={filteredOrders.length > 0 && selectedOrders.size === filteredOrders.length}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </TableHead>
                       <TableHead>Order</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead>Location</TableHead>
@@ -377,7 +445,13 @@ export default function AdminOrdersPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredOrders.map((order) => (
-                      <TableRow key={order.id}>
+                      <TableRow key={order.id} className={selectedOrders.has(order.id) ? "bg-muted/50" : ""}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedOrders.has(order.id)}
+                            onCheckedChange={() => toggleSelectOrder(order.id)}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">
                           {formatOrderNumber(order.order_number)}
                           <div className="text-xs text-muted-foreground">{formatDate(order.created_at)}</div>
@@ -438,6 +512,27 @@ export default function AdminOrdersPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedOrders.size} Order(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The selected orders will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
