@@ -17,6 +17,7 @@ import SellerProfile from "./pages/SellerProfile";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 import MyOrders from "./pages/MyOrders";
+import OrderDetails from "./pages/OrderDetails";
 import OrderComplete from "./pages/OrderComplete";
 import AdminOrders from "./pages/AdminOrders";
 import AdminSellers from "./pages/AdminSellers";
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/seller/:sellerId" element={<SellerProfile />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/my-orders" element={<MyOrders />} />
+          <Route path="/order/:orderId" element={<OrderDetails />} />
           <Route path="/order-complete" element={<OrderComplete />} />
           <Route path="/register-seller" element={<SellerRegistration />} />
           <Route path="/seller-auth" element={<SellerAuth />} />

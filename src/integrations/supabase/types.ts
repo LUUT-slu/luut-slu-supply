@@ -76,42 +76,51 @@ export type Database = {
       }
       orders: {
         Row: {
+          cancelled_at: string | null
           created_at: string
           currency_code: string
           customer_name: string
+          customer_phone: string | null
           id: string
           line_items: Json
           location: string
           note: string | null
           order_number: number
+          order_token: string | null
           preferred_date: string
           status: string
           total_price: number
           updated_at: string
         }
         Insert: {
+          cancelled_at?: string | null
           created_at?: string
           currency_code?: string
           customer_name: string
+          customer_phone?: string | null
           id?: string
           line_items: Json
           location: string
           note?: string | null
           order_number?: number
+          order_token?: string | null
           preferred_date: string
           status?: string
           total_price: number
           updated_at?: string
         }
         Update: {
+          cancelled_at?: string | null
           created_at?: string
           currency_code?: string
           customer_name?: string
+          customer_phone?: string | null
           id?: string
           line_items?: Json
           location?: string
           note?: string | null
           order_number?: number
+          order_token?: string | null
           preferred_date?: string
           status?: string
           total_price?: number

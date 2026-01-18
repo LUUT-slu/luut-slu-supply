@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 import { 
   ShoppingBag, 
   Minus, 
@@ -8,7 +9,6 @@ import {
   Shield,
   Wallet,
   MapPin,
-  ArrowLeft,
   User,
   Calendar,
   MessageSquare,
@@ -16,6 +16,8 @@ import {
   Circle,
   Package,
   AlertTriangle,
+  Phone,
+  Loader2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -40,6 +42,7 @@ import {
 import { useCartStore } from "@/stores/cartStore";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort"];
 const WHATSAPP_NUMBER = "17587185478";
@@ -75,21 +78,36 @@ function ChecklistItem({ completed, label, children }: ChecklistItemProps) {
   );
 }
 
-// Generate a simple local order number
-function generateOrderNumber(): string {
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `LUUT-${timestamp.slice(-4)}${random}`;
+// Save order to localStorage for My Orders tracking
+function saveOrderToLocalStorage(orderId: string, orderToken: string) {
+  const existingOrders = JSON.parse(localStorage.getItem("luut-my-orders") || "[]");
+  const orderTokens = JSON.parse(localStorage.getItem("luut-order-tokens") || "{}");
+  
+  if (!existingOrders.includes(orderId)) {
+    existingOrders.unshift(orderId);
+    // Keep only last 50 orders
+    if (existingOrders.length > 50) {
+      existingOrders.pop();
+    }
+    localStorage.setItem("luut-my-orders", JSON.stringify(existingOrders));
+  }
+  
+  // Store token for order access
+  orderTokens[orderId] = orderToken;
+  localStorage.setItem("luut-order-tokens", JSON.stringify(orderTokens));
 }
 
 export function CartDrawer() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<'cart' | 'builder'>('cart');
   const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [note, setNote] = useState('');
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [depositAcknowledged, setDepositAcknowledged] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const {
     items,
@@ -107,18 +125,21 @@ export function CartDrawer() {
 
   // Validation checks
   const isNameValid = customerName.trim().length >= 2;
+  const isPhoneValid = customerPhone.trim().length >= 7;
   const isLocationValid = selectedLocation !== '';
   const isDateValid = selectedDate !== undefined;
   const isDepositAcknowledged = depositAcknowledged;
-  const isFormComplete = isNameValid && isLocationValid && isDateValid && isDepositAcknowledged;
+  const isFormComplete = isNameValid && isPhoneValid && isLocationValid && isDateValid && isDepositAcknowledged;
 
   const resetForm = () => {
     setStep('cart');
     setCustomerName('');
+    setCustomerPhone('');
     setSelectedLocation('');
     setSelectedDate(undefined);
     setNote('');
     setDepositAcknowledged(false);
+    setIsSubmitting(false);
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -132,46 +153,96 @@ export function CartDrawer() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const handleConfirmOrder = () => {
-    if (!isFormComplete || !selectedDate) return;
+  const handleConfirmOrder = async () => {
+    if (!isFormComplete || !selectedDate || isSubmitting) return;
 
-    const orderNumber = generateOrderNumber();
+    setIsSubmitting(true);
+
     const formattedDate = format(selectedDate, 'EEEE, MMMM d, yyyy');
     
-    // Build product list
-    const productList = items.map(item => {
-      const itemTotal = (parseFloat(item.price.amount) * item.quantity).toFixed(2);
-      return `• ${item.product.node.title}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — EC$${itemTotal}`;
-    }).join('\n');
+    // Prepare line items for the order
+    const lineItems = items.map(item => ({
+      variant_id: item.variantId,
+      product_id: item.product.node.id,
+      quantity: item.quantity,
+      title: item.product.node.title,
+      price: item.price.amount,
+      image_url: item.product.node.images?.edges?.[0]?.node?.url || null,
+    }));
 
-    // Build WhatsApp message
-    let message = `🛒 *NEW ORDER: ${orderNumber}*\n\n`;
-    message += `👤 Name: ${customerName.trim()}\n\n`;
-    message += `📦 *Products:*\n${productList}\n\n`;
-    message += `💰 *Total: EC$${totalPrice.toFixed(2)}*\n\n`;
-    message += `📍 Meetup Location: ${selectedLocation}\n`;
-    message += `📅 Preferred Date: ${formattedDate}\n`;
-    
-    if (note.trim()) {
-      message += `\n📝 Note: ${note.trim()}`;
+    try {
+      // Call edge function to create order
+      const { data, error } = await supabase.functions.invoke('create-order', {
+        body: {
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          location: selectedLocation,
+          preferredDate: formattedDate,
+          note: note.trim() || null,
+          lineItems,
+          totalPrice,
+        },
+      });
+
+      if (error) throw error;
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to create order');
+      }
+
+      console.log("Order created:", data);
+
+      // Save order to localStorage for My Orders
+      saveOrderToLocalStorage(data.orderId, data.orderToken);
+
+      // Build customer WhatsApp message
+      const productList = items.map(item => {
+        const itemTotal = (parseFloat(item.price.amount) * item.quantity).toFixed(2);
+        return `• ${item.product.node.title}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — EC$${itemTotal}`;
+      }).join('\n');
+
+      let message = `🛒 *NEW ORDER: ${data.order.name}*\n\n`;
+      message += `👤 Name: ${customerName.trim()}\n`;
+      message += `📱 Phone: ${customerPhone.trim()}\n\n`;
+      message += `📦 *Products:*\n${productList}\n\n`;
+      message += `💰 *Total: EC$${totalPrice.toFixed(2)}*\n\n`;
+      message += `📍 Meetup Location: ${selectedLocation}\n`;
+      message += `📅 Preferred Date: ${formattedDate}\n`;
+      
+      if (note.trim()) {
+        message += `\n📝 Note: ${note.trim()}`;
+      }
+
+      // Encode and open WhatsApp
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+
+      // Clear cart and close drawer
+      clearCart();
+      setOpen(false);
+      resetForm();
+
+      toast.success(`Order ${data.order.name} created!`, {
+        description: "Opening WhatsApp to confirm your order...",
+        position: "top-center",
+        action: {
+          label: "View Orders",
+          onClick: () => navigate('/my-orders'),
+        },
+      });
+
+      // Auto-open WhatsApp
+      window.open(whatsappUrl, '_blank');
+
+    } catch (error) {
+      console.error("Order creation error:", error);
+      toast.error("Failed to create order", {
+        description: error instanceof Error ? error.message : "Please try again",
+        position: "top-center",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Encode and open WhatsApp
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
-
-    // Clear cart and close drawer
-    clearCart();
-    setOpen(false);
-    resetForm();
-
-    toast.success(`Order ${orderNumber} created!`, {
-      description: "Opening WhatsApp to confirm your order...",
-      position: "top-center",
-    });
-
-    // Auto-open WhatsApp
-    window.open(whatsappUrl, '_blank');
   };
 
   return (
@@ -187,14 +258,14 @@ export function CartDrawer() {
         </Button>
       </SheetTrigger>
 
-      <SheetContent className="flex h-full w-full flex-col bg-background sm:max-w-lg">
+      <SheetContent className="flex h-full w-full flex-col bg-background sm:max-w-lg overflow-hidden">
         <SheetHeader className="flex-shrink-0">
           <SheetTitle className="font-display text-xl">
             {step === 'cart' ? 'Your Cart' : 'Meetup Details'}
           </SheetTitle>
         </SheetHeader>
 
-        <div className="flex flex-1 flex-col pt-4 min-h-0">
+        <div className="flex flex-1 flex-col pt-4 min-h-0 overflow-hidden">
           {/* Empty Cart View */}
           {items.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -323,6 +394,23 @@ export function CartDrawer() {
                         className="pl-10"
                       />
                     </div>
+                  </ChecklistItem>
+
+                  {/* Phone Number */}
+                  <ChecklistItem completed={isPhoneValid} label="Phone Number">
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="e.g. 758-123-4567"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        className="pl-10"
+                        type="tel"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      We'll use this to contact you about your order
+                    </p>
                   </ChecklistItem>
 
                   {/* Order Summary */}
@@ -480,10 +568,19 @@ export function CartDrawer() {
                   onClick={handleConfirmOrder}
                   className="w-full"
                   size="lg"
-                  disabled={!isFormComplete}
+                  disabled={!isFormComplete || isSubmitting}
                 >
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  Confirm Order via WhatsApp
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating Order...
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Confirm Order via WhatsApp
+                    </>
+                  )}
                 </Button>
               </div>
             </>

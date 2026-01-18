@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, Clock, CheckCircle, XCircle, ShoppingBag } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Package, Clock, CheckCircle, XCircle, ShoppingBag, ChevronRight } from "lucide-react";
 
 interface Order {
   id: string;
@@ -25,6 +25,7 @@ interface Order {
     price: string;
   }>;
   created_at: string;
+  order_token: string;
 }
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string }> = {
@@ -40,7 +41,6 @@ export default function MyOrders() {
 
   useEffect(() => {
     const fetchMyOrders = async () => {
-      // Get saved order IDs from localStorage
       const savedOrderIds = JSON.parse(localStorage.getItem("luut-my-orders") || "[]");
       
       if (savedOrderIds.length === 0) {
@@ -118,41 +118,39 @@ export default function MyOrders() {
         ) : (
           <div className="grid gap-4">
             {orders.map((order) => (
-              <Card key={order.id}>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      {formatOrderNumber(order.order_number)}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Placed on {formatDate(order.created_at)}
-                    </p>
-                  </div>
-                  {getStatusBadge(order.status)}
-                </CardHeader>
-                <CardContent className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium text-muted-foreground">Meetup Details</h4>
-                    <p className="text-sm">📍 {order.location}</p>
-                    <p className="text-sm">📅 {order.preferred_date}</p>
-                    {order.note && <p className="text-sm">📝 {order.note}</p>}
-                  </div>
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium text-muted-foreground">Items</h4>
-                    {order.line_items.map((item, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span>{item.title} x{item.quantity}</span>
-                        <span>EC${parseFloat(item.price).toFixed(2)}</span>
-                      </div>
-                    ))}
-                    <div className="mt-2 flex justify-between border-t pt-2 font-medium">
-                      <span>Total</span>
-                      <span>EC${order.total_price.toFixed(2)}</span>
+              <Link key={order.id} to={`/order/${order.id}`}>
+                <Card className="transition-colors hover:bg-card/80 cursor-pointer">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5" />
+                        {formatOrderNumber(order.order_number)}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Placed on {formatDate(order.created_at)}
+                      </p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(order.status)}
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p className="text-sm">📍 {order.location}</p>
+                      <p className="text-sm">📅 {order.preferred_date}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-display text-lg text-primary">
+                        EC${order.total_price.toFixed(2)}
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        {order.line_items.length} item{order.line_items.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         )}
