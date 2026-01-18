@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -155,31 +154,32 @@ export default function AdminHome() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header />
-
-      <main className="container flex-1 py-8">
-        {/* Header */}
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      {/* Custom Admin Header */}
+      <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between md:h-20">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-              <ShieldCheck className="h-7 w-7 text-primary" />
-            </div>
-            <div>
-              <h1 className="font-display text-2xl md:text-3xl">Admin Home</h1>
-              <p className="text-sm text-muted-foreground">
-                Central control panel for Luut SLU
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={() => navigate("/")} variant="outline" size="sm" className="gap-2">
-              <Home className="h-4 w-4" />
-              <span className="hidden sm:inline">Home</span>
-            </Button>
+            <Link to="/" className="font-display text-2xl tracking-wide md:text-3xl text-primary">
+              Home
+            </Link>
             <Button onClick={handleLogout} variant="destructive" size="sm" className="gap-2">
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Logout</span>
             </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="container flex-1 py-8">
+        {/* Page Title */}
+        <div className="mb-8 flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+            <ShieldCheck className="h-7 w-7 text-primary" />
+          </div>
+          <div>
+            <h1 className="font-display text-2xl md:text-3xl">Admin Home</h1>
+            <p className="text-sm text-muted-foreground">
+              Central control panel for Luut SLU
+            </p>
           </div>
         </div>
 
