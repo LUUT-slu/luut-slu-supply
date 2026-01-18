@@ -218,36 +218,96 @@ export type Database = {
         }
         Relationships: []
       }
+      seller_applications: {
+        Row: {
+          categories: string[] | null
+          created_at: string
+          id: string
+          location: string | null
+          name: string
+          proof_url: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          whatsapp: string
+        }
+        Insert: {
+          categories?: string[] | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          name: string
+          proof_url?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          whatsapp: string
+        }
+        Update: {
+          categories?: string[] | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          name?: string
+          proof_url?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
       seller_profiles: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           id: string
           is_approved: boolean
+          is_primary_seller: boolean | null
           location: string | null
           seller_id: string | null
           seller_name: string
+          seller_status: string | null
           updated_at: string
           user_id: string
           whatsapp: string | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           id?: string
           is_approved?: boolean
+          is_primary_seller?: boolean | null
           location?: string | null
           seller_id?: string | null
           seller_name: string
+          seller_status?: string | null
           updated_at?: string
           user_id: string
           whatsapp?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           id?: string
           is_approved?: boolean
+          is_primary_seller?: boolean | null
           location?: string | null
           seller_id?: string | null
           seller_name?: string
+          seller_status?: string | null
           updated_at?: string
           user_id?: string
           whatsapp?: string | null

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { DollarSign, Package, TrendingUp, Calendar, LogOut, Store } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Calendar, LogOut, Store, ShieldX, Clock, Ban } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
+import { useSellerApproval } from "@/hooks/useSellerApproval";
 
 interface SellerProfile {
   id: string;
@@ -36,6 +37,7 @@ export default function SellerDashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const sellerApproval = useSellerApproval(user);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -82,7 +84,7 @@ export default function SellerDashboard() {
       return;
     }
 
-    setProfile(data);
+    setProfile(data as SellerProfile);
     setIsLoading(false);
   };
 
@@ -125,13 +127,86 @@ export default function SellerDashboard() {
     }).format(amount);
   };
 
-  if (isLoading) {
+  if (isLoading || sellerApproval.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
           <p className="text-muted-foreground">Loading dashboard...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Gate seller access based on approval status
+  if (sellerApproval.isBanned) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background">
+        <Header />
+        <main className="flex-1 flex items-center justify-center py-8">
+          <Card className="max-w-md text-center">
+            <CardContent className="py-12">
+              <Ban className="mx-auto h-16 w-16 text-red-500 mb-4" />
+              <h2 className="font-display text-2xl mb-2">Account Banned</h2>
+              <p className="text-muted-foreground mb-4">
+                Your seller account has been permanently suspended. 
+                Please contact support if you believe this is an error.
+              </p>
+              <Button variant="outline" onClick={() => navigate("/")}>
+                Return Home
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (sellerApproval.isRejected) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background">
+        <Header />
+        <main className="flex-1 flex items-center justify-center py-8">
+          <Card className="max-w-md text-center">
+            <CardContent className="py-12">
+              <ShieldX className="mx-auto h-16 w-16 text-red-500 mb-4" />
+              <h2 className="font-display text-2xl mb-2">Application Rejected</h2>
+              <p className="text-muted-foreground mb-4">
+                Unfortunately, your seller application was not approved. 
+                You can submit a new application with updated information.
+              </p>
+              <Button onClick={() => navigate("/register-seller")}>
+                Apply Again
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (sellerApproval.isPending && !sellerApproval.isApproved) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background">
+        <Header />
+        <main className="flex-1 flex items-center justify-center py-8">
+          <Card className="max-w-md text-center">
+            <CardContent className="py-12">
+              <Clock className="mx-auto h-16 w-16 text-yellow-500 mb-4" />
+              <h2 className="font-display text-2xl mb-2">Application Pending</h2>
+              <p className="text-muted-foreground mb-4">
+                Your seller application is being reviewed. 
+                We'll notify you via WhatsApp once a decision is made.
+              </p>
+              <Button variant="outline" onClick={() => navigate("/")}>
+                Return Home
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
       </div>
     );
   }
