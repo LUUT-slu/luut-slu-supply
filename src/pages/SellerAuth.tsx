@@ -44,14 +44,21 @@ export default function SellerAuth() {
   }, []);
 
   const checkUserRoleAndRedirect = async (userId: string) => {
-    // Check for partner role first
+    // Check for user roles
     const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
 
+    // Check if admin - redirect to admin hub
+    const isAdmin = roles?.some(r => (r.role as string) === "admin");
+    if (isAdmin) {
+      navigate("/admin-hub");
+      return;
+    }
+
+    // Check for partner role
     const isPartner = roles?.some(r => (r.role as string) === "partner");
-    
     if (isPartner) {
       navigate("/partner");
       return;
@@ -96,8 +103,15 @@ export default function SellerAuth() {
           .select("role")
           .eq("user_id", data.user.id);
 
+        // Check if admin - redirect to admin hub
+        const isAdmin = roles?.some(r => (r.role as string) === "admin");
+        if (isAdmin) {
+          toast.success("Welcome back, Admin!");
+          navigate("/admin-hub");
+          return;
+        }
+
         const isPartner = roles?.some(r => (r.role as string) === "partner");
-        
         if (isPartner) {
           toast.success("Welcome back, Partner!");
           navigate("/partner");

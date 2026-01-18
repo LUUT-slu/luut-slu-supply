@@ -22,6 +22,7 @@ import OrderComplete from "./pages/OrderComplete";
 import AdminOrders from "./pages/AdminOrders";
 import AdminSellers from "./pages/AdminSellers";
 import AdminSellerRequests from "./pages/AdminSellerRequests";
+import AdminHub from "./pages/AdminHub";
 import SellerRegistration from "./pages/SellerRegistration";
 import SellerAuth from "./pages/SellerAuth";
 import SellerDashboard from "./pages/SellerDashboard";
@@ -68,6 +69,7 @@ const App = () => (
           <Route path="/admin" element={<AdminOrders />} />
           <Route path="/admin/sellers" element={<AdminSellers />} />
           <Route path="/admin-sellers" element={<AdminSellerRequests />} />
+          <Route path="/admin-hub" element={<AdminHub />} />
           <Route path="/connect" element={<LuutConnectAdmin />} />
           <Route path="/partner" element={<PartnerPortal />} />
           <Route path="/admin-login" element={<AdminLogin />} />
