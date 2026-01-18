@@ -45,7 +45,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort"];
-const WHATSAPP_NUMBER = "7587185478";
+const WHATSAPP_NUMBER = "17587185478";
 
 interface ChecklistItemProps {
   completed: boolean;
@@ -171,8 +171,8 @@ export function CartDrawer() {
     }));
 
     try {
-      // Call edge function to create order
-      const { data, error } = await supabase.functions.invoke('create-order', {
+      // Call edge function to create Shopify draft order
+      const { data, error } = await supabase.functions.invoke('create-draft-order', {
         body: {
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
@@ -187,30 +187,33 @@ export function CartDrawer() {
       if (error) throw error;
 
       if (!data?.success) {
-        throw new Error(data?.error || 'Failed to create order');
+        throw new Error(data?.error || 'Failed to create draft order');
       }
 
-      console.log("Order created:", data);
+      console.log("Draft order created:", data);
 
-      // Save order to localStorage for My Orders
-      saveOrderToLocalStorage(data.orderId, data.orderToken);
+      // Save order to localStorage for My Orders tracking
+      if (data.localOrderId && data.localOrderToken) {
+        saveOrderToLocalStorage(data.localOrderId, data.localOrderToken);
+      }
 
-      // Build customer WhatsApp message
+      // Build customer WhatsApp message with draft order number
       const productList = items.map(item => {
         const itemTotal = (parseFloat(item.price.amount) * item.quantity).toFixed(2);
         return `• ${item.product.node.title}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — EC$${itemTotal}`;
       }).join('\n');
 
-      let message = `🛒 *NEW ORDER: ${data.order.name}*\n\n`;
+      let message = `🛒 *NEW ORDER: ${data.draftOrder.name}*\n\n`;
       message += `👤 Name: ${customerName.trim()}\n`;
       message += `📱 Phone: ${customerPhone.trim()}\n\n`;
       message += `📦 *Products:*\n${productList}\n\n`;
       message += `💰 *Total: EC$${totalPrice.toFixed(2)}*\n\n`;
       message += `📍 Meetup Location: ${selectedLocation}\n`;
       message += `📅 Preferred Date: ${formattedDate}\n`;
+      message += `\n💳 Payment: Cash on pickup`;
       
       if (note.trim()) {
-        message += `\n📝 Note: ${note.trim()}`;
+        message += `\n\n📝 Note: ${note.trim()}`;
       }
 
       // Encode and open WhatsApp
@@ -222,7 +225,7 @@ export function CartDrawer() {
       setOpen(false);
       resetForm();
 
-      toast.success(`Order ${data.order.name} created!`, {
+      toast.success(`Order ${data.draftOrder.name} created!`, {
         description: "Opening WhatsApp to confirm your order...",
         position: "top-center",
         action: {

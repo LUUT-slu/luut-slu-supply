@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.update-order]
 verify_jwt = false
+
+[functions.create-draft-order]
+verify_jwt = false
+
+[functions.cancel-draft-order]
+verify_jwt = false
