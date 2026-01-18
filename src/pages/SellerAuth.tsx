@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -24,45 +24,40 @@ export default function SellerAuth() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [hasRedirected, setHasRedirected] = useState(false);
+  const hasRedirectedRef = useRef(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     let isMounted = true;
 
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user && isMounted && !hasRedirected) {
-        await checkUserRoleAndRedirect(session.user.id, session.user.email);
-      }
-      
-      if (isMounted) {
-        setIsCheckingAuth(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user && isMounted && !hasRedirectedRef.current) {
+          await checkUserRoleAndRedirect(session.user.id, session.user.email);
+        }
+      } finally {
+        if (isMounted) {
+          setIsCheckingAuth(false);
+        }
       }
     };
 
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Skip if already redirected to prevent flickering
-      if (hasRedirected) return;
-      
-      // Only handle SIGNED_IN event to avoid duplicate redirects
-      if (event === "SIGNED_IN" && session?.user && isMounted) {
-        // Don't call checkUserRoleAndRedirect here - let handleEmailLogin handle it
-        // This prevents double redirect attempts
-      }
+      // Skip auth state changes - let handleEmailLogin handle redirects
     });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate, hasRedirected]);
+  }, [navigate]);
 
   const checkUserRoleAndRedirect = async (userId: string, userEmail?: string | null) => {
-    if (hasRedirected) return;
+    if (hasRedirectedRef.current) return;
     
     try {
       // Check for user roles
@@ -74,7 +69,7 @@ export default function SellerAuth() {
       // Check if admin - redirect ONLY to admin hub (they access everything from there)
       const isAdmin = roles?.some(r => (r.role as string) === "admin");
       if (isAdmin) {
-        setHasRedirected(true);
+        hasRedirectedRef.current = true;
         navigate("/admin-hub", { replace: true });
         return;
       }
@@ -82,7 +77,7 @@ export default function SellerAuth() {
       // Check for partner role
       const isPartner = roles?.some(r => (r.role as string) === "partner");
       if (isPartner) {
-        setHasRedirected(true);
+        hasRedirectedRef.current = true;
         navigate("/partner", { replace: true });
         return;
       }
@@ -95,7 +90,7 @@ export default function SellerAuth() {
         .maybeSingle();
       
       if (sellerProfile) {
-        setHasRedirected(true);
+        hasRedirectedRef.current = true;
         navigate("/seller-dashboard", { replace: true });
         return;
       }
@@ -148,7 +143,7 @@ export default function SellerAuth() {
         // Check if admin - redirect ONLY to admin hub (single destination)
         const isAdmin = roles?.some(r => (r.role as string) === "admin");
         if (isAdmin) {
-          setHasRedirected(true);
+          hasRedirectedRef.current = true;
           toast.success("Welcome back, Admin!");
           navigate("/admin-hub", { replace: true });
           return;
@@ -156,7 +151,7 @@ export default function SellerAuth() {
 
         const isPartner = roles?.some(r => (r.role as string) === "partner");
         if (isPartner) {
-          setHasRedirected(true);
+          hasRedirectedRef.current = true;
           toast.success("Welcome back, Partner!");
           navigate("/partner", { replace: true });
           return;
@@ -170,14 +165,14 @@ export default function SellerAuth() {
           .maybeSingle();
 
         if (sellerProfile) {
-          setHasRedirected(true);
+          hasRedirectedRef.current = true;
           toast.success("Welcome back!");
           navigate("/seller-dashboard", { replace: true });
           return;
         }
 
         // No seller profile - they need to apply
-        setHasRedirected(true);
+        hasRedirectedRef.current = true;
         toast.success("Logged in! Please apply to become a seller.");
         navigate("/register-seller", { replace: true });
       }
