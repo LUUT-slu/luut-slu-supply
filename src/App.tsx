@@ -66,10 +66,8 @@ const App = () => (
           <Route path="/admin" element={<AdminOrders />} />
           <Route path="/admin/sellers" element={<AdminSellers />} />
           <Route path="/connect" element={<LuutConnectAdmin />} />
-          <Route path="/connect/partners" element={<ManagePartners />} />
-          <Route path="/partner" element={<PartnerDashboard />} />
+          <Route path="/partner" element={<AssignedOrdersPage />} />
           <Route path="/admin-orders" element={<AdminOrdersPage />} />
-          <Route path="/assigned-orders" element={<AssignedOrdersPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
