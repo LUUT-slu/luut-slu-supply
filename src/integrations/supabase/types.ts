@@ -346,6 +346,7 @@ export type Database = {
           price: number
           quantity: number
           seller_id: string
+          shopify_product_id: string | null
           status: string
           updated_at: string
           views_count: number
@@ -362,6 +363,7 @@ export type Database = {
           price: number
           quantity?: number
           seller_id: string
+          shopify_product_id?: string | null
           status?: string
           updated_at?: string
           views_count?: number
@@ -378,6 +380,7 @@ export type Database = {
           price?: number
           quantity?: number
           seller_id?: string
+          shopify_product_id?: string | null
           status?: string
           updated_at?: string
           views_count?: number

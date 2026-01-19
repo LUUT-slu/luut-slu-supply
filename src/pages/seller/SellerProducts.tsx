@@ -35,8 +35,10 @@ import {
   Trash2,
   ToggleLeft,
   ToggleRight,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
+import { fetchProductsByVendor } from "@/lib/shopify";
 
 interface Product {
   id: string;
@@ -47,6 +49,7 @@ interface Product {
   images: string[];
   category: string | null;
   created_at: string;
+  shopify_product_id?: string | null;
 }
 
 export default function SellerProducts() {
@@ -111,6 +114,70 @@ export default function SellerProducts() {
     }
   };
 
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncFromShopify = async () => {
+    if (!profile?.id || !profile?.is_primary_seller) return;
+    
+    setSyncing(true);
+    try {
+      // Fetch all products from Shopify with "Luut SLU" in vendor
+      const shopifyProducts = await fetchProductsByVendor("Luut SLU");
+      
+      if (shopifyProducts.length === 0) {
+        toast.info("No products found to sync");
+        setSyncing(false);
+        return;
+      }
+
+      let syncedCount = 0;
+      let skippedCount = 0;
+
+      for (const { node: product } of shopifyProducts) {
+        // Check if already synced
+        const { data: existing } = await supabase
+          .from("seller_products")
+          .select("id")
+          .eq("shopify_product_id", product.id)
+          .maybeSingle();
+
+        if (existing) {
+          skippedCount++;
+          continue;
+        }
+
+        // Get product images
+        const images = product.images.edges.map((img) => img.node.url);
+        
+        // Insert new product
+        const { error } = await supabase.from("seller_products").insert({
+          seller_id: profile.id,
+          name: product.title,
+          price: parseFloat(product.priceRange.minVariantPrice.amount),
+          quantity: 10, // Default stock
+          status: "active",
+          category: product.productType || null,
+          images: images,
+          shopify_product_id: product.id,
+        });
+
+        if (!error) {
+          syncedCount++;
+        }
+      }
+
+      toast.success(`Synced ${syncedCount} products`, {
+        description: skippedCount > 0 ? `${skippedCount} already existed` : undefined,
+      });
+      fetchProducts();
+    } catch (error) {
+      console.error("Sync error:", error);
+      toast.error("Failed to sync products");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -158,6 +225,18 @@ export default function SellerProducts() {
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                 <span className="hidden sm:inline">Refresh</span>
               </Button>
+              {profile?.is_primary_seller && (
+                <Button 
+                  onClick={handleSyncFromShopify} 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-1.5"
+                  disabled={syncing}
+                >
+                  <Download className={`h-3.5 w-3.5 ${syncing ? "animate-pulse" : ""}`} />
+                  <span className="hidden sm:inline">{syncing ? "Syncing..." : "Sync Products"}</span>
+                </Button>
+              )}
               <Button onClick={() => navigate("/seller/products/new")} size="sm" className="gap-1.5">
                 <Plus className="h-3.5 w-3.5" />
                 Add Product
