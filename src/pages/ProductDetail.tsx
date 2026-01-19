@@ -95,7 +95,7 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     if (!currentVariant) return;
 
-    addItem({
+    const result = addItem({
       product: { node: product },
       variantId: currentVariant.id,
       variantTitle: currentVariant.title,
@@ -104,11 +104,19 @@ export default function ProductDetail() {
       selectedOptions: currentVariant.selectedOptions,
     });
 
-    toast.success("Added to cart!", {
-      description: `${product.title} x ${quantity}`,
-      position: "top-center",
-    });
-    setCartOpen(true);
+    if (result.success) {
+      toast.success("Added to cart!", {
+        description: `${product.title} x ${quantity}`,
+        position: "top-center",
+      });
+      setCartOpen(true);
+    } else {
+      toast.error("Cannot add to cart", {
+        description: result.error,
+        position: "top-center",
+        duration: 5000,
+      });
+    }
   };
 
   const whatsappMessage = `Hi! I'm interested in: ${product.title}${

@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Phone,
   Loader2,
+  Store,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -45,7 +46,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort"];
-const WHATSAPP_NUMBER = "7587185478";
+const FALLBACK_WHATSAPP_NUMBER = "7587185478"; // Admin fallback
 
 interface ChecklistItemProps {
   completed: boolean;
@@ -119,10 +120,12 @@ export function CartDrawer() {
     getTotalItems,
     getTotalPrice,
     clearCart,
+    getCurrentSeller,
   } = useCartStore();
 
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
+  const currentSeller = getCurrentSeller();
 
   // Auto-fill customer info from profile when proceeding to checkout
   useEffect(() => {
@@ -189,6 +192,34 @@ export function CartDrawer() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
 
+  // Look up seller's WhatsApp number from their profile
+  const getSellerWhatsApp = async (vendorName: string): Promise<string> => {
+    try {
+      // Try to find seller by seller_name matching the vendor
+      const { data: sellerProfile } = await supabase
+        .from('seller_profiles')
+        .select('whatsapp, phone')
+        .eq('seller_name', vendorName)
+        .eq('is_approved', true)
+        .maybeSingle();
+
+      if (sellerProfile?.whatsapp) {
+        // Clean up WhatsApp number (remove spaces, dashes, etc.)
+        return sellerProfile.whatsapp.replace(/[\s\-\(\)]/g, '');
+      }
+      
+      if (sellerProfile?.phone) {
+        return sellerProfile.phone.replace(/[\s\-\(\)]/g, '');
+      }
+
+      // Fallback to admin number
+      return FALLBACK_WHATSAPP_NUMBER;
+    } catch (error) {
+      console.error("Error fetching seller WhatsApp:", error);
+      return FALLBACK_WHATSAPP_NUMBER;
+    }
+  };
+
   const handleConfirmOrder = async () => {
     if (!isFormComplete || !selectedDate || isSubmitting) return;
 
@@ -204,9 +235,14 @@ export function CartDrawer() {
       title: item.product.node.title,
       price: item.price.amount,
       image_url: item.product.node.images?.edges?.[0]?.node?.url || null,
+      vendor: item.product.node.vendor,
     }));
 
     try {
+      // Get seller's WhatsApp number
+      const sellerVendor = currentSeller || items[0]?.product.node.vendor || '';
+      const sellerWhatsApp = await getSellerWhatsApp(sellerVendor);
+
       // Call edge function to create Shopify draft order
       const { data, error } = await supabase.functions.invoke('create-draft-order', {
         body: {
@@ -217,6 +253,7 @@ export function CartDrawer() {
           note: note.trim() || null,
           lineItems,
           totalPrice,
+          sellerVendor,
         },
       });
 
@@ -246,15 +283,15 @@ export function CartDrawer() {
       message += `💰 *Total: EC$${totalPrice.toFixed(2)}*\n\n`;
       message += `📍 Meetup Location: ${selectedLocation}\n`;
       message += `📅 Preferred Date: ${formattedDate}\n`;
-      message += `\n💳 Payment: Cash on pickup`;
+      message += `\n💳 Payment: Pay on pickup`;
       
       if (note.trim()) {
         message += `\n\n📝 Note: ${note.trim()}`;
       }
 
-      // Encode and open WhatsApp
+      // Encode and open WhatsApp to seller's number
       const encodedMessage = encodeURIComponent(message);
-      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+      const whatsappUrl = `https://wa.me/${sellerWhatsApp}?text=${encodedMessage}`;
 
       // Clear cart and close drawer
       clearCart();
@@ -262,7 +299,7 @@ export function CartDrawer() {
       resetForm();
 
       toast.success(`Order ${data.draftOrder.name} created!`, {
-        description: "Opening WhatsApp to confirm your order...",
+        description: `Opening WhatsApp to message ${sellerVendor || 'seller'}...`,
         position: "top-center",
         action: {
           label: "View Orders",
@@ -320,6 +357,16 @@ export function CartDrawer() {
           {step === 'cart' && items.length > 0 && (
             <>
               <div className="flex-1 overflow-y-auto pr-2">
+                {/* Seller indicator */}
+                {currentSeller && (
+                  <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+                    <Store className="h-4 w-4 text-primary" />
+                    <span className="text-sm">
+                      Shopping from <span className="font-medium text-primary">{currentSeller}</span>
+                    </span>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   {items.map((item) => (
                     <div

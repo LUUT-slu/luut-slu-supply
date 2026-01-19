@@ -21,8 +21,9 @@ interface CartStore {
   items: CartItem[];
   isLoading: boolean;
   isOpen: boolean;
+  currentSeller: string | null; // Track the current seller (vendor) in cart
   
-  addItem: (item: CartItem) => void;
+  addItem: (item: CartItem) => { success: boolean; error?: string };
   updateQuantity: (variantId: string, quantity: number) => void;
   removeItem: (variantId: string) => void;
   clearCart: () => void;
@@ -30,6 +31,7 @@ interface CartStore {
   setOpen: (open: boolean) => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
+  getCurrentSeller: () => string | null;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -38,9 +40,20 @@ export const useCartStore = create<CartStore>()(
       items: [],
       isLoading: false,
       isOpen: false,
+      currentSeller: null,
 
       addItem: (item) => {
-        const { items } = get();
+        const { items, currentSeller } = get();
+        const itemVendor = item.product.node.vendor;
+        
+        // Enforce single-seller checkout
+        if (items.length > 0 && currentSeller && itemVendor !== currentSeller) {
+          return { 
+            success: false, 
+            error: `Your cart contains items from "${currentSeller}". Please clear your cart before adding items from "${itemVendor}".` 
+          };
+        }
+        
         const existingItem = items.find(i => i.variantId === item.variantId);
         
         if (existingItem) {
@@ -52,8 +65,13 @@ export const useCartStore = create<CartStore>()(
             )
           });
         } else {
-          set({ items: [...items, item] });
+          set({ 
+            items: [...items, item],
+            currentSeller: itemVendor || currentSeller
+          });
         }
+        
+        return { success: true };
       },
 
       updateQuantity: (variantId, quantity) => {
@@ -70,13 +88,15 @@ export const useCartStore = create<CartStore>()(
       },
 
       removeItem: (variantId) => {
+        const newItems = get().items.filter(item => item.variantId !== variantId);
         set({
-          items: get().items.filter(item => item.variantId !== variantId)
+          items: newItems,
+          currentSeller: newItems.length > 0 ? newItems[0].product.node.vendor : null
         });
       },
 
       clearCart: () => {
-        set({ items: [] });
+        set({ items: [], currentSeller: null });
       },
 
       setLoading: (isLoading) => set({ isLoading }),
@@ -92,11 +112,15 @@ export const useCartStore = create<CartStore>()(
           0
         );
       },
+      
+      getCurrentSeller: () => {
+        return get().currentSeller;
+      },
     }),
     {
       name: 'luut-cart',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ items: state.items }),
+      partialize: (state) => ({ items: state.items, currentSeller: state.currentSeller }),
     }
   )
 );

@@ -3,9 +3,10 @@ import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, MessageCircle, ShoppingBag, ArrowRight } from "lucide-react";
+import { CheckCircle2, MessageCircle, ShoppingBag, ArrowRight, Store } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-const WHATSAPP_NUMBER = "17587185478";
+const FALLBACK_WHATSAPP_NUMBER = "17587185478";
 
 interface PendingOrderData {
   customerName: string;
@@ -16,14 +17,43 @@ interface PendingOrderData {
     title: string;
     quantity: number;
     price: string;
+    vendor?: string;
   }>;
   totalPrice: number;
   timestamp: number;
+  sellerVendor?: string;
+  sellerWhatsApp?: string;
 }
 
 export default function OrderComplete() {
   const [orderData, setOrderData] = useState<PendingOrderData | null>(null);
   const [whatsappOpened, setWhatsappOpened] = useState(false);
+  const [sellerWhatsApp, setSellerWhatsApp] = useState<string>(FALLBACK_WHATSAPP_NUMBER);
+
+  // Look up seller's WhatsApp number from their profile
+  const getSellerWhatsApp = async (vendorName: string): Promise<string> => {
+    try {
+      const { data: sellerProfile } = await supabase
+        .from('seller_profiles')
+        .select('whatsapp, phone')
+        .eq('seller_name', vendorName)
+        .eq('is_approved', true)
+        .maybeSingle();
+
+      if (sellerProfile?.whatsapp) {
+        return sellerProfile.whatsapp.replace(/[\s\-\(\)]/g, '');
+      }
+      
+      if (sellerProfile?.phone) {
+        return sellerProfile.phone.replace(/[\s\-\(\)]/g, '');
+      }
+
+      return FALLBACK_WHATSAPP_NUMBER;
+    } catch (error) {
+      console.error("Error fetching seller WhatsApp:", error);
+      return FALLBACK_WHATSAPP_NUMBER;
+    }
+  };
 
   useEffect(() => {
     // Retrieve pending order data from localStorage
@@ -35,9 +65,18 @@ export default function OrderComplete() {
         if (Date.now() - parsed.timestamp < 3600000) {
           setOrderData(parsed);
           
+          // Determine seller WhatsApp
+          const vendorName = parsed.sellerVendor || parsed.items[0]?.vendor || '';
+          
+          if (parsed.sellerWhatsApp) {
+            setSellerWhatsApp(parsed.sellerWhatsApp);
+          } else if (vendorName) {
+            getSellerWhatsApp(vendorName).then(setSellerWhatsApp);
+          }
+          
           // Auto-open WhatsApp after a short delay
           setTimeout(() => {
-            openWhatsApp(parsed);
+            openWhatsApp(parsed, parsed.sellerWhatsApp || sellerWhatsApp);
             setWhatsappOpened(true);
           }, 1000);
         }
@@ -49,7 +88,7 @@ export default function OrderComplete() {
     }
   }, []);
 
-  const openWhatsApp = (data: PendingOrderData) => {
+  const openWhatsApp = (data: PendingOrderData, whatsAppNumber?: string) => {
     const itemsList = data.items
       .map(item => `• ${item.title}${item.quantity > 1 ? ` ×${item.quantity}` : ''} - EC$${parseFloat(item.price).toFixed(2)}`)
       .join('\n');
@@ -62,11 +101,12 @@ export default function OrderComplete() {
       `${data.note ? `📝 Note: ${data.note}\n` : ''}` +
       `\n*Items:*\n${itemsList}\n\n` +
       `💰 Total: EC$${data.totalPrice.toFixed(2)}\n\n` +
-      `💳 Payment: Cash on Meetup\n\n` +
+      `💳 Payment: Pay on pickup\n\n` +
       `Please confirm the meetup time. Thank you!`
     );
 
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
+    const numberToUse = whatsAppNumber || sellerWhatsApp || FALLBACK_WHATSAPP_NUMBER;
+    window.open(`https://wa.me/${numberToUse}?text=${message}`, '_blank');
   };
 
   return (
@@ -89,6 +129,14 @@ export default function OrderComplete() {
 
             {orderData ? (
               <div className="space-y-6">
+                {/* Seller indicator */}
+                {orderData.sellerVendor && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Store className="h-4 w-4" />
+                    <span>Order from <span className="font-medium text-foreground">{orderData.sellerVendor}</span></span>
+                  </div>
+                )}
+
                 {/* Order Summary */}
                 <div className="rounded-lg border border-border bg-card p-6 text-left">
                   <h2 className="font-semibold mb-4">Order Details</h2>
@@ -132,7 +180,7 @@ export default function OrderComplete() {
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-6">
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
                     <MessageCircle className="h-5 w-5 text-primary" />
-                    Confirm Your Meetup
+                    Message {orderData.sellerVendor || 'Seller'} on WhatsApp
                   </h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     {whatsappOpened 
@@ -141,12 +189,12 @@ export default function OrderComplete() {
                     }
                   </p>
                   <Button 
-                    onClick={() => openWhatsApp(orderData)}
+                    onClick={() => openWhatsApp(orderData, sellerWhatsApp)}
                     className="w-full gap-2"
                     size="lg"
                   >
                     <MessageCircle className="h-5 w-5" />
-                    {whatsappOpened ? "Open WhatsApp Again" : "Send WhatsApp Message"}
+                    {whatsappOpened ? "Open WhatsApp Again" : "Message Seller on WhatsApp"}
                   </Button>
                 </div>
 
@@ -155,9 +203,9 @@ export default function OrderComplete() {
                   <h3 className="font-semibold mb-3">What's Next?</h3>
                   <ol className="text-sm space-y-2 text-muted-foreground list-decimal list-inside">
                     <li>Send the WhatsApp message to confirm your order</li>
-                    <li>We'll confirm the exact meetup time and spot</li>
+                    <li>The seller will confirm the exact meetup time and spot</li>
                     <li>Meet at {orderData.location} on your preferred date</li>
-                    <li>Pay cash on meetup and collect your items</li>
+                    <li>Pay on pickup and collect your items</li>
                   </ol>
                 </div>
               </div>
@@ -169,7 +217,7 @@ export default function OrderComplete() {
                     You can message us on WhatsApp to confirm your meetup details.
                   </p>
                   <Button 
-                    onClick={() => window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi! I just completed a Shopify checkout and would like to arrange a meetup.")}`, '_blank')}
+                    onClick={() => window.open(`https://wa.me/${FALLBACK_WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi! I just completed a Shopify checkout and would like to arrange a meetup.")}`, '_blank')}
                     variant="outline"
                     className="gap-2"
                   >

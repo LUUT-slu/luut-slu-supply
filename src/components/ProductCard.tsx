@@ -28,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
     if (!firstVariant) return;
 
-    addItem({
+    const result = addItem({
       product,
       variantId: firstVariant.id,
       variantTitle: firstVariant.title,
@@ -37,10 +37,18 @@ export function ProductCard({ product }: ProductCardProps) {
       selectedOptions: firstVariant.selectedOptions,
     });
 
-    toast.success("Added to cart", {
-      description: node.title,
-      position: "top-center",
-    });
+    if (result.success) {
+      toast.success("Added to cart", {
+        description: node.title,
+        position: "top-center",
+      });
+    } else {
+      toast.error("Cannot add to cart", {
+        description: result.error,
+        position: "top-center",
+        duration: 5000,
+      });
+    }
   };
 
   return (
