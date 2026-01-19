@@ -74,6 +74,88 @@ export type Database = {
         }
         Relationships: []
       }
+      order_assignments: {
+        Row: {
+          assigned_at: string | null
+          assigned_by_admin_id: string
+          assignment_status: string | null
+          commission_amount_calculated: number | null
+          commission_type: string | null
+          commission_value: number
+          id: string
+          order_id: string | null
+          partner_id: string
+          responded_at: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by_admin_id: string
+          assignment_status?: string | null
+          commission_amount_calculated?: number | null
+          commission_type?: string | null
+          commission_value?: number
+          id?: string
+          order_id?: string | null
+          partner_id: string
+          responded_at?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by_admin_id?: string
+          assignment_status?: string | null
+          commission_amount_calculated?: number | null
+          commission_type?: string | null
+          commission_value?: number
+          id?: string
+          order_id?: string | null
+          partner_id?: string
+          responded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_assignments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_events: {
+        Row: {
+          actor_user_id: string
+          created_at: string | null
+          event_payload: Json | null
+          event_type: string
+          id: string
+          order_id: string | null
+        }
+        Insert: {
+          actor_user_id: string
+          created_at?: string | null
+          event_payload?: Json | null
+          event_type: string
+          id?: string
+          order_id?: string | null
+        }
+        Update: {
+          actor_user_id?: string
+          created_at?: string | null
+          event_payload?: Json | null
+          event_type?: string
+          id?: string
+          order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
@@ -137,8 +219,11 @@ export type Database = {
       }
       orders: {
         Row: {
+          accepted_at: string | null
+          assigned_at: string | null
           assigned_partner_id: string | null
           cancelled_at: string | null
+          completed_at: string | null
           created_at: string
           currency_code: string
           customer_name: string
@@ -147,20 +232,26 @@ export type Database = {
           id: string
           line_items: Json
           location: string
+          no_sale_at: string | null
           note: string | null
           order_number: number
+          order_status: string | null
           order_token: string | null
           partner_commission: number | null
           partner_commission_status: string | null
           pickup_time_window: string | null
           preferred_date: string
+          settlement_status: string | null
           status: string
           total_price: number
           updated_at: string
         }
         Insert: {
+          accepted_at?: string | null
+          assigned_at?: string | null
           assigned_partner_id?: string | null
           cancelled_at?: string | null
+          completed_at?: string | null
           created_at?: string
           currency_code?: string
           customer_name: string
@@ -169,20 +260,26 @@ export type Database = {
           id?: string
           line_items: Json
           location: string
+          no_sale_at?: string | null
           note?: string | null
           order_number?: number
+          order_status?: string | null
           order_token?: string | null
           partner_commission?: number | null
           partner_commission_status?: string | null
           pickup_time_window?: string | null
           preferred_date: string
+          settlement_status?: string | null
           status?: string
           total_price: number
           updated_at?: string
         }
         Update: {
+          accepted_at?: string | null
+          assigned_at?: string | null
           assigned_partner_id?: string | null
           cancelled_at?: string | null
+          completed_at?: string | null
           created_at?: string
           currency_code?: string
           customer_name?: string
@@ -191,18 +288,62 @@ export type Database = {
           id?: string
           line_items?: Json
           location?: string
+          no_sale_at?: string | null
           note?: string | null
           order_number?: number
+          order_status?: string | null
           order_token?: string | null
           partner_commission?: number | null
           partner_commission_status?: string | null
           pickup_time_window?: string | null
           preferred_date?: string
+          settlement_status?: string | null
           status?: string
           total_price?: number
           updated_at?: string
         }
         Relationships: []
+      }
+      partner_cash_ledger: {
+        Row: {
+          commission_amount: number
+          created_at: string | null
+          gross_collected: number
+          id: string
+          ledger_status: string | null
+          net_owed_to_admin: number | null
+          order_id: string | null
+          partner_id: string
+        }
+        Insert: {
+          commission_amount?: number
+          created_at?: string | null
+          gross_collected?: number
+          id?: string
+          ledger_status?: string | null
+          net_owed_to_admin?: number | null
+          order_id?: string | null
+          partner_id: string
+        }
+        Update: {
+          commission_amount?: number
+          created_at?: string | null
+          gross_collected?: number
+          id?: string
+          ledger_status?: string | null
+          net_owed_to_admin?: number | null
+          order_id?: string | null
+          partner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_cash_ledger_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       partner_profiles: {
         Row: {
@@ -239,6 +380,119 @@ export type Database = {
           whatsapp?: string | null
         }
         Relationships: []
+      }
+      partner_settlements: {
+        Row: {
+          id: string
+          partner_id: string
+          settled_at: string | null
+          settled_by_admin_id: string
+          settlement_amount: number
+          settlement_note: string | null
+        }
+        Insert: {
+          id?: string
+          partner_id: string
+          settled_at?: string | null
+          settled_by_admin_id: string
+          settlement_amount: number
+          settlement_note?: string | null
+        }
+        Update: {
+          id?: string
+          partner_id?: string
+          settled_at?: string | null
+          settled_by_admin_id?: string
+          settlement_amount?: number
+          settlement_note?: string | null
+        }
+        Relationships: []
+      }
+      partner_stock: {
+        Row: {
+          id: string
+          last_updated_at: string | null
+          partner_id: string
+          product_id: string | null
+          qty_on_hand: number
+          variant_id: string | null
+        }
+        Insert: {
+          id?: string
+          last_updated_at?: string | null
+          partner_id: string
+          product_id?: string | null
+          qty_on_hand?: number
+          variant_id?: string | null
+        }
+        Update: {
+          id?: string
+          last_updated_at?: string | null
+          partner_id?: string
+          product_id?: string | null
+          qty_on_hand?: number
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_stock_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "seller_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_stock_movements: {
+        Row: {
+          created_at: string | null
+          id: string
+          movement_type: string
+          note: string | null
+          partner_id: string
+          product_id: string | null
+          qty_change: number
+          related_order_id: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          movement_type: string
+          note?: string | null
+          partner_id: string
+          product_id?: string | null
+          qty_change: number
+          related_order_id?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          movement_type?: string
+          note?: string | null
+          partner_id?: string
+          product_id?: string | null
+          qty_change?: number
+          related_order_id?: string | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "seller_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_stock_movements_related_order_id_fkey"
+            columns: ["related_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_sales: {
         Row: {
@@ -532,6 +786,7 @@ export type Database = {
     }
     Functions: {
       format_order_number: { Args: { order_num: number }; Returns: string }
+      get_partner_totals: { Args: { p_partner_id?: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -540,6 +795,55 @@ export type Database = {
         Returns: boolean
       }
       is_partner: { Args: { _user_id: string }; Returns: boolean }
+      rpc_add_partner_stock: {
+        Args: {
+          p_note?: string
+          p_partner_id: string
+          p_product_id: string
+          p_quantity: number
+        }
+        Returns: Json
+      }
+      rpc_assign_order: {
+        Args: {
+          p_commission_type?: string
+          p_commission_value?: number
+          p_order_id: string
+          p_partner_id: string
+        }
+        Returns: Json
+      }
+      rpc_mark_completed: {
+        Args: { p_gross_collected?: number; p_order_id: string }
+        Returns: Json
+      }
+      rpc_mark_no_sale: {
+        Args: { p_note?: string; p_order_id: string }
+        Returns: Json
+      }
+      rpc_partner_respond: {
+        Args: {
+          p_decline_reason?: string
+          p_order_id: string
+          p_response: string
+        }
+        Returns: Json
+      }
+      rpc_remove_partner_stock: {
+        Args: {
+          p_movement_type?: string
+          p_note?: string
+          p_partner_id: string
+          p_product_id: string
+          p_quantity: number
+        }
+        Returns: Json
+      }
+      rpc_settle_partner: {
+        Args: { p_partner_id: string; p_settlement_note?: string }
+        Returns: Json
+      }
+      rpc_undo_completed: { Args: { p_order_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "partner"
