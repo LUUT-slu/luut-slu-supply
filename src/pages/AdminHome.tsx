@@ -126,13 +126,12 @@ export default function AdminHome() {
       ],
     },
     {
-      title: "Assign Orders",
-      description: "Assign orders to delivery partners",
-      icon: ClipboardList,
-      href: "/admin-orders",
+      title: "Partner Management",
+      description: "View & manage delivery partners",
+      icon: Users,
+      href: "/admin/partners",
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
-      highlight: stats.pendingOrders > 0,
     },
     {
       title: "View All Orders",
