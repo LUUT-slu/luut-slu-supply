@@ -199,6 +199,14 @@ export async function fetchProducts(
   return data.data.products.edges;
 }
 
+export async function fetchProductsByVendor(vendorFilter: string): Promise<ShopifyProduct[]> {
+  // Fetch all products and filter by vendor containing the filter string
+  const allProducts = await fetchProducts(100);
+  return allProducts.filter(product => 
+    product.node.vendor.toLowerCase().includes(vendorFilter.toLowerCase())
+  );
+}
+
 export async function fetchProductByHandle(handle: string): Promise<ShopifyProduct['node'] | null> {
   const data = await storefrontApiRequest(PRODUCT_BY_HANDLE_QUERY, { handle });
   if (!data) return null;
