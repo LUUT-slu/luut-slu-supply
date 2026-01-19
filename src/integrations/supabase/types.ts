@@ -150,6 +150,8 @@ export type Database = {
           note: string | null
           order_number: number
           order_token: string | null
+          partner_commission: number | null
+          partner_commission_status: string | null
           pickup_time_window: string | null
           preferred_date: string
           status: string
@@ -170,6 +172,8 @@ export type Database = {
           note?: string | null
           order_number?: number
           order_token?: string | null
+          partner_commission?: number | null
+          partner_commission_status?: string | null
           pickup_time_window?: string | null
           preferred_date: string
           status?: string
@@ -190,6 +194,8 @@ export type Database = {
           note?: string | null
           order_number?: number
           order_token?: string | null
+          partner_commission?: number | null
+          partner_commission_status?: string | null
           pickup_time_window?: string | null
           preferred_date?: string
           status?: string
