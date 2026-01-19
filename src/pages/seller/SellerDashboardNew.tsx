@@ -5,6 +5,7 @@ import { DateRange } from "react-day-picker";
 import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
 import { SellerNav } from "@/components/seller/SellerNav";
 import { DateRangePicker } from "@/components/seller/DateRangePicker";
+import { CreateOrderDialog } from "@/components/seller/CreateOrderDialog";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
 import { useSellerStats } from "@/hooks/useSellerStats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,6 +112,13 @@ export default function SellerDashboardNew() {
 
             {/* Quick Actions */}
             <div className="flex gap-2">
+              {profile?.id && (
+                <CreateOrderDialog
+                  sellerId={profile.id}
+                  sellerName={profile.seller_name}
+                  sellerWhatsapp={profile.whatsapp}
+                />
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -122,6 +130,7 @@ export default function SellerDashboardNew() {
               </Button>
               <Button
                 size="sm"
+                variant="outline"
                 onClick={() => navigate("/seller/products/new")}
                 className="gap-1.5"
               >
