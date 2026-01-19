@@ -33,6 +33,7 @@ import LuutConnectAdmin from "./pages/LuutConnectAdmin";
 import PartnerPortal from "./pages/PartnerPortal";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
 import ManagePartners from "./pages/ManagePartners";
+import PartnerDetailsPage from "./pages/PartnerDetailsPage";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,7 @@ const App = () => (
           <Route path="/admin/sellers" element={<AdminSellers />} />
           <Route path="/admin/orders" element={<AdminOrdersPage />} />
           <Route path="/admin/partners" element={<ManagePartners />} />
+          <Route path="/admin/partners/:partnerId" element={<PartnerDetailsPage />} />
           <Route path="/admin-orders" element={<AdminOrdersPage />} />
           
           {/* Partner Routes */}
