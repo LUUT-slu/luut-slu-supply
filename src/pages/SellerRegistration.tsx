@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+
 import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -163,7 +163,6 @@ export default function SellerRegistration() {
             </CardContent>
           </Card>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -193,7 +192,6 @@ export default function SellerRegistration() {
             </CardContent>
           </Card>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -224,7 +222,6 @@ export default function SellerRegistration() {
             </CardContent>
           </Card>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -349,8 +346,6 @@ export default function SellerRegistration() {
           </Card>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+
 import { AdminAuth } from "@/components/AdminAuth";
 import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
@@ -532,8 +532,6 @@ export default function LuutConnectAdmin() {
             </CardContent>
           </Card>
         </main>
-
-        <Footer />
       </div>
     </AdminAuth>
   );

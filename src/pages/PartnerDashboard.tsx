@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+
 import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -442,8 +442,6 @@ export default function PartnerDashboard() {
           </Card>
         )}
       </main>
-
-      <Footer />
     </div>
   );
 }
