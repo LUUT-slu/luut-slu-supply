@@ -141,6 +141,14 @@ export default function AdminHome() {
       color: "text-purple-500",
       bgColor: "bg-purple-500/10",
     },
+    {
+      title: "Seller Portal",
+      description: "Access your seller dashboard & stats",
+      icon: Store,
+      href: "/seller/dashboard",
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10",
+    },
   ];
 
   return (
