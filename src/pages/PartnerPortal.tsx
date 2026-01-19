@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { BackButton } from "@/components/BackButton";
 import { 
   Package, 
   Clock, 
@@ -255,6 +256,7 @@ export default function PartnerPortal() {
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center gap-2">
+            <BackButton to="/" label="" />
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
               {partnerName?.charAt(0) || "P"}
             </div>
