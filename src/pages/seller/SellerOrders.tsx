@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
 import { SellerNav } from "@/components/seller/SellerNav";
+import { CreateOrderDialog } from "@/components/seller/CreateOrderDialog";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ShoppingBag, RefreshCw, Eye, Package } from "lucide-react";
+import { ShoppingBag, RefreshCw, Package } from "lucide-react";
 import { toast } from "sonner";
 
 interface Sale {
@@ -104,10 +105,20 @@ export default function SellerOrders() {
                 {sales.length} sales · {formatCurrency(totalRevenue)} revenue · {totalUnits} units
               </p>
             </div>
-            <Button onClick={fetchSales} variant="outline" size="sm" className="gap-1.5">
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={fetchSales} variant="outline" size="sm" className="gap-1.5">
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+              {profile?.id && (
+                <CreateOrderDialog
+                  sellerId={profile.id}
+                  sellerName={profile.seller_name}
+                  sellerWhatsapp={profile.whatsapp}
+                  onOrderCreated={fetchSales}
+                />
+              )}
+            </div>
           </div>
 
           {/* Orders Table */}
