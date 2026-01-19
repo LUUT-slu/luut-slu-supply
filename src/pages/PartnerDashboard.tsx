@@ -33,8 +33,20 @@ import {
   Phone,
   User,
   MessageSquare,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Order {
   id: string;
@@ -63,6 +75,7 @@ const statusOptions = [
   { value: "ACCEPTED", label: "Accepted", icon: CheckCircle, color: "bg-blue-500", canTransitionTo: ["ON_THE_WAY"] },
   { value: "ON_THE_WAY", label: "On the Way", icon: Truck, color: "bg-purple-500", canTransitionTo: ["COMPLETED"] },
   { value: "COMPLETED", label: "Completed", icon: CheckCircle, color: "bg-green-500", canTransitionTo: [] },
+  { value: "NO_SALE", label: "No Sale", icon: XCircle, color: "bg-red-500", canTransitionTo: [] },
 ];
 
 export default function PartnerDashboard() {
@@ -119,7 +132,7 @@ export default function PartnerDashboard() {
       .from("orders")
       .select("*")
       .eq("assigned_partner_id", user.id)
-      .in("status", ["ASSIGNED", "ACCEPTED", "ON_THE_WAY", "COMPLETED"])
+      .in("status", ["ASSIGNED", "ACCEPTED", "ON_THE_WAY", "COMPLETED", "NO_SALE"])
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -129,6 +142,49 @@ export default function PartnerDashboard() {
       setOrders((data || []) as unknown as Order[]);
     }
     setLoading(false);
+  };
+
+  const handleMarkNoSale = async (orderId: string) => {
+    setUpdating(orderId);
+    
+    const { error } = await supabase
+      .from("orders")
+      .update({ 
+        status: "NO_SALE", 
+        updated_at: new Date().toISOString(),
+        partner_commission_status: null, // No commission for no-sale
+      })
+      .eq("id", orderId);
+
+    if (error) {
+      toast.error("Failed to mark order as no sale");
+    } else {
+      toast.success("Order marked as No Sale");
+      setOrders(orders.map(o => o.id === orderId ? { ...o, status: "NO_SALE" } : o));
+      
+      // Send WhatsApp notification to admin
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        sendNoSaleNotification(order);
+      }
+    }
+    setUpdating(null);
+  };
+
+  const sendNoSaleNotification = (order: Order) => {
+    const partnerName = partnerProfile?.partner_name || "Partner";
+    let message = `❌ *ORDER NO SALE*\n\n`;
+    message += `Order: #L${String(order.order_number).padStart(4, '0')}\n`;
+    message += `Partner: ${partnerName}\n`;
+    message += `Status: NO SALE - Customer did not buy\n\n`;
+    message += `👤 Customer: ${order.customer_name}\n`;
+    message += `📍 Location: ${order.location}\n`;
+    message += `📅 Pickup: ${order.preferred_date}\n\n`;
+    message += `Note: No stock deducted, no commission.`;
+    
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   useEffect(() => {
@@ -221,8 +277,9 @@ export default function PartnerDashboard() {
     window.open(whatsappUrl, '_blank');
   };
 
-  const activeOrders = orders.filter(o => o.status !== "COMPLETED");
+  const activeOrders = orders.filter(o => !["COMPLETED", "NO_SALE"].includes(o.status));
   const completedOrders = orders.filter(o => o.status === "COMPLETED");
+  const noSaleOrders = orders.filter(o => o.status === "NO_SALE");
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -246,7 +303,7 @@ export default function PartnerDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Active Orders</CardTitle>
@@ -285,6 +342,15 @@ export default function PartnerDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{completedOrders.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">No Sale</CardTitle>
+              <XCircle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{noSaleOrders.length}</div>
             </CardContent>
           </Card>
         </div>
@@ -393,6 +459,38 @@ export default function PartnerDashboard() {
                               </SelectContent>
                             </Select>
                           )}
+
+                          {/* No Sale Button - only for non-completed orders */}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-2 text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/50 hover:bg-destructive/10"
+                                disabled={updating === order.id}
+                              >
+                                <XCircle className="h-4 w-4" />
+                                No Sale
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Mark as No Sale?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This means the customer did not buy. The order will be moved to history with no stock deducted and no commission earned.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleMarkNoSale(order.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Confirm No Sale
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
                     </CardContent>
@@ -405,9 +503,12 @@ export default function PartnerDashboard() {
 
         {/* Completed Orders */}
         {completedOrders.length > 0 && (
-          <Card>
+          <Card className="mb-8">
             <CardHeader>
-              <CardTitle>Completed Orders</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                Completed Orders
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -430,8 +531,52 @@ export default function PartnerDashboard() {
                         <TableCell>{order.customer_name}</TableCell>
                         <TableCell>{order.location}</TableCell>
                         <TableCell>{order.preferred_date}</TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium text-green-500">
                           EC${order.total_price.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* No Sale Orders */}
+        {noSaleOrders.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <XCircle className="h-5 w-5 text-red-500" />
+                No Sale / Failed Orders
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {noSaleOrders.slice(0, 10).map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">
+                          {formatOrderNumber(order.order_number)}
+                        </TableCell>
+                        <TableCell>{order.customer_name}</TableCell>
+                        <TableCell>{order.location}</TableCell>
+                        <TableCell>{order.preferred_date}</TableCell>
+                        <TableCell>
+                          <Badge variant="destructive" className="text-xs">
+                            No Sale
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
