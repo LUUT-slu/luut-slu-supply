@@ -19,12 +19,11 @@ import NotFound from "./pages/NotFound";
 import MyOrders from "./pages/MyOrders";
 import OrderDetails from "./pages/OrderDetails";
 import OrderComplete from "./pages/OrderComplete";
-import AdminSellers from "./pages/AdminSellers";
+import AdminSellersNew from "./pages/AdminSellersNew";
 import AdminSellerRequests from "./pages/AdminSellerRequests";
 import AdminHome from "./pages/AdminHome";
 import SellerRegistration from "./pages/SellerRegistration";
 import SellerAuth from "./pages/SellerAuth";
-import SellerDashboard from "./pages/SellerDashboard";
 import SellerPending from "./pages/SellerPending";
 import CustomerAuth from "./pages/CustomerAuth";
 import AccountSettings from "./pages/AccountSettings";
@@ -34,6 +33,14 @@ import PartnerPortal from "./pages/PartnerPortal";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
 import ManagePartners from "./pages/ManagePartners";
 import PartnerDetailsPage from "./pages/PartnerDetailsPage";
+// Seller Portal Pages
+import SellerApply from "./pages/seller/SellerApply";
+import SellerPendingNew from "./pages/seller/SellerPendingNew";
+import SellerDashboardNew from "./pages/seller/SellerDashboardNew";
+import SellerProducts from "./pages/seller/SellerProducts";
+import SellerProductForm from "./pages/seller/SellerProductForm";
+import SellerOrders from "./pages/seller/SellerOrders";
+import SellerAnalytics from "./pages/seller/SellerAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -69,14 +76,20 @@ const App = () => (
           <Route path="/register-seller" element={<SellerRegistration />} />
           
           {/* Seller Routes */}
-          <Route path="/seller" element={<SellerDashboard />} />
-          <Route path="/seller/pending" element={<SellerPending />} />
-          <Route path="/seller-dashboard" element={<SellerDashboard />} />
+          <Route path="/seller" element={<SellerDashboardNew />} />
+          <Route path="/seller/apply" element={<SellerApply />} />
+          <Route path="/seller/pending" element={<SellerPendingNew />} />
+          <Route path="/seller/dashboard" element={<SellerDashboardNew />} />
+          <Route path="/seller/products" element={<SellerProducts />} />
+          <Route path="/seller/products/new" element={<SellerProductForm />} />
+          <Route path="/seller/products/:productId" element={<SellerProductForm />} />
+          <Route path="/seller/orders" element={<SellerOrders />} />
+          <Route path="/seller/analytics" element={<SellerAnalytics />} />
           
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminHome />} />
           <Route path="/admin/approvals" element={<AdminSellerRequests />} />
-          <Route path="/admin/sellers" element={<AdminSellers />} />
+          <Route path="/admin/sellers" element={<AdminSellersNew />} />
           <Route path="/admin/orders" element={<AdminOrdersPage />} />
           <Route path="/admin/partners" element={<ManagePartners />} />
           <Route path="/admin/partners/:partnerId" element={<PartnerDetailsPage />} />

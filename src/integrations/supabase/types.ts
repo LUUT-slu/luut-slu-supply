@@ -74,6 +74,67 @@ export type Database = {
         }
         Relationships: []
       }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          product_id: string | null
+          product_image_url: string | null
+          product_name: string
+          quantity: number
+          seller_id: string | null
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          product_id?: string | null
+          product_image_url?: string | null
+          product_name: string
+          quantity?: number
+          seller_id?: string | null
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          product_id?: string | null
+          product_image_url?: string | null
+          product_name?: string
+          quantity?: number
+          seller_id?: string | null
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "seller_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "seller_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           assigned_partner_id: string | null
@@ -266,18 +327,82 @@ export type Database = {
         }
         Relationships: []
       }
+      seller_products: {
+        Row: {
+          category: string | null
+          clicks_count: number
+          created_at: string
+          description: string | null
+          id: string
+          images: string[] | null
+          location: string | null
+          name: string
+          price: number
+          quantity: number
+          seller_id: string
+          status: string
+          updated_at: string
+          views_count: number
+        }
+        Insert: {
+          category?: string | null
+          clicks_count?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          location?: string | null
+          name: string
+          price: number
+          quantity?: number
+          seller_id: string
+          status?: string
+          updated_at?: string
+          views_count?: number
+        }
+        Update: {
+          category?: string | null
+          clicks_count?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          location?: string | null
+          name?: string
+          price?: number
+          quantity?: number
+          seller_id?: string
+          status?: string
+          updated_at?: string
+          views_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "seller_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seller_profiles: {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          categories: string[] | null
           created_at: string
           id: string
+          instagram_url: string | null
           is_approved: boolean
           is_primary_seller: boolean | null
           location: string | null
+          logo_url: string | null
+          phone: string | null
           seller_id: string | null
           seller_name: string
           seller_status: string | null
+          shop_description: string | null
           updated_at: string
           user_id: string
           whatsapp: string | null
@@ -285,14 +410,19 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          categories?: string[] | null
           created_at?: string
           id?: string
+          instagram_url?: string | null
           is_approved?: boolean
           is_primary_seller?: boolean | null
           location?: string | null
+          logo_url?: string | null
+          phone?: string | null
           seller_id?: string | null
           seller_name: string
           seller_status?: string | null
+          shop_description?: string | null
           updated_at?: string
           user_id: string
           whatsapp?: string | null
@@ -300,14 +430,19 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          categories?: string[] | null
           created_at?: string
           id?: string
+          instagram_url?: string | null
           is_approved?: boolean
           is_primary_seller?: boolean | null
           location?: string | null
+          logo_url?: string | null
+          phone?: string | null
           seller_id?: string | null
           seller_name?: string
           seller_status?: string | null
+          shop_description?: string | null
           updated_at?: string
           user_id?: string
           whatsapp?: string | null

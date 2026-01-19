@@ -1,0 +1,344 @@
+import { useState, useEffect } from "react";
+import { startOfMonth, endOfMonth, format } from "date-fns";
+import { DateRange } from "react-day-picker";
+import { supabase } from "@/integrations/supabase/client";
+import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
+import { SellerNav } from "@/components/seller/SellerNav";
+import { DateRangePicker } from "@/components/seller/DateRangePicker";
+import { useSellerProfile } from "@/hooks/useSellerProfile";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  BarChart3,
+  TrendingUp,
+  DollarSign,
+  Package,
+  RefreshCw,
+  Calendar,
+} from "lucide-react";
+
+interface DailySales {
+  date: string;
+  revenue: number;
+  units: number;
+  orders: number;
+}
+
+interface TopProduct {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  unitsSold: number;
+  revenue: number;
+}
+
+export default function SellerAnalytics() {
+  const { profile } = useSellerProfile();
+  const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
+
+  const [dailySales, setDailySales] = useState<DailySales[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [totals, setTotals] = useState({
+    revenue: 0,
+    units: 0,
+    orders: 0,
+  });
+
+  useEffect(() => {
+    if (profile?.user_id) {
+      fetchAnalytics();
+    }
+  }, [profile?.user_id, dateRange]);
+
+  const fetchAnalytics = async () => {
+    if (!profile?.user_id) return;
+
+    setLoading(true);
+
+    try {
+      let query = supabase
+        .from("product_sales")
+        .select("*")
+        .eq("seller_user_id", profile.user_id);
+
+      if (dateRange?.from) {
+        query = query.gte("sold_at", dateRange.from.toISOString());
+      }
+      if (dateRange?.to) {
+        query = query.lte("sold_at", dateRange.to.toISOString());
+      }
+
+      const { data: salesData } = await query.order("sold_at", { ascending: false });
+
+      if (!salesData) {
+        setDailySales([]);
+        setTopProducts([]);
+        setTotals({ revenue: 0, units: 0, orders: 0 });
+        setLoading(false);
+        return;
+      }
+
+      // Calculate totals
+      let totalRevenue = 0;
+      let totalUnits = 0;
+
+      // Group by date for daily sales
+      const dailyMap: Record<string, DailySales> = {};
+      
+      // Group by product for top products
+      const productMap: Record<string, TopProduct> = {};
+
+      salesData.forEach((sale) => {
+        const revenue = sale.price_amount * sale.quantity;
+        totalRevenue += revenue;
+        totalUnits += sale.quantity;
+
+        // Daily grouping
+        const dateKey = format(new Date(sale.sold_at), "yyyy-MM-dd");
+        if (!dailyMap[dateKey]) {
+          dailyMap[dateKey] = { date: dateKey, revenue: 0, units: 0, orders: 0 };
+        }
+        dailyMap[dateKey].revenue += revenue;
+        dailyMap[dateKey].units += sale.quantity;
+        dailyMap[dateKey].orders += 1;
+
+        // Product grouping
+        if (!productMap[sale.product_id]) {
+          productMap[sale.product_id] = {
+            id: sale.product_id,
+            name: sale.product_title,
+            imageUrl: sale.product_image_url,
+            unitsSold: 0,
+            revenue: 0,
+          };
+        }
+        productMap[sale.product_id].unitsSold += sale.quantity;
+        productMap[sale.product_id].revenue += revenue;
+      });
+
+      // Convert maps to arrays
+      const dailyArray = Object.values(dailyMap).sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      const topProductsArray = Object.values(productMap)
+        .sort((a, b) => b.unitsSold - a.unitsSold)
+        .slice(0, 10);
+
+      setDailySales(dailyArray);
+      setTopProducts(topProductsArray);
+      setTotals({
+        revenue: totalRevenue,
+        units: totalUnits,
+        orders: salesData.length,
+      });
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "XCD",
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  return (
+    <SellerRouteGuard>
+      <div className="flex min-h-screen flex-col bg-background">
+        <SellerNav
+          sellerName={profile?.seller_name}
+          logoUrl={profile?.logo_url || undefined}
+        />
+
+        <main className="container flex-1 py-4 md:py-6">
+          {/* Header */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="font-display text-xl md:text-2xl flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Analytics
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Sales performance and insights
+              </p>
+            </div>
+          </div>
+
+          {/* Date Range Filter */}
+          <div className="mb-5">
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              className="max-w-xs"
+            />
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <Card className="border-border/60">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10 shrink-0">
+                        <DollarSign className="h-5 w-5 text-green-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">Revenue</p>
+                        <p className="font-semibold text-lg">{formatCurrency(totals.revenue)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-border/60">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 shrink-0">
+                        <Package className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">Units Sold</p>
+                        <p className="font-semibold text-lg">{totals.units}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-border/60">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 shrink-0">
+                        <TrendingUp className="h-5 w-5 text-purple-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">Sales</p>
+                        <p className="font-semibold text-lg">{totals.orders}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Two Column Layout */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* Top Products */}
+                <Card className="border-border/60">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-primary" />
+                      Top Products
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {topProducts.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">
+                        No sales data in this period
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {topProducts.slice(0, 5).map((product, index) => (
+                          <div
+                            key={product.id}
+                            className="flex items-center gap-3 p-2 rounded-lg bg-muted/30"
+                          >
+                            <span className="text-xs text-muted-foreground w-4">
+                              #{index + 1}
+                            </span>
+                            {product.imageUrl ? (
+                              <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                className="h-10 w-10 rounded object-cover"
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{product.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {product.unitsSold} sold
+                              </p>
+                            </div>
+                            <span className="text-sm font-medium text-green-500">
+                              {formatCurrency(product.revenue)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Sales by Date */}
+                <Card className="border-border/60">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      Sales by Date
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {dailySales.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">
+                        No sales data in this period
+                      </p>
+                    ) : (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {dailySales.slice(0, 10).map((day) => (
+                          <div
+                            key={day.date}
+                            className="flex items-center justify-between p-2 rounded-lg bg-muted/30"
+                          >
+                            <div>
+                              <p className="text-sm font-medium">{formatDate(day.date)}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {day.orders} sales · {day.units} units
+                              </p>
+                            </div>
+                            <span className="text-sm font-medium text-green-500">
+                              {formatCurrency(day.revenue)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </main>
+      </div>
+    </SellerRouteGuard>
+  );
+}
