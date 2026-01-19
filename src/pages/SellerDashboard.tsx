@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+
 import { DollarSign, Package, TrendingUp, Calendar, LogOut, Store, ShieldX, Clock, Ban } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
@@ -158,7 +158,6 @@ export default function SellerDashboard() {
             </CardContent>
           </Card>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -182,7 +181,6 @@ export default function SellerDashboard() {
             </CardContent>
           </Card>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -206,7 +204,6 @@ export default function SellerDashboard() {
             </CardContent>
           </Card>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -329,8 +326,6 @@ export default function SellerDashboard() {
           )}
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 }

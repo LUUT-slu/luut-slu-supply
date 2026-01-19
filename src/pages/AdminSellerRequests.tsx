@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+
 import { AdminAuth } from "@/components/AdminAuth";
 import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
@@ -492,8 +492,6 @@ export default function AdminSellerRequests() {
             </TabsContent>
           </Tabs>
         </main>
-
-        <Footer />
 
         {/* Application Details Dialog */}
         <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>

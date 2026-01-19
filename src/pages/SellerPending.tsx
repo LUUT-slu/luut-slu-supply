@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Clock, Home, LogOut, Store } from "lucide-react";
@@ -58,8 +58,6 @@ export default function SellerPending() {
           </Card>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 }
