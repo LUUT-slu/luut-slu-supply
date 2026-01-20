@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_inventory: {
+        Row: {
+          id: string
+          product_id: string | null
+          qty_on_hand: number
+          updated_at: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          id?: string
+          product_id?: string | null
+          qty_on_hand?: number
+          updated_at?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          id?: string
+          product_id?: string | null
+          qty_on_hand?: number
+          updated_at?: string | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "seller_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_logs: {
         Row: {
           action: string
@@ -801,6 +833,19 @@ export type Database = {
           p_partner_id: string
           p_product_id: string
           p_quantity: number
+        }
+        Returns: Json
+      }
+      rpc_admin_add_inventory: {
+        Args: { p_product_id: string; p_qty?: number; p_variant_id?: string }
+        Returns: Json
+      }
+      rpc_admin_allocate_stock_to_partner: {
+        Args: {
+          p_partner_id: string
+          p_product_id: string
+          p_qty?: number
+          p_variant_id?: string
         }
         Returns: Json
       }
