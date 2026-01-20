@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { User, Mail, Phone, MapPin, FileText, LogOut, Save, Edit2, Check, X, ArrowLeft } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { User, Mail, Phone, MapPin, FileText, LogOut, Save, Edit2, Check, X, ArrowLeft, Store, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,8 @@ export default function AccountSettings() {
   const navigate = useNavigate();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
+  const [partnerProfile, setPartnerProfile] = useState<any>(null);
+  const [sellerProfile, setSellerProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -77,6 +79,7 @@ export default function AccountSettings() {
   const fetchProfile = async (userId: string) => {
     setIsLoading(true);
     
+    // Fetch customer profile
     const { data, error } = await supabase
       .from("customer_profiles")
       .select("*")
@@ -96,6 +99,22 @@ export default function AccountSettings() {
         meetup_notes: data.meetup_notes || "",
       });
     }
+
+    // Fetch partner profile
+    const { data: partner } = await supabase
+      .from("partner_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+    setPartnerProfile(partner);
+
+    // Fetch seller profile
+    const { data: seller } = await supabase
+      .from("seller_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+    setSellerProfile(seller);
     
     setIsLoading(false);
   };
@@ -361,6 +380,31 @@ export default function AccountSettings() {
           </Card>
         </div>
         
+        {/* Business Portals Section */}
+        {(partnerProfile || sellerProfile) && (
+          <div className="mt-8 pt-6 border-t">
+            <h2 className="font-display text-lg mb-4">Business Portals</h2>
+            <div className="flex flex-wrap gap-3">
+              {partnerProfile && (
+                <Link to="/partner">
+                  <Button variant="outline" className="gap-2">
+                    <Truck className="h-4 w-4" />
+                    Partner Portal
+                  </Button>
+                </Link>
+              )}
+              {sellerProfile && (
+                <Link to="/seller">
+                  <Button variant="outline" className="gap-2">
+                    <Store className="h-4 w-4" />
+                    Seller Portal
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Logout Section */}
         <div className="mt-8 pt-6 border-t">
           <Button variant="outline" onClick={handleLogout} className="text-destructive hover:text-destructive">

@@ -11,6 +11,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sellerProfile, setSellerProfile] = useState<any>(null);
+  const [partnerProfile, setPartnerProfile] = useState<any>(null);
   const [customerProfile, setCustomerProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -24,6 +25,15 @@ export default function Auth() {
         .maybeSingle();
       
       setSellerProfile(seller);
+
+      // Check for partner profile
+      const { data: partner } = await supabase
+        .from("partner_profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+      
+      setPartnerProfile(partner);
 
       // Check for customer profile
       const { data: customer } = await supabase
@@ -44,6 +54,7 @@ export default function Auth() {
         }, 0);
       } else {
         setSellerProfile(null);
+        setPartnerProfile(null);
         setCustomerProfile(null);
         setIsLoading(false);
       }
@@ -112,6 +123,25 @@ export default function Auth() {
                 </CardContent>
               </Card>
             </Link>
+
+            {/* Partner Account - only show if user has partner profile */}
+            {partnerProfile && (
+              <Link to="/partner" className="block">
+                <Card className="transition-all hover:border-primary hover:shadow-md active:scale-[0.98]">
+                  <CardContent className="flex items-center gap-4 p-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                      <Truck className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-display text-lg">Partner Portal</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Go to your partner dashboard
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
 
             {/* Sign Out */}
             <Button
