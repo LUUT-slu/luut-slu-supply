@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { RouteGuard } from "@/components/RouteGuard";
 import Index from "./pages/Index";
 import Shop from "./pages/Shop";
 import ShopCategory from "./pages/ShopCategory";
@@ -23,11 +24,10 @@ import AdminSellersNew from "./pages/AdminSellersNew";
 import AdminSellerRequests from "./pages/AdminSellerRequests";
 import AdminHome from "./pages/AdminHome";
 import SellerRegistration from "./pages/SellerRegistration";
-import SellerAuth from "./pages/SellerAuth";
-import SellerPending from "./pages/SellerPending";
 import CustomerAuth from "./pages/CustomerAuth";
 import AccountSettings from "./pages/AccountSettings";
 import Auth from "./pages/Auth";
+import Login from "./pages/Login";
 import LuutConnectAdmin from "./pages/LuutConnectAdmin";
 import PartnerPortal from "./pages/PartnerPortal";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
@@ -70,36 +70,111 @@ const App = () => (
           <Route path="/order-complete" element={<OrderComplete />} />
           
           {/* Auth Routes */}
-          <Route path="/seller-auth" element={<SellerAuth />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/seller-auth" element={<Login />} />
           <Route path="/customer-auth" element={<CustomerAuth />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/account" element={<AccountSettings />} />
           <Route path="/register-seller" element={<SellerRegistration />} />
           
-          {/* Seller Routes */}
-          <Route path="/seller" element={<SellerDashboardNew />} />
+          {/* Customer Account (any authenticated user) */}
+          <Route path="/account" element={
+            <RouteGuard requiredRole="authenticated">
+              <AccountSettings />
+            </RouteGuard>
+          } />
+          
+          {/* Seller Routes (requires seller role + approval) */}
+          <Route path="/seller" element={
+            <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+              <SellerDashboardNew />
+            </RouteGuard>
+          } />
           <Route path="/seller/apply" element={<SellerApply />} />
           <Route path="/seller/pending" element={<SellerPendingNew />} />
-          <Route path="/seller/dashboard" element={<SellerDashboardNew />} />
-          <Route path="/seller/products" element={<SellerProducts />} />
-          <Route path="/seller/products/new" element={<SellerProductForm />} />
-          <Route path="/seller/products/:productId" element={<SellerProductForm />} />
-          <Route path="/seller/orders" element={<SellerOrders />} />
-          <Route path="/seller/analytics" element={<SellerAnalytics />} />
+          <Route path="/seller/dashboard" element={
+            <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+              <SellerDashboardNew />
+            </RouteGuard>
+          } />
+          <Route path="/seller/products" element={
+            <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+              <SellerProducts />
+            </RouteGuard>
+          } />
+          <Route path="/seller/products/new" element={
+            <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+              <SellerProductForm />
+            </RouteGuard>
+          } />
+          <Route path="/seller/products/:productId" element={
+            <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+              <SellerProductForm />
+            </RouteGuard>
+          } />
+          <Route path="/seller/orders" element={
+            <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+              <SellerOrders />
+            </RouteGuard>
+          } />
+          <Route path="/seller/analytics" element={
+            <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+              <SellerAnalytics />
+            </RouteGuard>
+          } />
           
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminHome />} />
-          <Route path="/admin/approvals" element={<AdminSellerRequests />} />
-          <Route path="/admin/sellers" element={<AdminSellersNew />} />
-          <Route path="/admin/orders" element={<AdminOrdersPage />} />
-          <Route path="/admin/partners" element={<ManagePartners />} />
-          <Route path="/admin/partners/:partnerId" element={<PartnerDetailsPage />} />
-          <Route path="/admin/products" element={<AdminProductsPage />} />
-          <Route path="/admin-orders" element={<AdminOrdersPage />} />
+          {/* Admin Routes (requires admin role) */}
+          <Route path="/admin" element={
+            <RouteGuard requiredRole="admin">
+              <AdminHome />
+            </RouteGuard>
+          } />
+          <Route path="/admin/approvals" element={
+            <RouteGuard requiredRole="admin">
+              <AdminSellerRequests />
+            </RouteGuard>
+          } />
+          <Route path="/admin/sellers" element={
+            <RouteGuard requiredRole="admin">
+              <AdminSellersNew />
+            </RouteGuard>
+          } />
+          <Route path="/admin/orders" element={
+            <RouteGuard requiredRole="admin">
+              <AdminOrdersPage />
+            </RouteGuard>
+          } />
+          <Route path="/admin/partners" element={
+            <RouteGuard requiredRole="admin">
+              <ManagePartners />
+            </RouteGuard>
+          } />
+          <Route path="/admin/partners/:partnerId" element={
+            <RouteGuard requiredRole="admin">
+              <PartnerDetailsPage />
+            </RouteGuard>
+          } />
+          <Route path="/admin/products" element={
+            <RouteGuard requiredRole="admin">
+              <AdminProductsPage />
+            </RouteGuard>
+          } />
+          <Route path="/admin-orders" element={
+            <RouteGuard requiredRole="admin">
+              <AdminOrdersPage />
+            </RouteGuard>
+          } />
           
-          {/* Partner Routes */}
-          <Route path="/partner" element={<PartnerPortal />} />
-          <Route path="/connect" element={<LuutConnectAdmin />} />
+          {/* Partner Routes (requires partner role + approval) */}
+          <Route path="/partner" element={
+            <RouteGuard requiredRole="partner">
+              <PartnerPortal />
+            </RouteGuard>
+          } />
+          <Route path="/connect" element={
+            <RouteGuard requiredRole="admin">
+              <LuutConnectAdmin />
+            </RouteGuard>
+          } />
           
           <Route path="*" element={<NotFound />} />
         </Routes>

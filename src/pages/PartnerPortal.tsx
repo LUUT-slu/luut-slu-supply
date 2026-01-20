@@ -99,32 +99,16 @@ export default function PartnerPortal() {
   );
   const { markCompleted, markNoShow, updating } = usePartnerActions();
 
-  const checkPartnerAccess = async () => {
+  // Fetch partner name (access already checked by RouteGuard)
+  const fetchPartnerInfo = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
-
-    const isPartner = roles?.some(r => (r.role as string) === "partner");
-    const isAdmin = roles?.some(r => r.role === "admin");
-
-    if (!isPartner && !isAdmin) {
-      toast.error("Access denied. Partner login required.");
-      navigate("/auth");
-      return;
-    }
+    if (!user) return;
 
     const { data: profile } = await supabase
       .from("partner_profiles")
       .select("partner_name")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (profile) {
       setPartnerName(profile.partner_name);
@@ -134,7 +118,7 @@ export default function PartnerPortal() {
   };
 
   useEffect(() => {
-    checkPartnerAccess();
+    fetchPartnerInfo();
   }, []);
 
   const refreshAll = async () => {

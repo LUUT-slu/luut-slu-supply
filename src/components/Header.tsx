@@ -134,7 +134,7 @@ export function Header() {
 
         {/* Right side actions */}
         <div className="flex items-center gap-2">
-          <Link to="/auth">
+          <Link to={currentUser ? "/account" : "/login"}>
             <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
               <User className="h-5 w-5" />
             </Button>
@@ -216,7 +216,7 @@ export function Header() {
                   </Link>
                   
                   <Link
-                    to="/auth"
+                    to={currentUser ? "/account" : "/login"}
                     onClick={() => setIsOpen(false)}
                     className="py-3 font-body text-lg font-medium text-foreground flex items-center gap-2"
                   >
