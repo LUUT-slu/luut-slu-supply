@@ -203,7 +203,7 @@ export default function PartnerPortal() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/auth");
+    navigate("/");
   };
 
   const handleStatCardClick = (filter: OrderFilter | 'EARNINGS' | 'TO_RETURN' | 'STOCK') => {
