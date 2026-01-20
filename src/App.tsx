@@ -41,6 +41,7 @@ import SellerDashboardNew from "./pages/seller/SellerDashboardNew";
 import SellerProducts from "./pages/seller/SellerProducts";
 import SellerProductForm from "./pages/seller/SellerProductForm";
 import SellerOrders from "./pages/seller/SellerOrders";
+import SellerOrderDetail from "./pages/seller/SellerOrderDetail";
 import SellerAnalytics from "./pages/seller/SellerAnalytics";
 
 const queryClient = new QueryClient();
@@ -114,6 +115,11 @@ const App = () => (
           <Route path="/seller/orders" element={
             <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
               <SellerOrders />
+            </RouteGuard>
+          } />
+          <Route path="/seller/orders/:orderId" element={
+            <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+              <SellerOrderDetail />
             </RouteGuard>
           } />
           <Route path="/seller/analytics" element={
