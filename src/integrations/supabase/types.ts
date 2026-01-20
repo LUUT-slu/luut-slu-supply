@@ -840,6 +840,10 @@ export type Database = {
         Args: { p_product_id: string; p_qty?: number; p_variant_id?: string }
         Returns: Json
       }
+      rpc_admin_allocate_seller_product_to_partner: {
+        Args: { p_partner_id: string; p_product_id: string; p_qty?: number }
+        Returns: Json
+      }
       rpc_admin_allocate_stock_to_partner: {
         Args: {
           p_partner_id: string

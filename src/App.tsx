@@ -33,6 +33,7 @@ import PartnerPortal from "./pages/PartnerPortal";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
 import ManagePartners from "./pages/ManagePartners";
 import PartnerDetailsPage from "./pages/PartnerDetailsPage";
+import AdminProductsPage from "./pages/AdminProductsPage";
 // Seller Portal Pages
 import SellerApply from "./pages/seller/SellerApply";
 import SellerPendingNew from "./pages/seller/SellerPendingNew";
@@ -93,6 +94,7 @@ const App = () => (
           <Route path="/admin/orders" element={<AdminOrdersPage />} />
           <Route path="/admin/partners" element={<ManagePartners />} />
           <Route path="/admin/partners/:partnerId" element={<PartnerDetailsPage />} />
+          <Route path="/admin/products" element={<AdminProductsPage />} />
           <Route path="/admin-orders" element={<AdminOrdersPage />} />
           
           {/* Partner Routes */}

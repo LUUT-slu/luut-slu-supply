@@ -134,9 +134,17 @@ export default function AdminHome() {
       bgColor: "bg-blue-500/10",
     },
     {
+      title: "All Products",
+      description: "Browse products & allocate to partners",
+      icon: Package,
+      href: "/admin/products",
+      color: "text-orange-500",
+      bgColor: "bg-orange-500/10",
+    },
+    {
       title: "View All Orders",
       description: "Browse complete order history",
-      icon: Package,
+      icon: ClipboardList,
       href: "/admin/orders",
       color: "text-purple-500",
       bgColor: "bg-purple-500/10",

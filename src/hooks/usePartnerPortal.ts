@@ -71,6 +71,36 @@ interface RpcResponse {
   [key: string]: unknown;
 }
 
+// Stock check result interface
+export interface StockCheckResult {
+  hasStock: boolean;
+  missingItems: string[];
+}
+
+// Helper to check if partner has stock for an order
+export const checkOrderStock = (
+  lineItems: Array<{ title: string; quantity: number; product_id?: string }>,
+  partnerStock: PartnerStockItem[]
+): StockCheckResult => {
+  const missingItems: string[] = [];
+  
+  for (const item of lineItems) {
+    // Try to match by product name (case-insensitive)
+    const stockItem = partnerStock.find(s => 
+      s.product?.name?.toLowerCase() === item.title?.toLowerCase()
+    );
+    
+    if (!stockItem || stockItem.qty_on_hand < item.quantity) {
+      missingItems.push(item.title);
+    }
+  }
+  
+  return {
+    hasStock: missingItems.length === 0,
+    missingItems
+  };
+};
+
 // Hook for partner orders with filtering
 export const usePartnerOrders = (filter: OrderFilter = 'ASSIGNED') => {
   const [orders, setOrders] = useState<PartnerOrder[]>([]);
@@ -269,7 +299,7 @@ export const usePartnerEarnings = (dateRange?: { from: Date; to: Date }) => {
 export const usePartnerActions = () => {
   const [updating, setUpdating] = useState<string | null>(null);
 
-  const markCompleted = async (orderId: string): Promise<boolean> => {
+  const markCompleted = async (orderId: string): Promise<{ success: boolean; error?: string }> => {
     setUpdating(orderId);
     try {
       const { data, error } = await supabase.rpc('rpc_mark_completed', {
@@ -278,18 +308,24 @@ export const usePartnerActions = () => {
 
       const result = data as unknown as RpcResponse | null;
 
-      if (error || !result?.success) {
-        console.error("Mark completed error:", error || result?.error);
+      if (error) {
+        console.error("Mark completed error:", error);
         setUpdating(null);
-        return false;
+        return { success: false, error: error.message };
+      }
+
+      if (!result?.success) {
+        console.error("Mark completed RPC failed:", result?.error);
+        setUpdating(null);
+        return { success: false, error: result?.error || 'Failed to complete order' };
       }
 
       setUpdating(null);
-      return true;
+      return { success: true };
     } catch (err) {
       console.error("Mark completed exception:", err);
       setUpdating(null);
-      return false;
+      return { success: false, error: 'Unexpected error occurred' };
     }
   };
 

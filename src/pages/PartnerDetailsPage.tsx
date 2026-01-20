@@ -242,7 +242,8 @@ export default function PartnerDetailsPage() {
     
     setAllocating(true);
     
-    const { data, error } = await supabase.rpc('rpc_admin_allocate_stock_to_partner', {
+    // Use the new RPC that allocates directly from seller products (no admin_inventory needed)
+    const { data, error } = await supabase.rpc('rpc_admin_allocate_seller_product_to_partner', {
       p_partner_id: partnerId,
       p_product_id: selectedProduct,
       p_qty: allocateQty
@@ -251,11 +252,11 @@ export default function PartnerDetailsPage() {
     if (error) {
       toast.error(error.message || "Failed to allocate stock");
     } else if (data && typeof data === 'object' && 'success' in data) {
-      const result = data as { success: boolean; error?: string; allocated?: number };
+      const result = data as { success: boolean; error?: string; allocated?: number; product_name?: string };
       if (!result.success) {
         toast.error(result.error || "Failed to allocate stock");
       } else {
-        toast.success(`Allocated ${result.allocated} units`);
+        toast.success(`Allocated ${result.allocated} × ${result.product_name}`);
         setAllocateDialogOpen(false);
         setSelectedProduct("");
         setAllocateQty(1);
