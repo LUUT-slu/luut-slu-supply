@@ -42,8 +42,10 @@ import {
   Trash2,
   Home,
   ArrowLeft,
+  UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AssignOrderModal } from "@/components/admin/AssignOrderModal";
 
 interface Order {
   id: string;
@@ -90,11 +92,12 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [orderToAssign, setOrderToAssign] = useState<Order | null>(null);
 
   const checkAdminAccess = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -158,36 +161,31 @@ export default function AdminOrdersPage() {
     init();
   }, []);
 
-  const assignPartner = async (orderId: string, partnerId: string) => {
-    setUpdating(orderId);
-    
-    const { error } = await supabase
-      .from("orders")
-      .update({ 
-        assigned_partner_id: partnerId, 
-        order_status: "ASSIGNED",
-        status: "ASSIGNED",
-        assigned_at: new Date().toISOString(),
-        updated_at: new Date().toISOString() 
-      })
-      .eq("id", orderId);
-
-    if (error) {
-      toast.error("Failed to assign partner");
-    } else {
-      const partner = partners.find(p => p.user_id === partnerId);
-      toast.success(`Order assigned to ${partner?.partner_name || 'partner'}`);
-      setOrders(orders.map(o => o.id === orderId ? { ...o, assigned_partner_id: partnerId, order_status: "ASSIGNED", status: "ASSIGNED" } : o));
-      
-      const order = orders.find(o => o.id === orderId);
-      if (order && partner?.whatsapp) {
-        sendPartnerNotification(order, partner);
-      }
-    }
-    setUpdating(null);
+  const openAssignModal = (order: Order) => {
+    setOrderToAssign(order);
+    setAssignModalOpen(true);
   };
 
-  const sendPartnerNotification = (order: Order, partner: Partner) => {
+  const handleOrderAssigned = (partnerId: string, commissionType: 'fixed' | 'percent', commissionValue: number) => {
+    if (!orderToAssign) return;
+    
+    // Update local state
+    setOrders(orders.map(o => 
+      o.id === orderToAssign.id 
+        ? { ...o, assigned_partner_id: partnerId, order_status: "ASSIGNED", status: "ASSIGNED" } 
+        : o
+    ));
+    
+    // Send WhatsApp notification
+    const partner = partners.find(p => p.user_id === partnerId);
+    if (partner?.whatsapp) {
+      sendPartnerNotification(orderToAssign, partner, commissionType, commissionValue);
+    }
+    
+    setOrderToAssign(null);
+  };
+
+  const sendPartnerNotification = (order: Order, partner: Partner, commissionType?: 'fixed' | 'percent', commissionValue?: number) => {
     let message = `🚀 *NEW ORDER ASSIGNED*\n\n`;
     message += `Order: #L${String(order.order_number).padStart(4, '0')}\n\n`;
     message += `👤 Customer: ${order.customer_name}\n`;
@@ -205,6 +203,17 @@ export default function AdminOrdersPage() {
     });
     message += `\n💰 Total: EC$${order.total_price.toFixed(2)}\n`;
     message += `💳 Payment: Cash on pickup`;
+    
+    // Add commission info if provided
+    if (commissionType && commissionValue) {
+      const commissionAmount = commissionType === 'fixed' 
+        ? commissionValue 
+        : (order.total_price * commissionValue) / 100;
+      message += `\n\n💵 Your Commission: EC$${commissionAmount.toFixed(2)}`;
+      if (commissionType === 'percent') {
+        message += ` (${commissionValue}%)`;
+      }
+    }
     
     if (order.note) {
       message += `\n\n📝 Note: ${order.note}`;
@@ -496,22 +505,15 @@ export default function AdminOrdersPage() {
                         <TableCell>{getStatusBadge(order.status)}</TableCell>
                         <TableCell>
                           {order.status === "NEW" || !order.assigned_partner_id ? (
-                            <Select
-                              value={order.assigned_partner_id || ""}
-                              onValueChange={(value) => assignPartner(order.id, value)}
-                              disabled={updating === order.id}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1"
+                              onClick={() => openAssignModal(order)}
                             >
-                              <SelectTrigger className="w-[130px]">
-                                <SelectValue placeholder="Assign..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {partners.map((partner) => (
-                                  <SelectItem key={partner.user_id} value={partner.user_id}>
-                                    {partner.partner_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              <UserPlus className="h-3 w-3" />
+                              Assign
+                            </Button>
                           ) : (
                             <span className="text-sm">{getPartnerName(order.assigned_partner_id)}</span>
                           )}
@@ -546,6 +548,20 @@ export default function AdminOrdersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assign Order Modal */}
+      {orderToAssign && (
+        <AssignOrderModal
+          open={assignModalOpen}
+          onOpenChange={setAssignModalOpen}
+          orderId={orderToAssign.id}
+          orderNumber={orderToAssign.order_number}
+          orderTotal={orderToAssign.total_price}
+          currencyCode={orderToAssign.currency_code}
+          partners={partners}
+          onAssigned={handleOrderAssigned}
+        />
+      )}
     </div>
   );
 }
