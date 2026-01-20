@@ -57,6 +57,7 @@ interface Order {
   pickup_time_window: string | null;
   note: string | null;
   status: string;
+  order_status: string | null;
   total_price: number;
   currency_code: string;
   assigned_partner_id: string | null;
@@ -67,6 +68,14 @@ interface Order {
   }>;
   created_at: string;
 }
+
+// Helper to get effective status (order_status takes precedence)
+const getEffectiveStatus = (order: Order): string => {
+  if (order.order_status) {
+    return order.order_status.toUpperCase();
+  }
+  return order.status?.toUpperCase() || "NEW";
+};
 
 interface Partner {
   user_id: string;
@@ -84,7 +93,8 @@ const statusOptions = [
   { value: "ACCEPTED", label: "Accepted", icon: CheckCircle, color: "bg-indigo-500" },
   { value: "ON_THE_WAY", label: "On the Way", icon: Truck, color: "bg-purple-500" },
   { value: "COMPLETED", label: "Completed", icon: CheckCircle, color: "bg-green-500" },
-  { value: "CANCELLED", label: "Cancelled", icon: XCircle, color: "bg-red-500" },
+  { value: "NO_SHOW", label: "No Show", icon: XCircle, color: "bg-red-500" },
+  { value: "CANCELLED", label: "Cancelled", icon: XCircle, color: "bg-gray-500" },
 ];
 
 export default function AdminOrdersPage() {
@@ -299,13 +309,14 @@ export default function AdminOrdersPage() {
 
   const filteredOrders = statusFilter === "ALL" 
     ? orders 
-    : orders.filter(o => o.status === statusFilter);
+    : orders.filter(o => getEffectiveStatus(o) === statusFilter);
 
   const orderCounts = {
-    NEW: orders.filter(o => o.status === "NEW").length,
-    ASSIGNED: orders.filter(o => o.status === "ASSIGNED").length,
-    ACTIVE: orders.filter(o => ["ACCEPTED", "ON_THE_WAY"].includes(o.status)).length,
-    COMPLETED: orders.filter(o => o.status === "COMPLETED").length,
+    NEW: orders.filter(o => getEffectiveStatus(o) === "NEW").length,
+    ASSIGNED: orders.filter(o => getEffectiveStatus(o) === "ASSIGNED").length,
+    ACTIVE: orders.filter(o => ["ACCEPTED", "ON_THE_WAY"].includes(getEffectiveStatus(o))).length,
+    COMPLETED: orders.filter(o => getEffectiveStatus(o) === "COMPLETED").length,
+    NO_SHOW: orders.filter(o => getEffectiveStatus(o) === "NO_SHOW").length,
   };
 
   if (!isAdmin) {
@@ -502,9 +513,9 @@ export default function AdminOrdersPage() {
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">EC${order.total_price.toFixed(2)}</TableCell>
-                        <TableCell>{getStatusBadge(order.status)}</TableCell>
+                        <TableCell>{getStatusBadge(getEffectiveStatus(order))}</TableCell>
                         <TableCell>
-                          {order.status === "NEW" || !order.assigned_partner_id ? (
+                          {getEffectiveStatus(order) === "NEW" || !order.assigned_partner_id ? (
                             <Button
                               variant="outline"
                               size="sm"
