@@ -68,6 +68,8 @@ interface RpcResponse {
   commission_earned?: number;
   gross_collected?: number;
   net_owed_to_admin?: number;
+  need_stock?: boolean;
+  insufficient_items?: string[];
   [key: string]: unknown;
 }
 
@@ -299,7 +301,7 @@ export const usePartnerEarnings = (dateRange?: { from: Date; to: Date }) => {
 export const usePartnerActions = () => {
   const [updating, setUpdating] = useState<string | null>(null);
 
-  const markCompleted = async (orderId: string): Promise<{ success: boolean; error?: string }> => {
+  const markCompleted = async (orderId: string): Promise<{ success: boolean; error?: string; needStock?: boolean; insufficientItems?: string[] }> => {
     setUpdating(orderId);
     try {
       const { data, error } = await supabase.rpc('rpc_mark_completed', {
@@ -317,7 +319,12 @@ export const usePartnerActions = () => {
       if (!result?.success) {
         console.error("Mark completed RPC failed:", result?.error);
         setUpdating(null);
-        return { success: false, error: result?.error || 'Failed to complete order' };
+        return { 
+          success: false, 
+          error: result?.error || 'Failed to complete order',
+          needStock: result?.need_stock || false,
+          insufficientItems: result?.insufficient_items || []
+        };
       }
 
       setUpdating(null);

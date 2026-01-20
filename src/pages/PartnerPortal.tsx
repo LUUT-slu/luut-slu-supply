@@ -130,14 +130,32 @@ export default function PartnerPortal() {
     ]);
   };
 
-  const handleMarkCompleted = async (orderId: string) => {
+  const handleMarkCompleted = async (orderId: string, order?: PartnerOrder) => {
     const result = await markCompleted(orderId);
     if (result.success) {
       toast.success("Order marked as completed!");
       await refreshAll();
     } else {
-      toast.error(result.error || "Failed to complete order");
+      // Check if it's a stock error - offer WhatsApp link
+      if (result.needStock && order) {
+        const items = order.line_items.map(i => `${i.title} ×${i.quantity}`).join(', ');
+        toast.error(result.error || "Stock needed", {
+          description: "Tap to message admin for stock",
+          action: {
+            label: "Need Stock",
+            onClick: () => requestStockFromAdmin(order)
+          }
+        });
+      } else {
+        toast.error(result.error || "Failed to complete order");
+      }
     }
+  };
+
+  const requestStockFromAdmin = (order: PartnerOrder) => {
+    const items = order.line_items.map(i => `${i.title} ×${i.quantity}`).join('\n- ');
+    const message = `Hi, I need stock for Order ${formatOrderNumber(order.order_number)}:\n\n- ${items}\n\nPlease allocate to my partner stock. Thanks!`;
+    window.open(`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleNoShowClick = (orderId: string) => {
@@ -363,9 +381,10 @@ export default function PartnerPortal() {
             activeFilter={activeFilter}
             updating={updating}
             partnerStock={stock}
-            onMarkCompleted={handleMarkCompleted}
+            onMarkCompleted={(orderId, order) => handleMarkCompleted(orderId, order)}
             onNoShowClick={handleNoShowClick}
             onContactCustomer={contactCustomer}
+            onRequestStock={requestStockFromAdmin}
             getStatusBadge={getStatusBadge}
           />
         )}
@@ -431,9 +450,10 @@ interface OrdersViewProps {
   activeFilter: OrderFilter;
   updating: string | null;
   partnerStock: PartnerStockItem[];
-  onMarkCompleted: (orderId: string) => void;
+  onMarkCompleted: (orderId: string, order: PartnerOrder) => void;
   onNoShowClick: (orderId: string) => void;
   onContactCustomer: (order: PartnerOrder) => void;
+  onRequestStock: (order: PartnerOrder) => void;
   getStatusBadge: (order: PartnerOrder) => JSX.Element;
 }
 
@@ -446,6 +466,7 @@ function OrdersView({
   onMarkCompleted, 
   onNoShowClick, 
   onContactCustomer,
+  onRequestStock,
   getStatusBadge 
 }: OrdersViewProps) {
   const filterLabels: Record<OrderFilter, string> = {
@@ -495,6 +516,7 @@ function OrdersView({
               onMarkCompleted={onMarkCompleted}
               onNoShowClick={onNoShowClick}
               onContactCustomer={onContactCustomer}
+              onRequestStock={onRequestStock}
               getStatusBadge={getStatusBadge}
             />
           ))}
@@ -510,9 +532,10 @@ interface OrderCardProps {
   activeFilter: OrderFilter;
   updating: string | null;
   partnerStock: PartnerStockItem[];
-  onMarkCompleted: (orderId: string) => void;
+  onMarkCompleted: (orderId: string, order: PartnerOrder) => void;
   onNoShowClick: (orderId: string) => void;
   onContactCustomer: (order: PartnerOrder) => void;
+  onRequestStock: (order: PartnerOrder) => void;
   getStatusBadge: (order: PartnerOrder) => JSX.Element;
 }
 
@@ -524,6 +547,7 @@ function OrderCard({
   onMarkCompleted, 
   onNoShowClick, 
   onContactCustomer,
+  onRequestStock,
   getStatusBadge 
 }: OrderCardProps) {
   const effectiveStatus = order.order_status || order.status;
@@ -634,7 +658,7 @@ function OrderCard({
               
               <div className="flex gap-2">
                 <Button
-                  onClick={() => onMarkCompleted(order.id)}
+                  onClick={() => onMarkCompleted(order.id, order)}
                   disabled={updating === order.id || !stockCheck.hasStock}
                   className="flex-1 gap-1.5 bg-green-600 hover:bg-green-700 h-9 disabled:opacity-50"
                 >
@@ -652,11 +676,16 @@ function OrderCard({
                 </Button>
               </div>
               
-              {/* Help text when stock missing */}
+              {/* Need Stock WhatsApp button when stock missing */}
               {!stockCheck.hasStock && (
-                <p className="text-xs text-muted-foreground text-center">
-                  Ask admin to allocate stock before completing
-                </p>
+                <Button
+                  onClick={() => onRequestStock(order)}
+                  variant="outline"
+                  className="w-full gap-1.5 text-green-600 border-green-200 hover:bg-green-50 h-9"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Need Stock - Message Admin
+                </Button>
               )}
             </div>
           </>
