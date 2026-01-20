@@ -97,7 +97,7 @@ export default function Auth() {
             </Link>
 
             {/* Seller Account */}
-            <Link to={sellerProfile ? "/seller-dashboard" : "/seller-auth"} className="block">
+            <Link to={sellerProfile ? "/seller" : "/login?next=/seller"} className="block">
               <Card className="transition-all hover:border-primary hover:shadow-md active:scale-[0.98]">
                 <CardContent className="flex items-center gap-4 p-6">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
@@ -152,7 +152,7 @@ export default function Auth() {
           </div>
 
           {/* Sign in as Customer */}
-          <Link to="/customer-auth" className="block">
+          <Link to="/login" className="block">
             <Card className="transition-all hover:border-primary hover:shadow-md active:scale-[0.98]">
               <CardContent className="flex items-center gap-4 p-6">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
@@ -169,7 +169,7 @@ export default function Auth() {
           </Link>
 
           {/* Sign in as Seller */}
-          <Link to="/seller-auth" className="block">
+          <Link to="/login?next=/seller" className="block">
             <Card className="transition-all hover:border-primary hover:shadow-md active:scale-[0.98]">
               <CardContent className="flex items-center gap-4 p-6">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent/10">
