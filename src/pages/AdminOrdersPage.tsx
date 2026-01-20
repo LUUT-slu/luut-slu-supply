@@ -165,7 +165,9 @@ export default function AdminOrdersPage() {
       .from("orders")
       .update({ 
         assigned_partner_id: partnerId, 
+        order_status: "ASSIGNED",
         status: "ASSIGNED",
+        assigned_at: new Date().toISOString(),
         updated_at: new Date().toISOString() 
       })
       .eq("id", orderId);
@@ -175,7 +177,7 @@ export default function AdminOrdersPage() {
     } else {
       const partner = partners.find(p => p.user_id === partnerId);
       toast.success(`Order assigned to ${partner?.partner_name || 'partner'}`);
-      setOrders(orders.map(o => o.id === orderId ? { ...o, assigned_partner_id: partnerId, status: "ASSIGNED" } : o));
+      setOrders(orders.map(o => o.id === orderId ? { ...o, assigned_partner_id: partnerId, order_status: "ASSIGNED", status: "ASSIGNED" } : o));
       
       const order = orders.find(o => o.id === orderId);
       if (order && partner?.whatsapp) {

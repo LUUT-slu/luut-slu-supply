@@ -5,6 +5,7 @@ import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -52,8 +53,27 @@ import {
   MessageCircle,
   ArrowRightLeft,
   Truck,
+  Plus,
+  Boxes,
 } from "lucide-react";
 import { toast } from "sonner";
+
+interface PartnerStockItem {
+  id: string;
+  product_id: string;
+  qty_on_hand: number;
+  product?: {
+    name: string;
+    price: number;
+    images: string[] | null;
+  };
+}
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+}
 
 interface Partner {
   id: string;
@@ -107,6 +127,14 @@ export default function PartnerDetailsPage() {
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [newPartnerId, setNewPartnerId] = useState<string>("");
+  
+  // Stock allocation state
+  const [partnerStock, setPartnerStock] = useState<PartnerStockItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [allocateDialogOpen, setAllocateDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<string>("");
+  const [allocateQty, setAllocateQty] = useState<number>(1);
+  const [allocating, setAllocating] = useState(false);
 
   useEffect(() => {
     checkAdminAccess();
@@ -175,7 +203,67 @@ export default function PartnerDetailsPage() {
 
     setAllPartners((partnersData || []).filter(p => p.user_id !== partnerId));
     
+    // Fetch partner stock
+    await fetchPartnerStock();
+    
+    // Fetch products for allocation
+    await fetchProducts();
+    
     setLoading(false);
+  };
+
+  const fetchPartnerStock = async () => {
+    if (!partnerId) return;
+    
+    const { data } = await supabase
+      .from('partner_stock')
+      .select('id, product_id, qty_on_hand, product:seller_products(name, price, images)')
+      .eq('partner_id', partnerId)
+      .gt('qty_on_hand', 0);
+    
+    setPartnerStock((data || []) as unknown as PartnerStockItem[]);
+  };
+
+  const fetchProducts = async () => {
+    const { data } = await supabase
+      .from('seller_products')
+      .select('id, name, price')
+      .eq('status', 'active')
+      .order('name');
+    
+    setProducts(data || []);
+  };
+
+  const allocateStock = async () => {
+    if (!selectedProduct || allocateQty <= 0 || !partnerId) {
+      toast.error("Select a product and enter a valid quantity");
+      return;
+    }
+    
+    setAllocating(true);
+    
+    const { data, error } = await supabase.rpc('rpc_admin_allocate_stock_to_partner', {
+      p_partner_id: partnerId,
+      p_product_id: selectedProduct,
+      p_qty: allocateQty
+    });
+    
+    if (error) {
+      toast.error(error.message || "Failed to allocate stock");
+    } else if (data && typeof data === 'object' && 'success' in data) {
+      const result = data as { success: boolean; error?: string; allocated?: number };
+      if (!result.success) {
+        toast.error(result.error || "Failed to allocate stock");
+      } else {
+        toast.success(`Allocated ${result.allocated} units`);
+        setAllocateDialogOpen(false);
+        setSelectedProduct("");
+        setAllocateQty(1);
+        fetchPartnerStock();
+      }
+    }
+    
+    setAllocating(false);
   };
 
   const handleLogout = async () => {
@@ -187,7 +275,11 @@ export default function PartnerDetailsPage() {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     const { error } = await supabase
       .from("orders")
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .update({ 
+        status: newStatus, 
+        order_status: newStatus,
+        updated_at: new Date().toISOString() 
+      })
       .eq("id", orderId);
 
     if (error) {
@@ -363,6 +455,42 @@ export default function PartnerDetailsPage() {
             </div>
           </div>
         </div>
+
+        {/* Partner Stock Section */}
+        <Card className="mb-4">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Boxes className="h-4 w-4" />
+              Partner Stock
+            </CardTitle>
+            <Button size="sm" className="gap-1" onClick={() => setAllocateDialogOpen(true)}>
+              <Plus className="h-3 w-3" />
+              Allocate Stock
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {partnerStock.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No stock allocated to this partner</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-xs">Product</TableHead>
+                    <TableHead className="text-xs text-right">Qty On Hand</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {partnerStock.map(item => (
+                    <TableRow key={item.id}>
+                      <TableCell className="text-sm">{item.product?.name || 'Unknown Product'}</TableCell>
+                      <TableCell className="text-right font-medium">{item.qty_on_hand}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Assigned Orders */}
         <div className="rounded-lg border border-border/60 bg-card/50">
@@ -544,6 +672,50 @@ export default function PartnerDetailsPage() {
             </Button>
             <Button onClick={reassignOrder} disabled={!newPartnerId}>
               Reassign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Allocate Stock Dialog */}
+      <Dialog open={allocateDialogOpen} onOpenChange={setAllocateDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Allocate Stock to Partner</DialogTitle>
+            <DialogDescription>
+              Select a product and quantity to allocate from admin inventory.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Product</label>
+              <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Quantity</label>
+              <Input 
+                type="number" 
+                min={1} 
+                value={allocateQty} 
+                onChange={e => setAllocateQty(parseInt(e.target.value) || 1)} 
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAllocateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={allocateStock} disabled={!selectedProduct || allocating}>
+              {allocating ? "Allocating..." : "Allocate"}
             </Button>
           </DialogFooter>
         </DialogContent>
