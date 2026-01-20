@@ -1,0 +1,452 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
+import { SellerNav } from "@/components/seller/SellerNav";
+import { useSellerProfile } from "@/hooks/useSellerProfile";
+import { useSellerOrders, ORDER_STATUSES, OrderStatus } from "@/hooks/useSellerOrders";
+import { EditOrderDialog } from "@/components/seller/EditOrderDialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  ArrowLeft,
+  Phone,
+  MessageCircle,
+  MapPin,
+  Calendar,
+  Clock,
+  Package,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  FileText,
+} from "lucide-react";
+import { toast } from "sonner";
+
+export default function SellerOrderDetail() {
+  const { orderId } = useParams();
+  const navigate = useNavigate();
+  const { profile } = useSellerProfile();
+  const { orders, loading, refetch, updateOrderStatus, deleteOrder } = useSellerOrders(profile?.id);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  const order = orders.find((o) => o.id === orderId);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "XCD",
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const formatOrderNumber = (num: number) => {
+    return `#L${String(num).padStart(4, "0")}`;
+  };
+
+  const getStatusConfig = (status: string) => {
+    return ORDER_STATUSES.find((s) => s.value === status) || ORDER_STATUSES[0];
+  };
+
+  const messageCustomer = () => {
+    if (!order?.customer_phone) {
+      toast.error("No phone number available");
+      return;
+    }
+    const cleanPhone = order.customer_phone.replace(/\D/g, "");
+    const url = `https://wa.me/1${cleanPhone}`;
+    window.open(url, "_blank");
+  };
+
+  const callCustomer = () => {
+    if (!order?.customer_phone) {
+      toast.error("No phone number available");
+      return;
+    }
+    window.location.href = `tel:${order.customer_phone}`;
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!order) return;
+    await updateOrderStatus(order.id, newStatus as OrderStatus);
+  };
+
+  const handleDelete = async () => {
+    if (!order) return;
+    const success = await deleteOrder(order.id);
+    if (success) {
+      navigate("/seller/orders");
+    }
+  };
+
+  const canDelete = order && (
+    order.status === "cancelled" ||
+    order.status === "no-show" ||
+    (order.status === "pending" &&
+      new Date(order.created_at) < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+  );
+
+  const isEditable = order && order.status !== "completed";
+
+  if (loading) {
+    return (
+      <SellerRouteGuard>
+        <div className="flex min-h-screen flex-col bg-background">
+          <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} />
+          <main className="container flex-1 py-6">
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          </main>
+        </div>
+      </SellerRouteGuard>
+    );
+  }
+
+  if (!order) {
+    return (
+      <SellerRouteGuard>
+        <div className="flex min-h-screen flex-col bg-background">
+          <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} />
+          <main className="container flex-1 py-6">
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h2 className="text-lg font-medium">Order not found</h2>
+              <Button variant="outline" onClick={() => navigate("/seller/orders")} className="mt-4">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Orders
+              </Button>
+            </div>
+          </main>
+        </div>
+      </SellerRouteGuard>
+    );
+  }
+
+  const statusConfig = getStatusConfig(order.status);
+  const itemsTotal = order.items.reduce((sum, item) => sum + item.total_price, 0);
+
+  return (
+    <SellerRouteGuard>
+      <div className="flex min-h-screen flex-col bg-background">
+        <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} />
+
+        <main className="container flex-1 py-4 md:py-6">
+          {/* Header */}
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/seller/orders")}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="font-display text-xl md:text-2xl">
+                    Order {formatOrderNumber(order.order_number)}
+                  </h1>
+                  <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Created {formatDate(order.created_at)}
+                  {order.last_edited_at && (
+                    <> · Last edited {formatDate(order.last_edited_at)}</>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Select value={order.status} onValueChange={handleStatusChange}>
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ORDER_STATUSES.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Customer & Pickup Info */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Customer Info
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <p className="font-medium">{order.customer_name}</p>
+                      {order.customer_phone && (
+                        <p className="text-sm text-muted-foreground">{order.customer_phone}</p>
+                      )}
+                    </div>
+                    {order.customer_phone && (
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={callCustomer} className="flex-1">
+                          <Phone className="h-4 w-4 mr-1" />
+                          Call
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={messageCustomer} className="flex-1">
+                          <MessageCircle className="h-4 w-4 mr-1" />
+                          WhatsApp
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Pickup Info
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <span>{order.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>{formatDate(order.preferred_date)}</span>
+                    </div>
+                    {(order.pickup_time || order.pickup_time_window) && (
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span>{order.pickup_time || order.pickup_time_window}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Order Items */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium">Order Items</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {order.items.map((item) => (
+                      <div key={item.id} className="flex items-center gap-4">
+                        {item.product_image_url ? (
+                          <img
+                            src={item.product_image_url}
+                            alt={item.product_name}
+                            className="h-16 w-16 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center">
+                            <Package className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm line-clamp-1">{item.product_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatCurrency(item.unit_price)} × {item.quantity}
+                          </p>
+                        </div>
+                        <p className="font-medium">{formatCurrency(item.total_price)}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>{formatCurrency(itemsTotal)}</span>
+                    </div>
+                    <div className="flex justify-between font-medium text-lg">
+                      <span>Total</span>
+                      <span className="text-primary">{formatCurrency(order.total_price)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Notes */}
+              {(order.note || order.seller_notes) && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    {order.note && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Customer Note</p>
+                        <p>{order.note}</p>
+                      </div>
+                    )}
+                    {order.seller_notes && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Seller Notes (internal)</p>
+                        <p>{order.seller_notes}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Sidebar Actions */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {order.status === "pending" && (
+                    <Button
+                      className="w-full justify-start"
+                      variant="outline"
+                      onClick={() => handleStatusChange("confirmed")}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2 text-blue-400" />
+                      Confirm Order
+                    </Button>
+                  )}
+
+                  {(order.status === "pending" || order.status === "confirmed") && (
+                    <Button
+                      className="w-full justify-start"
+                      variant="outline"
+                      onClick={() => handleStatusChange("completed")}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2 text-green-400" />
+                      Mark Completed
+                    </Button>
+                  )}
+
+                  {order.status !== "cancelled" && order.status !== "completed" && (
+                    <Button
+                      className="w-full justify-start"
+                      variant="outline"
+                      onClick={() => handleStatusChange("cancelled")}
+                    >
+                      <XCircle className="h-4 w-4 mr-2 text-red-400" />
+                      Cancel Order
+                    </Button>
+                  )}
+
+                  {order.status !== "no-show" && order.status !== "completed" && (
+                    <Button
+                      className="w-full justify-start"
+                      variant="outline"
+                      onClick={() => handleStatusChange("no-show")}
+                    >
+                      <AlertTriangle className="h-4 w-4 mr-2 text-muted-foreground" />
+                      Mark No-Show
+                    </Button>
+                  )}
+
+                  <Separator className="my-2" />
+
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={messageCustomer}
+                    disabled={!order.customer_phone}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Message Customer
+                  </Button>
+
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={() => setEditDialogOpen(true)}
+                    disabled={!isEditable}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit Order
+                  </Button>
+
+                  {canDelete && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button className="w-full justify-start" variant="destructive">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Order
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Order?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the order
+                            and all its items.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </CardContent>
+              </Card>
+
+              {!isEditable && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Completed orders cannot be edited
+                </p>
+              )}
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <EditOrderDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        order={order}
+        onSave={refetch}
+      />
+    </SellerRouteGuard>
+  );
+}

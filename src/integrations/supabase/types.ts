@@ -262,6 +262,8 @@ export type Database = {
           customer_phone: string | null
           customer_user_id: string | null
           id: string
+          last_edited_at: string | null
+          last_edited_by: string | null
           line_items: Json
           location: string
           no_sale_at: string | null
@@ -271,8 +273,10 @@ export type Database = {
           order_token: string | null
           partner_commission: number | null
           partner_commission_status: string | null
+          pickup_time: string | null
           pickup_time_window: string | null
           preferred_date: string
+          seller_notes: string | null
           settlement_status: string | null
           status: string
           total_price: number
@@ -290,6 +294,8 @@ export type Database = {
           customer_phone?: string | null
           customer_user_id?: string | null
           id?: string
+          last_edited_at?: string | null
+          last_edited_by?: string | null
           line_items: Json
           location: string
           no_sale_at?: string | null
@@ -299,8 +305,10 @@ export type Database = {
           order_token?: string | null
           partner_commission?: number | null
           partner_commission_status?: string | null
+          pickup_time?: string | null
           pickup_time_window?: string | null
           preferred_date: string
+          seller_notes?: string | null
           settlement_status?: string | null
           status?: string
           total_price: number
@@ -318,6 +326,8 @@ export type Database = {
           customer_phone?: string | null
           customer_user_id?: string | null
           id?: string
+          last_edited_at?: string | null
+          last_edited_by?: string | null
           line_items?: Json
           location?: string
           no_sale_at?: string | null
@@ -327,8 +337,10 @@ export type Database = {
           order_token?: string | null
           partner_commission?: number | null
           partner_commission_status?: string | null
+          pickup_time?: string | null
           pickup_time_window?: string | null
           preferred_date?: string
+          seller_notes?: string | null
           settlement_status?: string | null
           status?: string
           total_price?: number

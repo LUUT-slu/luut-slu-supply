@@ -8,6 +8,11 @@ interface SellerStats {
   totalUnitsSold: number;
   productsActive: number;
   bestSellerProduct: { name: string; count: number } | null;
+  // New stats
+  completedOrders: number;
+  cancelledOrders: number;
+  noShowOrders: number;
+  pendingOrders: number;
 }
 
 export function useSellerStats(sellerId: string | undefined, dateRange: DateRange | undefined) {
@@ -17,6 +22,10 @@ export function useSellerStats(sellerId: string | undefined, dateRange: DateRang
     totalUnitsSold: 0,
     productsActive: 0,
     bestSellerProduct: null,
+    completedOrders: 0,
+    cancelledOrders: 0,
+    noShowOrders: 0,
+    pendingOrders: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -42,47 +51,104 @@ export function useSellerStats(sellerId: string | undefined, dateRange: DateRang
         .eq("seller_id", sellerId)
         .eq("status", "active");
 
-      // Get sales data from product_sales with date range filter
-      let salesQuery = supabase
-        .from("product_sales")
-        .select("*");
-      
-      // Get seller profile to get user_id for sales query
-      const { data: sellerProfile } = await supabase
-        .from("seller_profiles")
-        .select("user_id")
-        .eq("id", sellerId)
-        .single();
+      // Get order items for this seller
+      const { data: orderItems } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("seller_id", sellerId);
 
-      if (sellerProfile) {
-        salesQuery = salesQuery.eq("seller_user_id", sellerProfile.user_id);
+      if (!orderItems || orderItems.length === 0) {
+        setStats({
+          totalRevenue: 0,
+          totalOrders: 0,
+          totalUnitsSold: 0,
+          productsActive: productsCount || 0,
+          bestSellerProduct: null,
+          completedOrders: 0,
+          cancelledOrders: 0,
+          noShowOrders: 0,
+          pendingOrders: 0,
+        });
+        setLoading(false);
+        return;
       }
+
+      // Get unique order IDs
+      const orderIds = [...new Set(orderItems.map((item) => item.order_id))];
+
+      // Fetch orders with date range filter
+      let ordersQuery = supabase
+        .from("orders")
+        .select("*")
+        .in("id", orderIds);
 
       if (dateRange?.from) {
-        salesQuery = salesQuery.gte("sold_at", dateRange.from.toISOString());
+        ordersQuery = ordersQuery.gte("created_at", dateRange.from.toISOString());
       }
       if (dateRange?.to) {
-        salesQuery = salesQuery.lte("sold_at", dateRange.to.toISOString());
+        ordersQuery = ordersQuery.lte("created_at", dateRange.to.toISOString());
       }
 
-      const { data: salesData } = await salesQuery;
+      const { data: ordersData } = await ordersQuery;
 
-      // Calculate stats from sales data
+      if (!ordersData || ordersData.length === 0) {
+        setStats({
+          totalRevenue: 0,
+          totalOrders: 0,
+          totalUnitsSold: 0,
+          productsActive: productsCount || 0,
+          bestSellerProduct: null,
+          completedOrders: 0,
+          cancelledOrders: 0,
+          noShowOrders: 0,
+          pendingOrders: 0,
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Filter order items by orders in date range
+      const orderIdsInRange = new Set(ordersData.map((o) => o.id));
+      const filteredItems = orderItems.filter((item) => orderIdsInRange.has(item.order_id));
+
+      // Calculate status counts
+      const statusCounts = {
+        completed: 0,
+        cancelled: 0,
+        "no-show": 0,
+        pending: 0,
+        confirmed: 0,
+      };
+
+      ordersData.forEach((order) => {
+        const status = order.status?.toLowerCase() || "pending";
+        if (status in statusCounts) {
+          statusCounts[status as keyof typeof statusCounts]++;
+        }
+      });
+
+      // Calculate revenue ONLY from completed orders
+      const completedOrderIds = new Set(
+        ordersData.filter((o) => o.status === "completed").map((o) => o.id)
+      );
+
       let totalRevenue = 0;
       let totalUnits = 0;
       const productSales: Record<string, { name: string; count: number }> = {};
 
-      if (salesData) {
-        salesData.forEach((sale) => {
-          totalRevenue += Number(sale.price_amount) * sale.quantity;
-          totalUnits += sale.quantity;
-          
-          if (!productSales[sale.product_id]) {
-            productSales[sale.product_id] = { name: sale.product_title, count: 0 };
+      filteredItems.forEach((item) => {
+        // Only count revenue and units from completed orders
+        if (completedOrderIds.has(item.order_id)) {
+          totalRevenue += Number(item.total_price);
+          totalUnits += item.quantity;
+
+          const productKey = item.product_id || item.product_name;
+          if (!productSales[productKey]) {
+            productSales[productKey] = { name: item.product_name, count: 0 };
           }
-          productSales[sale.product_id].count += sale.quantity;
-        });
-      }
+          productSales[productKey].count += item.quantity;
+        }
+      });
 
       // Find best seller
       let bestSeller: { name: string; count: number } | null = null;
@@ -92,15 +158,16 @@ export function useSellerStats(sellerId: string | undefined, dateRange: DateRang
         }
       });
 
-      // Count unique orders (approximation based on sales)
-      const orderCount = salesData?.length || 0;
-
       setStats({
         totalRevenue,
-        totalOrders: orderCount,
+        totalOrders: ordersData.length,
         totalUnitsSold: totalUnits,
         productsActive: productsCount || 0,
         bestSellerProduct: bestSeller,
+        completedOrders: statusCounts.completed,
+        cancelledOrders: statusCounts.cancelled,
+        noShowOrders: statusCounts["no-show"],
+        pendingOrders: statusCounts.pending + statusCounts.confirmed,
       });
     } catch (error) {
       console.error("Error fetching seller stats:", error);
