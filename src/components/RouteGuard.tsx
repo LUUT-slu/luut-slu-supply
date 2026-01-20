@@ -62,17 +62,19 @@ export function RouteGuard({ children, requiredRole, showApplyPage }: RouteGuard
           .eq("user_id", userId);
 
         const roleNames = roles?.map(r => r.role as string) || [];
+        const isAdmin = roleNames.includes("admin");
 
-        // Admin check
-        if (requiredRole === "admin") {
-          if (roleNames.includes("admin")) {
-            setAccessCheck({ isAuthenticated: true, hasAccess: true });
-          } else {
-            toast.error("Admin access required");
-            navigate("/", { replace: true });
-            return;
-          }
+        // Admins have access to ALL roles - bypass all checks
+        if (isAdmin) {
+          setAccessCheck({ isAuthenticated: true, hasAccess: true });
           setLoading(false);
+          return;
+        }
+
+        // Admin check (for non-admins trying to access admin routes)
+        if (requiredRole === "admin") {
+          toast.error("Admin access required");
+          navigate("/", { replace: true });
           return;
         }
 
