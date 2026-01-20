@@ -51,9 +51,11 @@ import {
   usePartnerEarnings,
   usePartnerActions,
   formatOrderNumber,
+  checkOrderStock,
   type OrderFilter,
   type ViewMode,
   type PartnerOrder,
+  type PartnerStockItem,
 } from "@/hooks/usePartnerPortal";
 
 const ADMIN_WHATSAPP_NUMBER = "7587185478";
@@ -145,12 +147,12 @@ export default function PartnerPortal() {
   };
 
   const handleMarkCompleted = async (orderId: string) => {
-    const success = await markCompleted(orderId);
-    if (success) {
+    const result = await markCompleted(orderId);
+    if (result.success) {
       toast.success("Order marked as completed!");
       await refreshAll();
     } else {
-      toast.error("Failed to complete order");
+      toast.error(result.error || "Failed to complete order");
     }
   };
 
@@ -376,6 +378,7 @@ export default function PartnerPortal() {
             loading={ordersLoading}
             activeFilter={activeFilter}
             updating={updating}
+            partnerStock={stock}
             onMarkCompleted={handleMarkCompleted}
             onNoShowClick={handleNoShowClick}
             onContactCustomer={contactCustomer}
@@ -443,6 +446,7 @@ interface OrdersViewProps {
   loading: boolean;
   activeFilter: OrderFilter;
   updating: string | null;
+  partnerStock: PartnerStockItem[];
   onMarkCompleted: (orderId: string) => void;
   onNoShowClick: (orderId: string) => void;
   onContactCustomer: (order: PartnerOrder) => void;
@@ -454,6 +458,7 @@ function OrdersView({
   loading, 
   activeFilter, 
   updating, 
+  partnerStock,
   onMarkCompleted, 
   onNoShowClick, 
   onContactCustomer,
@@ -502,6 +507,7 @@ function OrdersView({
               order={order}
               activeFilter={activeFilter}
               updating={updating}
+              partnerStock={partnerStock}
               onMarkCompleted={onMarkCompleted}
               onNoShowClick={onNoShowClick}
               onContactCustomer={onContactCustomer}
@@ -519,6 +525,7 @@ interface OrderCardProps {
   order: PartnerOrder;
   activeFilter: OrderFilter;
   updating: string | null;
+  partnerStock: PartnerStockItem[];
   onMarkCompleted: (orderId: string) => void;
   onNoShowClick: (orderId: string) => void;
   onContactCustomer: (order: PartnerOrder) => void;
@@ -529,6 +536,7 @@ function OrderCard({
   order, 
   activeFilter, 
   updating, 
+  partnerStock,
   onMarkCompleted, 
   onNoShowClick, 
   onContactCustomer,
@@ -536,6 +544,9 @@ function OrderCard({
 }: OrderCardProps) {
   const effectiveStatus = order.order_status || order.status;
   const isActive = ['ASSIGNED', 'ON_THE_WAY', 'pending'].includes(effectiveStatus);
+  
+  // Check stock availability for this order
+  const stockCheck = checkOrderStock(order.line_items, partnerStock);
 
   return (
     <Card className="overflow-hidden border-l-4 border-l-primary">
@@ -625,12 +636,23 @@ function OrderCard({
         {isActive && activeFilter === 'ASSIGNED' && (
           <>
             <Separator />
-            <div className="p-3">
+            <div className="p-3 space-y-2">
+              {/* Stock Warning */}
+              {!stockCheck.hasStock && (
+                <div className="flex items-center gap-2 p-2 rounded-md bg-red-500/10 border border-red-500/20">
+                  <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                  <p className="text-xs text-red-600">
+                    No stock allocated: {stockCheck.missingItems.slice(0, 2).join(', ')}
+                    {stockCheck.missingItems.length > 2 && ` +${stockCheck.missingItems.length - 2} more`}
+                  </p>
+                </div>
+              )}
+              
               <div className="flex gap-2">
                 <Button
                   onClick={() => onMarkCompleted(order.id)}
-                  disabled={updating === order.id}
-                  className="flex-1 gap-1.5 bg-green-600 hover:bg-green-700 h-9"
+                  disabled={updating === order.id || !stockCheck.hasStock}
+                  className="flex-1 gap-1.5 bg-green-600 hover:bg-green-700 h-9 disabled:opacity-50"
                 >
                   <CheckCircle className="h-4 w-4" />
                   Mark Completed
@@ -645,6 +667,13 @@ function OrderCard({
                   No Show
                 </Button>
               </div>
+              
+              {/* Help text when stock missing */}
+              {!stockCheck.hasStock && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Ask admin to allocate stock before completing
+                </p>
+              )}
             </div>
           </>
         )}
