@@ -300,13 +300,13 @@ export default function PartnerDetailsPage() {
   const reassignOrder = async () => {
     if (!selectedOrder || !newPartnerId) return;
 
-    const { error } = await supabase
-      .from("orders")
-      .update({ 
-        assigned_partner_id: newPartnerId,
-        updated_at: new Date().toISOString() 
-      })
-      .eq("id", selectedOrder.id);
+    // Use RPC for proper reassignment with existing commission
+    const { data, error } = await supabase.rpc('rpc_assign_order', {
+      p_order_id: selectedOrder.id,
+      p_partner_id: newPartnerId,
+      p_commission_type: 'fixed',
+      p_commission_value: 10 // Default commission for reassignment
+    });
 
     if (error) {
       toast.error("Failed to reassign order");

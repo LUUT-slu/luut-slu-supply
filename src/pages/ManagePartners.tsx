@@ -44,6 +44,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AssignOrderModal } from "@/components/admin/AssignOrderModal";
 
 interface Partner {
   id: string;
@@ -66,6 +67,8 @@ interface Order {
   order_number: number;
   customer_name: string;
   status: string;
+  total_price: number;
+  currency_code: string;
   assigned_partner_id: string | null;
 }
 
@@ -78,6 +81,10 @@ export default function ManagePartners() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState<PartnerWithStats | null>(null);
+  
+  // Modal for assigning with commission
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [orderToAssign, setOrderToAssign] = useState<Order | null>(null);
 
   useEffect(() => {
     checkAdminAccess();
@@ -128,7 +135,7 @@ export default function ManagePartners() {
     // Fetch all orders to calculate stats
     const { data: ordersData } = await supabase
       .from("orders")
-      .select("id, order_number, customer_name, status, assigned_partner_id");
+      .select("id, order_number, customer_name, status, assigned_partner_id, total_price, currency_code");
 
     const orders = (ordersData || []) as Order[];
     
@@ -199,25 +206,20 @@ export default function ManagePartners() {
     setAssignDialogOpen(true);
   };
 
-  const assignOrderToPartner = async (orderId: string) => {
+  const openAssignModalForOrder = (orderId: string) => {
     if (!selectedPartner) return;
-
-    const { error } = await supabase
-      .from("orders")
-      .update({ 
-        assigned_partner_id: selectedPartner.user_id, 
-        status: "ASSIGNED",
-        updated_at: new Date().toISOString() 
-      })
-      .eq("id", orderId);
-
-    if (error) {
-      toast.error("Failed to assign order");
-    } else {
-      toast.success(`Order assigned to ${selectedPartner.partner_name}`);
+    const order = unassignedOrders.find(o => o.id === orderId);
+    if (order) {
+      setOrderToAssign(order);
       setAssignDialogOpen(false);
-      fetchData();
+      setAssignModalOpen(true);
     }
+  };
+
+  const handleOrderAssigned = () => {
+    setAssignModalOpen(false);
+    setOrderToAssign(null);
+    fetchData();
   };
 
   if (checkingAuth) {
@@ -422,13 +424,13 @@ export default function ManagePartners() {
                   key={order.id}
                   variant="outline"
                   className="w-full justify-between h-auto py-3"
-                  onClick={() => assignOrderToPartner(order.id)}
+                  onClick={() => openAssignModalForOrder(order.id)}
                 >
                   <span className="font-medium">
                     #L{String(order.order_number).padStart(4, '0')}
                   </span>
                   <span className="text-muted-foreground text-sm">
-                    {order.customer_name}
+                    {order.customer_name} · EC${order.total_price?.toFixed(2) || '0.00'}
                   </span>
                 </Button>
               ))
@@ -441,6 +443,26 @@ export default function ManagePartners() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Assignment Modal with Commission */}
+      {orderToAssign && selectedPartner && (
+        <AssignOrderModal
+          open={assignModalOpen}
+          onOpenChange={setAssignModalOpen}
+          orderId={orderToAssign.id}
+          orderNumber={orderToAssign.order_number}
+          orderTotal={orderToAssign.total_price || 0}
+          currencyCode={orderToAssign.currency_code || "XCD"}
+          partners={[{
+            user_id: selectedPartner.user_id,
+            partner_name: selectedPartner.partner_name,
+            phone: selectedPartner.phone,
+            whatsapp: selectedPartner.whatsapp,
+            is_active: selectedPartner.is_active
+          }]}
+          onAssigned={handleOrderAssigned}
+        />
+      )}
     </div>
   );
 }
