@@ -842,6 +842,11 @@ export type Database = {
         Returns: boolean
       }
       is_partner: { Args: { _user_id: string }; Returns: boolean }
+      is_seller_for_order: { Args: { p_order_id: string }; Returns: boolean }
+      is_seller_for_order_item: {
+        Args: { p_seller_id: string }
+        Returns: boolean
+      }
       rpc_add_partner_stock: {
         Args: {
           p_note?: string

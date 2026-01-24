@@ -40,6 +40,7 @@ import {
   UserPlus,
   Filter,
 } from "lucide-react";
+import { AssignOrderModal } from "@/components/admin/AssignOrderModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -100,6 +101,10 @@ export default function LuutConnectAdmin() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  
+  // Assignment modal state
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [orderToAssign, setOrderToAssign] = useState<Order | null>(null);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -151,35 +156,31 @@ export default function LuutConnectAdmin() {
     setUpdating(null);
   };
 
-  const assignPartner = async (orderId: string, partnerId: string) => {
-    setUpdating(orderId);
-    
-    const { error } = await supabase
-      .from("orders")
-      .update({ 
-        assigned_partner_id: partnerId, 
-        status: "ASSIGNED",
-        updated_at: new Date().toISOString() 
-      })
-      .eq("id", orderId);
-
-    if (error) {
-      toast.error("Failed to assign partner");
-    } else {
-      const partner = partners.find(p => p.user_id === partnerId);
-      toast.success(`Order assigned to ${partner?.partner_name || 'partner'}`);
-      setOrders(orders.map(o => o.id === orderId ? { ...o, assigned_partner_id: partnerId, status: "ASSIGNED" } : o));
-      
-      // Send WhatsApp notification to partner
-      const order = orders.find(o => o.id === orderId);
-      if (order && partner?.whatsapp) {
-        sendPartnerNotification(order, partner);
-      }
-    }
-    setUpdating(null);
+  const openAssignModal = (order: Order) => {
+    setOrderToAssign(order);
+    setAssignModalOpen(true);
   };
 
-  const sendPartnerNotification = (order: Order, partner: Partner) => {
+  const handleOrderAssigned = (partnerId: string, commissionType: 'fixed' | 'percent', commissionValue: number) => {
+    if (!orderToAssign) return;
+    
+    // Update local state
+    setOrders(orders.map(o => 
+      o.id === orderToAssign.id 
+        ? { ...o, assigned_partner_id: partnerId, status: "ASSIGNED" } 
+        : o
+    ));
+    
+    // Send WhatsApp notification to partner
+    const partner = partners.find(p => p.user_id === partnerId);
+    if (partner?.whatsapp) {
+      sendPartnerNotification(orderToAssign, partner, commissionValue);
+    }
+    
+    setOrderToAssign(null);
+  };
+
+  const sendPartnerNotification = (order: Order, partner: Partner, commission?: number) => {
     let message = `🚀 *NEW ORDER ASSIGNED*\n\n`;
     message += `Order: #L${String(order.order_number).padStart(4, '0')}\n\n`;
     message += `👤 Customer: ${order.customer_name}\n`;
@@ -456,27 +457,21 @@ export default function LuutConnectAdmin() {
                           </TableCell>
                           <TableCell>{getStatusBadge(order.status)}</TableCell>
                           <TableCell>
-                            {partners.length > 0 ? (
-                              <Select
-                                value={order.assigned_partner_id || ""}
-                                onValueChange={(value) => assignPartner(order.id, value)}
-                                disabled={updating === order.id || order.status === "COMPLETED" || order.status === "CANCELLED"}
-                              >
-                                <SelectTrigger className="w-[140px]">
-                                  <SelectValue placeholder="Assign Partner">
-                                    {order.assigned_partner_id ? getPartnerName(order.assigned_partner_id) : "Unassigned"}
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {partners.map((partner) => (
-                                    <SelectItem key={partner.user_id} value={partner.user_id}>
-                                      {partner.partner_name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                            {order.assigned_partner_id ? (
+                              <Badge variant="outline" className="gap-1">
+                                <UserPlus className="h-3 w-3" />
+                                {getPartnerName(order.assigned_partner_id)}
+                              </Badge>
                             ) : (
-                              <span className="text-sm text-muted-foreground">No partners</span>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => openAssignModal(order)}
+                                disabled={order.status === "COMPLETED" || order.status === "CANCELLED"}
+                              >
+                                <UserPlus className="h-3 w-3 mr-1" />
+                                Assign
+                              </Button>
                             )}
                           </TableCell>
                           <TableCell>
@@ -532,6 +527,20 @@ export default function LuutConnectAdmin() {
             </CardContent>
           </Card>
         </main>
+
+        {/* Assignment Modal */}
+        {orderToAssign && (
+          <AssignOrderModal
+            open={assignModalOpen}
+            onOpenChange={setAssignModalOpen}
+            orderId={orderToAssign.id}
+            orderNumber={orderToAssign.order_number}
+            orderTotal={orderToAssign.total_price}
+            currencyCode={orderToAssign.currency_code}
+            partners={partners}
+            onAssigned={handleOrderAssigned}
+          />
+        )}
       </div>
     </AdminAuth>
   );
