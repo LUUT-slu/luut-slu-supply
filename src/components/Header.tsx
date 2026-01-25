@@ -8,8 +8,10 @@ import { CartDrawer } from "./CartDrawer";
 import { Badge } from "./ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { useShopifyCollections, getCollectionPath } from "@/hooks/useShopifyCollections";
 
-const outfitCategories = [
+// Fallback categories if Shopify collections aren't loaded
+const fallbackCategories = [
   { name: "Beanies", path: "/shop/beanies" },
   { name: "Hats", path: "/shop/hats" },
   { name: "Ski Masks / Facewear", path: "/shop/facewear" },
@@ -31,6 +33,12 @@ export function Header() {
   const [orderCount, setOrderCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
   const totalItems = useCartStore((state) => state.getTotalItems());
+  const { collections } = useShopifyCollections();
+
+  // Use Shopify collections if available, otherwise fallback
+  const outfitCategories = collections.length > 0
+    ? collections.map(c => ({ name: c.title, path: getCollectionPath(c.handle) }))
+    : fallbackCategories;
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

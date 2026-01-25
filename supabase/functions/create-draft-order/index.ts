@@ -13,6 +13,7 @@ interface LineItem {
   title: string;
   price: string;
   image_url?: string | null;
+  source?: 'shopify' | 'lovable'; // Track product source
 }
 
 interface DraftOrderRequest {
@@ -83,6 +84,16 @@ serve(async (req) => {
 
     console.log("Creating order for:", customerName, "phone:", customerPhone, "at", location);
 
+    // Separate Shopify and Lovable products
+    const shopifyItems = lineItems.filter(item => 
+      !item.source || item.source === 'shopify' || item.variant_id.startsWith('gid://shopify/')
+    );
+    const lovableItems = lineItems.filter(item => 
+      item.source === 'lovable' || item.variant_id.startsWith('lovable-variant-')
+    );
+
+    console.log(`Processing ${shopifyItems.length} Shopify items and ${lovableItems.length} Lovable items`);
+
     // First, save to local database
     const { data: localOrder, error: insertError } = await supabase
       .from("orders")
@@ -107,10 +118,38 @@ serve(async (req) => {
 
     console.log("Local order created:", localOrder.id);
 
+    // Create order_items for Lovable products (for seller visibility)
+    if (lovableItems.length > 0) {
+      const orderItemsToInsert = lovableItems.map(item => {
+        // Extract Lovable product ID from variant ID (lovable-variant-{uuid})
+        const productId = item.variant_id.replace('lovable-variant-', '');
+        return {
+          order_id: localOrder.id,
+          product_id: productId,
+          product_name: item.title,
+          unit_price: parseFloat(item.price),
+          quantity: item.quantity,
+          total_price: parseFloat(item.price) * item.quantity,
+          product_image_url: item.image_url || null,
+        };
+      });
+
+      const { error: orderItemsError } = await supabase
+        .from("order_items")
+        .insert(orderItemsToInsert);
+
+      if (orderItemsError) {
+        console.error("Failed to create order_items:", orderItemsError);
+        // Non-fatal - continue with order
+      } else {
+        console.log(`Created ${orderItemsToInsert.length} order_items for Lovable products`);
+      }
+    }
+
     let draftOrder = null;
 
-    // Try to create Shopify draft order if admin token is available
-    if (shopifyAdminToken) {
+    // Only create Shopify draft order if there are Shopify products AND admin token is available
+    if (shopifyAdminToken && shopifyItems.length > 0) {
       try {
         // Build the note for Shopify
         let shopifyNote = `📍 Pickup Location: ${location}\n📅 Preferred Date: ${preferredDate}\n👤 Customer: ${customerName}\n📱 Phone: ${customerPhone}`;
@@ -119,9 +158,14 @@ serve(async (req) => {
         }
         shopifyNote += `\n\n💳 Payment: Pay on pickup`;
         shopifyNote += `\n\nLocal Order ID: ${localOrder.id}`;
+        
+        // Note if there are also Lovable products
+        if (lovableItems.length > 0) {
+          shopifyNote += `\n\n⚠️ This order also contains ${lovableItems.length} local seller product(s) not in Shopify.`;
+        }
 
         // Convert line items to Shopify format
-        const shopifyLineItems = lineItems.map(item => {
+        const shopifyLineItems = shopifyItems.map(item => {
           // Extract numeric variant ID from global ID (gid://shopify/ProductVariant/123456)
           const variantIdMatch = item.variant_id.match(/\/(\d+)$/);
           const variantId = variantIdMatch ? variantIdMatch[1] : item.variant_id;
@@ -173,6 +217,8 @@ serve(async (req) => {
         console.error("Shopify draft order creation failed (non-fatal):", shopifyError);
         // Continue without Shopify draft order
       }
+    } else if (lovableItems.length > 0 && shopifyItems.length === 0) {
+      console.log("Order contains only Lovable products - skipping Shopify draft order");
     } else {
       console.log("No Shopify admin token configured, skipping draft order creation");
     }
@@ -205,6 +251,8 @@ serve(async (req) => {
         localOrderToken: localOrder.order_token,
         merchantWhatsAppUrl,
         customerMessage: merchantMessage,
+        hasShopifyProducts: shopifyItems.length > 0,
+        hasLovableProducts: lovableItems.length > 0,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

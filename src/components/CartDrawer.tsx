@@ -228,15 +228,21 @@ export function CartDrawer() {
     const formattedDate = format(selectedDate, 'EEEE, MMMM d, yyyy');
     
     // Prepare line items for the order
-    const lineItems = items.map(item => ({
-      variant_id: item.variantId,
-      product_id: item.product.node.id,
-      quantity: item.quantity,
-      title: item.product.node.title,
-      price: item.price.amount,
-      image_url: item.product.node.images?.edges?.[0]?.node?.url || null,
-      vendor: item.product.node.vendor,
-    }));
+    const lineItems = items.map(item => {
+      // Determine if this is a Lovable product based on variant ID
+      const isLovableProduct = item.variantId.startsWith('lovable-variant-');
+      
+      return {
+        variant_id: item.variantId,
+        product_id: item.product.node.id,
+        quantity: item.quantity,
+        title: item.product.node.title,
+        price: item.price.amount,
+        image_url: item.product.node.images?.edges?.[0]?.node?.url || null,
+        vendor: item.product.node.vendor,
+        source: isLovableProduct ? 'lovable' : 'shopify',
+      };
+    });
 
     try {
       // Get seller's WhatsApp number
