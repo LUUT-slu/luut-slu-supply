@@ -1,25 +1,27 @@
 import { useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { ProductGrid } from "@/components/ProductGrid";
+import { HybridProductGrid } from "@/components/HybridProductGrid";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { BackButton } from "@/components/BackButton";
 
-const categoryMap: Record<string, { title: string; query: string }> = {
-  beanies: { title: "BEANIES", query: "product_type:beanies OR title:beanie" },
-  hats: { title: "HATS", query: "product_type:hats OR title:hat" },
-  facewear: { title: "SKI MASKS / FACEWEAR", query: "product_type:\"Ski Masks / Facewear\" OR product_type:facewear OR title:ski mask OR title:face" },
-  shirts: { title: "SHIRTS", query: "product_type:shirts OR title:shirt OR title:tee" },
-  jackets: { title: "JACKETS", query: "product_type:jackets OR title:jacket" },
-  hoodies: { title: "HOODIES", query: "product_type:hoodies OR title:hoodie" },
-  pants: { title: "PANTS", query: "product_type:pants OR title:pants OR title:jeans" },
-  shorts: { title: "SHORTS", query: "product_type:shorts OR title:shorts" },
-  boxers: { title: "BOXERS", query: "product_type:boxers OR title:boxers OR title:underwear" },
-  bags: { title: "BAGS", query: "product_type:bags OR title:bag OR title:backpack" },
-  shoes: { title: "SHOES", query: "product_type:shoes OR title:shoes OR title:sneakers" },
-  slippers: { title: "SLIPPERS", query: "product_type:slippers OR title:slippers" },
-  sandals: { title: "SANDALS", query: "product_type:sandals OR title:sandals" },
-  socks: { title: "SOCKS", query: "product_type:socks OR title:socks" },
+// Map URL slugs to Shopify product type queries
+// The category handle from collections becomes the slug
+const categoryQueryMap: Record<string, string> = {
+  beanies: "product_type:beanies OR title:beanie",
+  hats: "product_type:hats OR title:hat",
+  facewear: 'product_type:"Ski Masks / Facewear" OR product_type:facewear OR title:ski mask OR title:face',
+  shirts: "product_type:shirts OR title:shirt OR title:tee",
+  jackets: "product_type:jackets OR title:jacket",
+  hoodies: "product_type:hoodies OR title:hoodie",
+  pants: "product_type:pants OR title:pants OR title:jeans",
+  shorts: "product_type:shorts OR title:shorts",
+  boxers: "product_type:boxers OR title:boxers OR title:underwear",
+  bags: "product_type:bags OR title:bag OR title:backpack",
+  shoes: "product_type:shoes OR title:shoes OR title:sneakers",
+  slippers: "product_type:slippers OR title:slippers",
+  sandals: "product_type:sandals OR title:sandals",
+  socks: "product_type:socks OR title:socks",
 };
 
 export default function ShopCategory() {
@@ -27,24 +29,17 @@ export default function ShopCategory() {
   
   // Handle "all" category - show all products
   const isAllProducts = category === "all";
-  const cat = category && !isAllProducts ? categoryMap[category] : null;
+  const shopifyQuery = category && !isAllProducts ? categoryQueryMap[category] : undefined;
 
-  if (!cat && !isAllProducts) {
-    return (
-      <div className="flex min-h-screen flex-col bg-background">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
-          <p className="text-muted-foreground">Category not found</p>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+  // Format title from handle (e.g., "ski-masks" -> "SKI MASKS")
+  const formatTitle = (handle: string) => {
+    return handle.replace(/-/g, ' ').toUpperCase();
+  };
 
-  const title = isAllProducts ? "ALL PRODUCTS" : cat!.title;
+  const title = isAllProducts ? "ALL PRODUCTS" : formatTitle(category || '');
   const description = isAllProducts 
     ? "Browse our complete collection from local vendors" 
-    : `Shop ${cat!.title.toLowerCase()} from local vendors`;
+    : `Shop ${title.toLowerCase()} from local vendors`;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -63,7 +58,11 @@ export default function ShopCategory() {
 
         <section className="py-8 md:py-12">
           <div className="container">
-            <ProductGrid query={isAllProducts ? undefined : cat!.query} limit={100} />
+            <HybridProductGrid 
+              category={category} 
+              shopifyQuery={shopifyQuery} 
+              limit={100} 
+            />
           </div>
         </section>
       </main>
