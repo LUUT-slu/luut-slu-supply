@@ -19,8 +19,9 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Upload, X, Package } from "lucide-react";
+import { CATEGORY_OPTIONS } from "@/lib/categories";
 
-const CATEGORIES = ["Clothing", "Accessories", "Shoes", "Bags", "Electronics", "Beauty", "Home", "Other"];
+// Categories now come from the unified category system
 const LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort", "Rodney Bay", "Soufriere", "Other"];
 
 interface ProductData {
@@ -339,7 +340,7 @@ export default function SellerProductForm() {
 
                   {/* Category */}
                   <div className="space-y-2">
-                    <Label>Category</Label>
+                    <Label>Category *</Label>
                     <Select
                       value={formData.category}
                       onValueChange={(value) => setFormData({ ...formData, category: value })}
@@ -348,13 +349,16 @@ export default function SellerProductForm() {
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {CATEGORIES.map((cat) => (
+                        {CATEGORY_OPTIONS.map((cat) => (
                           <SelectItem key={cat} value={cat}>
                             {cat}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Choose a category to help customers find your product
+                    </p>
                   </div>
 
                   {/* Location */}

@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ShopifyProduct, fetchProducts } from './shopify';
+import { categoryMatchesSlug, mapShopifyTypeToLabel, getShopifyQueryForSlug } from './categories';
 
 // Unified product interface that works for both Shopify and Lovable products
 export interface UnifiedProduct {
@@ -54,6 +55,9 @@ export interface LovableProduct {
 // Convert Shopify product to unified format
 function shopifyToUnified(product: ShopifyProduct): UnifiedProduct {
   const node = product.node;
+  // Map Shopify productType to our unified category label
+  const normalizedCategory = mapShopifyTypeToLabel(node.productType);
+  
   return {
     id: node.id,
     source: 'shopify',
@@ -61,7 +65,7 @@ function shopifyToUnified(product: ShopifyProduct): UnifiedProduct {
     description: node.description,
     handle: node.handle,
     vendor: node.vendor,
-    category: node.productType || null,
+    category: normalizedCategory,
     price: {
       amount: node.priceRange.minVariantPrice.amount,
       currencyCode: node.priceRange.minVariantPrice.currencyCode,
@@ -116,22 +120,18 @@ function lovableToUnified(product: LovableProduct): UnifiedProduct {
   };
 }
 
-// Fetch Lovable seller products by category
-export async function fetchLovableProducts(category?: string): Promise<LovableProduct[]> {
-  let query = supabase
+// Fetch Lovable seller products - fetches all active products
+// Category filtering happens in fetchHybridProducts using categoryMatchesSlug
+export async function fetchLovableProducts(): Promise<LovableProduct[]> {
+  const { data, error } = await supabase
     .from('seller_products')
     .select(`
       *,
       seller_profiles!inner(seller_name)
     `)
     .eq('status', 'active')
-    .gt('quantity', 0);
-
-  if (category) {
-    query = query.ilike('category', `%${category}%`);
-  }
-
-  const { data, error } = await query.order('created_at', { ascending: false });
+    .gt('quantity', 0)
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching Lovable products:', error);
@@ -146,21 +146,31 @@ export async function fetchLovableProducts(category?: string): Promise<LovablePr
 
 // Fetch combined products from both sources
 export async function fetchHybridProducts(options: {
-  category?: string;
-  shopifyQuery?: string;
+  categorySlug?: string;  // URL slug like "beanies-tams"
+  shopifyQuery?: string;  // Override Shopify query
   limit?: number;
 }): Promise<UnifiedProduct[]> {
-  const { category, shopifyQuery, limit = 50 } = options;
+  const { categorySlug, shopifyQuery, limit = 50 } = options;
+
+  // Determine Shopify query - use provided query or get from category slug
+  const finalShopifyQuery = shopifyQuery || (categorySlug ? getShopifyQueryForSlug(categorySlug) : undefined);
 
   // Fetch from both sources in parallel
   const [shopifyProducts, lovableProducts] = await Promise.all([
-    fetchProducts(limit, shopifyQuery).catch(() => [] as ShopifyProduct[]),
-    fetchLovableProducts(category).catch(() => [] as LovableProduct[]),
+    fetchProducts(limit, finalShopifyQuery).catch(() => [] as ShopifyProduct[]),
+    fetchLovableProducts().catch(() => [] as LovableProduct[]),
   ]);
 
-  // Convert and combine
+  // Convert to unified format
   const unifiedShopify = shopifyProducts.map(shopifyToUnified);
-  const unifiedLovable = lovableProducts.map(lovableToUnified);
+  let unifiedLovable = lovableProducts.map(lovableToUnified);
+
+  // Filter Lovable products by category if slug provided
+  if (categorySlug) {
+    unifiedLovable = unifiedLovable.filter(p => 
+      categoryMatchesSlug(p.category, categorySlug)
+    );
+  }
 
   // Combine with Lovable products first (local sellers priority)
   return [...unifiedLovable, ...unifiedShopify];
