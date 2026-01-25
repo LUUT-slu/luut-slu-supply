@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { UnifiedProduct, fetchHybridProducts } from '@/lib/products';
 
 interface UseHybridProductsOptions {
-  category?: string;
-  shopifyQuery?: string;
+  categorySlug?: string;  // URL slug like "beanies-tams"
+  shopifyQuery?: string;  // Override Shopify query
   limit?: number;
 }
 
@@ -17,7 +17,11 @@ export function useHybridProducts(options: UseHybridProductsOptions = {}) {
       try {
         setLoading(true);
         setError(null);
-        const data = await fetchHybridProducts(options);
+        const data = await fetchHybridProducts({
+          categorySlug: options.categorySlug,
+          shopifyQuery: options.shopifyQuery,
+          limit: options.limit,
+        });
         setProducts(data);
       } catch (err) {
         console.error('Failed to load products:', err);
@@ -28,7 +32,7 @@ export function useHybridProducts(options: UseHybridProductsOptions = {}) {
     }
 
     loadProducts();
-  }, [options.category, options.shopifyQuery, options.limit]);
+  }, [options.categorySlug, options.shopifyQuery, options.limit]);
 
   return { products, loading, error };
 }

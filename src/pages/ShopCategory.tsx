@@ -4,35 +4,23 @@ import { Footer } from "@/components/Footer";
 import { HybridProductGrid } from "@/components/HybridProductGrid";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { BackButton } from "@/components/BackButton";
-
-// Map URL slugs to Shopify product type queries
-// The category handle from collections becomes the slug
-const categoryQueryMap: Record<string, string> = {
-  beanies: "product_type:beanies OR title:beanie",
-  hats: "product_type:hats OR title:hat",
-  facewear: 'product_type:"Ski Masks / Facewear" OR product_type:facewear OR title:ski mask OR title:face',
-  shirts: "product_type:shirts OR title:shirt OR title:tee",
-  jackets: "product_type:jackets OR title:jacket",
-  hoodies: "product_type:hoodies OR title:hoodie",
-  pants: "product_type:pants OR title:pants OR title:jeans",
-  shorts: "product_type:shorts OR title:shorts",
-  boxers: "product_type:boxers OR title:boxers OR title:underwear",
-  bags: "product_type:bags OR title:bag OR title:backpack",
-  shoes: "product_type:shoes OR title:shoes OR title:sneakers",
-  slippers: "product_type:slippers OR title:slippers",
-  sandals: "product_type:sandals OR title:sandals",
-  socks: "product_type:socks OR title:socks",
-};
+import { getCategoryBySlug } from "@/lib/categories";
 
 export default function ShopCategory() {
   const { category } = useParams<{ category: string }>();
   
   // Handle "all" category - show all products
   const isAllProducts = category === "all";
-  const shopifyQuery = category && !isAllProducts ? categoryQueryMap[category] : undefined;
+  
+  // Get category info from our unified system
+  const categoryInfo = category ? getCategoryBySlug(category) : undefined;
 
-  // Format title from handle (e.g., "ski-masks" -> "SKI MASKS")
+  // Format title from handle (e.g., "beanies-tams" -> "BEANIES & TAMS")
   const formatTitle = (handle: string) => {
+    // Use category label if available, otherwise format the handle
+    if (categoryInfo) {
+      return categoryInfo.label.toUpperCase();
+    }
     return handle.replace(/-/g, ' ').toUpperCase();
   };
 
@@ -59,8 +47,7 @@ export default function ShopCategory() {
         <section className="py-8 md:py-12">
           <div className="container">
             <HybridProductGrid 
-              category={category} 
-              shopifyQuery={shopifyQuery} 
+              categorySlug={category} 
               limit={100} 
             />
           </div>

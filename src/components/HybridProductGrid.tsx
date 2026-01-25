@@ -4,15 +4,15 @@ import { UnifiedProductCard } from "./UnifiedProductCard";
 import { Loader2 } from "lucide-react";
 
 interface HybridProductGridProps {
-  category?: string;
+  categorySlug?: string;  // URL slug like "beanies-tams"
   shopifyQuery?: string;
   limit?: number;
   title?: string;
 }
 
-export function HybridProductGrid({ category, shopifyQuery, limit = 20, title }: HybridProductGridProps) {
+export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, title }: HybridProductGridProps) {
   const { products, loading, error } = useHybridProducts({
-    category: category === 'all' ? undefined : category,
+    categorySlug: categorySlug === 'all' ? undefined : categorySlug,
     shopifyQuery,
     limit,
   });
