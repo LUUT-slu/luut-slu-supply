@@ -38,7 +38,6 @@ export default function ProductDetail() {
   const [selectedImage, setSelectedImage] = useState(0);
 
   const addItem = useCartStore((state) => state.addItem);
-  const setCartOpen = useCartStore((state) => state.setOpen);
 
   useEffect(() => {
     async function loadProduct() {
@@ -105,11 +104,7 @@ export default function ProductDetail() {
     });
 
     if (result.success) {
-      toast.success("Added to cart!", {
-        description: `${product.title} x ${quantity}`,
-        position: "top-center",
-      });
-      setCartOpen(true);
+      navigate('/cart');
     } else {
       toast.error("Cannot add to cart", {
         description: result.error,
