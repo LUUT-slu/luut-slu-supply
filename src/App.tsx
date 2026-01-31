@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import Shop from "./pages/Shop";
 import ShopCategory from "./pages/ShopCategory";
 import ProductDetail from "./pages/ProductDetail";
+import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout";
 import SellOnLuut from "./pages/SellOnLuut";
 import MeetupPolicy from "./pages/MeetupPolicy";
 import DepositPolicy from "./pages/DepositPolicy";
@@ -59,6 +61,8 @@ const App = () => (
           <Route path="/shop" element={<Shop />} />
           <Route path="/shop/:category" element={<ShopCategory />} />
           <Route path="/product/:handle" element={<ProductDetail />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
           <Route path="/sell" element={<SellOnLuut />} />
           <Route path="/meetup-policy" element={<MeetupPolicy />} />
           <Route path="/deposit-policy" element={<DepositPolicy />} />

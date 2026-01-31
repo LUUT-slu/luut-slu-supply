@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { UnifiedProduct } from "@/lib/products";
 import { useCartStore } from "@/stores/cartStore";
 import { Button } from "./ui/button";
@@ -10,6 +10,7 @@ interface UnifiedProductCardProps {
 }
 
 export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
+  const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
   
   const firstVariant = product.variants[0];
@@ -73,7 +74,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
       });
 
       if (result.success) {
-        toast.success(`${product.title} added to cart`);
+        navigate('/cart');
       } else {
         toast.error(result.error || "Failed to add to cart");
       }
@@ -88,7 +89,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
       });
 
       if (result.success) {
-        toast.success(`${product.title} added to cart`);
+        navigate('/cart');
       } else {
         toast.error(result.error || "Failed to add to cart");
       }

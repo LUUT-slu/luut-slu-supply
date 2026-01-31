@@ -4,7 +4,6 @@ import { Menu, X, ShoppingBag, DollarSign, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
-import { CartDrawer } from "./CartDrawer";
 import { Badge } from "./ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -152,7 +151,16 @@ export function Header() {
               <DollarSign className="h-5 w-5" />
             </Button>
           </Link>
-          <CartDrawer />
+          <Link to="/cart">
+            <Button variant="ghost" size="icon" className="relative text-foreground hover:text-primary">
+              <ShoppingBag className="h-5 w-5" />
+              {totalItems > 0 && (
+                <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary p-0 text-xs text-primary-foreground">
+                  {totalItems}
+                </Badge>
+              )}
+            </Button>
+          </Link>
 
           {/* Mobile menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
