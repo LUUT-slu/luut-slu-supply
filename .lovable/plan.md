@@ -1,104 +1,106 @@
 
-# Fix Local Product 404 & Duplicate Listings
 
-## Problems Identified
+# Fix Glitchy Image Disappearing on Scroll
 
-### Problem 1: 404 Error on Local Products
-The `UnifiedProductCard` generates links to `/product/local/:id` for local seller products, but **no route exists** for this path. The app only has `/product/:handle` which is designed for Shopify products.
+## Problem Identified
 
-### Problem 2: Duplicate Listings
-Products synced from Shopify (via the "Sync Products" feature) exist in both:
-- Shopify Storefront API
-- The local `seller_products` table (with `shopify_product_id` linking them)
+Images disappear prematurely (before fully leaving the viewport) during scrolling. This creates a visible "glitch" effect.
 
-The hybrid product fetch combines both sources without deduplication, causing the same product to appear twice.
+**Root Cause**: The `transition-transform` CSS property on images creates GPU compositing layers. When scrolling, the browser's compositor may prematurely clip these layers as they approach the viewport edge, causing images to vanish before they should.
 
 ---
 
 ## Solution
 
-### Fix 1: Create Local Product Detail Page
-Create a new page component that fetches and displays products from the `seller_products` table, and add the missing route.
+Apply the `will-change: transform` CSS property and add a `backface-visibility: hidden` to stabilize GPU layer compositing. Additionally, ensure the image containers have `overflow: hidden` applied correctly to prevent any clipping artifacts.
 
-**New file: `src/pages/LocalProductDetail.tsx`**
-- Fetches product by ID from `seller_products` table
-- Displays product images, title, price, seller info
-- Allows add-to-cart functionality
-- Matches the visual style of the Shopify product page
-
-**Route addition in `src/App.tsx`:**
-```
-/product/local/:productId → LocalProductDetail
-```
-
-### Fix 2: Deduplicate Synced Products
-Modify `fetchHybridProducts()` to exclude Lovable products that have a `shopify_product_id` - these are synced copies and will already appear from the Shopify source.
-
-**Update `src/lib/products.ts`:**
-- In `fetchLovableProducts()`, add filter: `.is('shopify_product_id', null)`
-- This ensures only **truly local** products (not synced from Shopify) are included from the database
+This forces the browser to create a stable compositing layer for images that persists throughout the scroll, preventing premature clipping.
 
 ---
 
-## Implementation Details
+## Files to Modify
 
-### New LocalProductDetail Page
+### 1. ProductCard.tsx
+**Line 65** - Add `backface-visibility-hidden` and remove transition-transform from the default state:
 
-```text
-Layout:
-┌─────────────────────────────┐
-│ ← Back           [Header]   │
-├─────────────────────────────┤
-│  ┌─────────────────────┐    │
-│  │   Product Image     │    │
-│  │   (swipeable)       │    │
-│  └─────────────────────┘    │
-│                             │
-│  Local Seller  [Seller Name]│
-│  Product Title              │
-│  EC$XX.XX                   │
-│                             │
-│  Quantity: [ - ] 1 [ + ]    │
-│                             │
-│  [Add to Cart - EC$XX.XX]   │
-│  [Buy Now]                  │
-│                             │
-│  Meetup Locations           │
-│  Payment Info               │
-└─────────────────────────────┘
+```tsx
+// Before
+className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+
+// After  
+className="h-full w-full object-cover will-change-transform backface-visibility-hidden transform-gpu group-hover:scale-105 group-hover:transition-transform group-hover:duration-300"
 ```
 
-### Deduplication Logic
+### 2. UnifiedProductCard.tsx
+**Line 110** - Same fix:
 
-Before (causes duplicates):
-```typescript
-const [shopifyProducts, lovableProducts] = await Promise.all([
-  fetchProducts(limit, finalShopifyQuery),
-  fetchLovableProducts(),  // Includes synced products
-]);
+```tsx
+// Before
+className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+
+// After
+className="h-full w-full object-cover will-change-transform backface-visibility-hidden transform-gpu group-hover:scale-110 group-hover:transition-transform group-hover:duration-500"
 ```
 
-After (no duplicates):
-```typescript
-// fetchLovableProducts now filters out synced products
-.is('shopify_product_id', null)  // Only truly local products
+### 3. WhatPeopleAreBuyingSection.tsx
+**Line 55** - Same fix:
+
+```tsx
+// Before
+className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-103"
+
+// After
+className="h-full w-full object-cover will-change-transform backface-visibility-hidden transform-gpu group-hover:scale-103 group-hover:transition-transform group-hover:duration-500"
+```
+
+### 4. BestSellersSection.tsx
+**Line 61** - Same fix:
+
+```tsx
+// Before
+className="h-full w-full object-cover transition-transform group-hover:scale-105"
+
+// After
+className="h-full w-full object-cover will-change-transform backface-visibility-hidden transform-gpu group-hover:scale-105 group-hover:transition-transform group-hover:duration-300"
+```
+
+### 5. src/index.css
+Add a global utility class for backface-visibility:
+
+```css
+@layer utilities {
+  /* Existing utilities... */
+  
+  /* Prevent GPU clipping artifacts during scroll */
+  .backface-visibility-hidden {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+}
 ```
 
 ---
 
-## Files to Change
+## Technical Explanation
 
-| File | Action |
-|------|--------|
-| `src/pages/LocalProductDetail.tsx` | CREATE - New page for local products |
-| `src/App.tsx` | MODIFY - Add route `/product/local/:productId` |
-| `src/lib/products.ts` | MODIFY - Filter out synced products in `fetchLovableProducts()` |
+| Property | Purpose |
+|----------|---------|
+| `will-change-transform` | Hints to browser to create a stable GPU layer |
+| `backface-visibility: hidden` | Prevents layer flickering/artifacts |
+| `transform-gpu` | Forces hardware acceleration via Tailwind |
+| Conditional transitions | Transitions only activate on hover, not during scroll |
+
+By moving `transition-transform` to only apply on `group-hover`, the images won't have active transition states during normal scrolling, which eliminates the compositor clipping issue.
 
 ---
 
-## Benefits
+## Summary
 
-1. **404 Fixed**: Local product links will work correctly
-2. **No Duplicates**: Synced Shopify products only appear once (from Shopify source)
-3. **Consistent UX**: Local product page matches Shopify product page styling
-4. **Data Integrity**: Products managed in Shopify remain the "source of truth" for synced items
+| Component | Change |
+|-----------|--------|
+| `ProductCard.tsx` | GPU stabilization + conditional transition |
+| `UnifiedProductCard.tsx` | GPU stabilization + conditional transition |
+| `WhatPeopleAreBuyingSection.tsx` | GPU stabilization + conditional transition |
+| `BestSellersSection.tsx` | GPU stabilization + conditional transition |
+| `src/index.css` | Add backface-visibility utility class |
+
