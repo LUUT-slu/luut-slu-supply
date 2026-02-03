@@ -1,140 +1,104 @@
 
-# Full-Screen Cart Page Implementation
+# Fix Local Product 404 & Duplicate Listings
 
-## Overview
-Convert the current side-drawer cart (`CartDrawer.tsx`) into a dedicated full-screen cart page at `/cart`. When users click "Add to Cart", they'll navigate to this full-page cart experience instead of opening a slide-over panel.
+## Problems Identified
 
----
+### Problem 1: 404 Error on Local Products
+The `UnifiedProductCard` generates links to `/product/local/:id` for local seller products, but **no route exists** for this path. The app only has `/product/:handle` which is designed for Shopify products.
 
-## What Will Change
+### Problem 2: Duplicate Listings
+Products synced from Shopify (via the "Sync Products" feature) exist in both:
+- Shopify Storefront API
+- The local `seller_products` table (with `shopify_product_id` linking them)
 
-### User Experience
-- **Add to Cart** now navigates to `/cart` (full-screen page)
-- Cart feels like a real checkout step, not a casual pop-up
-- Back arrow navigation (like any normal page)
-- Sticky "Checkout" button on mobile for constant visibility
-
-### What Stays the Same
-- All existing cart logic (Zustand store, single-seller enforcement)
-- Order builder/checkout flow (meetup details form)
-- Shopify draft order creation
-- WhatsApp confirmation flow
+The hybrid product fetch combines both sources without deduplication, causing the same product to appear twice.
 
 ---
 
-## Implementation Plan
+## Solution
 
-### 1. Create Cart Page Component
-**New file: `src/pages/Cart.tsx`**
+### Fix 1: Create Local Product Detail Page
+Create a new page component that fetches and displays products from the `seller_products` table, and add the missing route.
 
-A full-screen page with:
-- **Header**: Back arrow + "Cart" title
-- **Empty State**: 
-  - "Your Cart is Empty" title
-  - "Add an item to continue." subtitle
-  - "Back to Shop" button → `/shop`
-- **Cart Items View** (when items exist):
-  - Scrollable item list (reuse existing item rendering)
-  - Seller indicator badge
-  - Quantity controls (+/-)
-  - Remove item button
-  - Order summary (subtotal/total)
-- **Sticky Footer**: "Checkout" button → routes to `/checkout`
+**New file: `src/pages/LocalProductDetail.tsx`**
+- Fetches product by ID from `seller_products` table
+- Displays product images, title, price, seller info
+- Allows add-to-cart functionality
+- Matches the visual style of the Shopify product page
 
-Layout structure:
+**Route addition in `src/App.tsx`:**
+```
+/product/local/:productId → LocalProductDetail
+```
+
+### Fix 2: Deduplicate Synced Products
+Modify `fetchHybridProducts()` to exclude Lovable products that have a `shopify_product_id` - these are synced copies and will already appear from the Shopify source.
+
+**Update `src/lib/products.ts`:**
+- In `fetchLovableProducts()`, add filter: `.is('shopify_product_id', null)`
+- This ensures only **truly local** products (not synced from Shopify) are included from the database
+
+---
+
+## Implementation Details
+
+### New LocalProductDetail Page
+
 ```text
+Layout:
 ┌─────────────────────────────┐
-│ ← Cart                      │  ← Header (sticky top)
+│ ← Back           [Header]   │
 ├─────────────────────────────┤
+│  ┌─────────────────────┐    │
+│  │   Product Image     │    │
+│  │   (swipeable)       │    │
+│  └─────────────────────┘    │
 │                             │
-│   [Cart Items - Scrollable] │  ← Body
+│  Local Seller  [Seller Name]│
+│  Product Title              │
+│  EC$XX.XX                   │
 │                             │
-│   ─────────────────────     │
-│   Total: EC$XX.XX           │  ← Summary
+│  Quantity: [ - ] 1 [ + ]    │
 │                             │
-├─────────────────────────────┤
-│ [     Checkout     ]        │  ← Footer (sticky bottom)
+│  [Add to Cart - EC$XX.XX]   │
+│  [Buy Now]                  │
+│                             │
+│  Meetup Locations           │
+│  Payment Info               │
 └─────────────────────────────┘
 ```
 
-### 2. Create Checkout Page Component
-**New file: `src/pages/Checkout.tsx`**
+### Deduplication Logic
 
-Extracts the "Order Builder" step from `CartDrawer.tsx`:
-- Full-screen meetup details form
-- All existing form fields (name, phone, location, date, note)
-- Deposit acknowledgment checkbox
-- "Confirm Order" button
-- Same backend logic (create-draft-order, WhatsApp redirect)
-
-### 3. Update Add-to-Cart Behavior
-
-**Files to modify:**
-- `src/pages/ProductDetail.tsx`
-- `src/components/UnifiedProductCard.tsx`
-
-Changes:
-- After `addItem()` succeeds, navigate to `/cart` instead of calling `setCartOpen(true)`
-- Remove toast "Added to cart" (navigation is the feedback)
-
-### 4. Update Header
-**File: `src/components/Header.tsx`**
-
-- Cart icon click → navigate to `/cart` instead of opening drawer
-- Remove `CartDrawer` component import and usage
-- Keep badge showing item count
-
-### 5. Add Routes
-**File: `src/App.tsx`**
-
-Add two new public routes:
-```
-/cart → Cart page
-/checkout → Checkout page
+Before (causes duplicates):
+```typescript
+const [shopifyProducts, lovableProducts] = await Promise.all([
+  fetchProducts(limit, finalShopifyQuery),
+  fetchLovableProducts(),  // Includes synced products
+]);
 ```
 
-### 6. Deprecate CartDrawer Sheet Behavior
-**File: `src/components/CartDrawer.tsx`**
-
-The drawer logic will be refactored:
-- Extract reusable components (CartItemCard, EmptyCart)
-- Keep as utility file or remove entirely
-- The checkout builder logic moves to `/checkout` page
+After (no duplicates):
+```typescript
+// fetchLovableProducts now filters out synced products
+.is('shopify_product_id', null)  // Only truly local products
+```
 
 ---
 
-## Visual/UX Specifications
-
-| Element | Specification |
-|---------|---------------|
-| Background | `bg-background` (dark) |
-| Header | Sticky, `h-16`, back arrow + title |
-| Item cards | `bg-card` with `border-border` |
-| Price | `text-primary` (gold accent) |
-| Checkout button | Full-width, `size="lg"`, primary variant |
-| Footer | Sticky on mobile, `pt-4 border-t` |
-| Tap targets | Minimum 44x44px for mobile |
-
----
-
-## Files Summary
+## Files to Change
 
 | File | Action |
 |------|--------|
-| `src/pages/Cart.tsx` | CREATE - Full-screen cart page |
-| `src/pages/Checkout.tsx` | CREATE - Meetup details/order builder page |
-| `src/App.tsx` | MODIFY - Add `/cart` and `/checkout` routes |
-| `src/components/Header.tsx` | MODIFY - Cart icon navigates to `/cart` |
-| `src/pages/ProductDetail.tsx` | MODIFY - Navigate to `/cart` after add |
-| `src/components/UnifiedProductCard.tsx` | MODIFY - Navigate to `/cart` after add |
-| `src/components/CartDrawer.tsx` | KEEP - May extract shared components |
+| `src/pages/LocalProductDetail.tsx` | CREATE - New page for local products |
+| `src/App.tsx` | MODIFY - Add route `/product/local/:productId` |
+| `src/lib/products.ts` | MODIFY - Filter out synced products in `fetchLovableProducts()` |
 
 ---
 
-## Technical Notes
+## Benefits
 
-- No changes to cart store logic or business rules
-- All existing Zustand state (items, currentSeller) remains unchanged
-- Order creation flow (edge function) stays the same
-- Single-seller cart enforcement still works via store
-- Form validation logic moves from drawer to checkout page
+1. **404 Fixed**: Local product links will work correctly
+2. **No Duplicates**: Synced Shopify products only appear once (from Shopify source)
+3. **Consistent UX**: Local product page matches Shopify product page styling
+4. **Data Integrity**: Products managed in Shopify remain the "source of truth" for synced items
