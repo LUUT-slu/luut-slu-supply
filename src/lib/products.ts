@@ -131,6 +131,7 @@ export async function fetchLovableProducts(): Promise<LovableProduct[]> {
     `)
     .eq('status', 'active')
     .gt('quantity', 0)
+    .is('shopify_product_id', null)  // Exclude synced Shopify products to prevent duplicates
     .order('created_at', { ascending: false });
 
   if (error) {
