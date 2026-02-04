@@ -1,7 +1,7 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatButton";
 import { XCircle, AlertTriangle } from "lucide-react";
 
 export default function RefundPolicy() {
@@ -117,7 +117,7 @@ export default function RefundPolicy() {
                 <p className="mb-4 font-body text-muted-foreground">
                   Have an issue with an order?
                 </p>
-                <WhatsAppButton message="Hi! I have an issue with my order that I need help with." />
+                <ChatButton>Report an Issue</ChatButton>
               </div>
             </div>
           </div>
@@ -125,7 +125,7 @@ export default function RefundPolicy() {
       </main>
 
       <Footer />
-      <WhatsAppButton variant="floating" />
+      <ChatButton variant="floating" />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatButton";
 import { MapPin, MessageCircle } from "lucide-react";
 
 export default function MeetupPolicy() {
@@ -69,7 +69,7 @@ export default function MeetupPolicy() {
                 <p className="mb-4 font-body text-muted-foreground">
                   Have questions about meetups?
                 </p>
-                <WhatsAppButton message="Hi! I have a question about the meetup process." />
+                <ChatButton>Ask About Meetups</ChatButton>
               </div>
             </div>
           </div>
@@ -77,7 +77,7 @@ export default function MeetupPolicy() {
       </main>
 
       <Footer />
-      <WhatsAppButton variant="floating" />
+      <ChatButton variant="floating" />
     </div>
   );
 }

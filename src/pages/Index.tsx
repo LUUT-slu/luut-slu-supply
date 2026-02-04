@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductGrid } from "@/components/ProductGrid";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatButton";
 import { BestSellersSection } from "@/components/BestSellersSection";
 import { WhatPeopleAreBuyingSection } from "@/components/WhatPeopleAreBuyingSection";
 import storefrontHero from "@/assets/storefront-hero.png";
@@ -190,13 +190,13 @@ export default function Index() {
                 READY TO SHOP?
               </h2>
               <p className="mb-6 font-body text-muted-foreground">
-                Browse our collection or message us directly on WhatsApp
+                Browse our collection or start a chat with us
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <Button asChild size="lg">
                   <Link to="/shop">Browse Outfits</Link>
                 </Button>
-                <WhatsAppButton size="lg" />
+                <ChatButton size="lg" />
               </div>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function Index() {
       </main>
 
       <Footer />
-      <WhatsAppButton variant="floating" />
+      <ChatButton variant="floating" />
     </div>
   );
 }

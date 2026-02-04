@@ -1,7 +1,7 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatButton";
 
 export default function SellOnLuut() {
   const applyMessage = `Hi Luut SLU 👋
@@ -120,12 +120,9 @@ Looking forward to getting started.`;
 
               {/* CTA */}
               <div className="text-center">
-                <WhatsAppButton
-                  message={applyMessage}
-                  size="lg"
-                >
+                <ChatButton size="lg">
                   Apply to Sell
-                </WhatsAppButton>
+                </ChatButton>
               </div>
             </div>
           </div>
@@ -133,7 +130,7 @@ Looking forward to getting started.`;
       </main>
 
       <Footer />
-      <WhatsAppButton variant="floating" />
+      <ChatButton variant="floating" />
     </div>
   );
 }

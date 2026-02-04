@@ -1,7 +1,7 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatButton";
 import { AlertCircle, CreditCard, Clock } from "lucide-react";
 
 export default function DepositPolicy() {
@@ -133,7 +133,7 @@ export default function DepositPolicy() {
                 <p className="mb-4 font-body text-muted-foreground">
                   Questions about deposits or pre-orders?
                 </p>
-                <WhatsAppButton message="Hi! I have a question about deposits and pre-orders." />
+                <ChatButton>Ask About Deposits</ChatButton>
               </div>
             </div>
           </div>
@@ -141,7 +141,7 @@ export default function DepositPolicy() {
       </main>
 
       <Footer />
-      <WhatsAppButton variant="floating" />
+      <ChatButton variant="floating" />
     </div>
   );
 }

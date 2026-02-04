@@ -1,7 +1,7 @@
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatButton";
 import { MapPin, MessageCircle, Instagram, Facebook } from "lucide-react";
 
 export default function Contact() {
@@ -23,19 +23,19 @@ export default function Contact() {
         <section className="py-12">
           <div className="container max-w-3xl">
             <div className="space-y-8">
-              {/* WhatsApp - Primary */}
-              <div className="rounded-lg border-2 border-whatsapp bg-card p-8 text-center">
-                <MessageCircle className="mx-auto mb-4 h-12 w-12 text-whatsapp" />
+              {/* Chat - Primary */}
+              <div className="rounded-lg border-2 border-primary bg-card p-8 text-center">
+                <MessageCircle className="mx-auto mb-4 h-12 w-12 text-primary" />
                 <h2 className="mb-2 font-display text-2xl">
-                  WHATSAPP IS OUR MAIN CHANNEL
+                  CHAT WITH US
                 </h2>
                 <p className="mb-6 font-body text-muted-foreground">
-                  For the fastest response, message us on WhatsApp. We typically
+                  For the fastest response, start a chat with us. We typically
                   reply within a few hours.
                 </p>
-                <WhatsAppButton size="lg" className="mx-auto">
-                  Message on WhatsApp
-                </WhatsAppButton>
+                <ChatButton size="lg">
+                  Start a Chat
+                </ChatButton>
               </div>
 
               {/* Social Media */}
@@ -84,7 +84,7 @@ export default function Contact() {
                 <h2 className="mb-4 font-display text-xl">RESPONSE TIMES</h2>
                 <ul className="space-y-2 font-body text-muted-foreground">
                   <li>
-                    <strong>WhatsApp:</strong> Usually within a few hours
+                    <strong>Chat:</strong> Usually within a few hours
                   </li>
                   <li>
                     <strong>Instagram/Facebook:</strong> 1-2 business days
@@ -97,7 +97,7 @@ export default function Contact() {
       </main>
 
       <Footer />
-      <WhatsAppButton variant="floating" />
+      <ChatButton variant="floating" />
     </div>
   );
 }
