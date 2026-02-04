@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -481,7 +481,7 @@ export default function ProductDetail() {
       </main>
 
       <Footer />
-      <WhatsAppButton variant="floating" />
+      <ChatButton variant="floating" />
     </div>
   );
 }

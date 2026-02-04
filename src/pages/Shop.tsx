@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatButton";
 import { useShopifyCollections, getCollectionPath } from "@/hooks/useShopifyCollections";
 import { Loader2 } from "lucide-react";
 
@@ -121,7 +121,7 @@ export default function Shop() {
       </main>
 
       <Footer />
-      <WhatsAppButton variant="floating" />
+      <ChatButton variant="floating" />
     </div>
   );
 }

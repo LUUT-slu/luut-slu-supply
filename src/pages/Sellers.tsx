@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatButton";
 import { ShieldCheck, MapPin } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -92,16 +92,16 @@ export default function Sellers() {
               <p className="mb-4 font-body text-muted-foreground">
                 We're always looking for quality vendors to join our marketplace.
               </p>
-              <WhatsAppButton message="Hi! I'm interested in becoming a vendor on Luut SLU.">
+              <ChatButton>
                 Apply to Sell
-              </WhatsAppButton>
+              </ChatButton>
             </div>
           </div>
         </section>
       </main>
 
       <Footer />
-      <WhatsAppButton variant="floating" />
+      <ChatButton variant="floating" />
     </div>
   );
 }

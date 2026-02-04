@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatButton";
 import { ShieldCheck, ArrowLeft, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -100,11 +100,9 @@ export default function SellerProfile() {
             )}
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <WhatsAppButton
-                message={`Hi! I'm interested in products from ${seller.name} on Luut SLU.`}
-              >
-                Contact on WhatsApp
-              </WhatsAppButton>
+              <ChatButton>
+                Contact Seller
+              </ChatButton>
               {seller.phone && (
                 <Button variant="outline" asChild>
                   <a href={`tel:${seller.phone}`}>
@@ -131,7 +129,7 @@ export default function SellerProfile() {
       </main>
 
       <Footer />
-      <WhatsAppButton variant="floating" />
+      <ChatButton variant="floating" />
     </div>
   );
 }

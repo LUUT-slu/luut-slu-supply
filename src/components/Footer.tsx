@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Instagram, Facebook } from "lucide-react";
-import { WhatsAppButton } from "./WhatsAppButton";
+import { ChatButton } from "./ChatButton";
 
 export function Footer() {
   return (
@@ -75,10 +75,10 @@ export function Footer() {
           <div className="space-y-4 text-center md:text-left">
             <h4 className="font-display text-lg">CONTACT</h4>
             <p className="font-body text-sm text-muted-foreground">
-              WhatsApp is our main communication channel.
+              Chat with us for quick support.
             </p>
             <div className="flex justify-center md:justify-start">
-              <WhatsAppButton size="sm" />
+              <ChatButton size="sm" />
             </div>
             <p className="font-body text-xs text-muted-foreground">
               Based in Saint Lucia 🇱🇨

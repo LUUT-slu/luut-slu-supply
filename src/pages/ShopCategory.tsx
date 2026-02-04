@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { HybridProductGrid } from "@/components/HybridProductGrid";
-import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatButton";
 import { BackButton } from "@/components/BackButton";
 import { getCategoryBySlug } from "@/lib/categories";
 
@@ -55,7 +55,7 @@ export default function ShopCategory() {
       </main>
 
       <Footer />
-      <WhatsAppButton variant="floating" />
+      <ChatButton variant="floating" />
     </div>
   );
 }
