@@ -1,106 +1,113 @@
 
 
-# Fix Glitchy Image Disappearing on Scroll
+# Replace WhatsApp Button with Shopify Inbox Chat Button
 
-## Problem Identified
-
-Images disappear prematurely (before fully leaving the viewport) during scrolling. This creates a visible "glitch" effect.
-
-**Root Cause**: The `transition-transform` CSS property on images creates GPU compositing layers. When scrolling, the browser's compositor may prematurely clip these layers as they approach the viewport edge, causing images to vanish before they should.
+## Overview
+Remove all WhatsApp floating buttons and replace them with a "Chat" button that opens your Shopify Inbox chat page at `https://lovable-project-yf43m.myshopify.com/pages/chat` in a new tab.
 
 ---
 
-## Solution
+## What Will Change
 
-Apply the `will-change: transform` CSS property and add a `backface-visibility: hidden` to stabilize GPU layer compositing. Additionally, ensure the image containers have `overflow: hidden` applied correctly to prevent any clipping artifacts.
+### Chat Button Behavior
+- **Floating button**: Bottom-right, gold accent (matches site branding)
+- **On click**: Opens Shopify chat page in new tab
+- **Label**: "Chat" (floating shows icon only, inline shows "Chat with Us")
+- **No WhatsApp**: Removes all green WhatsApp styling
 
-This forces the browser to create a stable compositing layer for images that persists throughout the scroll, preventing premature clipping.
-
----
-
-## Files to Modify
-
-### 1. ProductCard.tsx
-**Line 65** - Add `backface-visibility-hidden` and remove transition-transform from the default state:
-
-```tsx
-// Before
-className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-
-// After  
-className="h-full w-full object-cover will-change-transform backface-visibility-hidden transform-gpu group-hover:scale-105 group-hover:transition-transform group-hover:duration-300"
-```
-
-### 2. UnifiedProductCard.tsx
-**Line 110** - Same fix:
-
-```tsx
-// Before
-className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-
-// After
-className="h-full w-full object-cover will-change-transform backface-visibility-hidden transform-gpu group-hover:scale-110 group-hover:transition-transform group-hover:duration-500"
-```
-
-### 3. WhatPeopleAreBuyingSection.tsx
-**Line 55** - Same fix:
-
-```tsx
-// Before
-className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-103"
-
-// After
-className="h-full w-full object-cover will-change-transform backface-visibility-hidden transform-gpu group-hover:scale-103 group-hover:transition-transform group-hover:duration-500"
-```
-
-### 4. BestSellersSection.tsx
-**Line 61** - Same fix:
-
-```tsx
-// Before
-className="h-full w-full object-cover transition-transform group-hover:scale-105"
-
-// After
-className="h-full w-full object-cover will-change-transform backface-visibility-hidden transform-gpu group-hover:scale-105 group-hover:transition-transform group-hover:duration-300"
-```
-
-### 5. src/index.css
-Add a global utility class for backface-visibility:
-
-```css
-@layer utilities {
-  /* Existing utilities... */
-  
-  /* Prevent GPU clipping artifacts during scroll */
-  .backface-visibility-hidden {
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-  }
-}
-```
+### Text Updates
+- Footer: "WhatsApp is our main channel" → "Chat with us for support"
+- Contact page: Update primary CTA messaging
 
 ---
 
-## Technical Explanation
+## Implementation Plan
 
-| Property | Purpose |
-|----------|---------|
-| `will-change-transform` | Hints to browser to create a stable GPU layer |
-| `backface-visibility: hidden` | Prevents layer flickering/artifacts |
-| `transform-gpu` | Forces hardware acceleration via Tailwind |
-| Conditional transitions | Transitions only activate on hover, not during scroll |
+### 1. Create New ChatButton Component
+**New file: `src/components/ChatButton.tsx`**
 
-By moving `transition-transform` to only apply on `group-hover`, the images won't have active transition states during normal scrolling, which eliminates the compositor clipping issue.
+The new component will:
+- Accept same variants as WhatsAppButton (floating, default, outline)
+- Use `MessageCircle` icon from lucide-react
+- Use `bg-primary` (gold) instead of `bg-whatsapp` (green)
+- Open `https://lovable-project-yf43m.myshopify.com/pages/chat` in new tab
+
+```
+Floating variant:
+┌───────────┐
+│    💬     │  ← Gold circle, bottom-right
+└───────────┘
+
+Inline variant:
+┌─────────────────────┐
+│ 💬 Chat with Us     │  ← Gold button
+└─────────────────────┘
+```
+
+### 2. Replace All WhatsAppButton Usages
+
+| File | Usage | Change |
+|------|-------|--------|
+| `src/pages/Index.tsx` | Inline + Floating | Replace both with ChatButton |
+| `src/pages/Contact.tsx` | Inline + Floating | Replace + update text content |
+| `src/pages/ProductDetail.tsx` | Floating | Replace with ChatButton |
+| `src/pages/Shop.tsx` | Floating | Replace with ChatButton |
+| `src/pages/ShopCategory.tsx` | Floating | Replace with ChatButton |
+| `src/pages/Sellers.tsx` | Inline + Floating | Replace both |
+| `src/pages/SellerProfile.tsx` | Inline + Floating | Replace both |
+| `src/pages/SellOnLuut.tsx` | Inline + Floating | Replace both |
+| `src/pages/RefundPolicy.tsx` | Inline + Floating | Replace both |
+| `src/pages/MeetupPolicy.tsx` | Inline + Floating | Replace both |
+| `src/pages/DepositPolicy.tsx` | Inline + Floating | Replace both |
+| `src/components/Footer.tsx` | Inline | Replace + update text |
+
+### 3. Update Page Content Text
+
+**Contact.tsx:**
+- "WHATSAPP IS OUR MAIN CHANNEL" → "CHAT WITH US"
+- "message us on WhatsApp" → "start a chat with us"
+- Remove green border styling on primary card
+
+**Footer.tsx:**
+- "WhatsApp is our main communication channel" → "Chat with us for quick support"
+
+**Index.tsx:**
+- "message us directly on WhatsApp" → "start a chat with us"
 
 ---
 
-## Summary
+## Files Summary
 
-| Component | Change |
-|-----------|--------|
-| `ProductCard.tsx` | GPU stabilization + conditional transition |
-| `UnifiedProductCard.tsx` | GPU stabilization + conditional transition |
-| `WhatPeopleAreBuyingSection.tsx` | GPU stabilization + conditional transition |
-| `BestSellersSection.tsx` | GPU stabilization + conditional transition |
-| `src/index.css` | Add backface-visibility utility class |
+| File | Action |
+|------|--------|
+| `src/components/ChatButton.tsx` | CREATE - New Shopify Inbox chat button |
+| `src/pages/Index.tsx` | MODIFY - Replace WhatsApp buttons |
+| `src/pages/Contact.tsx` | MODIFY - Replace buttons + update text |
+| `src/pages/ProductDetail.tsx` | MODIFY - Replace floating button |
+| `src/pages/Shop.tsx` | MODIFY - Replace floating button |
+| `src/pages/ShopCategory.tsx` | MODIFY - Replace floating button |
+| `src/pages/Sellers.tsx` | MODIFY - Replace both buttons |
+| `src/pages/SellerProfile.tsx` | MODIFY - Replace both buttons |
+| `src/pages/SellOnLuut.tsx` | MODIFY - Replace both buttons |
+| `src/pages/RefundPolicy.tsx` | MODIFY - Replace both buttons |
+| `src/pages/MeetupPolicy.tsx` | MODIFY - Replace both buttons |
+| `src/pages/DepositPolicy.tsx` | MODIFY - Replace both buttons |
+| `src/components/Footer.tsx` | MODIFY - Replace button + update text |
+
+---
+
+## What Stays the Same
+- **Order confirmation WhatsApp flows** (checkout → seller notification) - these remain for business operations
+- All other site functionality
+- Footer social links (Instagram, Facebook)
+
+---
+
+## Not Changed (Business Logic)
+The following files contain WhatsApp links for **business-critical order notifications** (seller-to-customer, admin-to-partner). These are not changed since they serve a different purpose:
+- `Checkout.tsx` - Order confirmation to seller
+- `OrderComplete.tsx` - Order details to seller
+- `SellerOrders.tsx` - Seller messaging customers
+- `AdminOrdersPage.tsx` - Admin notifications
+- Edge functions for order processing
 
