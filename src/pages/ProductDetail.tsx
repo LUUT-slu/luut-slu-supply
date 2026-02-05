@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { 
   ArrowLeft, 
@@ -36,6 +36,7 @@ export default function ProductDetail() {
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+  const galleryRef = useRef<HTMLDivElement>(null);
 
   const addItem = useCartStore((state) => state.addItem);
 
@@ -57,6 +58,53 @@ export default function ProductDetail() {
     }
     loadProduct();
   }, [handle]);
+
+  // Scroll gallery to a specific image index
+  const scrollToImage = useCallback((index: number) => {
+    const container = galleryRef.current;
+    if (!container) return;
+    const scrollTarget = index * container.offsetWidth;
+    container.scrollTo({ left: scrollTarget, behavior: 'smooth' });
+    setSelectedImage(index);
+  }, []);
+
+  // Track scroll position to update selectedImage indicator
+  useEffect(() => {
+    const container = galleryRef.current;
+    if (!container) return;
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const idx = Math.round(container.scrollLeft / container.offsetWidth);
+          setSelectedImage(idx);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [product]);
+
+  // When selectedVariant changes, scroll gallery to matching variant image
+  useEffect(() => {
+    if (!product || !selectedVariant) return;
+
+    const variant = product.variants.edges.find(v => v.node.id === selectedVariant)?.node;
+    if (!variant?.image?.url) return;
+
+    // Find the index of the variant image in the product images list
+    const imageIndex = product.images.edges.findIndex(
+      img => img.node.url === variant.image!.url
+    );
+
+    if (imageIndex >= 0 && imageIndex !== selectedImage) {
+      scrollToImage(imageIndex);
+    }
+  }, [selectedVariant, product, scrollToImage]);
 
   if (loading) {
     return (
@@ -143,6 +191,7 @@ export default function ProductDetail() {
                   // Swipeable gallery for multiple images
                   <div 
                     className="flex h-full w-full snap-x snap-mandatory overflow-x-scroll overscroll-x-contain rounded-xl"
+                    ref={galleryRef}
                     style={{ 
                       WebkitOverflowScrolling: 'touch',
                       scrollbarWidth: 'none',
@@ -182,10 +231,11 @@ export default function ProductDetail() {
               {product.images.edges.length > 1 && (
                 <div className="flex justify-center gap-1.5">
                   {product.images.edges.map((_, idx) => (
-                    <div
+                    <button
                       key={idx}
+                      onClick={() => scrollToImage(idx)}
                       className={cn(
-                        "h-1.5 w-1.5 rounded-full transition-colors",
+                        "h-2 w-2 rounded-full transition-colors",
                         selectedImage === idx ? "bg-primary" : "bg-muted-foreground/30"
                       )}
                     />
@@ -199,7 +249,7 @@ export default function ProductDetail() {
                   {product.images.edges.map((img, idx) => (
                     <button
                       key={idx}
-                      onClick={() => setSelectedImage(idx)}
+                      onClick={() => scrollToImage(idx)}
                       className={`h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
                         selectedImage === idx
                           ? "border-primary ring-2 ring-primary/20"
