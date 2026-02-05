@@ -251,19 +251,32 @@ export default function Checkout() {
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://wa.me/${sellerWhatsApp}?text=${encodedMessage}`;
 
+      // Save order confirmation data to localStorage for the confirmation page
+      const orderConfirmationData = {
+        orderName: data.draftOrder.name,
+        sellerName: sellerVendor || 'Seller',
+        sellerWhatsApp,
+        whatsappUrl,
+        whatsappMessage: message,
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        items: items.map(item => ({
+          title: item.product.node.title,
+          quantity: item.quantity,
+          price: item.price.amount,
+          vendor: item.product.node.vendor,
+        })),
+        totalPrice,
+        location: selectedLocation,
+        preferredDate: formattedDate,
+        note: note.trim() || undefined,
+        timestamp: Date.now(),
+      };
+
+      localStorage.setItem('luut-order-confirmed', JSON.stringify(orderConfirmationData));
+
       clearCart();
-
-      toast.success(`Order ${data.draftOrder.name} created!`, {
-        description: `Opening WhatsApp to message ${sellerVendor || 'seller'}...`,
-        position: "top-center",
-        action: {
-          label: "View Orders",
-          onClick: () => navigate('/my-orders'),
-        },
-      });
-
-      window.open(whatsappUrl, '_blank');
-      navigate('/my-orders');
+      navigate('/order-confirmed');
 
     } catch (error) {
       console.error("Order creation error:", error);

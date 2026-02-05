@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import MyOrders from "./pages/MyOrders";
 import OrderDetails from "./pages/OrderDetails";
 import OrderComplete from "./pages/OrderComplete";
+import OrderConfirmed from "./pages/OrderConfirmed";
 import AdminSellersNew from "./pages/AdminSellersNew";
 import AdminSellerRequests from "./pages/AdminSellerRequests";
 import AdminHome from "./pages/AdminHome";
@@ -74,6 +75,7 @@ const App = () => (
           <Route path="/contact" element={<Contact />} />
           <Route path="/my-orders" element={<MyOrders />} />
           <Route path="/order/:orderId" element={<OrderDetails />} />
+          <Route path="/order-confirmed" element={<OrderConfirmed />} />
           <Route path="/order-complete" element={<OrderComplete />} />
           
           {/* Auth Routes */}
