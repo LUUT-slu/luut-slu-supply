@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -93,6 +93,7 @@ export default function Checkout() {
   const [depositAcknowledged, setDepositAcknowledged] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const orderCompletingRef = useRef(false);
 
   const {
     items,
@@ -104,9 +105,9 @@ export default function Checkout() {
   const totalPrice = getTotalPrice();
   const currentSeller = getCurrentSeller();
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty (skip during order completion)
   useEffect(() => {
-    if (items.length === 0) {
+    if (items.length === 0 && !orderCompletingRef.current) {
       navigate('/cart');
     }
   }, [items.length, navigate]);
@@ -275,6 +276,7 @@ export default function Checkout() {
 
       localStorage.setItem('luut-order-confirmed', JSON.stringify(orderConfirmationData));
 
+      orderCompletingRef.current = true;
       clearCart();
       navigate('/order-confirmed');
 
