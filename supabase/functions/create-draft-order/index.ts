@@ -13,7 +13,8 @@ interface LineItem {
   title: string;
   price: string;
   image_url?: string | null;
-  source?: 'shopify' | 'lovable'; // Track product source
+  vendor?: string;
+  source?: 'shopify' | 'lovable';
 }
 
 interface DraftOrderRequest {
@@ -24,11 +25,18 @@ interface DraftOrderRequest {
   note?: string;
   lineItems: LineItem[];
   totalPrice: number;
+  sellerVendor?: string;
 }
 
 const SHOPIFY_STORE_DOMAIN = "lovable-project-yf43m.myshopify.com";
 const SHOPIFY_API_VERSION = "2025-01";
 const WHATSAPP_NUMBER = "17587185478";
+
+// Normalize vendor names to canonical form (matches frontend normalizeVendorName)
+function normalizeVendorName(vendor: string): string {
+  if (vendor.toLowerCase().includes("luut slu")) return "LUUT SLU";
+  return vendor;
+}
 
 // Format WhatsApp message for merchant notification
 function formatMerchantMessage(draftOrder: any, localOrder: any, preferredDate: string, location: string, note?: string): string {
@@ -118,22 +126,116 @@ serve(async (req) => {
 
     console.log("Local order created:", localOrder.id);
 
-    // Create order_items for Lovable products (for seller visibility)
-    if (lovableItems.length > 0) {
-      const orderItemsToInsert = lovableItems.map(item => {
-        // Extract Lovable product ID from variant ID (lovable-variant-{uuid})
-        const productId = item.variant_id.replace('lovable-variant-', '');
-        return {
-          order_id: localOrder.id,
-          product_id: productId,
-          product_name: item.title,
-          unit_price: parseFloat(item.price),
-          quantity: item.quantity,
-          total_price: parseFloat(item.price) * item.quantity,
-          product_image_url: item.image_url || null,
-        };
-      });
+    // ============================================================
+    // Create order_items for ALL products (both Shopify & Lovable)
+    // This ensures seller dashboards can see and manage orders
+    // ============================================================
 
+    // Step 1: Build seller lookup maps
+    // For Shopify items: look up seller_products by shopify_product_id
+    const shopifyProductIds = shopifyItems
+      .map(item => item.product_id)
+      .filter(Boolean);
+
+    let shopifyProductMap: Record<string, { id: string; seller_id: string }> = {};
+    if (shopifyProductIds.length > 0) {
+      const { data: matchedProducts } = await supabase
+        .from("seller_products")
+        .select("id, seller_id, shopify_product_id")
+        .in("shopify_product_id", shopifyProductIds);
+
+      if (matchedProducts) {
+        for (const p of matchedProducts) {
+          if (p.shopify_product_id) {
+            shopifyProductMap[p.shopify_product_id] = { id: p.id, seller_id: p.seller_id };
+          }
+        }
+      }
+    }
+
+    // For Lovable items: look up seller_products by product UUID
+    const lovableProductIds = lovableItems
+      .map(item => item.variant_id.replace('lovable-variant-', ''))
+      .filter(Boolean);
+
+    let lovableProductMap: Record<string, string> = {};
+    if (lovableProductIds.length > 0) {
+      const { data: matchedProducts } = await supabase
+        .from("seller_products")
+        .select("id, seller_id")
+        .in("id", lovableProductIds);
+
+      if (matchedProducts) {
+        for (const p of matchedProducts) {
+          lovableProductMap[p.id] = p.seller_id;
+        }
+      }
+    }
+
+    // Fallback: look up seller_profiles by vendor name for items without a match
+    const uniqueVendors = [...new Set(
+      lineItems
+        .map(item => item.vendor ? normalizeVendorName(item.vendor) : null)
+        .filter(Boolean) as string[]
+    )];
+
+    let vendorToSellerId: Record<string, string> = {};
+    if (uniqueVendors.length > 0) {
+      const { data: sellerProfiles } = await supabase
+        .from("seller_profiles")
+        .select("id, seller_name");
+
+      if (sellerProfiles) {
+        for (const vendor of uniqueVendors) {
+          const match = sellerProfiles.find(
+            sp => sp.seller_name.toLowerCase() === vendor.toLowerCase()
+          );
+          if (match) {
+            vendorToSellerId[vendor] = match.id;
+          }
+        }
+      }
+    }
+
+    // Step 2: Build order_items for all line items
+    const orderItemsToInsert = lineItems.map(item => {
+      const isLovable = item.source === 'lovable' || item.variant_id.startsWith('lovable-variant-');
+
+      let productId: string | null = null;
+      let sellerId: string | null = null;
+
+      if (isLovable) {
+        // Lovable product: use UUID from variant_id
+        productId = item.variant_id.replace('lovable-variant-', '');
+        sellerId = lovableProductMap[productId] || null;
+      } else {
+        // Shopify product: look up by shopify_product_id
+        const match = shopifyProductMap[item.product_id];
+        if (match) {
+          productId = match.id;
+          sellerId = match.seller_id;
+        }
+      }
+
+      // Fallback to vendor name lookup if no seller_id found
+      if (!sellerId && item.vendor) {
+        const normalizedVendor = normalizeVendorName(item.vendor);
+        sellerId = vendorToSellerId[normalizedVendor] || null;
+      }
+
+      return {
+        order_id: localOrder.id,
+        product_id: productId,
+        product_name: item.title,
+        unit_price: parseFloat(item.price),
+        quantity: item.quantity,
+        total_price: parseFloat(item.price) * item.quantity,
+        product_image_url: item.image_url || null,
+        seller_id: sellerId,
+      };
+    });
+
+    if (orderItemsToInsert.length > 0) {
       const { error: orderItemsError } = await supabase
         .from("order_items")
         .insert(orderItemsToInsert);
@@ -142,7 +244,7 @@ serve(async (req) => {
         console.error("Failed to create order_items:", orderItemsError);
         // Non-fatal - continue with order
       } else {
-        console.log(`Created ${orderItemsToInsert.length} order_items for Lovable products`);
+        console.log(`Created ${orderItemsToInsert.length} order_items (${shopifyItems.length} Shopify, ${lovableItems.length} Lovable)`);
       }
     }
 
