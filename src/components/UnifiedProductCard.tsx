@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { UnifiedProduct } from "@/lib/products";
+import { getOptimizedImageUrl } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { Button } from "./ui/button";
 import { ShoppingCart, MapPin } from "lucide-react";
@@ -15,7 +16,8 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
   
   const firstVariant = product.variants[0];
   const price = parseFloat(product.price.amount);
-  const imageUrl = product.images[0]?.url;
+  const rawImageUrl = product.images[0]?.url;
+  const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl, 600) : undefined;
   
   // Build the product detail link
   const productLink = product.source === 'shopify' 

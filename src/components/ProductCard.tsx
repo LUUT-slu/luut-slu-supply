@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ShoppingBag, Shield, MapPin, Wallet } from "lucide-react";
 import { Button } from "./ui/button";
-import { ShopifyProduct } from "@/lib/shopify";
+import { ShopifyProduct, getOptimizedImageUrl } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
 
@@ -16,7 +16,8 @@ export function ProductCard({ product }: ProductCardProps) {
 
   const firstVariant = node.variants.edges[0]?.node;
   const price = node.priceRange.minVariantPrice;
-  const image = node.images.edges[0]?.node;
+  const rawImage = node.images.edges[0]?.node;
+  const image = rawImage ? { ...rawImage, url: getOptimizedImageUrl(rawImage.url, 600) } : undefined;
   const vendor = node.vendor || "Luut SLU";
   
   // Check if certified seller

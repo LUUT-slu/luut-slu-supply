@@ -7,7 +7,7 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { ChatButton } from "@/components/ChatButton";
 import { BestSellersSection } from "@/components/BestSellersSection";
 import { WhatPeopleAreBuyingSection } from "@/components/WhatPeopleAreBuyingSection";
-import storefrontHero from "@/assets/storefront-hero.png";
+import storefrontHero from "@/assets/storefront-hero.webp";
 
 
 const howItWorks = [

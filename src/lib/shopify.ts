@@ -298,3 +298,22 @@ export async function createStorefrontCheckout(
   url.searchParams.set('channel', 'online_store');
   return url.toString();
 }
+
+/**
+ * Optimizes a Shopify CDN image URL by requesting a specific width.
+ * Shopify CDN supports on-the-fly image resizing via URL parameters.
+ * This dramatically reduces download size for product images.
+ */
+export function getOptimizedImageUrl(url: string, width: number): string {
+  if (!url) return url;
+  // Only optimize Shopify CDN URLs
+  if (!url.includes('cdn.shopify.com')) return url;
+  try {
+    const imgUrl = new URL(url);
+    imgUrl.searchParams.set('width', String(width));
+    imgUrl.searchParams.set('format', 'webp');
+    return imgUrl.toString();
+  } catch {
+    return url;
+  }
+}

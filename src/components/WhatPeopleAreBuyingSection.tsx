@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ShopifyProduct, fetchProducts } from "@/lib/shopify";
+import { ShopifyProduct, fetchProducts, getOptimizedImageUrl } from "@/lib/shopify";
 import { Loader2 } from "lucide-react";
 
 const BADGES = ["Trending", "Moving Fast", "Popular", "Seen Around Town"] as const;
@@ -25,7 +25,8 @@ interface ProductCardProps {
 
 function ProductCard({ product, index }: ProductCardProps) {
   const { node } = product;
-  const imageUrl = node.images.edges[0]?.node.url;
+  const rawImageUrl = node.images.edges[0]?.node.url;
+  const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl, 400) : undefined;
   const price = node.priceRange.minVariantPrice;
   const badge = getBadgeForProduct(node.id);
 

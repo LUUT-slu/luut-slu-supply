@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useBestSellers } from "@/hooks/useBestSellers";
+import { getOptimizedImageUrl } from "@/lib/shopify";
 import { TrendingUp } from "lucide-react";
 
 export function BestSellersSection() {
@@ -56,7 +57,7 @@ export function BestSellersSection() {
               <div className="aspect-square overflow-hidden rounded-md bg-muted">
                 {product.product_image_url ? (
                   <img
-                    src={product.product_image_url}
+                    src={getOptimizedImageUrl(product.product_image_url, 500)}
                     alt={product.product_title}
                     className="h-full w-full object-cover transition-transform group-hover:scale-105"
                   />
