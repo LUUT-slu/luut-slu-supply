@@ -304,6 +304,16 @@ export async function createStorefrontCheckout(
  * Shopify CDN supports on-the-fly image resizing via URL parameters.
  * This dramatically reduces download size for product images.
  */
+/**
+ * Normalizes vendor names to canonical seller names.
+ * Maps any variant of "Luut SLU" (e.g. "Luut SLU Hub", "Luut SLU (Certified Seller)")
+ * to the canonical "Luut SLU" admin seller account name.
+ */
+export function normalizeVendorName(vendor: string): string {
+  if (vendor.toLowerCase().includes("luut slu")) return "Luut SLU";
+  return vendor;
+}
+
 export function getOptimizedImageUrl(url: string, width: number): string {
   if (!url) return url;
   // Only optimize Shopify CDN URLs

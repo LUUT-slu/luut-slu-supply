@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ShopifyProduct, fetchProducts, getOptimizedImageUrl } from "@/lib/shopify";
+import { ShopifyProduct, fetchProducts, getOptimizedImageUrl, normalizeVendorName } from "@/lib/shopify";
 import { Loader2 } from "lucide-react";
 
 const BADGES = ["Trending", "Moving Fast", "Popular", "Seen Around Town"] as const;
@@ -77,11 +77,12 @@ function ProductCard({ product, index }: ProductCardProps) {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.location.href = `/seller/${encodeURIComponent((node.vendor || 'luut-slu').toLowerCase().replace(/\s+/g, '-'))}`;
+                const normalized = normalizeVendorName(node.vendor || 'Luut SLU');
+                window.location.href = `/seller/${encodeURIComponent(normalized.toLowerCase().replace(/\s+/g, '-'))}`;
               }}
               className="text-muted-foreground/70 hover:text-muted-foreground cursor-pointer transition-colors"
             >
-              {node.vendor || "Luut SLU"}
+              {normalizeVendorName(node.vendor || "Luut SLU")}
             </span>
           </p>
         </div>

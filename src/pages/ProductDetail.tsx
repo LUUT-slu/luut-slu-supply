@@ -20,7 +20,7 @@ import { ChatButton } from "@/components/ChatButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { fetchProductByHandle, ShopifyProduct } from "@/lib/shopify";
+import { fetchProductByHandle, ShopifyProduct, normalizeVendorName } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -168,7 +168,7 @@ export default function ProductDetail() {
 
   // Check if seller is certified
   const isCertifiedSeller = product.vendor?.includes("Certified") || product.tags?.includes("certified-seller");
-  const sellerName = product.vendor?.replace(" (Certified Seller)", "") || "Luut SLU";
+  const sellerName = normalizeVendorName(product.vendor?.replace(" (Certified Seller)", "") || "Luut SLU");
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
