@@ -72,6 +72,8 @@ export default function Index() {
               src={storefrontHero} 
               alt="Luut SLU storefront" 
               className="w-full h-full object-cover"
+              fetchPriority="high"
+              decoding="sync"
             />
           </div>
           {/* Dark gradient overlay - lighter at top, stronger at bottom */}
