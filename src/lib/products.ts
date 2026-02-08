@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { ShopifyProduct, fetchProducts } from './shopify';
+import { ShopifyProduct, fetchProducts, normalizeVendorName } from './shopify';
 import { categoryMatchesSlug, mapShopifyTypeToLabel, getShopifyQueryForSlug } from './categories';
 
 // Unified product interface that works for both Shopify and Lovable products
@@ -64,7 +64,7 @@ function shopifyToUnified(product: ShopifyProduct): UnifiedProduct {
     title: node.title,
     description: node.description,
     handle: node.handle,
-    vendor: node.vendor,
+    vendor: normalizeVendorName(node.vendor),
     category: normalizedCategory,
     price: {
       amount: node.priceRange.minVariantPrice.amount,

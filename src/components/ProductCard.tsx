@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ShoppingBag, Shield, MapPin, Wallet } from "lucide-react";
 import { Button } from "./ui/button";
-import { ShopifyProduct, getOptimizedImageUrl } from "@/lib/shopify";
+import { ShopifyProduct, getOptimizedImageUrl, normalizeVendorName } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
 
@@ -18,7 +18,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const price = node.priceRange.minVariantPrice;
   const rawImage = node.images.edges[0]?.node;
   const image = rawImage ? { ...rawImage, url: getOptimizedImageUrl(rawImage.url, 600) } : undefined;
-  const vendor = node.vendor || "Luut SLU";
+  const vendor = normalizeVendorName(node.vendor || "Luut SLU");
   
   // Check if certified seller
   const isCertified = vendor.includes("Certified") || node.tags?.includes("certified-seller");
@@ -117,11 +117,11 @@ export function ProductCard({ product }: ProductCardProps) {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              window.location.href = `/seller/${encodeURIComponent(vendor.toLowerCase().replace(/\s+/g, '-').replace(/\(.*\)/, '').trim())}`;
+              window.location.href = `/seller/${encodeURIComponent(vendor.toLowerCase().replace(/\s+/g, '-'))}`;
             }}
             className="text-muted-foreground/80 hover:text-primary cursor-pointer transition-colors"
           >
-            {vendor.replace(" (Certified Seller)", "")}
+            {vendor}
           </span>
         </p>
       </div>
