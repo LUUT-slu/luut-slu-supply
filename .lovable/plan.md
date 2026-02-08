@@ -1,76 +1,43 @@
 
+## Linking "Luut SLU Hub" Shopify Products to the LUUT SLU Admin Account
 
-# Fix: Cart Redirect Racing Order Confirmation
+### Problem
+All 21 Shopify products have their vendor set to **"Luut SLU Hub"** in Shopify, but the platform's admin seller account is named **"Luut SLU"**. This causes:
+- Product cards showing "Sold by: Luut SLU Hub" instead of "Sold by: Luut SLU"
+- Seller profile links going to `/seller/luut-slu-hub` (broken) instead of the correct seller page
+- The "FROM LUUT SLU" homepage section potentially not matching products correctly
 
-## Root Cause
+### Solution
+Add a vendor name normalization function that maps "Luut SLU Hub" to "Luut SLU" across the codebase. This is a display-layer change -- no database or Shopify changes needed.
 
-In `Checkout.tsx`, the checkout flow does this:
+### Changes
 
-```text
-Line 278: clearCart()        --> items becomes []
-Line 107: useEffect fires    --> items.length === 0 --> navigate('/cart')  [RACE WINNER]
-Line 279: navigate('/order-confirmed')                                    [TOO LATE]
-```
+**1. `src/lib/shopify.ts`** -- Add a vendor normalization helper
+- Create a `normalizeVendorName()` function that maps known vendor aliases (like "Luut SLU Hub") to the canonical seller name ("Luut SLU")
+- This keeps the mapping centralized and easy to update
 
-The "redirect if cart is empty" safety guard (lines 107-112) reacts to `clearCart()` and sends the user to `/cart` before the intended `/order-confirmed` navigation happens.
+**2. `src/lib/products.ts`** -- Normalize vendor in `shopifyToUnified()`
+- Apply `normalizeVendorName()` when converting Shopify products to the unified format, so all downstream consumers (hybrid grid, product cards) get the correct name
 
-## Fix
+**3. `src/components/ProductCard.tsx`** -- Normalize vendor for Shopify-only card
+- Apply `normalizeVendorName()` to the vendor display and seller link generation
 
-Add a ref to track when an order submission is in progress. The cart-empty guard should skip its redirect when `isSubmitting` is true (or when we've just completed an order).
+**4. `src/components/WhatPeopleAreBuyingSection.tsx`** -- Normalize vendor display
+- Apply `normalizeVendorName()` to the "Sold by" line and seller link
 
-### Change 1: `src/pages/Checkout.tsx`
+**5. `src/pages/ProductDetail.tsx`** -- Normalize vendor on product detail page
+- Apply `normalizeVendorName()` so the "Sold by" attribution and seller link point to the correct LUUT SLU seller page
 
-**Add a ref to bypass the cart-empty redirect during submission:**
+### Technical Detail
 
-- Add a `useRef` (`orderCompletingRef`) initialized to `false`
-- Set it to `true` right before `clearCart()` is called
-- In the cart-empty `useEffect`, check the ref and skip the redirect if it's `true`
-
-```typescript
-// Add ref
-const orderCompletingRef = useRef(false);
-
-// Update the cart-empty guard (lines 107-112)
-useEffect(() => {
-  if (items.length === 0 && !orderCompletingRef.current) {
-    navigate('/cart');
-  }
-}, [items.length, navigate]);
-
-// Before clearCart (around line 278)
-orderCompletingRef.current = true;
-clearCart();
-navigate('/order-confirmed');
-```
-
-### Change 2: `src/pages/OrderConfirmed.tsx`
-
-No structural changes needed. The auto-open WhatsApp logic with the `setTimeout(500ms)` on mount is correct and will work once the user actually lands on this page instead of being redirected to `/cart`.
-
-## Files Modified
-
-| File | Change |
-|------|--------|
-| `src/pages/Checkout.tsx` | Add `orderCompletingRef` to prevent cart-empty redirect during order completion |
-
-## Why This Works
-
-- The ref is synchronous (unlike state), so it's guaranteed to be `true` before the `useEffect` runs
-- The cart-empty guard still protects against users who land on `/checkout` with no items
-- After `clearCart()` + `navigate('/order-confirmed')`, the user arrives at the confirmation page where WhatsApp auto-opens
-
-## Expected Flow After Fix
+The normalization function:
 
 ```text
-1. User clicks "Confirm Order"
-2. Edge function creates order
-3. orderCompletingRef = true
-4. clearCart() --> items = []
-5. useEffect sees items.length === 0 BUT orderCompletingRef is true --> SKIPS redirect
-6. navigate('/order-confirmed')
-7. OrderConfirmed page loads
-8. Auto-opens WhatsApp with pre-filled message (500ms delay)
-9. Shows fallback "Message Seller" button
-10. User returns to site --> clicks "View My Orders"
+function normalizeVendorName(vendor: string): string
+  - If vendor contains "Luut SLU" (case-insensitive), return "Luut SLU"
+  - Otherwise return vendor as-is
 ```
 
+This means any Shopify vendor name like "Luut SLU Hub", "Luut SLU (Certified Seller)", or just "Luut SLU" all resolve to the same canonical name, ensuring consistent attribution to the admin seller account.
+
+The sync function in `SellerProducts.tsx` already works correctly since `fetchProductsByVendor("Luut SLU")` uses `.includes()` matching, which catches "Luut SLU Hub".
