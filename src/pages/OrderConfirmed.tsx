@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { CheckCircle2, MessageCircle, ShoppingBag, MapPin, Calendar, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,15 +24,20 @@ interface OrderConfirmationData {
   timestamp: number;
 }
 
+const SESSION_KEY = "luut-whatsapp-opened";
+
 export default function OrderConfirmed() {
   const navigate = useNavigate();
   const [orderData, setOrderData] = useState<OrderConfirmationData | null>(null);
   const [whatsappOpened, setWhatsappOpened] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const didAutoOpen = useRef(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("luut-order-confirmed");
     if (!stored) {
-      navigate("/my-orders");
+      setLoaded(true);
+      navigate("/my-orders", { replace: true });
       return;
     }
 
@@ -41,23 +46,43 @@ export default function OrderConfirmed() {
       // Only use if less than 1 hour old
       if (Date.now() - parsed.timestamp > 3600000) {
         localStorage.removeItem("luut-order-confirmed");
-        navigate("/my-orders");
+        setLoaded(true);
+        navigate("/my-orders", { replace: true });
         return;
       }
 
       setOrderData(parsed);
+      setLoaded(true);
 
-      // Auto-open WhatsApp on fresh page load (better popup success rate)
-      setTimeout(() => {
-        const popup = window.open(parsed.whatsappUrl, "_blank");
-        if (popup) {
-          setWhatsappOpened(true);
-        }
-      }, 500);
+      // Remove from localStorage immediately after reading to prevent re-trigger loops
+      localStorage.removeItem("luut-order-confirmed");
+
+      // Auto-open WhatsApp ONCE per session (prevents loop on mobile Safari)
+      const alreadyOpened = sessionStorage.getItem(SESSION_KEY);
+      if (!alreadyOpened && !didAutoOpen.current) {
+        didAutoOpen.current = true;
+        setTimeout(() => {
+          const popup = window.open(parsed.whatsappUrl, "_blank");
+          if (popup) {
+            setWhatsappOpened(true);
+          }
+          sessionStorage.setItem(SESSION_KEY, "true");
+        }, 500);
+      }
     } catch {
-      navigate("/my-orders");
+      localStorage.removeItem("luut-order-confirmed");
+      setLoaded(true);
+      navigate("/my-orders", { replace: true });
     }
-  }, [navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Clean up session flag when navigating away
+  useEffect(() => {
+    return () => {
+      sessionStorage.removeItem(SESSION_KEY);
+    };
+  }, []);
 
   const handleOpenWhatsApp = () => {
     if (!orderData) return;
@@ -65,7 +90,7 @@ export default function OrderConfirmed() {
     setWhatsappOpened(true);
   };
 
-  if (!orderData) {
+  if (!loaded || !orderData) {
     return null;
   }
 

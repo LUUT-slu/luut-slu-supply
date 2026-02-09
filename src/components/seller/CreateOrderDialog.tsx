@@ -226,27 +226,7 @@ export function CreateOrderDialog({
         console.error("Failed to create order items:", itemsError);
       }
 
-      // Record product sales for analytics
-      const sales = cart.map((item) => ({
-        product_id: item.product.id,
-        variant_id: item.product.id,
-        product_title: item.product.name,
-        product_handle: item.product.name.toLowerCase().replace(/\s+/g, "-"),
-        product_image_url: item.product.images?.[0] || null,
-        quantity: item.quantity,
-        price_amount: item.product.price,
-        seller_user_id: (async () => {
-          const { data } = await supabase
-            .from("seller_profiles")
-            .select("user_id")
-            .eq("id", sellerId)
-            .single();
-          return data?.user_id;
-        })(),
-        sold_at: new Date().toISOString(),
-      }));
-
-      // Get seller user_id for sales tracking
+      // Record product sales for analytics - get seller user_id first
       const { data: sellerData } = await supabase
         .from("seller_profiles")
         .select("user_id")

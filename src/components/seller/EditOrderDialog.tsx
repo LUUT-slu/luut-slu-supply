@@ -100,7 +100,7 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
       const { error: orderError } = await supabase
         .from("orders")
         .update({
-          preferred_date: format(date, "yyyy-MM-dd"),
+          preferred_date: format(date, "EEEE, MMMM d, yyyy"),
           location,
           pickup_time: pickupTime,
           seller_notes: sellerNotes,

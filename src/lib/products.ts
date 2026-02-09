@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { ShopifyProduct, fetchProducts, normalizeVendorName } from './shopify';
+import { ShopifyProduct, fetchProducts, fetchProductsByCollection, normalizeVendorName } from './shopify';
 import { categoryMatchesSlug, mapShopifyTypeToLabel, getShopifyQueryForSlug } from './categories';
 
 // Unified product interface that works for both Shopify and Lovable products
@@ -153,12 +153,35 @@ export async function fetchHybridProducts(options: {
 }): Promise<UnifiedProduct[]> {
   const { categorySlug, shopifyQuery, limit = 50 } = options;
 
-  // Determine Shopify query - use provided query or get from category slug
-  const finalShopifyQuery = shopifyQuery || (categorySlug ? getShopifyQueryForSlug(categorySlug) : undefined);
-
   // Fetch from both sources in parallel
+  // For Shopify: use collection-based query when categorySlug is provided (exact Shopify membership)
+  // Fall back to product_type query only if collection returns empty or shopifyQuery is overridden
+  const shopifyPromise = (async () => {
+    if (shopifyQuery) {
+      // Explicit query override - use product search
+      return fetchProducts(limit, shopifyQuery).catch(() => [] as ShopifyProduct[]);
+    }
+    if (categorySlug) {
+      // Try collection-based fetch first (exact Shopify collection membership)
+      try {
+        const collectionProducts = await fetchProductsByCollection(categorySlug, limit);
+        if (collectionProducts.length > 0) return collectionProducts;
+      } catch (e) {
+        console.warn('Collection fetch failed, falling back to product_type query:', e);
+      }
+      // Fallback to product_type query if collection not found
+      const fallbackQuery = getShopifyQueryForSlug(categorySlug);
+      if (fallbackQuery) {
+        return fetchProducts(limit, fallbackQuery).catch(() => [] as ShopifyProduct[]);
+      }
+      return [] as ShopifyProduct[];
+    }
+    // No category - fetch all
+    return fetchProducts(limit).catch(() => [] as ShopifyProduct[]);
+  })();
+
   const [shopifyProducts, lovableProducts] = await Promise.all([
-    fetchProducts(limit, finalShopifyQuery).catch(() => [] as ShopifyProduct[]),
+    shopifyPromise,
     fetchLovableProducts().catch(() => [] as LovableProduct[]),
   ]);
 

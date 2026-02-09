@@ -8,7 +8,7 @@ interface ChatButtonProps {
   children?: React.ReactNode;
 }
 
-const SHOPIFY_CHAT_URL = "https://lovable-project-yf43m.myshopify.com/pages/chat";
+const WHATSAPP_URL = "https://wa.me/17587185478?text=" + encodeURIComponent("Hi LUUT SLU, I need help with: [type here]");
 
 export function ChatButton({
   variant = "default",
@@ -17,7 +17,7 @@ export function ChatButton({
   children,
 }: ChatButtonProps) {
   const handleClick = () => {
-    window.open(SHOPIFY_CHAT_URL, '_blank');
+    window.open(WHATSAPP_URL, '_blank');
   };
 
   if (variant === "floating") {
