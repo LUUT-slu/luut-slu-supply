@@ -198,6 +198,68 @@ const PRODUCT_BY_HANDLE_QUERY = `
   }
 `;
 
+const COLLECTION_PRODUCTS_QUERY = `
+  query GetCollectionByHandle($handle: String!, $first: Int!) {
+    collectionByHandle(handle: $handle) {
+      id
+      title
+      products(first: $first) {
+        edges {
+          node {
+            id
+            title
+            description
+            handle
+            vendor
+            productType
+            tags
+            createdAt
+            priceRange {
+              minVariantPrice {
+                amount
+                currencyCode
+              }
+            }
+            images(first: 5) {
+              edges {
+                node {
+                  url
+                  altText
+                }
+              }
+            }
+            variants(first: 10) {
+              edges {
+                node {
+                  id
+                  title
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  availableForSale
+                  image {
+                    url
+                    altText
+                  }
+                  selectedOptions {
+                    name
+                    value
+                  }
+                }
+              }
+            }
+            options {
+              name
+              values
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 export type ProductSortKey = 'TITLE' | 'PRODUCT_TYPE' | 'VENDOR' | 'UPDATED_AT' | 'CREATED_AT' | 'BEST_SELLING' | 'PRICE';
 
 export async function fetchProducts(
@@ -209,6 +271,18 @@ export async function fetchProducts(
   const data = await storefrontApiRequest(PRODUCTS_QUERY, { first, query, sortKey, reverse });
   if (!data) return [];
   return data.data.products.edges;
+}
+
+export async function fetchProductsByCollection(
+  collectionHandle: string,
+  first: number = 50
+): Promise<ShopifyProduct[]> {
+  const data = await storefrontApiRequest(COLLECTION_PRODUCTS_QUERY, { handle: collectionHandle, first });
+  if (!data) return [];
+  const collection = data.data?.collectionByHandle;
+  if (!collection) return [];
+  // Map to same ShopifyProduct format (edges already contain { node: {...} })
+  return collection.products.edges;
 }
 
 export async function fetchProductsByVendor(vendorFilter: string): Promise<ShopifyProduct[]> {

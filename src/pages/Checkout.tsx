@@ -277,8 +277,9 @@ export default function Checkout() {
       localStorage.setItem('luut-order-confirmed', JSON.stringify(orderConfirmationData));
 
       orderCompletingRef.current = true;
-      clearCart();
-      navigate('/order-confirmed');
+      navigate('/order-confirmed', { replace: true });
+      // Delay cart clear to avoid race with the empty-cart redirect effect
+      setTimeout(() => clearCart(), 200);
 
     } catch (error) {
       console.error("Order creation error:", error);
