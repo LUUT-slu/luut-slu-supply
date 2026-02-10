@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
 import { SellerNav } from "@/components/seller/SellerNav";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
@@ -43,8 +42,24 @@ import {
   Trash2,
   RefreshCw,
   FileText,
+  Archive,
 } from "lucide-react";
 import { toast } from "sonner";
+
+// Display preferred_date as-is (canonical string) without re-parsing
+function displayDate(dateStr: string): string {
+  if (/^[A-Z][a-z]+,\s/.test(dateStr)) return dateStr;
+  try {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
 
 export default function SellerOrderDetail() {
   const { orderId } = useParams();
@@ -63,7 +78,7 @@ export default function SellerOrderDetail() {
     }).format(amount);
   };
 
-  const formatDate = (dateStr: string) => {
+  const formatCreatedDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
@@ -72,9 +87,7 @@ export default function SellerOrderDetail() {
     });
   };
 
-  const formatOrderNumber = (num: number) => {
-    return `#L${String(num).padStart(4, "0")}`;
-  };
+  const formatOrderNumber = (num: number) => `#L${String(num).padStart(4, "0")}`;
 
   const getStatusConfig = (status: string) => {
     return ORDER_STATUSES.find((s) => s.value === status) || ORDER_STATUSES[0];
@@ -86,8 +99,7 @@ export default function SellerOrderDetail() {
       return;
     }
     const cleanPhone = order.customer_phone.replace(/\D/g, "");
-    const url = `https://wa.me/1${cleanPhone}`;
-    window.open(url, "_blank");
+    window.open(`https://wa.me/1${cleanPhone}`, "_blank");
   };
 
   const callCustomer = () => {
@@ -109,6 +121,23 @@ export default function SellerOrderDetail() {
     if (success) {
       navigate("/seller/orders");
     }
+  };
+
+  const toggleArchive = () => {
+    if (!order || !profile?.id) return;
+    try {
+      const raw = localStorage.getItem(`luut-archived-orders-${profile.id}`);
+      const ids: string[] = raw ? JSON.parse(raw) : [];
+      const set = new Set(ids);
+      if (set.has(order.id)) {
+        set.delete(order.id);
+        toast.success("Order unarchived");
+      } else {
+        set.add(order.id);
+        toast.success("Order archived");
+      }
+      localStorage.setItem(`luut-archived-orders-${profile.id}`, JSON.stringify([...set]));
+    } catch {}
   };
 
   const canDelete = order && (
@@ -178,9 +207,9 @@ export default function SellerOrderDetail() {
                   <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Created {formatDate(order.created_at)}
+                  Created {formatCreatedDate(order.created_at)}
                   {order.last_edited_at && (
-                    <> · Last edited {formatDate(order.last_edited_at)}</>
+                    <> · Last edited {formatCreatedDate(order.last_edited_at)}</>
                   )}
                 </p>
               </div>
@@ -205,7 +234,6 @@ export default function SellerOrderDetail() {
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Customer & Pickup Info */}
               <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                   <CardHeader className="pb-3">
@@ -250,7 +278,7 @@ export default function SellerOrderDetail() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>{formatDate(order.preferred_date)}</span>
+                      <span>{displayDate(order.preferred_date)}</span>
                     </div>
                     {(order.pickup_time || order.pickup_time_window) && (
                       <div className="flex items-center gap-2">
@@ -308,7 +336,6 @@ export default function SellerOrderDetail() {
                 </CardContent>
               </Card>
 
-              {/* Notes */}
               {(order.note || order.seller_notes) && (
                 <Card>
                   <CardHeader className="pb-3">
@@ -403,6 +430,15 @@ export default function SellerOrderDetail() {
                   >
                     <Pencil className="h-4 w-4 mr-2" />
                     Edit Order
+                  </Button>
+
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={toggleArchive}
+                  >
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archive Order
                   </Button>
 
                   {canDelete && (

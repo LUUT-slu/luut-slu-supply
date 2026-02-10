@@ -9,13 +9,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 export default function Sellers() {
   const { data: sellers = [], isLoading } = useQuery({
-    queryKey: ["verified-sellers"],
+    queryKey: ["approved-sellers"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("verified_sellers")
-        .select("*")
-        .eq("is_active", true)
-        .order("name");
+        .from("seller_profiles")
+        .select("id, seller_name, shop_description, location, phone, logo_url, whatsapp")
+        .eq("is_approved", true)
+        .order("seller_name");
       
       if (error) throw error;
       return data;
@@ -51,14 +51,22 @@ export default function Sellers() {
                   <Link
                     key={seller.id}
                     to={`/seller/${seller.id}`}
-                    className="rounded-lg border border-border bg-card p-6 transition-colors hover:border-primary/50"
+                    className="rounded-lg border border-border bg-card p-6 transition-colors active:bg-muted/30"
                   >
                     <div className="mb-4 flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 font-display text-xl text-primary">
-                        {seller.name.charAt(0)}
-                      </div>
+                      {seller.logo_url ? (
+                        <img
+                          src={seller.logo_url}
+                          alt={seller.seller_name}
+                          className="h-12 w-12 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 font-display text-xl text-primary">
+                          {seller.seller_name.charAt(0)}
+                        </div>
+                      )}
                       <div>
-                        <h3 className="font-display text-lg">{seller.name}</h3>
+                        <h3 className="font-display text-lg">{seller.seller_name}</h3>
                         <div className="flex items-center gap-1 text-xs text-trust">
                           <ShieldCheck className="h-3 w-3" />
                           Verified Seller
@@ -71,9 +79,9 @@ export default function Sellers() {
                         {seller.location}
                       </div>
                     )}
-                    {seller.description && (
+                    {seller.shop_description && (
                       <p className="font-body text-sm text-muted-foreground line-clamp-2">
-                        {seller.description}
+                        {seller.shop_description}
                       </p>
                     )}
                   </Link>

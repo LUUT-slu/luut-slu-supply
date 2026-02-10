@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
 import { SellerNav } from "@/components/seller/SellerNav";
 import { CreateOrderDialog } from "@/components/seller/CreateOrderDialog";
@@ -8,14 +8,6 @@ import { useSellerOrders, ORDER_STATUSES, OrderStatus } from "@/hooks/useSellerO
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -27,25 +19,100 @@ import {
   ShoppingBag,
   RefreshCw,
   Package,
-  Eye,
   MessageCircle,
-  Pencil,
   Search,
   ArrowUpDown,
+  MapPin,
+  Calendar,
+  Archive,
+  Eye,
+  EyeOff,
+  Filter,
 } from "lucide-react";
 import { toast } from "sonner";
+import { format, isToday, parseISO } from "date-fns";
 
 type SortOption = "newest" | "pickup-soonest";
 type FilterOption = "all" | OrderStatus;
 
+// Helper to safely parse the canonical date string
+function safeDisplayDate(dateStr: string): string {
+  // If it's already in canonical format like "Monday, February 10, 2026", display as-is
+  if (/^[A-Z][a-z]+,\s/.test(dateStr)) {
+    return dateStr;
+  }
+  // Fallback: try to parse and format
+  try {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+function safeShortDate(dateStr: string): string {
+  if (/^[A-Z][a-z]+,\s/.test(dateStr)) {
+    // Extract just month + day from canonical format
+    const parts = dateStr.replace(/^[^,]+,\s*/, "").split(",")[0];
+    return parts || dateStr;
+  }
+  try {
+    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  } catch {
+    return dateStr;
+  }
+}
+
+// Archive helpers using localStorage
+function getArchivedOrders(sellerId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(`luut-archived-orders-${sellerId}`);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function setArchivedOrders(sellerId: string, ids: Set<string>) {
+  localStorage.setItem(`luut-archived-orders-${sellerId}`, JSON.stringify([...ids]));
+}
+
 export default function SellerOrders() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { profile } = useSellerProfile();
   const { orders, loading, refetch } = useSellerOrders(profile?.id);
-  
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<FilterOption>("all");
-  const [sortBy, setSortBy] = useState<SortOption>("newest");
+
+  // Read filters from URL params for persistence across navigation
+  const statusFilter = (searchParams.get("status") || "all") as FilterOption;
+  const sortBy = (searchParams.get("sort") || "newest") as SortOption;
+  const searchQuery = searchParams.get("q") || "";
+  const locationFilter = searchParams.get("location") || "all";
+  const dateFilter = searchParams.get("date") || "all";
+  const showArchived = searchParams.get("archived") === "1";
+
+  const [archivedIds, setArchivedIdsState] = useState<Set<string>>(() =>
+    getArchivedOrders(profile?.id || "")
+  );
+
+  // Update URL params helper
+  const updateParam = useCallback(
+    (key: string, value: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === "all" || value === "" || value === "newest") {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+        return next;
+      }, { replace: true });
+    },
+    [setSearchParams]
+  );
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -55,17 +122,7 @@ export default function SellerOrders() {
     }).format(amount);
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const formatOrderNumber = (num: number) => {
-    return `#L${String(num).padStart(4, "0")}`;
-  };
+  const formatOrderNumber = (num: number) => `#L${String(num).padStart(4, "0")}`;
 
   const getStatusBadge = (status: string) => {
     const config = ORDER_STATUSES.find((s) => s.value === status) || ORDER_STATUSES[0];
@@ -82,22 +139,66 @@ export default function SellerOrders() {
     window.open(`https://wa.me/1${cleanPhone}`, "_blank");
   };
 
+  const toggleArchive = (orderId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!profile?.id) return;
+    const next = new Set(archivedIds);
+    if (next.has(orderId)) {
+      next.delete(orderId);
+    } else {
+      next.add(orderId);
+      toast.success("Order archived");
+    }
+    setArchivedIdsState(next);
+    setArchivedOrders(profile.id, next);
+  };
+
+  // Derive unique locations and dates from orders for advanced filters
+  const uniqueLocations = useMemo(() => {
+    const locs = new Set(orders.map((o) => o.location));
+    return [...locs].sort();
+  }, [orders]);
+
   // Filter and sort orders
   const filteredOrders = useMemo(() => {
     let result = [...orders];
 
-    // Filter by status
-    if (statusFilter !== "all") {
-      result = result.filter((order) => order.status === statusFilter);
+    // Archive filter
+    if (!showArchived) {
+      result = result.filter((o) => !archivedIds.has(o.id));
     }
 
-    // Search by customer name or order number
+    // Status filter
+    if (statusFilter !== "all") {
+      result = result.filter((o) => o.status === statusFilter);
+    }
+
+    // Location filter
+    if (locationFilter !== "all") {
+      result = result.filter((o) => o.location === locationFilter);
+    }
+
+    // Date filter
+    if (dateFilter === "today") {
+      result = result.filter((o) => {
+        try {
+          // Try parsing canonical or ISO date
+          const d = new Date(o.preferred_date);
+          return !isNaN(d.getTime()) && isToday(d);
+        } catch {
+          return false;
+        }
+      });
+    }
+
+    // Search
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
-        (order) =>
-          order.customer_name.toLowerCase().includes(query) ||
-          formatOrderNumber(order.order_number).toLowerCase().includes(query)
+        (o) =>
+          o.customer_name.toLowerCase().includes(query) ||
+          formatOrderNumber(o.order_number).toLowerCase().includes(query) ||
+          o.items.some((i) => i.product_name.toLowerCase().includes(query))
       );
     }
 
@@ -111,17 +212,14 @@ export default function SellerOrders() {
     }
 
     return result;
-  }, [orders, statusFilter, searchQuery, sortBy]);
+  }, [orders, statusFilter, searchQuery, sortBy, locationFilter, dateFilter, showArchived, archivedIds]);
 
-  // Calculate stats
+  // Stats
   const stats = useMemo(() => {
     const completed = orders.filter((o) => o.status === "completed");
     const revenue = completed.reduce((sum, o) => sum + o.total_price, 0);
     const pending = orders.filter((o) => o.status === "pending" || o.status === "confirmed").length;
-    const cancelled = orders.filter((o) => o.status === "cancelled").length;
-    const noShow = orders.filter((o) => o.status === "no-show").length;
-
-    return { revenue, completed: completed.length, pending, cancelled, noShow };
+    return { revenue, completed: completed.length, pending, total: orders.length };
   }, [orders]);
 
   return (
@@ -158,57 +256,53 @@ export default function SellerOrders() {
             </div>
           </div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-            <div className="rounded-lg border border-border/60 bg-card/50 p-3">
-              <p className="text-xs text-muted-foreground">Revenue</p>
-              <p className="text-lg font-bold text-green-400">{formatCurrency(stats.revenue)}</p>
-            </div>
-            <div className="rounded-lg border border-border/60 bg-card/50 p-3">
-              <p className="text-xs text-muted-foreground">Completed</p>
-              <p className="text-lg font-bold">{stats.completed}</p>
-            </div>
-            <div className="rounded-lg border border-border/60 bg-card/50 p-3">
-              <p className="text-xs text-muted-foreground">Pending</p>
-              <p className="text-lg font-bold text-yellow-400">{stats.pending}</p>
-            </div>
-            <div className="rounded-lg border border-border/60 bg-card/50 p-3">
-              <p className="text-xs text-muted-foreground">Cancelled</p>
-              <p className="text-lg font-bold text-red-400">{stats.cancelled}</p>
-            </div>
-            <div className="rounded-lg border border-border/60 bg-card/50 p-3">
-              <p className="text-xs text-muted-foreground">No-Show</p>
-              <p className="text-lg font-bold text-muted-foreground">{stats.noShow}</p>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-wrap gap-3 mb-4">
-            <div className="relative flex-1 min-w-[200px]">
+          {/* Filters Row */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <div className="relative flex-1 min-w-[160px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search orders..."
+                placeholder="Search..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                onChange={(e) => updateParam("q", e.target.value)}
+                className="pl-9 h-9"
               />
             </div>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as FilterOption)}>
-              <SelectTrigger className="w-32">
+            <Select value={statusFilter} onValueChange={(v) => updateParam("status", v)}>
+              <SelectTrigger className="w-28 h-9">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
-                {ORDER_STATUSES.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
-                    {status.label}
-                  </SelectItem>
+                {ORDER_STATUSES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-              <SelectTrigger className="w-40">
-                <ArrowUpDown className="h-4 w-4 mr-2" />
+            <Select value={locationFilter} onValueChange={(v) => updateParam("location", v)}>
+              <SelectTrigger className="w-32 h-9">
+                <MapPin className="h-3.5 w-3.5 mr-1" />
+                <SelectValue placeholder="Location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {uniqueLocations.map((loc) => (
+                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={dateFilter} onValueChange={(v) => updateParam("date", v)}>
+              <SelectTrigger className="w-28 h-9">
+                <Calendar className="h-3.5 w-3.5 mr-1" />
+                <SelectValue placeholder="Date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Dates</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={(v) => updateParam("sort", v)}>
+              <SelectTrigger className="w-36 h-9">
+                <ArrowUpDown className="h-3.5 w-3.5 mr-1" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -216,9 +310,18 @@ export default function SellerOrders() {
                 <SelectItem value="pickup-soonest">Pickup Soonest</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant={showArchived ? "secondary" : "ghost"}
+              size="sm"
+              className="h-9 gap-1"
+              onClick={() => updateParam("archived", showArchived ? "" : "1")}
+            >
+              {showArchived ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{showArchived ? "Showing All" : "Show Archived"}</span>
+            </Button>
           </div>
 
-          {/* Orders Table */}
+          {/* Orders List */}
           <div className="rounded-lg border border-border/60 bg-card/50">
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -237,107 +340,90 @@ export default function SellerOrders() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-xs">Order</TableHead>
-                      <TableHead className="text-xs">Customer</TableHead>
-                      <TableHead className="text-xs">Items</TableHead>
-                      <TableHead className="text-xs">Total</TableHead>
-                      <TableHead className="text-xs">Status</TableHead>
-                      <TableHead className="text-xs">Pickup</TableHead>
-                      <TableHead className="text-xs">Location</TableHead>
-                      <TableHead className="text-xs text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredOrders.map((order) => (
-                      <TableRow
-                        key={order.id}
-                        className="cursor-pointer"
-                        onClick={() => navigate(`/seller/orders/${order.id}`)}
-                      >
-                        <TableCell className="py-3 font-mono text-xs">
-                          {formatOrderNumber(order.order_number)}
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div>
-                            <p className="font-medium text-sm line-clamp-1">{order.customer_name}</p>
-                            {order.customer_phone && (
-                              <p className="text-xs text-muted-foreground">{order.customer_phone}</p>
-                            )}
+              <div className="divide-y divide-border/40">
+                {filteredOrders.map((order) => {
+                  const isArchived = archivedIds.has(order.id);
+                  return (
+                    <div
+                      key={order.id}
+                      className={`p-3 md:p-4 cursor-pointer active:bg-muted/40 transition-colors ${isArchived ? "opacity-60" : ""}`}
+                      onClick={() => navigate(`/seller/orders/${order.id}`)}
+                    >
+                      {/* Mobile-first card layout */}
+                      <div className="flex items-start justify-between gap-3">
+                        {/* Left: Customer + Items */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-sm truncate">{order.customer_name}</p>
+                            {getStatusBadge(order.status)}
                           </div>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="flex items-center gap-2">
+                          {order.customer_phone && (
+                            <p className="text-xs text-muted-foreground mb-1">{order.customer_phone}</p>
+                          )}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             {order.items[0]?.product_image_url ? (
                               <img
                                 src={order.items[0].product_image_url}
                                 alt=""
-                                className="h-8 w-8 rounded object-cover"
+                                className="h-6 w-6 rounded object-cover"
                               />
                             ) : (
-                              <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
-                                <Package className="h-4 w-4 text-muted-foreground" />
-                              </div>
+                              <Package className="h-4 w-4" />
                             )}
-                            <span className="text-sm">
+                            <span className="truncate">
                               {order.items.length === 1
                                 ? order.items[0].product_name
                                 : `${order.items.length} items`}
                             </span>
                           </div>
-                        </TableCell>
-                        <TableCell className="py-3 font-medium text-green-400">
-                          {formatCurrency(order.total_price)}
-                        </TableCell>
-                        <TableCell className="py-3">{getStatusBadge(order.status)}</TableCell>
-                        <TableCell className="py-3 text-xs text-muted-foreground">
-                          {formatDate(order.preferred_date)}
-                        </TableCell>
-                        <TableCell className="py-3 text-xs text-muted-foreground">
-                          {order.location}
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/seller/orders/${order.id}`);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={(e) => messageCustomer(order.customer_phone, e)}
-                              disabled={!order.customer_phone}
-                            >
-                              <MessageCircle className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/seller/orders/${order.id}`);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </div>
+
+                        {/* Right: Price + Order # */}
+                        <div className="text-right shrink-0">
+                          <p className="font-medium text-sm text-primary">
+                            {formatCurrency(order.total_price)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {formatOrderNumber(order.order_number)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Bottom row: Pickup + Location + Actions */}
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/20">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {safeShortDate(order.preferred_date)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {order.location}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={(e) => messageCustomer(order.customer_phone, e)}
+                            disabled={!order.customer_phone}
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={(e) => toggleArchive(order.id, e)}
+                          >
+                            <Archive className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
