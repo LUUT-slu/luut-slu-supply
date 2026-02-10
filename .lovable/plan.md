@@ -1,88 +1,133 @@
 
 
-# Stability and Reliability Fix Plan
+# Seller Portal Stability, Sellers Directory, and Mobile UX Fixes
 
-This plan addresses all 7 reported issues in a single pass. Each issue has a clear root cause and a targeted fix.
-
----
-
-## ISSUE 1 -- Order does not confirm on first attempt
-
-**Root Cause:** The `Checkout.tsx` page has an `useEffect` on line 109-113 that watches `items.length` and redirects to `/cart` when the cart is empty. During order submission, `clearCart()` is called on line 280 BEFORE `navigate('/order-confirmed')` on line 281. This triggers the redirect effect, racing with the navigation. On the first attempt, the redirect to `/cart` can win, causing the order to appear to fail even though the backend call may have succeeded.
-
-**Fix:** Move the `clearCart()` call AFTER the navigation, or better yet, use the existing `orderCompletingRef` flag more defensively. The ref is set on line 279 but the effect on line 110 checks it -- the issue is timing. The `clearCart()` triggers a zustand state update which triggers a re-render, which evaluates the effect before the `navigate()` executes. The fix is to ensure `navigate()` is called FIRST, then `clearCart()` is called. Since `navigate` is synchronous in React Router v6 (it schedules navigation), we need to move `clearCart` into a `setTimeout` or use `replace: true` in the navigation.
-
-**Changes:**
-- `src/pages/Checkout.tsx`: Reorder the post-success flow -- set the completing ref, navigate first, then clear cart with a brief delay to avoid the race condition.
+This plan addresses all reported issues in a single pass with targeted fixes.
 
 ---
 
-## ISSUE 2 -- Order edits say "updated" but do not persist
+## ISSUE H1 -- Seller order creation fails on first attempt
 
-**Root Cause:** The `EditOrderDialog.tsx` (seller portal edit) updates the database correctly, but it updates `preferred_date` using `format(date, "yyyy-MM-dd")` (line 103), while the system elsewhere stores dates as full text strings like `"Monday, February 10, 2025"`. This mismatch means the update succeeds but when the data is re-fetched, the date parsing on line 58 (`new Date(order.preferred_date)`) fails because the format changed.
-
-Additionally, the `EditOrderDialog` calls `onSave()` (which is `refetch`) but the `useSellerOrders` hook's `refetch` calls `fetchOrders()` which re-fetches everything from the database -- the data IS persisted, but the date display may look different/broken.
-
-For customer-side edits (OrderDetails.tsx), the `update-order` edge function works correctly with the service role key (bypasses RLS), so this should work. However, there is a potential issue: the edge function updates via `.eq("order_token", orderToken)`, but if the token was never saved to localStorage properly, the update would silently fail with a 404.
+**Root Cause:** The `CreateOrderDialog` code looks correct after the previous fix round. However, examining the flow more carefully, the issue is that `onOrderCreated?.()` on line 263 calls `refetch` which triggers `fetchOrders` in `useSellerOrders`. This refetch races with the dialog closing and can cause a state update on an unmounted component. Additionally, the `product_sales` insert (line 249) doesn't handle errors -- if it throws due to a constraint violation, the outer catch fires and shows "Failed to create order" even though the order WAS created.
 
 **Fix:**
-- `src/components/seller/EditOrderDialog.tsx`: Use a consistent date format that matches the rest of the system (full text date string).
-- Verify the `update-order` edge function response handling in `OrderDetails.tsx` to ensure errors surface properly.
+- In `CreateOrderDialog.tsx`: Make the `product_sales` insert and stock deduction non-blocking (catch errors individually without failing the whole operation). Close the dialog and call `onOrderCreated` only after the order and order_items are confirmed created. Treat sales recording and stock deduction as best-effort.
 
 ---
 
-## ISSUE 3 -- Site sometimes freezes on a loading screen
+## ISSUE H2 -- Orders view does not retain selected filters/tabs
 
-**Root Cause:** The `OrderConfirmed.tsx` page reads `luut-order-confirmed` from localStorage on mount. If the data is missing or expired, it navigates to `/my-orders` (line 36). But this navigation happens inside a `useEffect` with `[navigate]` as dependency. React Router's `navigate` can change reference on re-renders, potentially causing an effect loop. Combined with the cart store race condition from Issue 1, this creates scenarios where the app enters a blank/stuck state.
-
-Also, the `OrderComplete.tsx` page (a separate legacy page at `/order-complete`) has similar auto-redirect logic that can conflict.
+**Root Cause:** Filter state (`statusFilter`, `sortBy`, `searchQuery`) in `SellerOrders.tsx` is stored in component-level `useState`. When navigating to an order detail and back, the component unmounts and remounts, resetting all state.
 
 **Fix:**
-- `src/pages/OrderConfirmed.tsx`: Add a guard to prevent the auto-WhatsApp popup from blocking the page render. Remove the `navigate` dependency from the effect to prevent re-render loops. Add a "loaded" state to prevent flash of null content.
-- Clean up the localStorage data properly after consumption to prevent stale redirects.
+- Use URL search params (`useSearchParams`) to persist filter/sort state across navigation. When a filter changes, update the URL. On mount, read from URL params.
 
 ---
 
-## ISSUE 4 -- Shopify collections not syncing correctly
+## ISSUE H3 -- Cannot archive/hide completed orders
 
-**Root Cause:** The `ShopCategory.tsx` page passes `categorySlug` to `HybridProductGrid`, which calls `fetchHybridProducts` in `products.ts`. For Shopify products, this uses `getShopifyQueryForSlug()` which constructs a `product_type` query (e.g., `product_type:beanies OR title:beanie`). This does NOT query Shopify collection membership at all -- it queries product types and title keywords. So a collection page shows products matching the product type, not products actually in that Shopify collection.
+**Root Cause:** No archive feature exists.
 
 **Fix:**
-- `src/lib/shopify.ts`: Add a new `fetchProductsByCollection` function that queries Shopify's Storefront API using the `collectionByHandle` query, which returns only products that are actually in that collection.
-- `src/lib/products.ts`: Update `fetchHybridProducts` to use collection-based queries when a `categorySlug` is provided, falling back to the existing product_type query only for local (Lovable) products.
+- Add a `hidden_orders` key in `localStorage` (per seller) that stores an array of hidden order IDs.
+- Add an "Archive" button to the order detail sidebar and a bulk-select option on the orders list.
+- Add a toggle to show/hide archived orders in the filter bar.
+- No database changes needed -- this is a client-side filter.
 
 ---
 
-## ISSUE 5 -- Seller order creation gets stuck in loading
+## ISSUE H4 -- Seller Portal mobile view not usable
 
-**Root Cause:** In `CreateOrderDialog.tsx`, the `handleSubmit` function (lines 155-289) has a problematic pattern: it creates an async IIFE inside `sales.map()` at line 238-246 that generates a Promise as the value for `seller_user_id`. This creates an unresolved Promise object being inserted into an array, which is never awaited. While this particular array is never used (lines 249-270 do the actual sales insert), this pattern reveals fragile async handling.
-
-The real loading issue is that on lines 272-278, stock deduction happens in a sequential `for...of` loop with individual database calls. If any call is slow or fails, the dialog stays in loading state. Combined with the RLS policies, the seller may lack UPDATE permission on `seller_products`, causing the stock deduction to fail silently.
+**Root Cause:** The orders table uses a standard HTML `<Table>` with 8 columns including an Actions column with 3 icon buttons. On mobile, this overflows and requires horizontal scrolling.
 
 **Fix:**
-- `src/components/seller/CreateOrderDialog.tsx`: Remove the unused async IIFE in `sales` array. Wrap the entire submit in proper error handling with `finally` block. Add a timeout/guard to prevent infinite loading.
+- Replace the table layout on mobile with a card-based layout using responsive classes.
+- Each card shows: Customer name/phone (top), Item(s) + Status (middle row), Pickup date + Location (bottom row), Total as a small badge.
+- Order number becomes the least prominent element.
+- The entire card is tappable to open order details.
+- Keep the desktop table layout unchanged.
 
 ---
 
-## ISSUE 6 -- Chat widget not working, replace with WhatsApp button
+## ISSUE H5 -- Seller portal infinite reload/loop
 
-**Root Cause:** The `ChatButton` component currently redirects to `https://lovable-project-yf43m.myshopify.com/pages/chat` which is a Shopify Inbox embed that isn't working.
+**Root Cause:** The `SellerOrderDetail` page calls `useSellerOrders(profile?.id)` which fetches ALL orders. When `profile` is initially undefined (loading), it doesn't fetch. When profile loads, it triggers a fetch. If `useSellerProfile` re-triggers due to auth state changes, the orders hook re-fetches, causing a cascading reload.
 
 **Fix:**
-- `src/components/ChatButton.tsx`: Replace the Shopify chat URL with a WhatsApp `wa.me` link using the prefilled message "Hi LUUT SLU, I need help with: [type here]".
+- Add a stable reference check in `useSellerOrders` so it doesn't re-fetch if `sellerProfileId` hasn't actually changed.
+- In `useSellerProfile`, stabilize the auth listener to not trigger redundant profile fetches.
 
 ---
 
-## ISSUE 7 -- Post-order redirect loop and blank white screen
+## ISSUE H6 -- Analytics shows incorrect revenue data
 
-**Root Cause:** The `OrderConfirmed.tsx` page auto-opens WhatsApp via `window.open()` on line 52. On mobile Safari (iPhone), when the user returns from WhatsApp, the browser re-mounts the component and the effect runs again. Since `luut-order-confirmed` is still in localStorage, it re-opens WhatsApp, creating a redirect loop. The "Continue Shopping" and "View My Orders" links are standard `<Link>` components which should work, but the auto-WhatsApp popup re-fires on every page focus/return, overriding the user's intended navigation.
+**Root Cause:** The `SellerAnalytics` page queries `product_sales` table which records ALL sales at creation time (not just completed). The `SellerOrders` page stats correctly count only completed orders for revenue. But the Analytics page counts everything.
 
 **Fix:**
-- `src/pages/OrderConfirmed.tsx`:
-  1. Track whether WhatsApp was already auto-opened using a session-level flag (not localStorage, since that persists across the loop).
-  2. Only auto-open WhatsApp ONCE, using a `sessionStorage` flag.
-  3. Clear the `luut-order-confirmed` localStorage data after reading it (not on page leave, but immediately after consumption).
-  4. This prevents the loop: on return from WhatsApp, the data is gone, so the page shows the confirmation without re-triggering WhatsApp.
+- In `SellerAnalytics.tsx`, add a label clarification: rename "Revenue" to "Potential Revenue" (all recorded sales).
+- Add a separate "Actual Revenue" stat that cross-references with completed orders only (join `product_sales` with `orders` where status = 'completed').
+- Alternatively, since `useSellerStats` already computes correct revenue from completed orders, reuse that data on the analytics page.
+
+---
+
+## ISSUE H7 -- Pickup date shifts one day earlier
+
+**Root Cause:** The `CreateOrderDialog` stores `preferredDate` as `yyyy-MM-dd` from the date input (line 197). When this date string is stored in the database and later parsed with `new Date("2026-02-10")`, JavaScript interprets it as UTC midnight. When displayed in a timezone behind UTC (like Caribbean / AST = UTC-4), it shows as February 9th.
+
+**Fix:**
+- In `CreateOrderDialog.tsx`: Store the date as a formatted text string (e.g., "Monday, February 10, 2026") to match the system's canonical format, avoiding timezone interpretation issues.
+- In `SellerOrders.tsx` and `SellerOrderDetail.tsx`: Display `preferred_date` as-is (it's already a formatted string), without re-parsing through `new Date()`.
+
+---
+
+## ISSUE H8 -- Missing advanced filtering for orders
+
+**Fix:**
+- Add filter dropdowns for: Location, Pickup Date (with "Today" shortcut), and Product/Item.
+- These filters integrate with the URL search params from H2 so they persist.
+- Filter options are derived dynamically from the existing orders data.
+
+---
+
+## ISSUE I1/I2 -- Sellers page is empty
+
+**Root Cause:** The Sellers page queries `verified_sellers` table which is a separate, empty table. Actual sellers are in `seller_profiles` with `is_approved = true`.
+
+**Fix:**
+- Change `Sellers.tsx` to query `seller_profiles` where `is_approved = true` instead of `verified_sellers`.
+- Map the seller_profiles fields to match the display (seller_name as name, shop_description as description, location, phone).
+
+---
+
+## ISSUE I3/I4 -- Missing seller storefront pages
+
+**Root Cause:** `SellerProfile.tsx` queries `verified_sellers` (empty) and shows a placeholder "Products coming soon" message.
+
+**Fix:**
+- Update `SellerProfile.tsx` to query `seller_profiles` instead of `verified_sellers`.
+- Query `seller_products` for that seller's active products and display them in a product grid.
+- Show seller logo (if available), name, description, location.
+- For LUUT SLU (admin seller), also fetch Shopify products by vendor name and display them alongside local products.
+- Make seller URLs use the seller profile ID: `/seller/:sellerId`.
+
+---
+
+## MOBILE DOUBLE-TAP ISSUE -- Buttons require double tap
+
+**Root Cause:** The `hover:bg-accent` and `hover:bg-primary/90` CSS classes in the button component trigger a hover state on first tap in mobile Safari. iOS Safari implements a "hover-then-click" pattern where the first tap activates `:hover` and the second tap fires `click`.
+
+**Fix:**
+- Add a `@media (hover: hover)` wrapper in CSS so hover styles only apply on devices that support true hover (desktop with mouse).
+- Modify button variants in `button.tsx` to use `@media(hover:hover)` conditional hover classes, or add a global CSS rule that disables hover effects on touch devices.
+- The simplest approach: add a CSS rule in `index.css`:
+  ```css
+  @media (hover: none) {
+    button, a, [role="button"] {
+      -webkit-tap-highlight-color: transparent;
+    }
+  }
+  ```
+  And update button variants to use Tailwind's `hover:` with the `@media (hover: hover)` modifier. Tailwind supports this via custom variant or by adding a global override.
 
 ---
 
@@ -90,13 +135,15 @@ The real loading issue is that on lines 272-278, stock deduction happens in a se
 
 | File | Issues Fixed |
 |------|-------------|
-| `src/pages/Checkout.tsx` | 1 (cart clear race condition) |
-| `src/components/seller/EditOrderDialog.tsx` | 2 (date format mismatch) |
-| `src/pages/OrderConfirmed.tsx` | 3, 7 (loading freeze, redirect loop) |
-| `src/lib/shopify.ts` | 4 (add collection query) |
-| `src/lib/products.ts` | 4 (use collection query) |
-| `src/components/seller/CreateOrderDialog.tsx` | 5 (async/loading bug) |
-| `src/components/ChatButton.tsx` | 6 (WhatsApp replacement) |
+| `src/components/seller/CreateOrderDialog.tsx` | H1, H7 (error handling, date format) |
+| `src/pages/seller/SellerOrders.tsx` | H2, H3, H4, H8 (URL params, archive, mobile cards, filters) |
+| `src/pages/seller/SellerOrderDetail.tsx` | H3 (archive button), H7 (date display) |
+| `src/hooks/useSellerOrders.ts` | H5 (stable fetch reference) |
+| `src/pages/seller/SellerAnalytics.tsx` | H6 (revenue labels) |
+| `src/pages/Sellers.tsx` | I1, I2 (query seller_profiles) |
+| `src/pages/SellerProfile.tsx` | I3, I4 (seller storefront with products) |
+| `src/index.css` | Mobile double-tap fix |
+| `src/components/ui/button.tsx` | Mobile double-tap fix (hover variant) |
 
-No database changes required. No edge function changes required. All fixes are frontend-only, targeting the specific root causes.
+**Database changes:** None required. The `verified_sellers` table can remain but will no longer be queried by the frontend.
 
