@@ -153,6 +153,19 @@
   }
 }
 
+/* Fix mobile double-tap issue: only apply hover effects on devices with true hover */
+@media (hover: none) {
+  button, a, [role="button"], .cursor-pointer {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Remove hover styles that cause the double-tap-to-activate pattern */
+  button:hover,
+  a:hover,
+  [role="button"]:hover {
+    transition: none !important;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

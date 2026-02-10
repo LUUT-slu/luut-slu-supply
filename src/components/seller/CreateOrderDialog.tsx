@@ -18,9 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Plus, Minus, Package, X, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
+import { format, parse } from "date-fns";
 
 interface Product {
   id: string;
@@ -153,7 +153,6 @@ export function CreateOrderDialog({
   };
 
   const handleSubmit = async () => {
-    // Validation
     if (!customerName.trim()) {
       toast.error("Customer name is required");
       return;
@@ -178,7 +177,10 @@ export function CreateOrderDialog({
     setSubmitting(true);
 
     try {
-      // Build line_items for the order
+      // Convert yyyy-MM-dd to canonical full-text format to avoid timezone shifts
+      const parsedDate = parse(preferredDate, "yyyy-MM-dd", new Date());
+      const formattedDate = format(parsedDate, "EEEE, MMMM d, yyyy");
+
       const lineItems = cart.map((item) => ({
         title: item.product.name,
         quantity: item.quantity,
@@ -187,14 +189,14 @@ export function CreateOrderDialog({
         image_url: item.product.images?.[0] || null,
       }));
 
-      // Create order in database
+      // Create order
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim(),
           location,
-          preferred_date: preferredDate,
+          preferred_date: formattedDate,
           note: note.trim() || null,
           total_price: totalPrice,
           line_items: lineItems,
@@ -226,45 +228,55 @@ export function CreateOrderDialog({
         console.error("Failed to create order items:", itemsError);
       }
 
-      // Record product sales for analytics - get seller user_id first
-      const { data: sellerData } = await supabase
-        .from("seller_profiles")
-        .select("user_id")
-        .eq("id", sellerId)
-        .single();
-
-      if (sellerData) {
-        const salesRecords = cart.map((item) => ({
-          product_id: item.product.id,
-          variant_id: item.product.id,
-          product_title: item.product.name,
-          product_handle: item.product.name.toLowerCase().replace(/\s+/g, "-"),
-          product_image_url: item.product.images?.[0] || null,
-          quantity: item.quantity,
-          price_amount: item.product.price,
-          seller_user_id: sellerData.user_id,
-          sold_at: new Date().toISOString(),
-        }));
-
-        await supabase.from("product_sales").insert(salesRecords);
-      }
-
-      // Deduct stock
-      for (const item of cart) {
-        await supabase
-          .from("seller_products")
-          .update({ quantity: item.product.quantity - item.quantity })
-          .eq("id", item.product.id);
-      }
-
+      // Order created successfully — close dialog and notify immediately
       toast.success(`Order #L${String(order.order_number).padStart(4, "0")} created!`);
       resetForm();
       setOpen(false);
+      setSubmitting(false);
+
+      // Best-effort: record sales and deduct stock (non-blocking)
+      try {
+        const { data: sellerData } = await supabase
+          .from("seller_profiles")
+          .select("user_id")
+          .eq("id", sellerId)
+          .single();
+
+        if (sellerData) {
+          const salesRecords = cart.map((item) => ({
+            product_id: item.product.id,
+            variant_id: item.product.id,
+            product_title: item.product.name,
+            product_handle: item.product.name.toLowerCase().replace(/\s+/g, "-"),
+            product_image_url: item.product.images?.[0] || null,
+            quantity: item.quantity,
+            price_amount: item.product.price,
+            seller_user_id: sellerData.user_id,
+            sold_at: new Date().toISOString(),
+          }));
+
+          await supabase.from("product_sales").insert(salesRecords).throwOnError();
+        }
+      } catch (e) {
+        console.warn("Non-critical: failed to record product sales", e);
+      }
+
+      try {
+        for (const item of cart) {
+          await supabase
+            .from("seller_products")
+            .update({ quantity: item.product.quantity - item.quantity })
+            .eq("id", item.product.id);
+        }
+      } catch (e) {
+        console.warn("Non-critical: failed to deduct stock", e);
+      }
+
+      // Notify parent to refetch after everything
       onOrderCreated?.();
     } catch (error) {
       console.error("Failed to create order:", error);
       toast.error("Failed to create order");
-    } finally {
       setSubmitting(false);
     }
   };
@@ -378,7 +390,7 @@ export function CreateOrderDialog({
                   <button
                     key={product.id}
                     onClick={() => addToCart(product)}
-                    className="flex items-center gap-2 p-2 rounded-lg border border-border/60 hover:border-primary/50 hover:bg-muted/30 transition-colors text-left"
+                    className="flex items-center gap-2 p-2 rounded-lg border border-border/60 active:bg-muted/50 transition-colors text-left"
                   >
                     {product.images?.[0] ? (
                       <img
@@ -457,7 +469,7 @@ export function CreateOrderDialog({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        className="h-6 w-6 text-destructive"
                         onClick={() => removeFromCart(item.product.id)}
                       >
                         <X className="h-3 w-3" />

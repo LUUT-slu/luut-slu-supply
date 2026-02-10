@@ -7,15 +7,6 @@ import { SellerNav } from "@/components/seller/SellerNav";
 import { DateRangePicker } from "@/components/seller/DateRangePicker";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   BarChart3,
   TrendingUp,
@@ -23,6 +14,7 @@ import {
   Package,
   RefreshCw,
   Calendar,
+  CheckCircle,
 } from "lucide-react";
 
 interface DailySales {
@@ -50,62 +42,91 @@ export default function SellerAnalytics() {
 
   const [dailySales, setDailySales] = useState<DailySales[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [totals, setTotals] = useState({
-    revenue: 0,
-    units: 0,
-    orders: 0,
-  });
+  const [potentialRevenue, setPotentialRevenue] = useState(0);
+  const [actualRevenue, setActualRevenue] = useState(0);
+  const [totalUnits, setTotalUnits] = useState(0);
+  const [totalSalesCount, setTotalSalesCount] = useState(0);
 
   useEffect(() => {
-    if (profile?.user_id) {
+    if (profile?.user_id && profile?.id) {
       fetchAnalytics();
     }
-  }, [profile?.user_id, dateRange]);
+  }, [profile?.user_id, profile?.id, dateRange]);
 
   const fetchAnalytics = async () => {
-    if (!profile?.user_id) return;
+    if (!profile?.user_id || !profile?.id) return;
 
     setLoading(true);
 
     try {
-      let query = supabase
+      // Fetch product_sales for this seller (potential revenue)
+      let salesQuery = supabase
         .from("product_sales")
         .select("*")
         .eq("seller_user_id", profile.user_id);
 
       if (dateRange?.from) {
-        query = query.gte("sold_at", dateRange.from.toISOString());
+        salesQuery = salesQuery.gte("sold_at", dateRange.from.toISOString());
       }
       if (dateRange?.to) {
-        query = query.lte("sold_at", dateRange.to.toISOString());
+        salesQuery = salesQuery.lte("sold_at", dateRange.to.toISOString());
       }
 
-      const { data: salesData } = await query.order("sold_at", { ascending: false });
+      const { data: salesData } = await salesQuery.order("sold_at", { ascending: false });
 
-      if (!salesData) {
+      // Fetch completed orders for actual revenue
+      const { data: orderItems } = await supabase
+        .from("order_items")
+        .select("order_id, total_price, quantity, product_name, product_id")
+        .eq("seller_id", profile.id);
+
+      let completedRevenue = 0;
+      if (orderItems && orderItems.length > 0) {
+        const orderIds = [...new Set(orderItems.map((i) => i.order_id))];
+        let ordersQuery = supabase
+          .from("orders")
+          .select("id, status, created_at")
+          .in("id", orderIds)
+          .eq("status", "completed");
+
+        if (dateRange?.from) {
+          ordersQuery = ordersQuery.gte("created_at", dateRange.from.toISOString());
+        }
+        if (dateRange?.to) {
+          ordersQuery = ordersQuery.lte("created_at", dateRange.to.toISOString());
+        }
+
+        const { data: completedOrders } = await ordersQuery;
+        if (completedOrders) {
+          const completedIds = new Set(completedOrders.map((o) => o.id));
+          completedRevenue = orderItems
+            .filter((i) => completedIds.has(i.order_id))
+            .reduce((sum, i) => sum + Number(i.total_price), 0);
+        }
+      }
+
+      setActualRevenue(completedRevenue);
+
+      if (!salesData || salesData.length === 0) {
         setDailySales([]);
         setTopProducts([]);
-        setTotals({ revenue: 0, units: 0, orders: 0 });
+        setPotentialRevenue(0);
+        setTotalUnits(0);
+        setTotalSalesCount(0);
         setLoading(false);
         return;
       }
 
-      // Calculate totals
-      let totalRevenue = 0;
-      let totalUnits = 0;
-
-      // Group by date for daily sales
+      let potTotal = 0;
+      let unitTotal = 0;
       const dailyMap: Record<string, DailySales> = {};
-      
-      // Group by product for top products
       const productMap: Record<string, TopProduct> = {};
 
       salesData.forEach((sale) => {
         const revenue = sale.price_amount * sale.quantity;
-        totalRevenue += revenue;
-        totalUnits += sale.quantity;
+        potTotal += revenue;
+        unitTotal += sale.quantity;
 
-        // Daily grouping
         const dateKey = format(new Date(sale.sold_at), "yyyy-MM-dd");
         if (!dailyMap[dateKey]) {
           dailyMap[dateKey] = { date: dateKey, revenue: 0, units: 0, orders: 0 };
@@ -114,7 +135,6 @@ export default function SellerAnalytics() {
         dailyMap[dateKey].units += sale.quantity;
         dailyMap[dateKey].orders += 1;
 
-        // Product grouping
         if (!productMap[sale.product_id]) {
           productMap[sale.product_id] = {
             id: sale.product_id,
@@ -128,22 +148,15 @@ export default function SellerAnalytics() {
         productMap[sale.product_id].revenue += revenue;
       });
 
-      // Convert maps to arrays
-      const dailyArray = Object.values(dailyMap).sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      setDailySales(
+        Object.values(dailyMap).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       );
-
-      const topProductsArray = Object.values(productMap)
-        .sort((a, b) => b.unitsSold - a.unitsSold)
-        .slice(0, 10);
-
-      setDailySales(dailyArray);
-      setTopProducts(topProductsArray);
-      setTotals({
-        revenue: totalRevenue,
-        units: totalUnits,
-        orders: salesData.length,
-      });
+      setTopProducts(
+        Object.values(productMap).sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 10)
+      );
+      setPotentialRevenue(potTotal);
+      setTotalUnits(unitTotal);
+      setTotalSalesCount(salesData.length);
     } catch (error) {
       console.error("Error fetching analytics:", error);
     } finally {
@@ -176,7 +189,6 @@ export default function SellerAnalytics() {
         />
 
         <main className="container flex-1 py-4 md:py-6">
-          {/* Header */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="font-display text-xl md:text-2xl flex items-center gap-2">
@@ -189,7 +201,6 @@ export default function SellerAnalytics() {
             </div>
           </div>
 
-          {/* Date Range Filter */}
           <div className="mb-5">
             <DateRangePicker
               dateRange={dateRange}
@@ -205,16 +216,29 @@ export default function SellerAnalytics() {
           ) : (
             <>
               {/* Summary Cards */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                 <Card className="border-border/60">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10 shrink-0">
-                        <DollarSign className="h-5 w-5 text-green-500" />
+                        <CheckCircle className="h-5 w-5 text-green-500" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Revenue</p>
-                        <p className="font-semibold text-lg">{formatCurrency(totals.revenue)}</p>
+                        <p className="text-xs text-muted-foreground">Actual Revenue</p>
+                        <p className="font-semibold text-lg">{formatCurrency(actualRevenue)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-border/60">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/10 shrink-0">
+                        <DollarSign className="h-5 w-5 text-yellow-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">Potential Revenue</p>
+                        <p className="font-semibold text-lg">{formatCurrency(potentialRevenue)}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -227,7 +251,7 @@ export default function SellerAnalytics() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs text-muted-foreground">Units Sold</p>
-                        <p className="font-semibold text-lg">{totals.units}</p>
+                        <p className="font-semibold text-lg">{totalUnits}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -240,7 +264,7 @@ export default function SellerAnalytics() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs text-muted-foreground">Sales</p>
-                        <p className="font-semibold text-lg">{totals.orders}</p>
+                        <p className="font-semibold text-lg">{totalSalesCount}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -249,7 +273,6 @@ export default function SellerAnalytics() {
 
               {/* Two Column Layout */}
               <div className="grid gap-6 lg:grid-cols-2">
-                {/* Top Products */}
                 <Card className="border-border/60">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -299,7 +322,6 @@ export default function SellerAnalytics() {
                   </CardContent>
                 </Card>
 
-                {/* Sales by Date */}
                 <Card className="border-border/60">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">

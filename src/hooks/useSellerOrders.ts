@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -47,13 +47,18 @@ export const ORDER_STATUSES: { value: OrderStatus; label: string; color: string 
 export function useSellerOrders(sellerProfileId: string | undefined) {
   const [orders, setOrders] = useState<SellerOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  // Stable ref to prevent re-fetching when sellerProfileId reference hasn't actually changed
+  const lastFetchedId = useRef<string | undefined>();
 
   const fetchOrders = useCallback(async () => {
-    if (!sellerProfileId) return;
+    if (!sellerProfileId) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     try {
-      // First get order_items for this seller
       const { data: orderItems, error: itemsError } = await supabase
         .from("order_items")
         .select("*")
@@ -64,13 +69,12 @@ export function useSellerOrders(sellerProfileId: string | undefined) {
       if (!orderItems || orderItems.length === 0) {
         setOrders([]);
         setLoading(false);
+        lastFetchedId.current = sellerProfileId;
         return;
       }
 
-      // Get unique order IDs
       const orderIds = [...new Set(orderItems.map((item) => item.order_id))];
 
-      // Fetch orders
       const { data: ordersData, error: ordersError } = await supabase
         .from("orders")
         .select("*")
@@ -79,13 +83,13 @@ export function useSellerOrders(sellerProfileId: string | undefined) {
 
       if (ordersError) throw ordersError;
 
-      // Combine orders with their items
       const ordersWithItems: SellerOrder[] = (ordersData || []).map((order) => ({
         ...order,
         items: orderItems.filter((item) => item.order_id === order.id),
       }));
 
       setOrders(ordersWithItems);
+      lastFetchedId.current = sellerProfileId;
     } catch (error) {
       console.error("Error fetching seller orders:", error);
       toast.error("Failed to load orders");
@@ -95,17 +99,23 @@ export function useSellerOrders(sellerProfileId: string | undefined) {
   }, [sellerProfileId]);
 
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    // Only fetch if the ID actually changed to prevent infinite loops
+    if (sellerProfileId && sellerProfileId !== lastFetchedId.current) {
+      fetchOrders();
+    } else if (!sellerProfileId) {
+      setOrders([]);
+      setLoading(false);
+    }
+  }, [sellerProfileId, fetchOrders]);
 
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
       const { error } = await supabase
         .from("orders")
-        .update({ 
-          status: newStatus, 
+        .update({
+          status: newStatus,
           updated_at: new Date().toISOString(),
-          last_edited_at: new Date().toISOString()
+          last_edited_at: new Date().toISOString(),
         })
         .eq("id", orderId);
 
@@ -137,7 +147,7 @@ export function useSellerOrders(sellerProfileId: string | undefined) {
   ) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       const { error } = await supabase
         .from("orders")
         .update({
@@ -165,10 +175,7 @@ export function useSellerOrders(sellerProfileId: string | undefined) {
     }
   };
 
-  const updateOrderItem = async (
-    itemId: string,
-    quantity: number
-  ) => {
+  const updateOrderItem = async (itemId: string, quantity: number) => {
     try {
       const item = orders.flatMap((o) => o.items).find((i) => i.id === itemId);
       if (!item) throw new Error("Item not found");
@@ -177,15 +184,11 @@ export function useSellerOrders(sellerProfileId: string | undefined) {
 
       const { error } = await supabase
         .from("order_items")
-        .update({
-          quantity,
-          total_price: newTotalPrice,
-        })
+        .update({ quantity, total_price: newTotalPrice })
         .eq("id", itemId);
 
       if (error) throw error;
 
-      // Update local state
       setOrders((prev) =>
         prev.map((order) => ({
           ...order,
@@ -233,7 +236,6 @@ export function useSellerOrders(sellerProfileId: string | undefined) {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return false;
 
-    // Check delete rules
     const canDelete =
       order.status === "cancelled" ||
       order.status === "no-show" ||
@@ -246,7 +248,6 @@ export function useSellerOrders(sellerProfileId: string | undefined) {
     }
 
     try {
-      // Delete order items first
       const { error: itemsError } = await supabase
         .from("order_items")
         .delete()
@@ -254,7 +255,6 @@ export function useSellerOrders(sellerProfileId: string | undefined) {
 
       if (itemsError) throw itemsError;
 
-      // Then delete the order
       const { error: orderError } = await supabase
         .from("orders")
         .delete()

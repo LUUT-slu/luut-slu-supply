@@ -2,7 +2,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ChatButton } from "@/components/ChatButton";
-import { ShieldCheck, ArrowLeft, MapPin, Phone } from "lucide-react";
+import { ShieldCheck, ArrowLeft, MapPin, Phone, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,16 +11,17 @@ export default function SellerProfile() {
   const { sellerId } = useParams<{ sellerId: string }>();
   const navigate = useNavigate();
 
+  // Fetch seller profile from seller_profiles
   const { data: seller, isLoading } = useQuery({
-    queryKey: ["seller", sellerId],
+    queryKey: ["seller-profile", sellerId],
     queryFn: async () => {
       if (!sellerId) return null;
       
       const { data, error } = await supabase
-        .from("verified_sellers")
+        .from("seller_profiles")
         .select("*")
         .eq("id", sellerId)
-        .eq("is_active", true)
+        .eq("is_approved", true)
         .single();
       
       if (error) return null;
@@ -28,6 +29,33 @@ export default function SellerProfile() {
     },
     enabled: !!sellerId,
   });
+
+  // Fetch seller's products
+  const { data: products = [] } = useQuery({
+    queryKey: ["seller-products-public", sellerId],
+    queryFn: async () => {
+      if (!sellerId) return [];
+      
+      const { data, error } = await supabase
+        .from("seller_products")
+        .select("id, name, price, images, description, category")
+        .eq("seller_id", sellerId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+      
+      if (error) return [];
+      return data;
+    },
+    enabled: !!sellerId,
+  });
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "XCD",
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
 
   if (isLoading) {
     return (
@@ -72,12 +100,20 @@ export default function SellerProfile() {
             </Button>
 
             <div className="flex items-center gap-4">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 font-display text-3xl text-primary">
-                {seller.name.charAt(0)}
-              </div>
+              {seller.logo_url ? (
+                <img
+                  src={seller.logo_url}
+                  alt={seller.seller_name}
+                  className="h-20 w-20 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 font-display text-3xl text-primary">
+                  {seller.seller_name.charAt(0)}
+                </div>
+              )}
               <div>
                 <h1 className="font-display text-3xl md:text-4xl">
-                  {seller.name}
+                  {seller.seller_name}
                 </h1>
                 <div className="mt-2 flex items-center gap-2 text-trust">
                   <ShieldCheck className="h-5 w-5" />
@@ -93,9 +129,9 @@ export default function SellerProfile() {
               </div>
             )}
 
-            {seller.description && (
+            {seller.shop_description && (
               <p className="mt-4 max-w-2xl font-body text-muted-foreground">
-                {seller.description}
+                {seller.shop_description}
               </p>
             )}
 
@@ -115,15 +151,50 @@ export default function SellerProfile() {
           </div>
         </section>
 
-        {/* Seller info section */}
+        {/* Seller products */}
         <section className="py-12">
           <div className="container">
-            <div className="rounded-lg border border-border bg-card p-8 text-center">
-              <h2 className="mb-2 font-display text-xl">SELLER PRODUCTS</h2>
-              <p className="text-muted-foreground">
-                Product listings coming soon. Contact the seller directly for available items.
-              </p>
-            </div>
+            <h2 className="mb-6 font-display text-2xl">PRODUCTS</h2>
+            {products.length > 0 ? (
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {products.map((product) => (
+                  <Link
+                    key={product.id}
+                    to={`/product/local/${product.id}`}
+                    className="group rounded-lg border border-border bg-card overflow-hidden transition-colors active:bg-muted/30"
+                  >
+                    <div className="aspect-square bg-muted relative overflow-hidden">
+                      {product.images?.[0] ? (
+                        <img
+                          src={product.images[0]}
+                          alt={product.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Package className="h-10 w-10 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <p className="font-medium text-sm line-clamp-1">{product.name}</p>
+                      {product.category && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{product.category}</p>
+                      )}
+                      <p className="text-sm font-bold text-primary mt-1">
+                        {formatCurrency(product.price)}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-border bg-card p-8 text-center">
+                <p className="text-muted-foreground">
+                  No products listed yet. Contact the seller directly for available items.
+                </p>
+              </div>
+            )}
           </div>
         </section>
       </main>
