@@ -153,7 +153,7 @@ export default function SellerOrderDetail() {
     return (
       <SellerRouteGuard>
         <div className="flex min-h-screen flex-col bg-background">
-          <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} />
+          <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} sellerId={profile?.id} />
           <main className="container flex-1 py-6">
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -168,7 +168,7 @@ export default function SellerOrderDetail() {
     return (
       <SellerRouteGuard>
         <div className="flex min-h-screen flex-col bg-background">
-          <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} />
+          <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} sellerId={profile?.id} />
           <main className="container flex-1 py-6">
             <div className="text-center py-12">
               <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -190,7 +190,7 @@ export default function SellerOrderDetail() {
   return (
     <SellerRouteGuard>
       <div className="flex min-h-screen flex-col bg-background">
-        <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} />
+        <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} sellerId={profile?.id} />
 
         <main className="container flex-1 py-4 md:py-6">
           {/* Header */}

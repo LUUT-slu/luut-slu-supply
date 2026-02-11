@@ -224,6 +224,7 @@ export default function SellerProductForm() {
         <SellerNav
           sellerName={profile?.seller_name}
           logoUrl={profile?.logo_url || undefined}
+          sellerId={profile?.id}
         />
 
         <main className="container flex-1 py-4 md:py-6">

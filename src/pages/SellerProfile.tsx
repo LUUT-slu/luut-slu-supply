@@ -2,7 +2,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ChatButton } from "@/components/ChatButton";
-import { ShieldCheck, ArrowLeft, MapPin, Phone, Package } from "lucide-react";
+import { ShieldCheck, ArrowLeft, MapPin, Phone, Package, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,16 +16,35 @@ export default function SellerProfile() {
     queryKey: ["seller-profile", sellerId],
     queryFn: async () => {
       if (!sellerId) return null;
-      
-      const { data, error } = await supabase
+
+      // Try UUID lookup first
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sellerId);
+
+      if (isUUID) {
+        const { data, error } = await supabase
+          .from("seller_profiles")
+          .select("*")
+          .eq("id", sellerId)
+          .eq("is_approved", true)
+          .single();
+        if (!error && data) return data;
+      }
+
+      // Fallback: slug-based lookup (e.g., "luut-slu-hub" -> match seller_name)
+      const { data: allSellers } = await supabase
         .from("seller_profiles")
         .select("*")
-        .eq("id", sellerId)
-        .eq("is_approved", true)
-        .single();
-      
-      if (error) return null;
-      return data;
+        .eq("is_approved", true);
+
+      if (allSellers) {
+        const slug = sellerId.toLowerCase();
+        const match = allSellers.find(
+          (s) => s.seller_name.toLowerCase().replace(/\s+/g, "-") === slug
+        );
+        if (match) return match;
+      }
+
+      return null;
     },
     enabled: !!sellerId,
   });
@@ -136,9 +155,22 @@ export default function SellerProfile() {
             )}
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <ChatButton>
-                Contact Seller
-              </ChatButton>
+              {seller.whatsapp ? (
+                <Button asChild>
+                  <a
+                    href={`https://wa.me/${seller.whatsapp.replace(/[\s\-\(\)]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Contact Seller
+                  </a>
+                </Button>
+              ) : (
+                <ChatButton>
+                  Contact Seller
+                </ChatButton>
+              )}
               {seller.phone && (
                 <Button variant="outline" asChild>
                   <a href={`tel:${seller.phone}`}>

@@ -208,7 +208,8 @@ export default function Checkout() {
       const sellerVendor = currentSeller || items[0]?.product.node.vendor || '';
       const sellerWhatsApp = await getSellerWhatsApp(sellerVendor);
 
-      const { data, error } = await supabase.functions.invoke('create-draft-order', {
+      // Wrap edge function call with a timeout to prevent infinite loading
+      const invokePromise = supabase.functions.invoke('create-draft-order', {
         body: {
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
@@ -220,6 +221,12 @@ export default function Checkout() {
           sellerVendor,
         },
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Order request timed out. Please try again.')), 30000)
+      );
+
+      const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
 
       if (error) throw error;
 
@@ -300,7 +307,7 @@ export default function Checkout() {
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border bg-background px-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/cart')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="font-display text-xl">Meetup Details</h1>

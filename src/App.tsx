@@ -13,6 +13,8 @@ const Shop = lazy(() => import("./pages/Shop"));
 const ShopCategory = lazy(() => import("./pages/ShopCategory"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const LocalProductDetail = lazy(() => import("./pages/LocalProductDetail"));
+const NewArrivals = lazy(() => import("./pages/NewArrivals"));
+const BestSellersPage = lazy(() => import("./pages/BestSellers"));
 const Cart = lazy(() => import("./pages/Cart"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const SellOnLuut = lazy(() => import("./pages/SellOnLuut"));
@@ -71,6 +73,8 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/shop" element={<Shop />} />
+            <Route path="/shop/new-arrivals" element={<NewArrivals />} />
+            <Route path="/shop/best-sellers" element={<BestSellersPage />} />
             <Route path="/shop/:category" element={<ShopCategory />} />
             <Route path="/product/:handle" element={<ProductDetail />} />
             <Route path="/product/local/:productId" element={<LocalProductDetail />} />

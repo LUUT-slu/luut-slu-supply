@@ -90,10 +90,10 @@ export default function Index() {
                   </Link>
                 </Button>
                 <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10 animate-fade-in opacity-0" style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}>
-                  <Link to="/shop?filter=new">New Arrivals</Link>
+                  <Link to="/shop/new-arrivals">New Arrivals</Link>
                 </Button>
                 <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10 animate-fade-in opacity-0" style={{ animationDelay: "0.6s", animationFillMode: "forwards" }}>
-                  <Link to="/shop?filter=best">Best Sellers</Link>
+                  <Link to="/shop/best-sellers">Best Sellers</Link>
                 </Button>
               </div>
               <div className="mt-5 animate-fade-in opacity-0" style={{ animationDelay: "0.8s", animationFillMode: "forwards" }}>
@@ -123,7 +123,7 @@ export default function Index() {
                 </p>
               </div>
               <Button asChild variant="ghost" className="font-body">
-                <Link to="/shop?vendor=luut-slu">
+                <Link to="/sellers">
                   View All
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>

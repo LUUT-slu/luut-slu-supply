@@ -9,15 +9,17 @@ import {
   LogOut,
   Home,
   Plus,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 
 interface SellerNavProps {
   sellerName?: string;
   logoUrl?: string;
+  sellerId?: string;
 }
 
-export function SellerNav({ sellerName, logoUrl }: SellerNavProps) {
+export function SellerNav({ sellerName, logoUrl, sellerId }: SellerNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -86,6 +88,16 @@ export function SellerNav({ sellerName, logoUrl }: SellerNavProps) {
             <Plus className="h-3.5 w-3.5" />
             Add Product
           </Button>
+          {sellerId && (
+            <Link
+              to={`/seller/${sellerId}`}
+              target="_blank"
+              className="flex items-center gap-1 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+              title="View public profile"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          )}
           <Link
             to="/"
             className="flex items-center gap-1 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground"

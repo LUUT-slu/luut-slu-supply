@@ -36,6 +36,7 @@ import {
   ToggleLeft,
   ToggleRight,
   Download,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { fetchProductsByVendor } from "@/lib/shopify";
@@ -209,6 +210,7 @@ export default function SellerProducts() {
         <SellerNav
           sellerName={profile?.seller_name}
           logoUrl={profile?.logo_url || undefined}
+          sellerId={profile?.id}
         />
 
         <main className="container flex-1 py-4 md:py-6">
@@ -323,6 +325,23 @@ export default function SellerProducts() {
                         <TableCell className="py-2">{getStatusBadge(product)}</TableCell>
                         <TableCell className="py-2 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const handle = product.shopify_product_id
+                                  ? product.name.toLowerCase().replace(/\s+/g, "-")
+                                  : `local/${product.id}`;
+                                const url = `${window.location.origin}/product/${handle}?ref=${profile?.id}`;
+                                navigator.clipboard.writeText(url);
+                                toast.success("Share link copied!");
+                              }}
+                              title="Copy share link"
+                            >
+                              <Link2 className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"

@@ -274,7 +274,7 @@ export default function ProductDetail() {
                 <Store className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Sold by:</span>
                 <Link
-                  to={`/seller/${sellerName.toLowerCase().replace(/\s+/g, '-')}`}
+                  to={`/seller/${encodeURIComponent(sellerName.toLowerCase().replace(/\s+/g, '-'))}`}
                   className="text-sm font-medium text-foreground hover:text-primary transition-colors"
                 >
                   {sellerName}
