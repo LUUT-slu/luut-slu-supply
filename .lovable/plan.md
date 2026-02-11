@@ -1,133 +1,104 @@
 
 
-# Seller Portal Stability, Sellers Directory, and Mobile UX Fixes
+# Stabilization and Alignment Pass
 
-This plan addresses all reported issues in a single pass with targeted fixes.
+## Issue Group 1 -- Customer Checkout Fails to Create Order
+
+**Root Cause:** The `create-draft-order` edge function performs many sequential operations (local order insert, seller lookups, order_items insert, Shopify draft order creation). If any step is slow (especially the Shopify Admin API call), the function can exceed timeout limits. Additionally, the edge function was recently modified and may need redeployment to pick up changes.
+
+The frontend code in `Checkout.tsx` (lines 207-292) has proper error handling with try/catch/finally, so it should not get stuck infinitely. However, if the edge function response takes too long, the browser may drop the connection, leaving `isSubmitting` stuck at `true` because `finally` never fires (the promise never resolves/rejects).
+
+**Fix:**
+- Redeploy the `create-draft-order` edge function to ensure the latest code is active.
+- Add a client-side timeout wrapper around the `supabase.functions.invoke` call (e.g., 30 seconds), so the UI always recovers even if the backend hangs.
+- In `Checkout.tsx`, wrap the invoke call with `Promise.race` against a timeout to guarantee the loading state resolves.
 
 ---
 
-## ISSUE H1 -- Seller order creation fails on first attempt
+## Issue Group 2 -- Checkout Back Navigation Loop
 
-**Root Cause:** The `CreateOrderDialog` code looks correct after the previous fix round. However, examining the flow more carefully, the issue is that `onOrderCreated?.()` on line 263 calls `refetch` which triggers `fetchOrders` in `useSellerOrders`. This refetch races with the dialog closing and can cause a state update on an unmounted component. Additionally, the `product_sales` insert (line 249) doesn't handle errors -- if it throws due to a constraint violation, the outer catch fires and shows "Failed to create order" even though the order WAS created.
+**Root Cause:** The Checkout page back button (line 303) uses `navigate('/cart')` which **pushes** a new history entry. So the history becomes: `Product -> Cart -> Checkout -> Cart (new push)`. Then Cart's back button (line 25) uses `navigate(-1)` which goes to Checkout. Then Checkout's back goes to Cart again. Infinite loop.
 
 **Fix:**
-- In `CreateOrderDialog.tsx`: Make the `product_sales` insert and stock deduction non-blocking (catch errors individually without failing the whole operation). Close the dialog and call `onOrderCreated` only after the order and order_items are confirmed created. Treat sales recording and stock deduction as best-effort.
+- In `Checkout.tsx`, change the back button from `navigate('/cart')` to `navigate(-1)` so it goes back in history instead of pushing a new entry. This breaks the loop and allows the user to eventually reach the product page.
 
 ---
 
-## ISSUE H2 -- Orders view does not retain selected filters/tabs
+## Issue Group 3 -- Seller Portal Order Organization
 
-**Root Cause:** Filter state (`statusFilter`, `sortBy`, `searchQuery`) in `SellerOrders.tsx` is stored in component-level `useState`. When navigating to an order detail and back, the component unmounts and remounts, resetting all state.
+**Root Cause:** The `SellerOrders.tsx` page currently sorts by `created_at` (newest first) by default. Orders are displayed in a flat list without date grouping.
 
 **Fix:**
-- Use URL search params (`useSearchParams`) to persist filter/sort state across navigation. When a filter changes, update the URL. On mount, read from URL params.
+- Change the default sort to `pickup-soonest` instead of `newest`.
+- Add visual date group headers (Today, Tomorrow, Upcoming, Completed/No-Show at bottom).
+- In the `filteredOrders` memo, group orders by pickup date and separate completed/no-show orders to the bottom.
 
 ---
 
-## ISSUE H3 -- Cannot archive/hide completed orders
+## Issue Group 4 -- Homepage Routing and Collection Logic
 
-**Root Cause:** No archive feature exists.
+**4A: "View All" button** links to `/shop?vendor=luut-slu` but Shop.tsx doesn't handle this query param.
 
-**Fix:**
-- Add a `hidden_orders` key in `localStorage` (per seller) that stores an array of hidden order IDs.
-- Add an "Archive" button to the order detail sidebar and a bulk-select option on the orders list.
-- Add a toggle to show/hide archived orders in the filter bar.
-- No database changes needed -- this is a client-side filter.
+**Fix:** Change the "View All" link in `Index.tsx` (line 126) to point to the LUUT SLU seller profile page: `/seller/b9006c53-6e26-4d79-8885-fd63f5d919e1`. This shows the actual Luut SLU storefront with seller info and products.
 
----
+**4B: "New Arrivals"** links to `/shop?filter=new` but Shop.tsx ignores query params.
 
-## ISSUE H4 -- Seller Portal mobile view not usable
+**Fix:** Create a handler in `ShopCategory.tsx` or add a route `/shop/new-arrivals` that fetches products sorted by `created_at` (newest first from Shopify Storefront API using `sortKey: CREATED_AT, reverse: true`).
 
-**Root Cause:** The orders table uses a standard HTML `<Table>` with 8 columns including an Actions column with 3 icon buttons. On mobile, this overflows and requires horizontal scrolling.
+**4C: "Best Sellers"** links to `/shop?filter=best`.
 
-**Fix:**
-- Replace the table layout on mobile with a card-based layout using responsive classes.
-- Each card shows: Customer name/phone (top), Item(s) + Status (middle row), Pickup date + Location (bottom row), Total as a small badge.
-- Order number becomes the least prominent element.
-- The entire card is tappable to open order details.
-- Keep the desktop table layout unchanged.
+**Fix:** Route to a page that uses the existing `weekly_best_sellers` view. Link the "Best Sellers" button to a dedicated path like `/shop/best-sellers` that renders the best sellers data from the existing `useBestSellers` hook in a full-page grid format.
 
 ---
 
-## ISSUE H5 -- Seller portal infinite reload/loop
+## Issue Group 5 -- Seller Profile and Seller Portal Linking
 
-**Root Cause:** The `SellerOrderDetail` page calls `useSellerOrders(profile?.id)` which fetches ALL orders. When `profile` is initially undefined (loading), it doesn't fetch. When profile loads, it triggers a fetch. If `useSellerProfile` re-triggers due to auth state changes, the orders hook re-fetches, causing a cascading reload.
+**Root Cause:** Product cards and product detail pages link to seller profiles using a slug pattern like `/seller/luut-slu`, but the `SellerProfile.tsx` route queries by UUID (`id`). Since `id` is a UUID like `b9006c53-...`, the slug-based lookup fails and shows "Seller not found".
 
 **Fix:**
-- Add a stable reference check in `useSellerOrders` so it doesn't re-fetch if `sellerProfileId` hasn't actually changed.
-- In `useSellerProfile`, stabilize the auth listener to not trigger redundant profile fetches.
+- Update `SellerProfile.tsx` to support both UUID and slug-based lookups. When `sellerId` param is not a valid UUID format, query `seller_profiles` by matching a normalized slug against `seller_name` (lowercase, spaces to hyphens).
+- Add a "View My Public Profile" link in the seller portal nav (`SellerNav.tsx`) that links to `/seller/{profile.id}`.
+- The "Contact Seller" button on the seller profile page currently uses the generic WhatsApp ChatButton. Change it to open WhatsApp with the specific seller's WhatsApp number.
 
 ---
 
-## ISSUE H6 -- Analytics shows incorrect revenue data
+## Issue Group 6 -- Product Share Link Flow
 
-**Root Cause:** The `SellerAnalytics` page queries `product_sales` table which records ALL sales at creation time (not just completed). The `SellerOrders` page stats correctly count only completed orders for revenue. But the Analytics page counts everything.
+**Root Cause:** No seller attribution exists in product URLs. Products link to `/product/{handle}` without any seller context.
 
 **Fix:**
-- In `SellerAnalytics.tsx`, add a label clarification: rename "Revenue" to "Potential Revenue" (all recorded sales).
-- Add a separate "Actual Revenue" stat that cross-references with completed orders only (join `product_sales` with `orders` where status = 'completed').
-- Alternatively, since `useSellerStats` already computes correct revenue from completed orders, reuse that data on the analytics page.
+- Add an optional `?ref={sellerId}` query parameter to product URLs.
+- In `ProductDetail.tsx`, read the `ref` param and store it in the cart item when adding to cart, so checkout can route the WhatsApp message to the correct seller.
+- In the seller portal product list (`SellerProducts.tsx`), add a "Copy Share Link" button for each product that generates a URL like `/product/{handle}?ref={sellerId}`.
+- In `Checkout.tsx`, use the seller reference from cart items to determine the WhatsApp number for the order notification.
 
 ---
 
-## ISSUE H7 -- Pickup date shifts one day earlier
+## Issue Group 7 -- General Stability and UX
 
-**Root Cause:** The `CreateOrderDialog` stores `preferredDate` as `yyyy-MM-dd` from the date input (line 197). When this date string is stored in the database and later parsed with `new Date("2026-02-10")`, JavaScript interprets it as UTC midnight. When displayed in a timezone behind UTC (like Caribbean / AST = UTC-4), it shows as February 9th.
+**7A: Mobile double-tap**
 
-**Fix:**
-- In `CreateOrderDialog.tsx`: Store the date as a formatted text string (e.g., "Monday, February 10, 2026") to match the system's canonical format, avoiding timezone interpretation issues.
-- In `SellerOrders.tsx` and `SellerOrderDetail.tsx`: Display `preferred_date` as-is (it's already a formatted string), without re-parsing through `new Date()`.
+**Root Cause:** The current CSS fix in `index.css` only removes `transition` on hover for touch devices, but doesn't prevent the hover pseudo-class from activating. iOS Safari still enters the hover state on first tap. The `button.tsx` variants still include `hover:bg-primary/90`, `hover:bg-accent`, etc. which trigger on first touch.
 
----
-
-## ISSUE H8 -- Missing advanced filtering for orders
-
-**Fix:**
-- Add filter dropdowns for: Location, Pickup Date (with "Today" shortcut), and Product/Item.
-- These filters integrate with the URL search params from H2 so they persist.
-- Filter options are derived dynamically from the existing orders data.
-
----
-
-## ISSUE I1/I2 -- Sellers page is empty
-
-**Root Cause:** The Sellers page queries `verified_sellers` table which is a separate, empty table. Actual sellers are in `seller_profiles` with `is_approved = true`.
-
-**Fix:**
-- Change `Sellers.tsx` to query `seller_profiles` where `is_approved = true` instead of `verified_sellers`.
-- Map the seller_profiles fields to match the display (seller_name as name, shop_description as description, location, phone).
-
----
-
-## ISSUE I3/I4 -- Missing seller storefront pages
-
-**Root Cause:** `SellerProfile.tsx` queries `verified_sellers` (empty) and shows a placeholder "Products coming soon" message.
-
-**Fix:**
-- Update `SellerProfile.tsx` to query `seller_profiles` instead of `verified_sellers`.
-- Query `seller_products` for that seller's active products and display them in a product grid.
-- Show seller logo (if available), name, description, location.
-- For LUUT SLU (admin seller), also fetch Shopify products by vendor name and display them alongside local products.
-- Make seller URLs use the seller profile ID: `/seller/:sellerId`.
-
----
-
-## MOBILE DOUBLE-TAP ISSUE -- Buttons require double tap
-
-**Root Cause:** The `hover:bg-accent` and `hover:bg-primary/90` CSS classes in the button component trigger a hover state on first tap in mobile Safari. iOS Safari implements a "hover-then-click" pattern where the first tap activates `:hover` and the second tap fires `click`.
-
-**Fix:**
-- Add a `@media (hover: hover)` wrapper in CSS so hover styles only apply on devices that support true hover (desktop with mouse).
-- Modify button variants in `button.tsx` to use `@media(hover:hover)` conditional hover classes, or add a global CSS rule that disables hover effects on touch devices.
-- The simplest approach: add a CSS rule in `index.css`:
-  ```css
-  @media (hover: none) {
-    button, a, [role="button"] {
-      -webkit-tap-highlight-color: transparent;
-    }
+**Fix:** The CSS needs to actually neutralize the hover background changes, not just the transition. Update the `@media (hover: none)` block to override the hover background/color changes:
+```css
+@media (hover: none) {
+  button:hover, a:hover, [role="button"]:hover {
+    background-color: inherit !important;
+    color: inherit !important;
   }
-  ```
-  And update button variants to use Tailwind's `hover:` with the `@media (hover: hover)` modifier. Tailwind supports this via custom variant or by adding a global override.
+}
+```
+
+However this is too aggressive. Better approach: add `@media (hover: hover)` conditionals around the hover styles in `button.tsx` using Tailwind's built-in support. Tailwind doesn't natively support `@media (hover: hover)` as a variant, so the cleanest fix is the CSS override approach targeting specific problematic selectors.
+
+**7B: Infinite loading after checkout**
+
+Already addressed by Issues 1 and 2 (timeout wrapper + navigation fix).
+
+**7C: Seller portal reload loops**
+
+Already addressed in previous fix round with `lastFetchedId` ref in `useSellerOrders.ts`. Will verify the fix is working correctly.
 
 ---
 
@@ -135,15 +106,16 @@ This plan addresses all reported issues in a single pass with targeted fixes.
 
 | File | Issues Fixed |
 |------|-------------|
-| `src/components/seller/CreateOrderDialog.tsx` | H1, H7 (error handling, date format) |
-| `src/pages/seller/SellerOrders.tsx` | H2, H3, H4, H8 (URL params, archive, mobile cards, filters) |
-| `src/pages/seller/SellerOrderDetail.tsx` | H3 (archive button), H7 (date display) |
-| `src/hooks/useSellerOrders.ts` | H5 (stable fetch reference) |
-| `src/pages/seller/SellerAnalytics.tsx` | H6 (revenue labels) |
-| `src/pages/Sellers.tsx` | I1, I2 (query seller_profiles) |
-| `src/pages/SellerProfile.tsx` | I3, I4 (seller storefront with products) |
-| `src/index.css` | Mobile double-tap fix |
-| `src/components/ui/button.tsx` | Mobile double-tap fix (hover variant) |
+| `src/pages/Checkout.tsx` | 1 (timeout wrapper), 2 (back nav fix) |
+| `src/pages/Index.tsx` | 4A (View All link), 4B/4C (New Arrivals/Best Sellers links) |
+| `src/pages/SellerProfile.tsx` | 5 (slug-based lookup support, seller-specific WhatsApp) |
+| `src/pages/seller/SellerOrders.tsx` | 3 (pickup date grouping) |
+| `src/pages/ProductDetail.tsx` | 6 (read ref param, seller attribution) |
+| `src/pages/seller/SellerProducts.tsx` | 6 (share link button) |
+| `src/components/seller/SellerNav.tsx` | 5 (public profile link) |
+| `src/pages/ShopCategory.tsx` | 4B/4C (new-arrivals/best-sellers routes) |
+| `src/index.css` | 7A (mobile double-tap override) |
+| `src/App.tsx` | 4B/4C (new routes) |
+| `supabase/functions/create-draft-order/index.ts` | 1 (redeploy) |
 
-**Database changes:** None required. The `verified_sellers` table can remain but will no longer be queried by the frontend.
-
+**No database changes required.**
