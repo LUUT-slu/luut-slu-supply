@@ -88,7 +88,7 @@ export default function SellerOrders() {
 
   // Read filters from URL params for persistence across navigation
   const statusFilter = (searchParams.get("status") || "all") as FilterOption;
-  const sortBy = (searchParams.get("sort") || "newest") as SortOption;
+  const sortBy = (searchParams.get("sort") || "pickup-soonest") as SortOption;
   const searchQuery = searchParams.get("q") || "";
   const locationFilter = searchParams.get("location") || "all";
   const dateFilter = searchParams.get("date") || "all";
@@ -202,16 +202,24 @@ export default function SellerOrders() {
       );
     }
 
-    // Sort
+    // Separate completed/no-show/cancelled to the bottom
+    const terminalStatuses = new Set(["completed", "no-show", "cancelled"]);
+    const active = result.filter((o) => !terminalStatuses.has(o.status));
+    const terminal = result.filter((o) => terminalStatuses.has(o.status));
+
+    // Sort active orders
     if (sortBy === "newest") {
-      result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      active.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     } else if (sortBy === "pickup-soonest") {
-      result.sort(
+      active.sort(
         (a, b) => new Date(a.preferred_date).getTime() - new Date(b.preferred_date).getTime()
       );
     }
 
-    return result;
+    // Sort terminal by most recently completed
+    terminal.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return [...active, ...terminal];
   }, [orders, statusFilter, searchQuery, sortBy, locationFilter, dateFilter, showArchived, archivedIds]);
 
   // Stats
@@ -228,6 +236,7 @@ export default function SellerOrders() {
         <SellerNav
           sellerName={profile?.seller_name}
           logoUrl={profile?.logo_url || undefined}
+          sellerId={profile?.id}
         />
 
         <main className="container flex-1 py-4 md:py-6">

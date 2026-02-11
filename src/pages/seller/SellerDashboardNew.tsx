@@ -75,7 +75,8 @@ export default function SellerDashboardNew() {
       <div className="flex min-h-screen flex-col bg-background">
         <SellerNav 
           sellerName={profile?.seller_name} 
-          logoUrl={profile?.logo_url || undefined} 
+          logoUrl={profile?.logo_url || undefined}
+          sellerId={profile?.id}
         />
 
         <main className="container flex-1 py-4 md:py-6">

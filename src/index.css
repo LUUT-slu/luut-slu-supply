@@ -153,15 +153,22 @@
   }
 }
 
-/* Fix mobile double-tap issue: only apply hover effects on devices with true hover */
+/* Fix mobile double-tap issue: neutralize hover background/color changes on touch devices */
 @media (hover: none) {
   button, a, [role="button"], .cursor-pointer {
     -webkit-tap-highlight-color: transparent;
   }
-  /* Remove hover styles that cause the double-tap-to-activate pattern */
+  /* Override hover background changes that cause iOS double-tap-to-activate */
   button:hover,
   a:hover,
   [role="button"]:hover {
+    transition: none !important;
+    background-color: inherit !important;
+  }
+  /* Allow active state for visual tap feedback */
+  button:active,
+  a:active,
+  [role="button"]:active {
     transition: none !important;
   }
 }
