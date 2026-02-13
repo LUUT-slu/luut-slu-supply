@@ -265,15 +265,24 @@ export default function PartnerDashboard() {
     return statusOptions.filter(s => current.canTransitionTo.includes(s.value));
   };
 
+  const normalizePhone = (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length === 7) return `1758${digits}`;
+    if (digits.length === 10) return `1${digits}`;
+    if (digits.length === 11 && digits.startsWith("1")) return digits;
+    return digits;
+  };
+
   const contactCustomer = (order: Order) => {
     if (!order.customer_phone) {
       toast.error("No phone number available for this customer");
       return;
     }
     
-    const message = `Hi ${order.customer_name}! I'm your delivery partner for order ${formatOrderNumber(order.order_number)}. I'll be meeting you at ${order.location} on ${order.preferred_date}. See you soon! 💳 Payment: Cash on pickup`;
+    const cleanPhone = normalizePhone(order.customer_phone);
+    const message = `Hi ${order.customer_name}! I'm your delivery partner for order ${formatOrderNumber(order.order_number)}. I'll be meeting you at ${order.location} on ${order.preferred_date}.${order.pickup_time_window ? ` Time: ${order.pickup_time_window}.` : ""} See you soon! 💳 Payment: Cash on pickup`;
     const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${order.customer_phone.replace(/\D/g, '')}?text=${encodedMessage}`;
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');
   };
 

@@ -61,6 +61,7 @@ export function CreateOrderDialog({
   const [customerPhone, setCustomerPhone] = useState("");
   const [location, setLocation] = useState("");
   const [preferredDate, setPreferredDate] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
   const [note, setNote] = useState("");
 
   useEffect(() => {
@@ -149,6 +150,7 @@ export function CreateOrderDialog({
     setCustomerPhone("");
     setLocation("");
     setPreferredDate("");
+    setPickupTime("");
     setNote("");
   };
 
@@ -198,6 +200,7 @@ export function CreateOrderDialog({
           location,
           preferred_date: formattedDate,
           note: note.trim() || null,
+          pickup_time: pickupTime || null,
           total_price: totalPrice,
           line_items: lineItems,
           status: "pending",
@@ -358,6 +361,22 @@ export function CreateOrderDialog({
                   min={new Date().toISOString().split("T")[0]}
                 />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="pickupTime" className="text-xs">
+                Pickup Time Slot
+              </Label>
+              <Select value={pickupTime} onValueChange={setPickupTime}>
+                <SelectTrigger id="pickupTime" className="h-9">
+                  <SelectValue placeholder="Select time slot" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Morning (9 AM - 12 PM)">Morning (9 AM - 12 PM)</SelectItem>
+                  <SelectItem value="Afternoon (12 PM - 3 PM)">Afternoon (12 PM - 3 PM)</SelectItem>
+                  <SelectItem value="Evening (3 PM - 6 PM)">Evening (3 PM - 6 PM)</SelectItem>
+                  <SelectItem value="Flexible / Any Time">Flexible / Any Time</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="note" className="text-xs">

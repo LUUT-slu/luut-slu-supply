@@ -93,13 +93,24 @@ export default function SellerOrderDetail() {
     return ORDER_STATUSES.find((s) => s.value === status) || ORDER_STATUSES[0];
   };
 
+  const normalizePhone = (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length === 7) return `1758${digits}`;
+    if (digits.length === 10) return `1${digits}`;
+    if (digits.length === 11 && digits.startsWith("1")) return digits;
+    return digits;
+  };
+
   const messageCustomer = () => {
     if (!order?.customer_phone) {
       toast.error("No phone number available");
       return;
     }
-    const cleanPhone = order.customer_phone.replace(/\D/g, "");
-    window.open(`https://wa.me/1${cleanPhone}`, "_blank");
+    const cleanPhone = normalizePhone(order.customer_phone);
+    const orderNum = formatOrderNumber(order.order_number);
+    const items = order.items.map(i => `${i.product_name} ×${i.quantity}`).join(", ");
+    const message = `Hi ${order.customer_name}! This is ${profile?.seller_name || "your seller"} regarding your order ${orderNum}.\n\n📦 Items: ${items}\n📍 Pickup: ${order.location}\n📅 Date: ${displayDate(order.preferred_date)}${order.pickup_time || order.pickup_time_window ? `\n🕐 Time: ${order.pickup_time || order.pickup_time_window}` : ""}\n💰 Total: ${formatCurrency(order.total_price)}\n\nLet me know if you have any questions!`;
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank");
   };
 
   const callCustomer = () => {
