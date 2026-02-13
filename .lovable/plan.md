@@ -1,121 +1,104 @@
 
 
-# Stabilization and Alignment Pass
-
-## Issue Group 1 -- Customer Checkout Fails to Create Order
-
-**Root Cause:** The `create-draft-order` edge function performs many sequential operations (local order insert, seller lookups, order_items insert, Shopify draft order creation). If any step is slow (especially the Shopify Admin API call), the function can exceed timeout limits. Additionally, the edge function was recently modified and may need redeployment to pick up changes.
-
-The frontend code in `Checkout.tsx` (lines 207-292) has proper error handling with try/catch/finally, so it should not get stuck infinitely. However, if the edge function response takes too long, the browser may drop the connection, leaving `isSubmitting` stuck at `true` because `finally` never fires (the promise never resolves/rejects).
-
-**Fix:**
-- Redeploy the `create-draft-order` edge function to ensure the latest code is active.
-- Add a client-side timeout wrapper around the `supabase.functions.invoke` call (e.g., 30 seconds), so the UI always recovers even if the backend hangs.
-- In `Checkout.tsx`, wrap the invoke call with `Promise.race` against a timeout to guarantee the loading state resolves.
+# Fix Plan: WhatsApp Messages, Time Slots, Admin Notification, and Freezes
 
 ---
 
-## Issue Group 2 -- Checkout Back Navigation Loop
+## 1. Fix Prefilled WhatsApp Messages Across Flows
 
-**Root Cause:** The Checkout page back button (line 303) uses `navigate('/cart')` which **pushes** a new history entry. So the history becomes: `Product -> Cart -> Checkout -> Cart (new push)`. Then Cart's back button (line 25) uses `navigate(-1)` which goes to Checkout. Then Checkout's back goes to Cart again. Infinite loop.
+### Issues Found
 
-**Fix:**
-- In `Checkout.tsx`, change the back button from `navigate('/cart')` to `navigate(-1)` so it goes back in history instead of pushing a new entry. This breaks the loop and allows the user to eventually reach the product page.
+Several WhatsApp buttons send incorrect or context-less messages:
 
----
+**A) Seller Order Detail -- "Message Customer" button (SellerOrderDetail.tsx line 101-102)**
+Opens `wa.me/1{phone}` with NO prefilled message. The customer gets a blank chat. Also incorrectly prepends `1` to the phone number (what if it already has the country code?).
 
-## Issue Group 3 -- Seller Portal Order Organization
+**Fix:** Add a contextual prefilled message with the order number, seller name, and pickup details. Clean the phone number properly (strip non-digits, don't blindly prepend `1`).
 
-**Root Cause:** The `SellerOrders.tsx` page currently sorts by `created_at` (newest first) by default. Orders are displayed in a flat list without date grouping.
+**B) WhatsAppButton.tsx (generic component)**
+Default message is `"Hi! I'm interested in shopping on Luut SLU."` -- this is fine for a general contact button, but it's used on seller profile pages where it should say something seller-specific.
 
-**Fix:**
-- Change the default sort to `pickup-soonest` instead of `newest`.
-- Add visual date group headers (Today, Tomorrow, Upcoming, Completed/No-Show at bottom).
-- In the `filteredOrders` memo, group orders by pickup date and separate completed/no-show orders to the bottom.
+**Fix:** No change needed here -- callers already pass custom `message` props where needed.
 
----
+**C) Partner Dashboard -- "Contact Customer" (PartnerDashboard.tsx line 274-276)**
+Uses `order.customer_phone.replace(/\D/g, '')` which strips the phone to just digits, but doesn't add a country code. A local number like `758-123-4567` becomes `7581234567` which is incomplete for international wa.me links.
 
-## Issue Group 4 -- Homepage Routing and Collection Logic
+**Fix:** Normalize phone numbers consistently: if the number has 7 or 10 digits, prepend `1` for the country code. If it already starts with `1` and has 11 digits, use as-is.
 
-**4A: "View All" button** links to `/shop?vendor=luut-slu` but Shop.tsx doesn't handle this query param.
+**D) CartDrawer.tsx (line 285-296)**
+The WhatsApp message says "NEW ORDER" but doesn't include the seller's name or the order number clearly. This is adequate but could be improved.
 
-**Fix:** Change the "View All" link in `Index.tsx` (line 126) to point to the LUUT SLU seller profile page: `/seller/b9006c53-6e26-4d79-8885-fd63f5d919e1`. This shows the actual Luut SLU storefront with seller info and products.
+**Fix:** Minor -- no critical issue here.
 
-**4B: "New Arrivals"** links to `/shop?filter=new` but Shop.tsx ignores query params.
-
-**Fix:** Create a handler in `ShopCategory.tsx` or add a route `/shop/new-arrivals` that fetches products sorted by `created_at` (newest first from Shopify Storefront API using `sortKey: CREATED_AT, reverse: true`).
-
-**4C: "Best Sellers"** links to `/shop?filter=best`.
-
-**Fix:** Route to a page that uses the existing `weekly_best_sellers` view. Link the "Best Sellers" button to a dedicated path like `/shop/best-sellers` that renders the best sellers data from the existing `useBestSellers` hook in a full-page grid format.
+### Files to Change
+- `src/pages/seller/SellerOrderDetail.tsx` -- Fix "Message Customer" to include order context
+- `src/pages/PartnerDashboard.tsx` -- Fix phone number normalization
 
 ---
 
-## Issue Group 5 -- Seller Profile and Seller Portal Linking
+## 2. Add Time Slots to Seller Portal Order Creation
 
-**Root Cause:** Product cards and product detail pages link to seller profiles using a slug pattern like `/seller/luut-slu`, but the `SellerProfile.tsx` route queries by UUID (`id`). Since `id` is a UUID like `b9006c53-...`, the slug-based lookup fails and shows "Seller not found".
+### Current State
+`CreateOrderDialog.tsx` only has a date input (`type="date"`). No time slot selection exists.
 
-**Fix:**
-- Update `SellerProfile.tsx` to support both UUID and slug-based lookups. When `sellerId` param is not a valid UUID format, query `seller_profiles` by matching a normalized slug against `seller_name` (lowercase, spaces to hyphens).
-- Add a "View My Public Profile" link in the seller portal nav (`SellerNav.tsx`) that links to `/seller/{profile.id}`.
-- The "Contact Seller" button on the seller profile page currently uses the generic WhatsApp ChatButton. Change it to open WhatsApp with the specific seller's WhatsApp number.
+### Fix
+Add a time slot dropdown after the date picker with options like:
+- Morning (9 AM - 12 PM)
+- Afternoon (12 PM - 3 PM)
+- Evening (3 PM - 6 PM)
+- Flexible / Any Time
 
----
+Store the selected time slot in the `pickup_time` column (already exists in the `orders` table).
 
-## Issue Group 6 -- Product Share Link Flow
-
-**Root Cause:** No seller attribution exists in product URLs. Products link to `/product/{handle}` without any seller context.
-
-**Fix:**
-- Add an optional `?ref={sellerId}` query parameter to product URLs.
-- In `ProductDetail.tsx`, read the `ref` param and store it in the cart item when adding to cart, so checkout can route the WhatsApp message to the correct seller.
-- In the seller portal product list (`SellerProducts.tsx`), add a "Copy Share Link" button for each product that generates a URL like `/product/{handle}?ref={sellerId}`.
-- In `Checkout.tsx`, use the seller reference from cart items to determine the WhatsApp number for the order notification.
+### Files to Change
+- `src/components/seller/CreateOrderDialog.tsx` -- Add time slot select, include in order insert
 
 ---
 
-## Issue Group 7 -- General Stability and UX
+## 3. Admin Notification on Seller Application
 
-**7A: Mobile double-tap**
+### Current State
+When someone clicks "Submit Application" in `SellerApply.tsx`, a `seller_profiles` row is created with `seller_status: "pending"` and `is_approved: false`. The admin is NOT notified -- they have to manually check the admin panel.
 
-**Root Cause:** The current CSS fix in `index.css` only removes `transition` on hover for touch devices, but doesn't prevent the hover pseudo-class from activating. iOS Safari still enters the hover state on first tap. The `button.tsx` variants still include `hover:bg-primary/90`, `hover:bg-accent`, etc. which trigger on first touch.
+### Fix
+After successfully inserting the seller profile, auto-open a WhatsApp message to the admin (17587185478) with the application details. This ensures the admin is notified immediately.
 
-**Fix:** The CSS needs to actually neutralize the hover background changes, not just the transition. Update the `@media (hover: none)` block to override the hover background/color changes:
-```css
-@media (hover: none) {
-  button:hover, a:hover, [role="button"]:hover {
-    background-color: inherit !important;
-    color: inherit !important;
-  }
-}
-```
-
-However this is too aggressive. Better approach: add `@media (hover: hover)` conditionals around the hover styles in `button.tsx` using Tailwind's built-in support. Tailwind doesn't natively support `@media (hover: hover)` as a variant, so the cleanest fix is the CSS override approach targeting specific problematic selectors.
-
-**7B: Infinite loading after checkout**
-
-Already addressed by Issues 1 and 2 (timeout wrapper + navigation fix).
-
-**7C: Seller portal reload loops**
-
-Already addressed in previous fix round with `lastFetchedId` ref in `useSellerOrders.ts`. Will verify the fix is working correctly.
+### Files to Change
+- `src/pages/seller/SellerApply.tsx` -- Add WhatsApp notification to admin after successful submission
 
 ---
 
-## Summary of Files to Change
+## 4. Website Freeze Prevention
 
-| File | Issues Fixed |
-|------|-------------|
-| `src/pages/Checkout.tsx` | 1 (timeout wrapper), 2 (back nav fix) |
-| `src/pages/Index.tsx` | 4A (View All link), 4B/4C (New Arrivals/Best Sellers links) |
-| `src/pages/SellerProfile.tsx` | 5 (slug-based lookup support, seller-specific WhatsApp) |
-| `src/pages/seller/SellerOrders.tsx` | 3 (pickup date grouping) |
-| `src/pages/ProductDetail.tsx` | 6 (read ref param, seller attribution) |
-| `src/pages/seller/SellerProducts.tsx` | 6 (share link button) |
-| `src/components/seller/SellerNav.tsx` | 5 (public profile link) |
-| `src/pages/ShopCategory.tsx` | 4B/4C (new-arrivals/best-sellers routes) |
-| `src/index.css` | 7A (mobile double-tap override) |
-| `src/App.tsx` | 4B/4C (new routes) |
-| `supabase/functions/create-draft-order/index.ts` | 1 (redeploy) |
+### Root Causes Identified
 
-**No database changes required.**
+**A) CSS `background-color: inherit !important` on hover (index.css line 166)**
+The current mobile double-tap fix uses `background-color: inherit !important` which can cause unexpected rendering when `inherit` resolves to `transparent` on nested elements, potentially causing visual glitches and perceived "freezes" where buttons appear non-functional.
+
+**Fix:** Change `inherit` to `unset` or remove the background override and instead use `pointer-events` management. Actually the better fix is to keep it but also apply to `.cursor-pointer` selector which was missed in the hover rules.
+
+**B) Checkout timeout already implemented (30s)**
+This looks correct from the previous fix round.
+
+**C) useSellerOrders stable ref**
+Already has the `lastFetchedId` guard. This looks correct.
+
+The main remaining freeze scenario is the CSS hover issue on mobile causing perceived non-responsiveness (buttons don't visually respond on first tap, making users think the site is frozen).
+
+### Files to Change
+- `src/index.css` -- Refine the hover override to also cover `.cursor-pointer:hover`
+
+---
+
+## Summary of All Changes
+
+| File | Change |
+|------|--------|
+| `src/pages/seller/SellerOrderDetail.tsx` | Fix "Message Customer" WhatsApp with contextual message and proper phone normalization |
+| `src/pages/PartnerDashboard.tsx` | Fix customer phone normalization for wa.me links |
+| `src/components/seller/CreateOrderDialog.tsx` | Add pickup time slot selector |
+| `src/pages/seller/SellerApply.tsx` | Send WhatsApp notification to admin on application submit |
+| `src/index.css` | Refine mobile hover fix to cover `.cursor-pointer` elements |
+
+No database changes required. The `pickup_time` column already exists in the `orders` table.
+
