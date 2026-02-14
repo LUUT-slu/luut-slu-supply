@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X, ShoppingBag, DollarSign, User, Store } from "lucide-react";
+import { Menu, X, ShoppingBag, DollarSign, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
@@ -144,11 +144,6 @@ export function Header() {
           <Link to={currentUser ? "/account" : "/login"}>
             <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
               <User className="h-5 w-5" />
-            </Button>
-          </Link>
-          <Link to="/login?next=/seller">
-            <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
-              <Store className="h-5 w-5" />
             </Button>
           </Link>
           <Link to="/admin">

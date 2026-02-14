@@ -7,14 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -42,11 +34,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, RefreshCw, Eye, Check, X, Trash2, LogOut, Ban, Store, Pencil } from "lucide-react";
+import { Users, RefreshCw, Eye, Check, X, Trash2, ShieldCheck, LogOut, Ban, Store } from "lucide-react";
 import { toast } from "sonner";
-
-const LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort", "Rodney Bay", "Soufriere", "Other"];
-const CATEGORIES = ["Clothing", "Accessories", "Shoes", "Bags", "Electronics", "Beauty", "Home", "Other"];
 
 interface SellerProfile {
   id: string;
@@ -61,12 +50,6 @@ interface SellerProfile {
   is_primary_seller: boolean | null;
   seller_status: string | null;
   created_at: string;
-  shop_description: string | null;
-  instagram_url: string | null;
-  categories: string[] | null;
-  owner_first_name: string | null;
-  owner_email: string | null;
-  facebook_url: string | null;
 }
 
 export default function AdminSellersNew() {
@@ -79,21 +62,6 @@ export default function AdminSellersNew() {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState<SellerProfile | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editSeller, setEditSeller] = useState<SellerProfile | null>(null);
-  const [editForm, setEditForm] = useState({
-    seller_name: "",
-    shop_description: "",
-    location: "",
-    phone: "",
-    whatsapp: "",
-    instagram_url: "",
-    facebook_url: "",
-    categories: "" as string,
-    owner_first_name: "",
-    owner_email: "",
-  });
-  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     checkAdminAccess();
@@ -136,7 +104,7 @@ export default function AdminSellersNew() {
       toast.error("Failed to load sellers");
       console.error(error);
     } else {
-      setSellers((data || []) as unknown as SellerProfile[]);
+      setSellers((data || []) as SellerProfile[]);
     }
     setLoading(false);
   };
@@ -218,59 +186,6 @@ export default function AdminSellersNew() {
     await supabase.auth.signOut();
     toast.success("Logged out successfully");
     navigate("/", { replace: true });
-  };
-
-  const openEditDialog = (seller: SellerProfile) => {
-    setEditSeller(seller);
-    setEditForm({
-      seller_name: seller.seller_name || "",
-      shop_description: seller.shop_description || "",
-      location: seller.location || "",
-      phone: seller.phone || "",
-      whatsapp: seller.whatsapp || "",
-      instagram_url: seller.instagram_url || "",
-      facebook_url: seller.facebook_url || "",
-      categories: (seller.categories || []).join(", "),
-      owner_first_name: seller.owner_first_name || "",
-      owner_email: seller.owner_email || "",
-    });
-    setEditDialogOpen(true);
-  };
-
-  const handleEditSave = async () => {
-    if (!editSeller) return;
-    setEditSaving(true);
-
-    const categoriesArray = editForm.categories
-      .split(",")
-      .map(c => c.trim())
-      .filter(Boolean);
-
-    const { error } = await supabase
-      .from("seller_profiles")
-      .update({
-        seller_name: editForm.seller_name,
-        shop_description: editForm.shop_description || null,
-        location: editForm.location || null,
-        phone: editForm.phone || null,
-        whatsapp: editForm.whatsapp || null,
-        instagram_url: editForm.instagram_url || null,
-        facebook_url: editForm.facebook_url,
-        categories: categoriesArray.length > 0 ? categoriesArray : null,
-        owner_first_name: editForm.owner_first_name,
-        owner_email: editForm.owner_email,
-      } as any)
-      .eq("id", editSeller.id);
-
-    if (error) {
-      toast.error("Failed to save changes");
-      console.error(error);
-    } else {
-      toast.success("Seller profile updated");
-      setEditDialogOpen(false);
-      fetchSellers();
-    }
-    setEditSaving(false);
   };
 
   const getStatusBadge = (seller: SellerProfile) => {
@@ -392,7 +307,6 @@ export default function AdminSellersNew() {
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="text-xs w-12"></TableHead>
                     <TableHead className="text-xs">Seller</TableHead>
-                    <TableHead className="text-xs">Owner</TableHead>
                     <TableHead className="text-xs">Contact</TableHead>
                     <TableHead className="text-xs">Status</TableHead>
                     <TableHead className="text-xs">Applied</TableHead>
@@ -420,26 +334,9 @@ export default function AdminSellersNew() {
                         {seller.location && (
                           <div className="text-xs text-muted-foreground">{seller.location}</div>
                         )}
-                        {seller.instagram_url && (
-                          <a href={seller.instagram_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
-                            Instagram
-                          </a>
-                        )}
-                        {seller.facebook_url && (
-                          <>
-                            {" · "}
-                            <a href={seller.facebook_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
-                              Facebook
-                            </a>
-                          </>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-2">
-                        <div className="text-sm">{seller.owner_first_name || "—"}</div>
-                        <div className="text-xs text-muted-foreground">{seller.owner_email || "—"}</div>
                       </TableCell>
                       <TableCell className="py-2 text-xs text-muted-foreground">
-                        {seller.whatsapp || seller.phone || "N/A"}
+                        {seller.phone || seller.whatsapp || "N/A"}
                       </TableCell>
                       <TableCell className="py-2">
                         {getStatusBadge(seller)}
@@ -449,16 +346,6 @@ export default function AdminSellersNew() {
                       </TableCell>
                       <TableCell className="py-2 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {/* Edit */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => openEditDialog(seller)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-
                           {/* View */}
                           <Button
                             variant="ghost"
@@ -472,6 +359,7 @@ export default function AdminSellersNew() {
                           {/* Actions based on status */}
                           {!seller.is_primary_seller && (
                             <>
+                              {/* Approve (for pending) */}
                               {activeTab === "pending" && (
                                 <Button
                                   variant="ghost"
@@ -483,6 +371,7 @@ export default function AdminSellersNew() {
                                 </Button>
                               )}
 
+                              {/* Reject (for pending) */}
                               {activeTab === "pending" && (
                                 <Button
                                   variant="ghost"
@@ -497,6 +386,7 @@ export default function AdminSellersNew() {
                                 </Button>
                               )}
 
+                              {/* Suspend (for approved) */}
                               {activeTab === "approved" && !seller.is_primary_seller && (
                                 <Button
                                   variant="ghost"
@@ -508,6 +398,7 @@ export default function AdminSellersNew() {
                                 </Button>
                               )}
 
+                              {/* Reactivate (for rejected/suspended) */}
                               {activeTab === "rejected" && (
                                 <Button
                                   variant="ghost"
@@ -519,6 +410,7 @@ export default function AdminSellersNew() {
                                 </Button>
                               )}
 
+                              {/* Delete */}
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button
@@ -582,112 +474,6 @@ export default function AdminSellersNew() {
               </Button>
               <Button variant="destructive" onClick={handleReject}>
                 Reject
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Seller Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Edit Seller Profile</DialogTitle>
-              <DialogDescription>
-                Update {editSeller?.seller_name}'s profile details.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Owner First Name</Label>
-                  <Input
-                    value={editForm.owner_first_name}
-                    onChange={(e) => setEditForm({ ...editForm, owner_first_name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Owner Email</Label>
-                  <Input
-                    type="email"
-                    value={editForm.owner_email}
-                    onChange={(e) => setEditForm({ ...editForm, owner_email: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Shop Name</Label>
-                <Input
-                  value={editForm.seller_name}
-                  onChange={(e) => setEditForm({ ...editForm, seller_name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={editForm.shop_description}
-                  onChange={(e) => setEditForm({ ...editForm, shop_description: e.target.value })}
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Location</Label>
-                <Select
-                  value={editForm.location}
-                  onValueChange={(value) => setEditForm({ ...editForm, location: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LOCATIONS.map((loc) => (
-                      <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Phone</Label>
-                  <Input
-                    value={editForm.phone}
-                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>WhatsApp</Label>
-                  <Input
-                    value={editForm.whatsapp}
-                    onChange={(e) => setEditForm({ ...editForm, whatsapp: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Instagram URL</Label>
-                <Input
-                  value={editForm.instagram_url}
-                  onChange={(e) => setEditForm({ ...editForm, instagram_url: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Facebook URL</Label>
-                <Input
-                  value={editForm.facebook_url}
-                  onChange={(e) => setEditForm({ ...editForm, facebook_url: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Categories (comma-separated)</Label>
-                <Input
-                  value={editForm.categories}
-                  onChange={(e) => setEditForm({ ...editForm, categories: e.target.value })}
-                  placeholder="Clothing, Shoes, Accessories"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleEditSave} disabled={editSaving}>
-                {editSaving ? "Saving..." : "Save Changes"}
               </Button>
             </DialogFooter>
           </DialogContent>

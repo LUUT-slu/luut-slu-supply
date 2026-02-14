@@ -1,10 +1,20 @@
-import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
-import { Button } from "@/components/ui/button";
+import { ChatButton } from "@/components/ChatButton";
 
 export default function SellOnLuut() {
+  const applyMessage = `Hi Luut SLU 👋
+I'm interested in selling on the platform.
+
+Brand / Page Name:
+Instagram Link:
+WhatsApp Business Number:
+Meetup Location(s):
+Do you offer delivery? (Yes/No):
+
+Looking forward to getting started.`;
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -110,9 +120,9 @@ export default function SellOnLuut() {
 
               {/* CTA */}
               <div className="text-center">
-                <Button asChild size="lg">
-                  <Link to="/seller/apply">Apply to Sell</Link>
-                </Button>
+                <ChatButton size="lg">
+                  Apply to Sell
+                </ChatButton>
               </div>
             </div>
           </div>
@@ -120,6 +130,7 @@ export default function SellOnLuut() {
       </main>
 
       <Footer />
+      <ChatButton variant="floating" />
     </div>
   );
 }

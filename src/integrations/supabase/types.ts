@@ -702,15 +702,12 @@ export type Database = {
           approved_by: string | null
           categories: string[] | null
           created_at: string
-          facebook_url: string | null
           id: string
           instagram_url: string | null
           is_approved: boolean
           is_primary_seller: boolean | null
           location: string | null
           logo_url: string | null
-          owner_email: string | null
-          owner_first_name: string | null
           phone: string | null
           seller_id: string | null
           seller_name: string
@@ -725,15 +722,12 @@ export type Database = {
           approved_by?: string | null
           categories?: string[] | null
           created_at?: string
-          facebook_url?: string | null
           id?: string
           instagram_url?: string | null
           is_approved?: boolean
           is_primary_seller?: boolean | null
           location?: string | null
           logo_url?: string | null
-          owner_email?: string | null
-          owner_first_name?: string | null
           phone?: string | null
           seller_id?: string | null
           seller_name: string
@@ -748,15 +742,12 @@ export type Database = {
           approved_by?: string | null
           categories?: string[] | null
           created_at?: string
-          facebook_url?: string | null
           id?: string
           instagram_url?: string | null
           is_approved?: boolean
           is_primary_seller?: boolean | null
           location?: string | null
           logo_url?: string | null
-          owner_email?: string | null
-          owner_first_name?: string | null
           phone?: string | null
           seller_id?: string | null
           seller_name?: string
