@@ -31,6 +31,8 @@ export default function SellerApply() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
+    firstName: "",
+    email: "",
     shopName: "",
     phone: "",
     whatsapp: "",
@@ -38,6 +40,7 @@ export default function SellerApply() {
     category: "",
     description: "",
     instagramUrl: "",
+    facebookUrl: "",
   });
 
   useEffect(() => {
@@ -54,7 +57,6 @@ export default function SellerApply() {
 
     setUserId(session.user.id);
 
-    // Check if user already has a seller profile
     const { data: profile } = await supabase
       .from("seller_profiles")
       .select("*")
@@ -116,25 +118,23 @@ export default function SellerApply() {
       return;
     }
 
-    if (!formData.shopName || !formData.phone) {
-      toast.error("Please fill in required fields");
+    if (!formData.firstName.trim() || !formData.email.trim() || !formData.shopName.trim() || !formData.instagramUrl.trim() || !formData.whatsapp.trim()) {
+      toast.error("Please fill in all required fields");
       return;
     }
 
     setLoading(true);
 
     try {
-      // Upload logo if provided
       const logoUrl = await uploadLogo();
 
-      // Create seller profile
       const { error } = await supabase
         .from("seller_profiles")
         .insert({
           user_id: userId,
           seller_name: formData.shopName,
-          phone: formData.phone,
-          whatsapp: formData.whatsapp || formData.phone,
+          phone: formData.phone || formData.whatsapp,
+          whatsapp: formData.whatsapp,
           location: formData.location,
           categories: formData.category ? [formData.category] : [],
           shop_description: formData.description,
@@ -142,7 +142,10 @@ export default function SellerApply() {
           logo_url: logoUrl,
           seller_status: "pending",
           is_approved: false,
-        });
+          owner_first_name: formData.firstName,
+          owner_email: formData.email,
+          facebook_url: formData.facebookUrl || null,
+        } as any);
 
       if (error) throw error;
 
@@ -150,7 +153,7 @@ export default function SellerApply() {
 
       // Notify admin via WhatsApp
       const adminPhone = "17587185478";
-      const msg = `🆕 *NEW SELLER APPLICATION*\n\n🏪 Shop: ${formData.shopName}\n📞 Phone: ${formData.phone}\n📍 Location: ${formData.location || "Not specified"}\n🏷️ Category: ${formData.category || "Not specified"}\n📝 About: ${formData.description || "N/A"}\n\nPlease review in the admin panel.`;
+      const msg = `🆕 *NEW SELLER APPLICATION*\n\n👤 Name: ${formData.firstName}\n📧 Email: ${formData.email}\n🏪 Shop: ${formData.shopName}\n📞 WhatsApp: ${formData.whatsapp}\n📍 Location: ${formData.location || "Not specified"}\n🏷️ Category: ${formData.category || "Not specified"}\n📸 Instagram: ${formData.instagramUrl}\n\nPlease review in the admin panel.`;
       window.open(`https://wa.me/${adminPhone}?text=${encodeURIComponent(msg)}`, "_blank");
 
       navigate("/seller/pending", { replace: true });
@@ -214,6 +217,31 @@ export default function SellerApply() {
                   </div>
                 </div>
 
+                {/* First Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    placeholder="Your first name"
+                    required
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="your@email.com"
+                    required
+                  />
+                </div>
+
                 {/* Shop Name */}
                 <div className="space-y-2">
                   <Label htmlFor="shopName">Shop / Brand Name *</Label>
@@ -226,28 +254,51 @@ export default function SellerApply() {
                   />
                 </div>
 
-                {/* Phone */}
+                {/* WhatsApp (required) */}
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number *</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="758-xxx-xxxx"
-                    required
-                  />
-                </div>
-
-                {/* WhatsApp */}
-                <div className="space-y-2">
-                  <Label htmlFor="whatsapp">WhatsApp Number</Label>
+                  <Label htmlFor="whatsapp">WhatsApp Business Number *</Label>
                   <Input
                     id="whatsapp"
                     type="tel"
                     value={formData.whatsapp}
                     onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-                    placeholder="Same as phone if left empty"
+                    placeholder="758-xxx-xxxx"
+                    required
+                  />
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number (if different)</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="Optional"
+                  />
+                </div>
+
+                {/* Instagram (required) */}
+                <div className="space-y-2">
+                  <Label htmlFor="instagram">Instagram Link *</Label>
+                  <Input
+                    id="instagram"
+                    value={formData.instagramUrl}
+                    onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
+                    placeholder="https://instagram.com/yourshop"
+                    required
+                  />
+                </div>
+
+                {/* Facebook (optional) */}
+                <div className="space-y-2">
+                  <Label htmlFor="facebook">Facebook Link</Label>
+                  <Input
+                    id="facebook"
+                    value={formData.facebookUrl}
+                    onChange={(e) => setFormData({ ...formData, facebookUrl: e.target.value })}
+                    placeholder="https://facebook.com/yourshop (optional)"
                   />
                 </div>
 
@@ -289,17 +340,6 @@ export default function SellerApply() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                {/* Instagram */}
-                <div className="space-y-2">
-                  <Label htmlFor="instagram">Instagram Link</Label>
-                  <Input
-                    id="instagram"
-                    value={formData.instagramUrl}
-                    onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
-                    placeholder="https://instagram.com/yourshop"
-                  />
                 </div>
 
                 {/* Description */}
