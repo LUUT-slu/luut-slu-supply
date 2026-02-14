@@ -1,104 +1,64 @@
 
+# Fix: Sell Application Flow, Admin Review, and Header Navigation
 
-# Fix Plan: WhatsApp Messages, Time Slots, Admin Notification, and Freezes
+## Problem Summary
 
----
-
-## 1. Fix Prefilled WhatsApp Messages Across Flows
-
-### Issues Found
-
-Several WhatsApp buttons send incorrect or context-less messages:
-
-**A) Seller Order Detail -- "Message Customer" button (SellerOrderDetail.tsx line 101-102)**
-Opens `wa.me/1{phone}` with NO prefilled message. The customer gets a blank chat. Also incorrectly prepends `1` to the phone number (what if it already has the country code?).
-
-**Fix:** Add a contextual prefilled message with the order number, seller name, and pickup details. Clean the phone number properly (strip non-digits, don't blindly prepend `1`).
-
-**B) WhatsAppButton.tsx (generic component)**
-Default message is `"Hi! I'm interested in shopping on Luut SLU."` -- this is fine for a general contact button, but it's used on seller profile pages where it should say something seller-specific.
-
-**Fix:** No change needed here -- callers already pass custom `message` props where needed.
-
-**C) Partner Dashboard -- "Contact Customer" (PartnerDashboard.tsx line 274-276)**
-Uses `order.customer_phone.replace(/\D/g, '')` which strips the phone to just digits, but doesn't add a country code. A local number like `758-123-4567` becomes `7581234567` which is incomplete for international wa.me links.
-
-**Fix:** Normalize phone numbers consistently: if the number has 7 or 10 digits, prepend `1` for the country code. If it already starts with `1` and has 11 digits, use as-is.
-
-**D) CartDrawer.tsx (line 285-296)**
-The WhatsApp message says "NEW ORDER" but doesn't include the seller's name or the order number clearly. This is adequate but could be improved.
-
-**Fix:** Minor -- no critical issue here.
-
-### Files to Change
-- `src/pages/seller/SellerOrderDetail.tsx` -- Fix "Message Customer" to include order context
-- `src/pages/PartnerDashboard.tsx` -- Fix phone number normalization
+1. The "Apply to Sell" button on `/sell` opens WhatsApp instead of the application form
+2. The application form is missing required fields (first name, email, facebook link)
+3. Instagram and WhatsApp should be mandatory
+4. Admin hub needs to display the new application info and allow profile editing
+5. Header needs a seller icon that goes to seller login
 
 ---
 
-## 2. Add Time Slots to Seller Portal Order Creation
+## Changes
 
-### Current State
-`CreateOrderDialog.tsx` only has a date input (`type="date"`). No time slot selection exists.
+### 1. Database Migration -- Add missing columns to `seller_profiles`
 
-### Fix
-Add a time slot dropdown after the date picker with options like:
-- Morning (9 AM - 12 PM)
-- Afternoon (12 PM - 3 PM)
-- Evening (3 PM - 6 PM)
-- Flexible / Any Time
+Add three new columns:
+- `owner_first_name` (text, nullable)
+- `owner_email` (text, nullable)
+- `facebook_url` (text, nullable)
 
-Store the selected time slot in the `pickup_time` column (already exists in the `orders` table).
+### 2. Fix "Apply to Sell" button (SellOnLuut.tsx)
 
-### Files to Change
-- `src/components/seller/CreateOrderDialog.tsx` -- Add time slot select, include in order insert
+Replace the `<ChatButton>` component (which opens WhatsApp) with a `<Link>` or `<Button>` that navigates to `/seller/apply`. The button keeps the same visual style.
 
----
+### 3. Update Application Form (SellerApply.tsx)
 
-## 3. Admin Notification on Seller Application
+Add new fields:
+- **First Name** (required) -- stored as `owner_first_name`
+- **Email** (required) -- stored as `owner_email`
+- **Instagram Link** (required, was optional)
+- **Facebook Link** (optional) -- stored as `facebook_url`
+- **WhatsApp Number** (required, was optional)
 
-### Current State
-When someone clicks "Submit Application" in `SellerApply.tsx`, a `seller_profiles` row is created with `seller_status: "pending"` and `is_approved: false`. The admin is NOT notified -- they have to manually check the admin panel.
+Validation: form won't submit without first name, email, shop name, instagram, and whatsapp.
 
-### Fix
-After successfully inserting the seller profile, auto-open a WhatsApp message to the admin (17587185478) with the application details. This ensures the admin is notified immediately.
+### 4. Update Admin Sellers Page (AdminSellersNew.tsx)
 
-### Files to Change
-- `src/pages/seller/SellerApply.tsx` -- Add WhatsApp notification to admin after successful submission
+**Display changes:**
+- Show owner first name and email in the pending applications table
+- Show instagram, facebook, and description in an expandable detail view or detail dialog
 
----
+**Edit capability:**
+- Add an "Edit" button per seller that opens a dialog
+- Dialog allows admin to edit: seller_name, shop_description, location, phone, whatsapp, instagram_url, facebook_url, categories
+- Changes save directly to `seller_profiles`
 
-## 4. Website Freeze Prevention
+### 5. Header Seller Icon (Header.tsx)
 
-### Root Causes Identified
-
-**A) CSS `background-color: inherit !important` on hover (index.css line 166)**
-The current mobile double-tap fix uses `background-color: inherit !important` which can cause unexpected rendering when `inherit` resolves to `transparent` on nested elements, potentially causing visual glitches and perceived "freezes" where buttons appear non-functional.
-
-**Fix:** Change `inherit` to `unset` or remove the background override and instead use `pointer-events` management. Actually the better fix is to keep it but also apply to `.cursor-pointer` selector which was missed in the hover rules.
-
-**B) Checkout timeout already implemented (30s)**
-This looks correct from the previous fix round.
-
-**C) useSellerOrders stable ref**
-Already has the `lastFetchedId` guard. This looks correct.
-
-The main remaining freeze scenario is the CSS hover issue on mobile causing perceived non-responsiveness (buttons don't visually respond on first tap, making users think the site is frozen).
-
-### Files to Change
-- `src/index.css` -- Refine the hover override to also cover `.cursor-pointer:hover`
+- Add a `Store` icon button in the header (between User and DollarSign icons) that links to `/login?next=/seller` so sellers can log in and get redirected to their portal
+- On mobile menu, the existing "Sell on Luut" link already exists
 
 ---
 
-## Summary of All Changes
+## Files to Change
 
 | File | Change |
 |------|--------|
-| `src/pages/seller/SellerOrderDetail.tsx` | Fix "Message Customer" WhatsApp with contextual message and proper phone normalization |
-| `src/pages/PartnerDashboard.tsx` | Fix customer phone normalization for wa.me links |
-| `src/components/seller/CreateOrderDialog.tsx` | Add pickup time slot selector |
-| `src/pages/seller/SellerApply.tsx` | Send WhatsApp notification to admin on application submit |
-| `src/index.css` | Refine mobile hover fix to cover `.cursor-pointer` elements |
-
-No database changes required. The `pickup_time` column already exists in the `orders` table.
-
+| Database migration | Add `owner_first_name`, `owner_email`, `facebook_url` columns |
+| `src/pages/SellOnLuut.tsx` | Replace ChatButton with Link to `/seller/apply` |
+| `src/pages/seller/SellerApply.tsx` | Add first name, email, facebook fields; make instagram + whatsapp required |
+| `src/pages/AdminSellersNew.tsx` | Show new fields in table; add edit dialog for admin |
+| `src/components/Header.tsx` | Add Store icon linking to seller login |
