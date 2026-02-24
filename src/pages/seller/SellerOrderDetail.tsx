@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
+
 import { SellerNav } from "@/components/seller/SellerNav";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
 import { useSellerOrders, ORDER_STATUSES, OrderStatus } from "@/hooks/useSellerOrders";
@@ -162,8 +162,7 @@ export default function SellerOrderDetail() {
 
   if (loading) {
     return (
-      <SellerRouteGuard>
-        <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-screen flex-col bg-background">
           <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} sellerId={profile?.id} />
           <main className="container flex-1 py-6">
             <div className="flex items-center justify-center py-12">
@@ -171,14 +170,12 @@ export default function SellerOrderDetail() {
             </div>
           </main>
         </div>
-      </SellerRouteGuard>
     );
   }
 
   if (!order) {
     return (
-      <SellerRouteGuard>
-        <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-screen flex-col bg-background">
           <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} sellerId={profile?.id} />
           <main className="container flex-1 py-6">
             <div className="text-center py-12">
@@ -191,7 +188,6 @@ export default function SellerOrderDetail() {
             </div>
           </main>
         </div>
-      </SellerRouteGuard>
     );
   }
 
@@ -199,7 +195,7 @@ export default function SellerOrderDetail() {
   const itemsTotal = order.items.reduce((sum, item) => sum + item.total_price, 0);
 
   return (
-    <SellerRouteGuard>
+    <>
       <div className="flex min-h-screen flex-col bg-background">
         <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} sellerId={profile?.id} />
 
@@ -494,6 +490,6 @@ export default function SellerOrderDetail() {
         order={order}
         onSave={refetch}
       />
-    </SellerRouteGuard>
+    </>
   );
 }

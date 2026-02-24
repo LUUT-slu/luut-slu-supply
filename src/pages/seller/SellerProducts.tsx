@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
+
 import { SellerNav } from "@/components/seller/SellerNav";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
 import { Button } from "@/components/ui/button";
@@ -205,7 +205,7 @@ export default function SellerProducts() {
   };
 
   return (
-    <SellerRouteGuard>
+    <>
       <div className="flex min-h-screen flex-col bg-background">
         <SellerNav
           sellerName={profile?.seller_name}
@@ -401,6 +401,6 @@ export default function SellerProducts() {
           </div>
         </main>
       </div>
-    </SellerRouteGuard>
+    </>
   );
 }
