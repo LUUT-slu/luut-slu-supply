@@ -57,15 +57,6 @@ export default function Index() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative min-h-[90vh] flex flex-col justify-end overflow-hidden">
-          {/* Lighting effect - soft vignette that fades revealing light from center */}
-          <div 
-            className="absolute inset-0 z-[1] pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse 80% 60% at 50% 50%, transparent 0%, hsl(0 0% 0% / 0.9) 60%, hsl(0 0% 0%) 100%)',
-              animation: 'vignette-open 2.5s ease-out forwards',
-            }}
-          />
-          
           {/* Background Image - Static */}
           <div className="absolute inset-0">
             <img 
@@ -76,27 +67,25 @@ export default function Index() {
               decoding="sync"
             />
           </div>
-          {/* Dark gradient overlay - lighter at top, stronger at bottom */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/90" />
           
-          {/* Bottom Content - Description, Buttons, Link */}
-          <div className="container relative z-10 px-4 pb-8 md:pb-12">
+          {/* Bottom Content */}
+          <div className="container relative z-10 px-4 pb-8 md:pb-12" style={{ background: 'linear-gradient(to top, hsl(0 0% 0% / 0.85) 0%, hsl(0 0% 0% / 0.4) 60%, transparent 100%)' }}>
             <div className="mx-auto max-w-3xl text-center">
               <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-                <Button asChild size="default" className="w-auto font-body shadow-lg animate-fade-in opacity-0" style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}>
+                <Button asChild size="default" className="w-auto font-body shadow-lg">
                   <Link to="/shop">
                     Shop Outfits
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10 animate-fade-in opacity-0" style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}>
+                <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10">
                   <Link to="/shop/new-arrivals">New Arrivals</Link>
                 </Button>
-                <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10 animate-fade-in opacity-0" style={{ animationDelay: "0.6s", animationFillMode: "forwards" }}>
+                <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10">
                   <Link to="/shop/best-sellers">Best Sellers</Link>
                 </Button>
               </div>
-              <div className="mt-5 animate-fade-in opacity-0" style={{ animationDelay: "0.8s", animationFillMode: "forwards" }}>
+              <div className="mt-5">
                 <Link
                   to="/sell"
                   className="font-body text-sm text-primary underline-offset-4 hover:underline"
