@@ -504,7 +504,7 @@ export default function AdminSellerRequests() {
 
         {/* Application Details Dialog */}
         <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Application Details</DialogTitle>
               <DialogDescription>
@@ -512,6 +512,7 @@ export default function AdminSellerRequests() {
               </DialogDescription>
             </DialogHeader>
             {selectedApp && (
+            <div className="overflow-y-auto flex-1 pr-2">
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Full Name</label>
@@ -623,8 +624,9 @@ export default function AdminSellerRequests() {
                   Message on WhatsApp
                 </Button>
               </div>
+            </div>
             )}
-            <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <DialogFooter className="flex-col gap-2 sm:flex-row border-t pt-4 mt-2">
               {selectedApp?.status === "pending" && (
                 <>
                   <Button
