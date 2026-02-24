@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
+
 import { SellerNav } from "@/components/seller/SellerNav";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
 import { BackButton } from "@/components/BackButton";
@@ -210,16 +210,14 @@ export default function SellerProductForm() {
 
   if (loadingProduct) {
     return (
-      <SellerRouteGuard>
-        <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-background">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
         </div>
-      </SellerRouteGuard>
     );
   }
 
   return (
-    <SellerRouteGuard>
+    <>
       <div className="flex min-h-screen flex-col bg-background">
         <SellerNav
           sellerName={profile?.seller_name}
@@ -423,6 +421,6 @@ export default function SellerProductForm() {
           </div>
         </main>
       </div>
-    </SellerRouteGuard>
+    </>
   );
 }

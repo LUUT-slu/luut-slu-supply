@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { supabase } from "@/integrations/supabase/client";
-import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
+
 import { SellerNav } from "@/components/seller/SellerNav";
 import { DateRangePicker } from "@/components/seller/DateRangePicker";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
@@ -181,7 +181,7 @@ export default function SellerAnalytics() {
   };
 
   return (
-    <SellerRouteGuard>
+    <>
       <div className="flex min-h-screen flex-col bg-background">
         <SellerNav
           sellerName={profile?.seller_name}
@@ -362,6 +362,6 @@ export default function SellerAnalytics() {
           )}
         </main>
       </div>
-    </SellerRouteGuard>
+    </>
   );
 }

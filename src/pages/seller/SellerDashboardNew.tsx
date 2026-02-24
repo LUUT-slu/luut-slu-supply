@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
 import { SellerNav } from "@/components/seller/SellerNav";
 import { DateRangePicker } from "@/components/seller/DateRangePicker";
 import { CreateOrderDialog } from "@/components/seller/CreateOrderDialog";
@@ -71,8 +70,7 @@ export default function SellerDashboardNew() {
   ];
 
   return (
-    <SellerRouteGuard>
-      <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
         <SellerNav 
           sellerName={profile?.seller_name} 
           logoUrl={profile?.logo_url || undefined}
@@ -249,6 +247,5 @@ export default function SellerDashboardNew() {
           )}
         </main>
       </div>
-    </SellerRouteGuard>
   );
 }

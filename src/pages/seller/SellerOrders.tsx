@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { SellerRouteGuard } from "@/components/seller/SellerRouteGuard";
+
 import { SellerNav } from "@/components/seller/SellerNav";
 import { CreateOrderDialog } from "@/components/seller/CreateOrderDialog";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
@@ -231,7 +231,7 @@ export default function SellerOrders() {
   }, [orders]);
 
   return (
-    <SellerRouteGuard>
+    <>
       <div className="flex min-h-screen flex-col bg-background">
         <SellerNav
           sellerName={profile?.seller_name}
@@ -438,6 +438,6 @@ export default function SellerOrders() {
           </div>
         </main>
       </div>
-    </SellerRouteGuard>
+    </>
   );
 }
