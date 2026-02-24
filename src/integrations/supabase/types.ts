@@ -588,46 +588,64 @@ export type Database = {
       }
       seller_applications: {
         Row: {
+          business_name: string | null
           categories: string[] | null
           created_at: string
+          email: string | null
+          facebook_url: string | null
           id: string
+          instagram_url: string | null
           location: string | null
           name: string
           proof_url: string | null
           rejection_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          secondary_phone: string | null
           status: string
+          tiktok_url: string | null
           updated_at: string
           user_id: string
           whatsapp: string
         }
         Insert: {
+          business_name?: string | null
           categories?: string[] | null
           created_at?: string
+          email?: string | null
+          facebook_url?: string | null
           id?: string
+          instagram_url?: string | null
           location?: string | null
           name: string
           proof_url?: string | null
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          secondary_phone?: string | null
           status?: string
+          tiktok_url?: string | null
           updated_at?: string
           user_id: string
           whatsapp: string
         }
         Update: {
+          business_name?: string | null
           categories?: string[] | null
           created_at?: string
+          email?: string | null
+          facebook_url?: string | null
           id?: string
+          instagram_url?: string | null
           location?: string | null
           name?: string
           proof_url?: string | null
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          secondary_phone?: string | null
           status?: string
+          tiktok_url?: string | null
           updated_at?: string
           user_id?: string
           whatsapp?: string

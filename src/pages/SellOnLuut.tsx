@@ -1,19 +1,119 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
-import { ChatButton } from "@/components/ChatButton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+
+const LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort", "Rodney Bay", "Soufriere", "Other"];
 
 export default function SellOnLuut() {
-  const applyMessage = `Hi Luut SLU 👋
-I'm interested in selling on the platform.
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    fullName: "",
+    phone: "",
+    businessName: "",
+    location: "",
+    instagram: "",
+    facebook: "",
+    secondaryPhone: "",
+    email: "",
+    tiktok: "",
+  });
 
-Brand / Page Name:
-Instagram Link:
-WhatsApp Business Number:
-Meetup Location(s):
-Do you offer delivery? (Yes/No):
+  const handleOpen = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      navigate("/login?next=/sell");
+      return;
+    }
+    setOpen(true);
+  };
 
-Looking forward to getting started.`;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      navigate("/login?next=/sell");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Check for existing application
+      const { data: existing } = await supabase
+        .from("seller_applications")
+        .select("id, status")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (existing) {
+        if (existing.status === "pending") {
+          toast.info("You already have a pending application.");
+        } else if (existing.status === "approved") {
+          toast.info("You're already approved! Redirecting...");
+          navigate("/seller/dashboard");
+        } else {
+          toast.error("Your previous application was " + existing.status + ". Contact support for assistance.");
+        }
+        setLoading(false);
+        setOpen(false);
+        return;
+      }
+
+      const { error } = await supabase.from("seller_applications").insert({
+        user_id: session.user.id,
+        name: formData.fullName,
+        whatsapp: formData.phone,
+        business_name: formData.businessName,
+        location: formData.location,
+        instagram_url: formData.instagram,
+        facebook_url: formData.facebook || null,
+        secondary_phone: formData.secondaryPhone || null,
+        email: formData.email || null,
+        tiktok_url: formData.tiktok || null,
+      });
+
+      if (error) throw error;
+
+      toast.success("Application submitted! We'll review it shortly.");
+      setOpen(false);
+      setFormData({
+        fullName: "", phone: "", businessName: "", location: "",
+        instagram: "", facebook: "", secondaryPhone: "", email: "", tiktok: "",
+      });
+    } catch (error: any) {
+      console.error("Submit error:", error);
+      toast.error(error.message || "Failed to submit application");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const update = (field: string, value: string) =>
+    setFormData((prev) => ({ ...prev, [field]: value }));
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -120,9 +220,9 @@ Looking forward to getting started.`;
 
               {/* CTA */}
               <div className="text-center">
-                <ChatButton size="lg">
+                <Button size="lg" onClick={handleOpen}>
                   Apply to Sell
-                </ChatButton>
+                </Button>
               </div>
             </div>
           </div>
@@ -130,7 +230,144 @@ Looking forward to getting started.`;
       </main>
 
       <Footer />
-      <ChatButton variant="floating" />
+
+      {/* Application Modal */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Seller Application</DialogTitle>
+            <DialogDescription>
+              Fill in your details to apply. All fields marked * are required.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Mandatory fields */}
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name *</Label>
+              <Input
+                id="fullName"
+                value={formData.fullName}
+                onChange={(e) => update("fullName", e.target.value)}
+                placeholder="Your full name"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number *</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => update("phone", e.target.value)}
+                placeholder="758-xxx-xxxx"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="businessName">Business Name *</Label>
+              <Input
+                id="businessName"
+                value={formData.businessName}
+                onChange={(e) => update("businessName", e.target.value)}
+                placeholder="Your brand or business name"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Location *</Label>
+              <Select
+                value={formData.location}
+                onValueChange={(v) => update("location", v)}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your area" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOCATIONS.map((loc) => (
+                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="instagram">Business Instagram Link *</Label>
+              <Input
+                id="instagram"
+                value={formData.instagram}
+                onChange={(e) => update("instagram", e.target.value)}
+                placeholder="https://instagram.com/yourbusiness"
+                required
+              />
+            </div>
+
+            {/* Optional fields */}
+            <div className="border-t border-border pt-4">
+              <p className="mb-3 text-xs font-medium text-muted-foreground">OPTIONAL</p>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="facebook">Facebook Link</Label>
+                  <Input
+                    id="facebook"
+                    value={formData.facebook}
+                    onChange={(e) => update("facebook", e.target.value)}
+                    placeholder="https://facebook.com/yourbusiness"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="secondaryPhone">Secondary Phone Number</Label>
+                  <Input
+                    id="secondaryPhone"
+                    type="tel"
+                    value={formData.secondaryPhone}
+                    onChange={(e) => update("secondaryPhone", e.target.value)}
+                    placeholder="758-xxx-xxxx"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => update("email", e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="tiktok">TikTok Link</Label>
+                  <Input
+                    id="tiktok"
+                    value={formData.tiktok}
+                    onChange={(e) => update("tiktok", e.target.value)}
+                    placeholder="https://tiktok.com/@yourbusiness"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={loading || !formData.location}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Application"
+              )}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

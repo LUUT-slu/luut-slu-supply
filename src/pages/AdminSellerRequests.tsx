@@ -54,6 +54,12 @@ interface SellerApplication {
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
+  business_name: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  secondary_phone: string | null;
+  email: string | null;
+  tiktok_url: string | null;
 }
 
 type StatusFilter = "pending" | "approved" | "rejected" | "banned" | "all";
@@ -505,26 +511,65 @@ export default function AdminSellerRequests() {
             {selectedApp && (
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Name</label>
+                  <label className="text-sm font-medium text-muted-foreground">Full Name</label>
                   <p className="font-medium">{selectedApp.name}</p>
                 </div>
+                {selectedApp.business_name && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Business Name</label>
+                    <p className="font-medium">{selectedApp.business_name}</p>
+                  </div>
+                )}
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">WhatsApp</label>
-                  <p>
-                    <a
-                      href={`https://wa.me/${selectedApp.whatsapp}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {selectedApp.whatsapp}
-                    </a>
-                  </p>
+                  <label className="text-sm font-medium text-muted-foreground">Phone / WhatsApp</label>
+                  <p>{selectedApp.whatsapp}</p>
                 </div>
+                {selectedApp.secondary_phone && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Secondary Phone</label>
+                    <p>{selectedApp.secondary_phone}</p>
+                  </div>
+                )}
+                {selectedApp.email && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Email</label>
+                    <p>{selectedApp.email}</p>
+                  </div>
+                )}
                 {selectedApp.location && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Location</label>
                     <p>{selectedApp.location}</p>
+                  </div>
+                )}
+                {selectedApp.instagram_url && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Instagram</label>
+                    <p>
+                      <a href={selectedApp.instagram_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {selectedApp.instagram_url}
+                      </a>
+                    </p>
+                  </div>
+                )}
+                {selectedApp.facebook_url && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Facebook</label>
+                    <p>
+                      <a href={selectedApp.facebook_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {selectedApp.facebook_url}
+                      </a>
+                    </p>
+                  </div>
+                )}
+                {selectedApp.tiktok_url && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">TikTok</label>
+                    <p>
+                      <a href={selectedApp.tiktok_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {selectedApp.tiktok_url}
+                      </a>
+                    </p>
                   </div>
                 )}
                 {selectedApp.categories && selectedApp.categories.length > 0 && (
@@ -541,12 +586,7 @@ export default function AdminSellerRequests() {
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Proof/Portfolio</label>
                     <p>
-                      <a
-                        href={selectedApp.proof_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
+                      <a href={selectedApp.proof_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                         View Link
                       </a>
                     </p>
@@ -566,6 +606,19 @@ export default function AdminSellerRequests() {
                     <p className="text-destructive">{selectedApp.rejection_reason}</p>
                   </div>
                 )}
+                {/* WhatsApp Message Button */}
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => {
+                    const phone = selectedApp.whatsapp.replace(/[^0-9]/g, "");
+                    const msg = `Hi ${selectedApp.name}, regarding your seller application on Luut — we'd like to clarify a few details. Could you help us with that?`;
+                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+                  }}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Message on WhatsApp
+                </Button>
               </div>
             )}
             <DialogFooter className="flex-col gap-2 sm:flex-row">

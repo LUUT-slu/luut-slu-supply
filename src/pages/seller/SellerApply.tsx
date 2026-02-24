@@ -147,12 +147,6 @@ export default function SellerApply() {
       if (error) throw error;
 
       toast.success("Application submitted successfully!");
-
-      // Notify admin via WhatsApp
-      const adminPhone = "17587185478";
-      const msg = `🆕 *NEW SELLER APPLICATION*\n\n🏪 Shop: ${formData.shopName}\n📞 Phone: ${formData.phone}\n📍 Location: ${formData.location || "Not specified"}\n🏷️ Category: ${formData.category || "Not specified"}\n📝 About: ${formData.description || "N/A"}\n\nPlease review in the admin panel.`;
-      window.open(`https://wa.me/${adminPhone}?text=${encodeURIComponent(msg)}`, "_blank");
-
       navigate("/seller/pending", { replace: true });
     } catch (error: any) {
       console.error("Error submitting application:", error);
