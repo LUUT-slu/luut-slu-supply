@@ -138,20 +138,8 @@
   }
 }
 
-/* Light reveal animation for hero - soft vignette opening */
-@keyframes vignette-open {
-  0% {
-    opacity: 1;
-    background: radial-gradient(ellipse 20% 15% at 50% 50%, transparent 0%, hsl(0 0% 0% / 0.95) 50%, hsl(0 0% 0%) 100%);
-  }
-  40% {
-    background: radial-gradient(ellipse 50% 40% at 50% 50%, transparent 0%, hsl(0 0% 0% / 0.85) 55%, hsl(0 0% 0%) 100%);
-  }
-  100% {
-    opacity: 0;
-    background: radial-gradient(ellipse 120% 100% at 50% 50%, transparent 0%, hsl(0 0% 0% / 0.3) 70%, hsl(0 0% 0% / 0.5) 100%);
-  }
-}
+
+
 
 /* Fix mobile double-tap issue: neutralize hover background/color changes on touch devices */
 @media (hover: none) {

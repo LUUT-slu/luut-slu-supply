@@ -96,18 +96,6 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.5" },
         },
-        "hero-zoom": {
-          "0%": { transform: "scale(1.2)" },
-          "100%": { transform: "scale(1.1)" },
-        },
-        "light-reveal": {
-          "0%": { 
-            background: "radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.95) 0%)" 
-          },
-          "100%": { 
-            background: "radial-gradient(ellipse at center, transparent 100%, rgba(0,0,0,0.95) 100%)" 
-          },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -115,8 +103,6 @@ export default {
         "fade-in": "fade-in 0.5s ease-out forwards",
         "slide-in": "slide-in 0.3s ease-out",
         pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        "hero-zoom": "hero-zoom 1.5s ease-out forwards",
-        "light-reveal": "light-reveal 1.5s ease-out forwards",
       },
     },
   },
