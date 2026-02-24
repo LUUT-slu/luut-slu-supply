@@ -103,19 +103,8 @@ export function RouteGuard({ children, requiredRole, showApplyPage }: RouteGuard
           return;
         }
 
-        // Seller check - requires role + approved status
+        // Seller check - requires approved seller_profiles entry
         if (requiredRole === "seller") {
-          // Check if user has seller role
-          if (!roleNames.includes("seller")) {
-            setAccessCheck({
-              isAuthenticated: true,
-              hasAccess: false,
-              reason: "no_role",
-            });
-            setLoading(false);
-            return;
-          }
-
           const { data: sellerProfile } = await supabase
             .from("seller_profiles")
             .select("is_approved, seller_status")
