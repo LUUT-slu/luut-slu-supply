@@ -31,6 +31,7 @@ export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [orderCount, setOrderCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
+  const [portalLink, setPortalLink] = useState<string | null>(null);
   const totalItems = useCartStore((state) => state.getTotalItems());
   const { collections } = useShopifyCollections();
 
@@ -50,6 +51,45 @@ export function Header() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Determine which portal the user can access
+  useEffect(() => {
+    if (!currentUser) {
+      setPortalLink(null);
+      return;
+    }
+
+    const checkPortal = async () => {
+      // Check admin first
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", currentUser.id);
+
+      const roleNames = roles?.map(r => r.role as string) || [];
+      if (roleNames.includes("admin")) {
+        setPortalLink("/admin");
+        return;
+      }
+
+      // Check approved seller
+      const { data: sellerProfile } = await supabase
+        .from("seller_profiles")
+        .select("is_approved")
+        .eq("user_id", currentUser.id)
+        .eq("is_approved", true)
+        .maybeSingle();
+
+      if (sellerProfile) {
+        setPortalLink("/seller");
+        return;
+      }
+
+      setPortalLink(null);
+    };
+
+    checkPortal();
+  }, [currentUser]);
 
   useEffect(() => {
     const fetchActiveOrderCount = async () => {
@@ -146,11 +186,13 @@ export function Header() {
               <User className="h-5 w-5" />
             </Button>
           </Link>
-          <Link to="/admin">
-            <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
-              <DollarSign className="h-5 w-5" />
-            </Button>
-          </Link>
+          {portalLink && (
+            <Link to={portalLink}>
+              <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
+                <DollarSign className="h-5 w-5" />
+              </Button>
+            </Link>
+          )}
           <Link to="/cart">
             <Button variant="ghost" size="icon" className="relative text-foreground hover:text-primary">
               <ShoppingBag className="h-5 w-5" />
