@@ -408,6 +408,9 @@ export default function AdminSellerRequests() {
                             <TableRow key={app.id}>
                               <TableCell>
                                 <div className="font-medium">{app.name}</div>
+                                {app.business_name && (
+                                  <div className="text-xs text-muted-foreground">{app.business_name}</div>
+                                )}
                                 {app.categories && app.categories.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {app.categories.slice(0, 2).map((cat) => (
