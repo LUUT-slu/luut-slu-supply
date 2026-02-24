@@ -158,21 +158,6 @@
   button, a, [role="button"], .cursor-pointer {
     -webkit-tap-highlight-color: transparent;
   }
-  /* Override hover background changes that cause iOS double-tap-to-activate */
-  button:hover,
-  a:hover,
-  [role="button"]:hover,
-  .cursor-pointer:hover {
-    transition: none !important;
-    background-color: inherit !important;
-  }
-  /* Allow active state for visual tap feedback */
-  button:active,
-  a:active,
-  [role="button"]:active,
-  .cursor-pointer:active {
-    transition: none !important;
-  }
 }
 
 /* Custom scrollbar */
