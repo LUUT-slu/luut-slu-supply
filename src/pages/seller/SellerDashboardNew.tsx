@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { SellerNav } from "@/components/seller/SellerNav";
+import { SellerSettingsDialog } from "@/components/seller/SellerSettingsDialog";
 import { DateRangePicker } from "@/components/seller/DateRangePicker";
 import { CreateOrderDialog } from "@/components/seller/CreateOrderDialog";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
@@ -22,7 +23,7 @@ import {
 
 export default function SellerDashboardNew() {
   const navigate = useNavigate();
-  const { profile, loading: profileLoading } = useSellerProfile();
+  const { profile, loading: profileLoading, refreshProfile } = useSellerProfile();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -85,10 +86,10 @@ export default function SellerDashboardNew() {
                 <img
                   src={profile.logo_url}
                   alt={profile.seller_name}
-                  className="h-14 w-14 rounded-full object-cover border-2 border-border"
+                  className="h-14 w-14 rounded-full object-cover border-2 border-border aspect-square"
                 />
               ) : (
-                <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center aspect-square">
                   <Package className="h-7 w-7 text-primary" />
                 </div>
               )}
@@ -110,7 +111,16 @@ export default function SellerDashboardNew() {
             </div>
 
             {/* Quick Actions */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {profile?.id && profile?.user_id && (
+                <SellerSettingsDialog
+                  sellerId={profile.id}
+                  userId={profile.user_id}
+                  currentName={profile.seller_name}
+                  currentDocumentUrl={(profile as any).document_url}
+                  onUpdated={refreshProfile}
+                />
+              )}
               {profile?.id && (
                 <CreateOrderDialog
                   sellerId={profile.id}
