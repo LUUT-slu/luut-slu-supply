@@ -3,8 +3,9 @@ import { UnifiedProduct } from "@/lib/products";
 import { getOptimizedImageUrl } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { Button } from "./ui/button";
-import { ShoppingCart, MapPin } from "lucide-react";
+import { ShoppingCart, MapPin, Wallet } from "lucide-react";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface UnifiedProductCardProps {
   product: UnifiedProduct;
@@ -13,13 +14,13 @@ interface UnifiedProductCardProps {
 export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
   const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
+  const isMobile = useIsMobile();
   
   const firstVariant = product.variants[0];
   const price = parseFloat(product.price.amount);
   const rawImageUrl = product.images[0]?.url;
   const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl, 600) : undefined;
   
-  // Build the product detail link
   const productLink = product.source === 'shopify' 
     ? `/product/${product.handle}` 
     : `/product/local/${product.id}`;
@@ -33,7 +34,6 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
       return;
     }
 
-    // For Lovable products, we need to create a compatible cart item
     if (product.source === 'lovable' && product.originalLovableProduct) {
       const result = addItem({
         product: {
@@ -98,6 +98,86 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
     }
   };
 
+  // Mobile: horizontal card layout
+  if (isMobile) {
+    return (
+      <Link
+        to={productLink}
+        className="group flex gap-3 overflow-hidden rounded-lg bg-card ring-1 ring-border/50 p-2 transition-all touch-manipulation"
+      >
+        {/* Square image thumbnail */}
+        <div className="relative h-28 w-28 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={product.title}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-muted">
+              <span className="text-[10px] text-muted-foreground">No image</span>
+            </div>
+          )}
+          {product.source === 'lovable' && (
+            <div className="absolute left-1 top-1">
+              <span className="rounded-full bg-primary/90 px-1.5 py-0.5 text-[9px] font-medium text-primary-foreground">
+                Local
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Details - stacked vertically */}
+        <div className="flex flex-1 flex-col justify-between min-w-0 py-0.5">
+          <div>
+            <p className="text-[10px] text-muted-foreground truncate">{product.vendor}</p>
+            <h3 className="font-body text-sm font-medium leading-tight line-clamp-2 mt-0.5">
+              {product.title}
+            </h3>
+            {product.category && (
+              <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                {product.category}
+              </span>
+            )}
+          </div>
+
+          <div className="mt-auto space-y-1">
+            {/* Trust indicators */}
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70">
+              <span className="flex items-center gap-0.5">
+                <Wallet className="h-2.5 w-2.5 text-primary/60" />
+                Pay on Meetup
+              </span>
+              <span className="flex items-center gap-0.5">
+                <MapPin className="h-2.5 w-2.5 text-primary/60" />
+                Local
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <span className="font-display text-base text-primary">
+                EC${price.toFixed(2)}
+              </span>
+              {!firstVariant?.availableForSale ? (
+                <span className="text-[10px] text-destructive">Out of Stock</span>
+              ) : (
+                <Button
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={handleAddToCart}
+                >
+                  <ShoppingCart className="h-3 w-3 mr-1" />
+                  Add
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
+  // Desktop: original vertical card
   return (
     <Link
       to={productLink}
@@ -117,7 +197,6 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
           </div>
         )}
         
-        {/* Source badge */}
         {product.source === 'lovable' && (
           <div className="absolute left-2 top-2">
             <span className="rounded-full bg-primary/90 px-2 py-0.5 text-xs font-medium text-primary-foreground">
@@ -126,7 +205,6 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
           </div>
         )}
 
-        {/* Quick add button */}
         {firstVariant?.availableForSale && (
           <div className="absolute bottom-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
             <Button
