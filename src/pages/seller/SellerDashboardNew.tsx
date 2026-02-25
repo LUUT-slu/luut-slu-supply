@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { SellerNav } from "@/components/seller/SellerNav";
-import { SellerSettingsDialog } from "@/components/seller/SellerSettingsDialog";
 import { DateRangePicker } from "@/components/seller/DateRangePicker";
 import { CreateOrderDialog } from "@/components/seller/CreateOrderDialog";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
@@ -23,7 +22,7 @@ import {
 
 export default function SellerDashboardNew() {
   const navigate = useNavigate();
-  const { profile, loading: profileLoading, refreshProfile } = useSellerProfile();
+  const { profile, loading: profileLoading } = useSellerProfile();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -137,15 +136,7 @@ export default function SellerDashboardNew() {
                 <Eye className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">View</span> Products
               </Button>
-              {profile?.id && profile?.user_id && (
-                <SellerSettingsDialog
-                  sellerId={profile.id}
-                  userId={profile.user_id}
-                  currentName={profile.seller_name}
-                  currentDocumentUrl={(profile as any).document_url}
-                  onUpdated={refreshProfile}
-                />
-              )}
+            
             </div>
           </div>
 

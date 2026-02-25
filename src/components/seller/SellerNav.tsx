@@ -8,7 +8,7 @@ import {
   BarChart3,
   LogOut,
   Home,
-  Plus,
+  Settings,
   ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -82,11 +82,11 @@ export function SellerNav({ sellerName, logoUrl, sellerId }: SellerNavProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate("/seller/products/new")}
+            onClick={() => navigate("/seller/settings")}
             className="gap-1.5 text-xs hidden sm:flex"
           >
-            <Plus className="h-3.5 w-3.5" />
-            Add Product
+            <Settings className="h-3.5 w-3.5" />
+            Settings
           </Button>
           {sellerId && (
             <Link
