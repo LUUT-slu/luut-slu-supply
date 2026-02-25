@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Upload, X, Package } from "lucide-react";
 import { CATEGORY_OPTIONS } from "@/lib/categories";
+import { resizeImageToSquare } from "@/lib/imageResize";
 
 // Categories now come from the unified category system
 const LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort", "Rodney Bay", "Soufriere", "Other"];
@@ -87,17 +88,28 @@ export default function SellerProductForm() {
     setLoadingProduct(false);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + imageFiles.length + existingImages.length > 5) {
       toast.error("Maximum 5 images allowed");
       return;
     }
 
-    setImageFiles((prev) => [...prev, ...files]);
+    // Resize all images to 1:1 square
+    const resizedFiles: File[] = [];
+    for (const file of files) {
+      try {
+        const resized = await resizeImageToSquare(file, 1024);
+        resizedFiles.push(resized);
+      } catch {
+        toast.error(`Failed to process ${file.name}`);
+      }
+    }
 
-    // Create previews
-    files.forEach((file) => {
+    setImageFiles((prev) => [...prev, ...resizedFiles]);
+
+    // Create previews from resized files
+    resizedFiles.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreviews((prev) => [...prev, reader.result as string]);
@@ -292,7 +304,7 @@ export default function SellerProductForm() {
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Add up to 5 images. First image is the main photo.
+                      Add up to 5 images. Images are automatically cropped to square (1:1).
                     </p>
                   </div>
 
