@@ -30,6 +30,15 @@ export default function SellerProfile() {
         if (!error && data) return data;
       }
 
+      // Try seller_id lookup (e.g. S1A2B3)
+      const { data: bySellerIdData } = await supabase
+        .from("seller_profiles")
+        .select("*")
+        .eq("seller_id", sellerId.toUpperCase())
+        .eq("is_approved", true)
+        .maybeSingle();
+      if (bySellerIdData) return bySellerIdData;
+
       // Fallback: slug-based lookup (e.g., "luut-slu-hub" -> match seller_name)
       const { data: allSellers } = await supabase
         .from("seller_profiles")
@@ -123,10 +132,10 @@ export default function SellerProfile() {
                 <img
                   src={seller.logo_url}
                   alt={seller.seller_name}
-                  className="h-20 w-20 rounded-full object-cover"
+                  className="h-20 w-20 rounded-full object-cover aspect-square"
                 />
               ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 font-display text-3xl text-primary">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 font-display text-3xl text-primary aspect-square">
                   {seller.seller_name.charAt(0)}
                 </div>
               )}

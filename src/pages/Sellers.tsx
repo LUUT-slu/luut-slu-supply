@@ -1,25 +1,39 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
 import { ChatButton } from "@/components/ChatButton";
-import { ShieldCheck, MapPin } from "lucide-react";
+import { ShieldCheck, MapPin, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Sellers() {
+  const [searchQuery, setSearchQuery] = useState("");
+
   const { data: sellers = [], isLoading } = useQuery({
     queryKey: ["approved-sellers"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("seller_profiles")
-        .select("id, seller_name, shop_description, location, phone, logo_url, whatsapp")
+        .select("id, seller_name, seller_id, shop_description, location, phone, logo_url, whatsapp")
         .eq("is_approved", true)
         .order("seller_name");
       
       if (error) throw error;
       return data;
     },
+  });
+
+  const filteredSellers = sellers.filter((s) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      s.seller_name.toLowerCase().includes(q) ||
+      (s.seller_id && s.seller_id.toLowerCase().includes(q)) ||
+      (s.location && s.location.toLowerCase().includes(q))
+    );
   });
 
   return (
@@ -34,6 +48,16 @@ export default function Sellers() {
             <p className="mt-4 font-body text-muted-foreground">
               Browse verified vendors on the Luut SLU marketplace. Each seller handles their own meetups & delivery.
             </p>
+            {/* Search bar */}
+            <div className="mt-6 relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or seller ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
         </section>
 
@@ -45,9 +69,9 @@ export default function Sellers() {
                   <div key={i} className="h-40 animate-pulse rounded-lg bg-muted" />
                 ))}
               </div>
-            ) : sellers.length > 0 ? (
+            ) : filteredSellers.length > 0 ? (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {sellers.map((seller) => (
+                {filteredSellers.map((seller) => (
                   <Link
                     key={seller.id}
                     to={`/seller/${seller.id}`}
@@ -58,18 +82,23 @@ export default function Sellers() {
                         <img
                           src={seller.logo_url}
                           alt={seller.seller_name}
-                          className="h-12 w-12 rounded-full object-cover"
+                          className="h-12 w-12 rounded-full object-cover aspect-square"
                         />
                       ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 font-display text-xl text-primary">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 font-display text-xl text-primary aspect-square">
                           {seller.seller_name.charAt(0)}
                         </div>
                       )}
                       <div>
                         <h3 className="font-display text-lg">{seller.seller_name}</h3>
-                        <div className="flex items-center gap-1 text-xs text-trust">
-                          <ShieldCheck className="h-3 w-3" />
-                          Verified Seller
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex items-center gap-1 text-xs text-trust">
+                            <ShieldCheck className="h-3 w-3" />
+                            Verified
+                          </div>
+                          {seller.seller_id && (
+                            <span className="text-xs text-muted-foreground">ID: {seller.seller_id}</span>
+                          )}
                         </div>
                       </div>
                     </div>

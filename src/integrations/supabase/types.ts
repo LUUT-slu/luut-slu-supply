@@ -73,6 +73,7 @@ export type Database = {
       customer_profiles: {
         Row: {
           created_at: string
+          document_url: string | null
           email: string | null
           full_name: string | null
           id: string
@@ -84,6 +85,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          document_url?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
@@ -95,6 +97,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          document_url?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
@@ -720,6 +723,7 @@ export type Database = {
           approved_by: string | null
           categories: string[] | null
           created_at: string
+          document_url: string | null
           facebook_url: string | null
           id: string
           instagram_url: string | null
@@ -743,6 +747,7 @@ export type Database = {
           approved_by?: string | null
           categories?: string[] | null
           created_at?: string
+          document_url?: string | null
           facebook_url?: string | null
           id?: string
           instagram_url?: string | null
@@ -766,6 +771,7 @@ export type Database = {
           approved_by?: string | null
           categories?: string[] | null
           created_at?: string
+          document_url?: string | null
           facebook_url?: string | null
           id?: string
           instagram_url?: string | null

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { User, Mail, Phone, MapPin, FileText, LogOut, Save, Edit2, Check, X, ArrowLeft, Store, Truck } from "lucide-react";
+import { User, Mail, Phone, MapPin, FileText, LogOut, Save, Edit2, Check, X, ArrowLeft, Store, Truck, Upload, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,51 @@ interface CustomerProfile {
   phone: string | null;
   preferred_location: string | null;
   meetup_notes: string | null;
+}
+
+function DocumentUpload({ userId, profile, onUpdate }: { userId: string; profile: CustomerProfile | null; onUpdate: (url: string | null) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const docUrl = (profile as any)?.document_url as string | null;
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    if (file.type !== "application/pdf") { toast.error("Only PDF files"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("Max 10MB"); return; }
+
+    setUploading(true);
+    const path = `${userId}/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("user-documents").upload(path, file);
+    if (error) { toast.error("Upload failed"); setUploading(false); return; }
+
+    const { data: urlData } = supabase.storage.from("user-documents").getPublicUrl(path);
+    await supabase.from("customer_profiles").update({ document_url: urlData.publicUrl } as any).eq("user_id", userId);
+    onUpdate(urlData.publicUrl);
+    toast.success("Document uploaded!");
+    setUploading(false);
+  };
+
+  const handleRemove = async () => {
+    await supabase.from("customer_profiles").update({ document_url: null } as any).eq("user_id", userId);
+    onUpdate(null);
+    toast.success("Document removed");
+  };
+
+  return docUrl ? (
+    <div className="flex items-center gap-2 rounded-md border border-border p-3 max-w-md">
+      <FileText className="h-5 w-5 text-primary shrink-0" />
+      <a href={docUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate flex-1">View Document</a>
+      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleRemove}><Trash2 className="h-4 w-4" /></Button>
+    </div>
+  ) : (
+    <div className="relative max-w-md">
+      <input type="file" accept=".pdf" onChange={handleUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={uploading} />
+      <div className="flex items-center gap-2 rounded-md border border-dashed border-border p-4 hover:border-primary/50 transition-colors">
+        <Upload className="h-5 w-5 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">{uploading ? "Uploading..." : "Click to upload PDF"}</span>
+      </div>
+    </div>
+  );
 }
 
 export default function AccountSettings() {
@@ -404,6 +449,15 @@ export default function AccountSettings() {
             </div>
           </div>
         )}
+
+        {/* Document Upload Section */}
+        <div className="mt-8 pt-6 border-t">
+          <h2 className="font-display text-lg mb-4">Account Document</h2>
+          <p className="text-sm text-muted-foreground mb-4">Upload a PDF document for your account (max 10MB)</p>
+          <DocumentUpload userId={user?.id || ""} profile={profile} onUpdate={(url) => {
+            if (profile) setProfile({ ...profile, document_url: url } as any);
+          }} />
+        </div>
 
         {/* Logout Section */}
         <div className="mt-8 pt-6 border-t">
