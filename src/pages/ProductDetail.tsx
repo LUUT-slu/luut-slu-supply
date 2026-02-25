@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { 
-  ArrowLeft, 
-  ShoppingBag, 
-  Minus, 
-  Plus, 
+import {
+  ArrowLeft,
+  ShoppingBag,
+  Minus,
+  Plus,
   Check,
   MapPin,
   CreditCard,
@@ -12,8 +12,8 @@ import {
   MessageCircle,
   Shield,
   Clock,
-  Store
-} from "lucide-react";
+  Store } from
+"lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ChatButton } from "@/components/ChatButton";
@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
 
 export default function ProductDetail() {
-  const { handle } = useParams<{ handle: string }>();
+  const { handle } = useParams<{handle: string;}>();
   const navigate = useNavigate();
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,12 +93,12 @@ export default function ProductDetail() {
   useEffect(() => {
     if (!product || !selectedVariant) return;
 
-    const variant = product.variants.edges.find(v => v.node.id === selectedVariant)?.node;
+    const variant = product.variants.edges.find((v) => v.node.id === selectedVariant)?.node;
     if (!variant?.image?.url) return;
 
     // Find the index of the variant image in the product images list
     const imageIndex = product.images.edges.findIndex(
-      img => img.node.url === variant.image!.url
+      (img) => img.node.url === variant.image!.url
     );
 
     if (imageIndex >= 0 && imageIndex !== selectedImage) {
@@ -114,8 +114,8 @@ export default function ProductDetail() {
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </main>
         <Footer />
-      </div>
-    );
+      </div>);
+
   }
 
   if (!product) {
@@ -131,8 +131,8 @@ export default function ProductDetail() {
           </div>
         </main>
         <Footer />
-      </div>
-    );
+      </div>);
+
   }
 
   const currentVariant = product.variants.edges.find(
@@ -148,7 +148,7 @@ export default function ProductDetail() {
       variantTitle: currentVariant.title,
       price: currentVariant.price,
       quantity,
-      selectedOptions: currentVariant.selectedOptions,
+      selectedOptions: currentVariant.selectedOptions
     });
 
     if (result.success) {
@@ -157,14 +157,14 @@ export default function ProductDetail() {
       toast.error("Cannot add to cart", {
         description: result.error,
         position: "top-center",
-        duration: 5000,
+        duration: 5000
       });
     }
   };
 
   const whatsappMessage = `Hi! I'm interested in: ${product.title}${
-    currentVariant ? ` (${currentVariant.title})` : ""
-  } - EC$${parseFloat(currentVariant?.price.amount || "0").toFixed(2)}`;
+  currentVariant ? ` (${currentVariant.title})` : ""} - EC$${
+  parseFloat(currentVariant?.price.amount || "0").toFixed(2)}`;
 
   // Check if seller is certified
   const isCertifiedSeller = product.vendor?.includes("Certified") || product.tags?.includes("certified-seller");
@@ -186,123 +186,123 @@ export default function ProductDetail() {
             {/* ========== PRODUCT IMAGES ========== */}
             <div className="space-y-4 w-full max-w-full">
               {/* Main Image - Fixed aspect ratio container with padding */}
-              <div className="relative w-full aspect-square rounded-2xl bg-card border border-border p-3 md:p-4">
-                {product.images.edges.length > 1 ? (
-                  // Swipeable gallery for multiple images
-                  <div 
-                    className="flex h-full w-full snap-x snap-mandatory overflow-x-scroll overscroll-x-contain rounded-xl"
-                    ref={galleryRef}
-                    style={{ 
-                      WebkitOverflowScrolling: 'touch',
-                      scrollbarWidth: 'none',
-                      msOverflowStyle: 'none'
-                    }}
-                  >
+              <div className="relative w-full aspect-square bg-card p-3 md:p-4 shadow-none border-0 border-primary-foreground px-0 py-0 rounded-md">
+                {product.images.edges.length > 1 ?
+                // Swipeable gallery for multiple images
+                <div
+                  className="flex h-full w-full snap-x snap-mandatory overflow-x-scroll overscroll-x-contain rounded-xl"
+                  ref={galleryRef}
+                  style={{
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none'
+                  }}>
+
                     <style>{`div::-webkit-scrollbar { display: none; }`}</style>
-                    {product.images.edges.map((img, idx) => (
-                      <div 
-                        key={idx} 
-                        className="h-full min-w-full flex-shrink-0 snap-center flex items-center justify-center"
-                      >
+                    {product.images.edges.map((img, idx) =>
+                  <div
+                    key={idx}
+                    className="h-full min-w-full flex-shrink-0 snap-center flex items-center justify-center">
+
                         <img
-                          src={img.node.url}
-                          alt={img.node.altText || `${product.title} ${idx + 1}`}
-                          className="max-h-full max-w-full object-contain rounded-lg pointer-events-none"
-                        />
+                      src={img.node.url}
+                      alt={img.node.altText || `${product.title} ${idx + 1}`}
+                      className="max-h-full max-w-full object-contain rounded-lg pointer-events-none" />
+
                       </div>
-                    ))}
-                  </div>
-                ) : product.images.edges[0]?.node ? (
-                  <div className="h-full w-full flex items-center justify-center">
+                  )}
+                  </div> :
+                product.images.edges[0]?.node ?
+                <div className="h-full w-full flex items-center justify-center">
                     <img
-                      src={product.images.edges[0].node.url}
-                      alt={product.images.edges[0].node.altText || product.title}
-                      className="max-h-full max-w-full object-contain rounded-lg"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center">
+                    src={product.images.edges[0].node.url}
+                    alt={product.images.edges[0].node.altText || product.title}
+                    className="max-h-full max-w-full rounded object-contain" />
+
+                  </div> :
+
+                <div className="flex h-full items-center justify-center">
                     <ShoppingBag className="h-20 w-20 text-muted-foreground" />
                   </div>
-                )}
+                }
               </div>
               
               {/* Image indicators for swipe gallery */}
-              {product.images.edges.length > 1 && (
-                <div className="flex justify-center gap-1.5">
-                  {product.images.edges.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => scrollToImage(idx)}
-                      className={cn(
-                        "h-2 w-2 rounded-full transition-colors",
-                        selectedImage === idx ? "bg-primary" : "bg-muted-foreground/30"
-                      )}
-                    />
-                  ))}
+              {product.images.edges.length > 1 &&
+              <div className="flex justify-center gap-1.5">
+                  {product.images.edges.map((_, idx) =>
+                <button
+                  key={idx}
+                  onClick={() => scrollToImage(idx)}
+                  className={cn(
+                    "h-2 w-2 rounded-full transition-colors",
+                    selectedImage === idx ? "bg-primary" : "bg-muted-foreground/30"
+                  )} />
+
+                )}
                 </div>
-              )}
+              }
               
               {/* Thumbnail strip for desktop */}
-              {product.images.edges.length > 1 && (
-                <div className="hidden md:flex gap-2 overflow-x-auto pb-2">
-                  {product.images.edges.map((img, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => scrollToImage(idx)}
-                      className={`h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
-                        selectedImage === idx
-                          ? "border-primary ring-2 ring-primary/20"
-                          : "border-border hover:border-muted-foreground"
-                      }`}
-                    >
+              {product.images.edges.length > 1 &&
+              <div className="hidden md:flex gap-2 overflow-x-auto pb-2">
+                  {product.images.edges.map((img, idx) =>
+                <button
+                  key={idx}
+                  onClick={() => scrollToImage(idx)}
+                  className={`h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+                  selectedImage === idx ?
+                  "border-primary ring-2 ring-primary/20" :
+                  "border-border hover:border-muted-foreground"}`
+                  }>
+
                       <img
-                        src={img.node.url}
-                        alt={img.node.altText || `${product.title} ${idx + 1}`}
-                        className="h-full w-full object-cover pointer-events-none"
-                      />
+                    src={img.node.url}
+                    alt={img.node.altText || `${product.title} ${idx + 1}`}
+                    className="h-full w-full object-cover pointer-events-none" />
+
                     </button>
-                  ))}
+                )}
                 </div>
-              )}
+              }
             </div>
 
             {/* ========== PRODUCT DETAILS ========== */}
             <div className="space-y-6">
               {/* Seller Info */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-start gap-[7px]">
                 <Store className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Sold by:</span>
                 <Link
                   to={`/seller/${encodeURIComponent(sellerName.toLowerCase().replace(/\s+/g, '-'))}`}
-                  className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-                >
+                  className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+
                   {sellerName}
                 </Link>
-                {isCertifiedSeller && (
-                  <Badge variant="secondary" className="text-xs gap-1">
+                {isCertifiedSeller &&
+                <Badge variant="secondary" className="text-xs gap-1">
                     <Shield className="h-3 w-3" />
                     Certified
                   </Badge>
-                )}
+                }
               </div>
 
               {/* Product Title */}
-              <h1 className="font-display text-xl md:text-2xl leading-tight">
+              <h1 className="text-xl md:text-2xl leading-tight font-sans">
                 {product.title}
               </h1>
 
               {/* Price */}
-              {currentVariant && (
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display text-2xl md:text-3xl text-primary">
+              {currentVariant &&
+              <div className="gap-2 items-center justify-start flex">
+                  <span className="text-2xl md:text-3xl text-primary font-sans">
                     EC${parseFloat(currentVariant.price.amount).toFixed(2)}
                   </span>
                   <span className="text-sm text-muted-foreground">
                     {currentVariant.price.currencyCode}
                   </span>
                 </div>
-              )}
+              }
 
               <Separator />
 
@@ -320,9 +320,9 @@ export default function ProductDetail() {
                     <div className="flex flex-wrap gap-2">
                       {option.values.map((value) => {
                         const variant = product.variants.edges.find((v) =>
-                          v.node.selectedOptions.some(
-                            (o) => o.name === option.name && o.value === value
-                          )
+                        v.node.selectedOptions.some(
+                          (o) => o.name === option.name && o.value === value
+                        )
                         );
                         const isSelected = currentVariant?.selectedOptions.some(
                           (o) => o.name === option.name && o.value === value
@@ -336,16 +336,16 @@ export default function ProductDetail() {
                             size="sm"
                             disabled={!isAvailable}
                             onClick={() => variant && setSelectedVariant(variant.node.id)}
-                            className="min-w-[60px]"
-                          >
+                            className="min-w-[60px]">
+
                             {value}
                             {isSelected && <Check className="ml-1 h-3 w-3" />}
-                          </Button>
-                        );
+                          </Button>);
+
                       })}
                     </div>
-                  </div>
-                );
+                  </div>);
+
               })}
 
               {/* ========== QUANTITY SELECTOR ========== */}
@@ -357,8 +357,8 @@ export default function ProductDetail() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  >
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+
                     <Minus className="h-4 w-4" />
                   </Button>
                   <span className="w-12 text-center font-body text-lg font-medium">
@@ -367,8 +367,8 @@ export default function ProductDetail() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setQuantity(quantity + 1)}
-                  >
+                    onClick={() => setQuantity(quantity + 1)}>
+
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -380,8 +380,8 @@ export default function ProductDetail() {
                   size="lg"
                   className="w-full text-base"
                   onClick={handleAddToCart}
-                  disabled={!currentVariant?.availableForSale}
-                >
+                  disabled={!currentVariant?.availableForSale}>
+
                   <ShoppingBag className="mr-2 h-5 w-5" />
                   Add to Cart — EC${currentVariant ? (parseFloat(currentVariant.price.amount) * quantity).toFixed(2) : '0.00'}
                 </Button>
@@ -392,8 +392,8 @@ export default function ProductDetail() {
                   onClick={() => {
                     handleAddToCart();
                   }}
-                  disabled={!currentVariant?.availableForSale}
-                >
+                  disabled={!currentVariant?.availableForSale}>
+
                   <CreditCard className="mr-2 h-5 w-5" />
                   Buy Now
                 </Button>
@@ -408,11 +408,11 @@ export default function ProductDetail() {
                   <h3 className="font-display text-sm tracking-wide">MEETUP LOCATIONS</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {MEETUP_LOCATIONS.map((location) => (
-                    <Badge key={location} variant="secondary" className="text-sm py-1 px-3">
+                  {MEETUP_LOCATIONS.map((location) =>
+                  <Badge key={location} variant="secondary" className="text-sm py-1 px-3">
                       {location}
                     </Badge>
-                  ))}
+                  )}
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
                   Select your preferred location during checkout. Exact time confirmed via WhatsApp.
@@ -490,25 +490,25 @@ export default function ProductDetail() {
               </div>
 
               {/* ========== PRODUCT DESCRIPTION ========== */}
-              {product.description && (
-                <div>
+              {product.description &&
+              <div>
                   <h3 className="mb-3 font-display text-sm tracking-wide">DESCRIPTION</h3>
                   <p className="font-body text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                     {product.description}
                   </p>
                 </div>
-              )}
+              }
 
               {/* ========== TAGS ========== */}
-              {product.tags && product.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {product.tags.map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-xs">
+              {product.tags && product.tags.length > 0 &&
+              <div className="flex flex-wrap gap-2 pt-2">
+                  {product.tags.map((tag) =>
+                <Badge key={tag} variant="outline" className="text-xs">
                       {tag}
                     </Badge>
-                  ))}
+                )}
                 </div>
-              )}
+              }
 
               {/* ========== TRUST INDICATORS ========== */}
               <div className="flex items-center justify-center gap-6 pt-4 border-t border-border text-muted-foreground">
@@ -532,6 +532,6 @@ export default function ProductDetail() {
 
       <Footer />
       <ChatButton variant="floating" />
-    </div>
-  );
+    </div>);
+
 }
