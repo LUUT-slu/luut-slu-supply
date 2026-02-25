@@ -126,7 +126,7 @@ export function Header() {
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between md:h-20">
         {/* Logo and My Orders */}
-        <div className="flex-row flex items-end justify-end gap-[14px]">
+        <div className="flex-row gap-[14px] flex items-end justify-center">
           <Link to="/" className="flex items-center gap-2">
             <span className="font-display text-2xl tracking-wide md:text-3xl">
               <span className="text-primary font-mono py-0 my-0 mx-0 text-lg">Home</span>

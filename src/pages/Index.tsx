@@ -11,43 +11,43 @@ const storefrontHero = "/storefront-hero.webp";
 
 
 const howItWorks = [
-  {
-    step: 1,
-    title: "Browse Products",
-    description: "Explore outfits from verified local sellers on our marketplace",
-    icon: Package,
-  },
-  {
-    step: 2,
-    title: "Message the Seller",
-    description: "Contact the seller on WhatsApp to confirm details and arrange meetup",
-    icon: MessageCircle,
-  },
-  {
-    step: 3,
-    title: "Meet & Pay",
-    description: "The seller meets you at a safe location — pay them directly in cash",
-    icon: MapPin,
-  },
-];
+{
+  step: 1,
+  title: "Browse Products",
+  description: "Explore outfits from verified local sellers on our marketplace",
+  icon: Package
+},
+{
+  step: 2,
+  title: "Message the Seller",
+  description: "Contact the seller on WhatsApp to confirm details and arrange meetup",
+  icon: MessageCircle
+},
+{
+  step: 3,
+  title: "Meet & Pay",
+  description: "The seller meets you at a safe location — pay them directly in cash",
+  icon: MapPin
+}];
+
 
 const trustPoints = [
-  {
-    icon: ShieldCheck,
-    title: "Verified Sellers",
-    description: "Every vendor is vetted before joining our marketplace",
-  },
-  {
-    icon: Users,
-    title: "Marketplace Platform",
-    description: "We connect you with local sellers who handle meetups & delivery",
-  },
-  {
-    icon: Package,
-    title: "Luut Certified",
-    description: "Luut SLU also sells as a certified vendor on the platform",
-  },
-];
+{
+  icon: ShieldCheck,
+  title: "Verified Sellers",
+  description: "Every vendor is vetted before joining our marketplace"
+},
+{
+  icon: Users,
+  title: "Marketplace Platform",
+  description: "We connect you with local sellers who handle meetups & delivery"
+},
+{
+  icon: Package,
+  title: "Luut Certified",
+  description: "Luut SLU also sells as a certified vendor on the platform"
+}];
+
 
 export default function Index() {
   return (
@@ -59,13 +59,13 @@ export default function Index() {
         <section className="relative min-h-[90vh] flex flex-col justify-end overflow-hidden">
           {/* Background Image - Static */}
           <div className="absolute inset-0">
-            <img 
-              src={storefrontHero} 
-              alt="Luut SLU storefront" 
-              className="w-full h-full object-cover"
+            <img
+              src={storefrontHero}
+              alt="Luut SLU storefront"
+              className="w-full h-full object-cover opacity-70"
               fetchPriority="high"
-              decoding="sync"
-            />
+              decoding="sync" />
+
           </div>
           
           {/* Bottom Content */}
@@ -88,8 +88,8 @@ export default function Index() {
               <div className="mt-5">
                 <Link
                   to="/sell"
-                  className="font-body text-sm text-primary underline-offset-4 hover:underline"
-                >
+                  className="font-body text-sm text-primary underline-offset-4 hover:underline">
+
                   Want to sell? Join as a vendor →
                 </Link>
               </div>
@@ -129,18 +129,18 @@ export default function Index() {
               WHY SHOP WITH LUUT
             </h2>
             <div className="grid gap-6 md:grid-cols-3">
-              {trustPoints.map(({ icon: Icon, title, description }) => (
-                <div
-                  key={title}
-                  className="rounded-lg border border-border bg-background p-6 text-center"
-                >
+              {trustPoints.map(({ icon: Icon, title, description }) =>
+              <div
+                key={title}
+                className="rounded-lg border border-border bg-background p-6 text-center">
+
                   <Icon className="mx-auto mb-4 h-10 w-10 text-trust" />
                   <h3 className="mb-2 font-display text-lg">{title}</h3>
                   <p className="font-body text-sm text-muted-foreground">
                     {description}
                   </p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </section>
@@ -155,8 +155,8 @@ export default function Index() {
               HOW IT WORKS
             </h2>
             <div className="grid gap-8 md:grid-cols-3">
-              {howItWorks.map(({ step, title, description, icon: Icon }) => (
-                <div key={step} className="text-center">
+              {howItWorks.map(({ step, title, description, icon: Icon }) =>
+              <div key={step} className="text-center">
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                     <Icon className="h-8 w-8 text-primary" />
                   </div>
@@ -168,7 +168,7 @@ export default function Index() {
                     {description}
                   </p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </section>
@@ -196,6 +196,6 @@ export default function Index() {
 
       <Footer />
       <ChatButton variant="floating" />
-    </div>
-  );
+    </div>);
+
 }
