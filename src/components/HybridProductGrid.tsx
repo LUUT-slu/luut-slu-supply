@@ -4,7 +4,7 @@ import { UnifiedProductCard } from "./UnifiedProductCard";
 import { Loader2 } from "lucide-react";
 
 interface HybridProductGridProps {
-  categorySlug?: string;  // URL slug like "beanies-tams"
+  categorySlug?: string; // URL slug like "beanies-tams"
   shopifyQuery?: string;
   limit?: number;
   title?: string;
@@ -14,23 +14,23 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
   const { products, loading, error } = useHybridProducts({
     categorySlug: categorySlug === 'all' ? undefined : categorySlug,
     shopifyQuery,
-    limit,
+    limit
   });
 
   if (loading) {
     return (
       <div className="flex min-h-[300px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>);
+
   }
 
   if (error) {
     return (
       <div className="flex min-h-[300px] items-center justify-center">
         <p className="text-destructive">{error}</p>
-      </div>
-    );
+      </div>);
+
   }
 
   if (products.length === 0) {
@@ -42,20 +42,20 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
         <p className="text-sm text-muted-foreground">
           Check back soon for new arrivals!
         </p>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
     <div className="space-y-6">
-      {title && (
-        <h2 className="font-display text-2xl md:text-3xl">{title}</h2>
-      )}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-        {products.map((product) => (
-          <UnifiedProductCard key={product.id} product={product} />
-        ))}
+      {title &&
+      <h2 className="font-display text-2xl md:text-3xl">{title}</h2>
+      }
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 rounded-sm">
+        {products.map((product) =>
+        <UnifiedProductCard key={product.id} product={product} />
+        )}
       </div>
-    </div>
-  );
+    </div>);
+
 }

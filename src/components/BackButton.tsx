@@ -23,10 +23,10 @@ export function BackButton({ to, label = "Back" }: BackButtonProps) {
     <button
       type="button"
       onClick={handleBack}
-      className="mb-4 inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 touch-manipulation"
-    >
+      className="mb-4 inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 touch-manipulation font-normal">
+
       <ArrowLeft className="h-4 w-4" />
       {label}
-    </button>
-  );
+    </button>);
+
 }
