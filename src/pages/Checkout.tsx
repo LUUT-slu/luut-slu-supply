@@ -14,6 +14,8 @@ import {
   Circle,
   Package,
   ShoppingBag,
+  Tag,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,6 +97,17 @@ export default function Checkout() {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const orderCompletingRef = useRef(false);
 
+  // Discount code state
+  const [discountCode, setDiscountCode] = useState('');
+  const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    code: string;
+    valueType: string;
+    value: string;
+    title: string;
+  } | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+
   const {
     items,
     getTotalPrice,
@@ -104,6 +117,48 @@ export default function Checkout() {
 
   const totalPrice = getTotalPrice();
   const currentSeller = getCurrentSeller();
+
+  // Calculate discount amount
+  const discountAmount = appliedDiscount
+    ? appliedDiscount.valueType === 'percentage'
+      ? totalPrice * (Math.abs(parseFloat(appliedDiscount.value)) / 100)
+      : Math.min(Math.abs(parseFloat(appliedDiscount.value)), totalPrice)
+    : 0;
+  const finalPrice = totalPrice - discountAmount;
+
+  const handleApplyDiscount = async () => {
+    const code = discountCode.trim();
+    if (!code) return;
+
+    setIsValidatingDiscount(true);
+    setDiscountError(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-discount', {
+        body: { code },
+      });
+
+      if (error) throw error;
+
+      if (data?.valid && data.discount) {
+        setAppliedDiscount(data.discount);
+        setDiscountCode('');
+        toast.success(`Discount "${data.discount.code}" applied!`, { position: 'top-center' });
+      } else {
+        setDiscountError(data?.error || 'Invalid discount code');
+      }
+    } catch (err) {
+      console.error('Discount validation error:', err);
+      setDiscountError('Could not validate discount code');
+    } finally {
+      setIsValidatingDiscount(false);
+    }
+  };
+
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount(null);
+    setDiscountError(null);
+  };
 
   // Redirect if cart is empty (skip during order completion)
   useEffect(() => {
@@ -217,8 +272,9 @@ export default function Checkout() {
           preferredDate: formattedDate,
           note: note.trim() || null,
           lineItems,
-          totalPrice,
+          totalPrice: finalPrice,
           sellerVendor,
+          discountCode: appliedDiscount?.code || null,
         },
       });
 
@@ -247,7 +303,13 @@ export default function Checkout() {
       message += `👤 Name: ${customerName.trim()}\n`;
       message += `📱 Phone: ${customerPhone.trim()}\n\n`;
       message += `📦 *Products:*\n${productList}\n\n`;
-      message += `💰 *Total: EC$${totalPrice.toFixed(2)}*\n\n`;
+      if (appliedDiscount && discountAmount > 0) {
+        message += `💰 Subtotal: EC$${totalPrice.toFixed(2)}\n`;
+        message += `🏷️ Discount (${appliedDiscount.code}): −EC$${discountAmount.toFixed(2)}\n`;
+        message += `💰 *Total: EC$${finalPrice.toFixed(2)}*\n\n`;
+      } else {
+        message += `💰 *Total: EC$${finalPrice.toFixed(2)}*\n\n`;
+      }
       message += `📍 Meetup Location: ${selectedLocation}\n`;
       message += `📅 Preferred Date: ${formattedDate}\n`;
       message += `\n💳 Payment: Pay on pickup`;
@@ -274,7 +336,10 @@ export default function Checkout() {
           price: item.price.amount,
           vendor: item.product.node.vendor,
         })),
-        totalPrice,
+        totalPrice: finalPrice,
+        discountCode: appliedDiscount?.code || null,
+        discountAmount: discountAmount > 0 ? discountAmount : null,
+        subtotal: totalPrice,
         location: selectedLocation,
         preferredDate: formattedDate,
         note: note.trim() || undefined,
@@ -367,11 +432,71 @@ export default function Checkout() {
                     </span>
                   </div>
                 ))}
-                <div className="border-t border-border pt-2 mt-2 flex justify-between">
-                  <span className="font-semibold">Total</span>
-                  <span className="font-display text-primary font-semibold">
-                    EC${totalPrice.toFixed(2)}
-                  </span>
+
+                {/* Discount Code Input */}
+                <div className="border-t border-border pt-3 mt-2">
+                  {appliedDiscount ? (
+                    <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium text-primary">{appliedDiscount.code}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ({appliedDiscount.valueType === 'percentage'
+                            ? `${Math.abs(parseFloat(appliedDiscount.value))}% off`
+                            : `EC$${Math.abs(parseFloat(appliedDiscount.value)).toFixed(2)} off`})
+                        </span>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRemoveDiscount}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          placeholder="Discount code"
+                          value={discountCode}
+                          onChange={(e) => {
+                            setDiscountCode(e.target.value.toUpperCase());
+                            setDiscountError(null);
+                          }}
+                          className="pl-10 uppercase"
+                          onKeyDown={(e) => e.key === 'Enter' && handleApplyDiscount()}
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={handleApplyDiscount}
+                        disabled={!discountCode.trim() || isValidatingDiscount}
+                      >
+                        {isValidatingDiscount ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                      </Button>
+                    </div>
+                  )}
+                  {discountError && (
+                    <p className="text-xs text-destructive mt-1">{discountError}</p>
+                  )}
+                </div>
+
+                {/* Price Breakdown */}
+                <div className="border-t border-border pt-2 mt-2 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>EC${totalPrice.toFixed(2)}</span>
+                  </div>
+                  {appliedDiscount && (
+                    <div className="flex justify-between text-sm text-primary">
+                      <span>Discount</span>
+                      <span>−EC${discountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-1">
+                    <span className="font-semibold">Total</span>
+                    <span className="font-display text-primary font-semibold">
+                      EC${finalPrice.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-2">

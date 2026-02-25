@@ -26,6 +26,7 @@ interface DraftOrderRequest {
   lineItems: LineItem[];
   totalPrice: number;
   sellerVendor?: string;
+  discountCode?: string | null;
 }
 
 const SHOPIFY_STORE_DOMAIN = "lovable-project-yf43m.myshopify.com";
@@ -80,7 +81,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: DraftOrderRequest = await req.json();
-    const { customerName, customerPhone, location, preferredDate, note, lineItems, totalPrice } = body;
+    const { customerName, customerPhone, location, preferredDate, note, lineItems, totalPrice, discountCode } = body;
 
     // Validate required fields
     if (!customerName || !customerPhone || !location || !preferredDate || !lineItems?.length) {
@@ -258,6 +259,9 @@ serve(async (req) => {
         if (note) {
           shopifyNote += `\n📝 Note: ${note}`;
         }
+        if (discountCode) {
+          shopifyNote += `\n🏷️ Discount Code: ${discountCode}`;
+        }
         shopifyNote += `\n\n💳 Payment: Pay on pickup`;
         shopifyNote += `\n\nLocal Order ID: ${localOrder.id}`;
         
@@ -281,7 +285,7 @@ serve(async (req) => {
         // Create draft order via Shopify Admin API
         const shopifyUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders.json`;
         
-        const draftOrderPayload = {
+        const draftOrderPayload: any = {
           draft_order: {
             line_items: shopifyLineItems,
             note: shopifyNote,
@@ -294,6 +298,47 @@ serve(async (req) => {
             tags: `pickup-${location.toLowerCase().replace(/\s+/g, '-').slice(0, 25)}, pending-pickup`,
           }
         };
+
+        // Apply discount code if provided — look up price rule from Shopify
+        if (discountCode) {
+          try {
+            // Look up the discount code to get its price rule
+            const lookupUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/discount_codes/lookup.json?code=${encodeURIComponent(discountCode)}`;
+            const lookupRes = await fetch(lookupUrl, {
+              headers: { "X-Shopify-Access-Token": shopifyAdminToken },
+              redirect: "follow",
+            });
+
+            if (lookupRes.ok) {
+              const lookupData = await lookupRes.json();
+              const priceRuleId = lookupData.discount_code?.price_rule_id;
+
+              if (priceRuleId) {
+                const priceRuleUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/price_rules/${priceRuleId}.json`;
+                const priceRuleRes = await fetch(priceRuleUrl, {
+                  headers: { "X-Shopify-Access-Token": shopifyAdminToken },
+                });
+
+                if (priceRuleRes.ok) {
+                  const priceRuleData = await priceRuleRes.json();
+                  const rule = priceRuleData.price_rule;
+
+                  draftOrderPayload.draft_order.applied_discount = {
+                    description: rule.title || discountCode,
+                    value_type: rule.value_type, // "percentage" or "fixed_amount"
+                    value: String(Math.abs(parseFloat(rule.value))),
+                    title: discountCode,
+                  };
+                  console.log(`Applied discount: ${discountCode} (${rule.value_type}: ${rule.value})`);
+                }
+              }
+            }
+          } catch (discountErr) {
+            console.error("Failed to look up discount for draft order (non-fatal):", discountErr);
+          }
+          // Tag the discount code used
+          draftOrderPayload.draft_order.tags += `, discount-${discountCode.toLowerCase()}`;
+        }
 
         console.log("Sending to Shopify Draft Order API...");
 
