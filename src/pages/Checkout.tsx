@@ -105,6 +105,7 @@ export default function Checkout() {
     valueType: string;
     value: string;
     title: string;
+    welcomeDiscountId?: string; // Track if this is the auto-applied welcome discount
   } | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
 
@@ -201,7 +202,37 @@ export default function Checkout() {
     loadCustomerProfile();
   }, [profileLoaded, customerName, customerPhone, selectedLocation, note]);
 
-  // Validation
+  // Auto-apply welcome discount for signed-up customers
+  useEffect(() => {
+    const checkWelcomeDiscount = async () => {
+      if (appliedDiscount) return; // Don't override if user already applied a code
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: discount } = await supabase
+        .from('customer_discounts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('discount_type', 'welcome')
+        .eq('is_used', false)
+        .maybeSingle();
+
+      if (discount) {
+        setAppliedDiscount({
+          code: 'WELCOME5',
+          valueType: 'fixed_amount',
+          value: String(discount.discount_amount),
+          title: 'Welcome Discount',
+          welcomeDiscountId: discount.id,
+        });
+        toast.success('EC$5 welcome discount auto-applied!', { position: 'top-center' });
+      }
+    };
+
+    checkWelcomeDiscount();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const isNameValid = customerName.trim().length >= 2;
   const isPhoneValid = customerPhone.trim().length >= 7;
   const isLocationValid = selectedLocation !== '';
@@ -348,6 +379,18 @@ export default function Checkout() {
 
       localStorage.setItem('luut-order-confirmed', JSON.stringify(orderConfirmationData));
 
+      // Mark welcome discount as used if applicable
+      if (appliedDiscount?.welcomeDiscountId && data.localOrderId) {
+        await supabase
+          .from('customer_discounts')
+          .update({
+            is_used: true,
+            used_at: new Date().toISOString(),
+            used_on_order_id: data.localOrderId,
+          })
+          .eq('id', appliedDiscount.welcomeDiscountId);
+      }
+
       orderCompletingRef.current = true;
       navigate('/order-confirmed', { replace: true });
       // Delay cart clear to avoid race with the empty-cart redirect effect
@@ -439,16 +482,20 @@ export default function Checkout() {
                     <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
                       <div className="flex items-center gap-2">
                         <Tag className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium text-primary">{appliedDiscount.code}</span>
+                        <span className="text-sm font-medium text-primary">
+                          {appliedDiscount.welcomeDiscountId ? '🎉 Welcome Discount' : appliedDiscount.code}
+                        </span>
                         <span className="text-xs text-muted-foreground">
                           ({appliedDiscount.valueType === 'percentage'
                             ? `${Math.abs(parseFloat(appliedDiscount.value))}% off`
                             : `EC$${Math.abs(parseFloat(appliedDiscount.value)).toFixed(2)} off`})
                         </span>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRemoveDiscount}>
-                        <X className="h-3 w-3" />
-                      </Button>
+                      {!appliedDiscount.welcomeDiscountId && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRemoveDiscount}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="flex gap-2">
