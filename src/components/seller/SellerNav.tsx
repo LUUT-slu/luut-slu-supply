@@ -41,22 +41,34 @@ export function SellerNav({ sellerName, logoUrl, sellerId }: SellerNavProps) {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center justify-between">
-        {/* Logo / Brand */}
+        {/* Logo / Brand — settings icon on mobile, logo on sm+ */}
         <div className="flex items-center gap-3">
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={sellerName || "Seller"}
-              className="h-8 w-8 rounded-full object-cover border border-border"
-            />
-          ) : (
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <Package className="h-4 w-4 text-primary" />
-            </div>
-          )}
-          <span className="font-display text-lg tracking-wide hidden sm:block">
-            {sellerName || "Seller Portal"}
-          </span>
+          {/* Mobile: Settings button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/seller/settings")}
+            className="h-8 w-8 sm:hidden"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+          {/* Desktop: Logo */}
+          <div className="hidden sm:flex items-center gap-3">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={sellerName || "Seller"}
+                className="h-8 w-8 rounded-full object-cover border border-border"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Package className="h-4 w-4 text-primary" />
+              </div>
+            )}
+            <span className="font-display text-lg tracking-wide">
+              {sellerName || "Seller Portal"}
+            </span>
+          </div>
         </div>
 
         {/* Navigation */}
