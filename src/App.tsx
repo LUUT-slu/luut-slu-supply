@@ -69,6 +69,7 @@ const SellerProductForm = lazyRetry(() => import("./pages/seller/SellerProductFo
 const SellerOrders = lazyRetry(() => import("./pages/seller/SellerOrders"));
 const SellerOrderDetail = lazyRetry(() => import("./pages/seller/SellerOrderDetail"));
 const SellerAnalytics = lazyRetry(() => import("./pages/seller/SellerAnalytics"));
+const SellerSettingsPage = lazyRetry(() => import("./pages/seller/SellerSettingsPage"));
 
 const queryClient = new QueryClient();
 
@@ -164,6 +165,11 @@ const App = () => (
             <Route path="/seller/analytics" element={
               <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
                 <SellerAnalytics />
+              </RouteGuard>
+            } />
+            <Route path="/seller/settings" element={
+              <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+                <SellerSettingsPage />
               </RouteGuard>
             } />
             
