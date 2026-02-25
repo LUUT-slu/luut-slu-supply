@@ -70,6 +70,50 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_discounts: {
+        Row: {
+          created_at: string
+          currency_code: string
+          discount_amount: number
+          discount_type: string
+          id: string
+          is_used: boolean
+          used_at: string | null
+          used_on_order_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency_code?: string
+          discount_amount?: number
+          discount_type?: string
+          id?: string
+          is_used?: boolean
+          used_at?: string | null
+          used_on_order_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency_code?: string
+          discount_amount?: number
+          discount_type?: string
+          id?: string
+          is_used?: boolean
+          used_at?: string | null
+          used_on_order_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_discounts_used_on_order_id_fkey"
+            columns: ["used_on_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_profiles: {
         Row: {
           created_at: string
