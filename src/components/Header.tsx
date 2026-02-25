@@ -129,7 +129,7 @@ export function Header() {
         <div className="flex-row flex items-end justify-end gap-[14px]">
           <Link to="/" className="flex items-center gap-2">
             <span className="font-display text-2xl tracking-wide md:text-3xl">
-              <span className="text-primary text-base font-mono py-0 my-0 mx-0">Home</span>
+              <span className="text-primary font-mono py-0 my-0 mx-0 text-lg">Home</span>
             </span>
           </Link>
           <Link
