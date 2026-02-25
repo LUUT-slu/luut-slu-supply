@@ -112,15 +112,15 @@ export default function SellerDashboardNew() {
 
             {/* Quick Actions */}
             <div className="flex gap-2 flex-wrap">
-              {profile?.id && profile?.user_id && (
-                <SellerSettingsDialog
-                  sellerId={profile.id}
-                  userId={profile.user_id}
-                  currentName={profile.seller_name}
-                  currentDocumentUrl={(profile as any).document_url}
-                  onUpdated={refreshProfile}
-                />
-              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate("/seller/products/new")}
+                className="gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Product
+              </Button>
               {profile?.id && (
                 <CreateOrderDialog
                   sellerId={profile.id}
@@ -137,15 +137,15 @@ export default function SellerDashboardNew() {
                 <Eye className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">View</span> Products
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => navigate("/seller/products/new")}
-                className="gap-1.5"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Product
-              </Button>
+              {profile?.id && profile?.user_id && (
+                <SellerSettingsDialog
+                  sellerId={profile.id}
+                  userId={profile.user_id}
+                  currentName={profile.seller_name}
+                  currentDocumentUrl={(profile as any).document_url}
+                  onUpdated={refreshProfile}
+                />
+              )}
             </div>
           </div>
 
