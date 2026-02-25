@@ -14,7 +14,7 @@ function getBadgeForProduct(productId: string): string {
 function formatPrice(amount: string, currencyCode: string): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: currencyCode,
+    currency: currencyCode
   }).format(parseFloat(amount));
 }
 
@@ -34,11 +34,11 @@ function ProductCard({ product, index }: ProductCardProps) {
     <Link
       to={`/product/${node.handle}`}
       className="group relative flex-shrink-0 w-[70vw] sm:w-[45vw] md:w-auto snap-start"
-      style={{ 
+      style={{
         animationDelay: `${index * 100}ms`,
-        animationFillMode: "forwards" 
-      }}
-    >
+        animationFillMode: "forwards"
+      }}>
+
       <div className="relative overflow-hidden rounded-lg bg-card/50 border border-border/20 transition-all duration-300 group-hover:border-primary/20 group-hover:-translate-y-0.5">
         {/* Badge - subtle */}
         <div className="absolute top-3 right-3 z-10">
@@ -49,17 +49,17 @@ function ProductCard({ product, index }: ProductCardProps) {
 
         {/* Image */}
         <div className="aspect-square overflow-hidden bg-muted/30">
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={node.title}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-103"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
+          {imageUrl ?
+          <img
+            src={imageUrl}
+            alt={node.title}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-103" /> :
+
+
+          <div className="flex h-full w-full items-center justify-center">
               <span className="text-muted-foreground text-sm">No image</span>
             </div>
-          )}
+          }
         </div>
 
         {/* Product Info */}
@@ -80,8 +80,8 @@ function ProductCard({ product, index }: ProductCardProps) {
                 const normalized = normalizeVendorName(node.vendor || 'Luut SLU');
                 window.location.href = `/seller/${encodeURIComponent(normalized.toLowerCase().replace(/\s+/g, '-'))}`;
               }}
-              className="text-muted-foreground/70 hover:text-muted-foreground cursor-pointer transition-colors"
-            >
+              className="text-muted-foreground/70 hover:text-muted-foreground cursor-pointer transition-colors">
+
               {normalizeVendorName(node.vendor || "Luut SLU")}
             </span>
           </p>
@@ -90,8 +90,8 @@ function ProductCard({ product, index }: ProductCardProps) {
         {/* Very subtle neon ring on hover */}
         <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-primary/0 transition-all duration-300 group-hover:ring-primary/10 pointer-events-none" />
       </div>
-    </Link>
-  );
+    </Link>);
+
 }
 
 export function WhatPeopleAreBuyingSection() {
@@ -130,8 +130,8 @@ export function WhatPeopleAreBuyingSection() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         </div>
-      </section>
-    );
+      </section>);
+
   }
 
   if (displayProducts.length === 0) {
@@ -139,7 +139,7 @@ export function WhatPeopleAreBuyingSection() {
   }
 
   return (
-    <section className="relative py-12 md:py-16 overflow-hidden">
+    <section className="relative md:py-16 overflow-hidden py-[30px]">
       {/* Subtle gradient wash behind section */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
       
@@ -149,8 +149,8 @@ export function WhatPeopleAreBuyingSection() {
       <div className="container relative">
         {/* Section Header - refined */}
         <div className="mb-10">
-          <h2 className="font-display text-2xl md:text-3xl tracking-[0.15em] text-foreground/90" style={{ textShadow: '0 0 30px hsl(43 74% 49% / 0.15)' }}>
-            WHAT PEOPLE ARE BUYING
+          <h2 className="md:text-3xl tracking-[0.15em] text-foreground/90 font-semibold text-xl font-mono text-center" style={{ textShadow: '0 0 30px hsl(43 74% 49% / 0.15)' }}>
+            ​WHAT'S TRENDING 
           </h2>
           <div className="mt-2 w-16 h-px bg-gradient-to-r from-primary/40 to-transparent" />
           <p className="mt-4 font-body text-sm text-muted-foreground/70">
@@ -161,19 +161,19 @@ export function WhatPeopleAreBuyingSection() {
         {/* Mobile: Horizontal Scroll Carousel */}
         <div className="md:hidden -mx-4 px-4">
           <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
-            {displayProducts.map((product, index) => (
-              <ProductCard key={product.node.id} product={product} index={index} />
-            ))}
+            {displayProducts.map((product, index) =>
+            <ProductCard key={product.node.id} product={product} index={index} />
+            )}
           </div>
         </div>
 
         {/* Desktop: Grid Layout */}
         <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-          {displayProducts.map((product, index) => (
-            <ProductCard key={product.node.id} product={product} index={index} />
-          ))}
+          {displayProducts.map((product, index) =>
+          <ProductCard key={product.node.id} product={product} index={index} />
+          )}
         </div>
       </div>
-    </section>
-  );
+    </section>);
+
 }
