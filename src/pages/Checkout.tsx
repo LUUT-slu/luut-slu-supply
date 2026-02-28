@@ -349,6 +349,13 @@ export default function Checkout() {
         message += `\n\n📝 Note: ${note.trim()}`;
       }
 
+      // Add order tracking link if we have a local order
+      if (data.localOrderId && data.localOrderToken) {
+        const baseUrl = window.location.origin;
+        const orderUrl = `${baseUrl}/order/${data.localOrderId}?token=${data.localOrderToken}`;
+        message += `\n\n🔗 *View Order:* ${orderUrl}`;
+      }
+
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://wa.me/${sellerWhatsApp}?text=${encodedMessage}`;
 
