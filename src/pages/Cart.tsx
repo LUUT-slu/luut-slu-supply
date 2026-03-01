@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ShoppingBag, Minus, Plus, Trash2, Shield, Wallet, MapPin, Store } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Minus, Plus, Trash2, Shield, Wallet, MapPin, Store, Tag, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cartStore";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export default function Cart() {
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
   const currentSeller = getCurrentSeller();
+  const { data: siteSettings } = useSiteSettings();
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -138,19 +140,38 @@ export default function Cart() {
 
             {/* Sticky Footer */}
             <div className="sticky bottom-0 border-t border-border bg-background px-4 py-4">
+              {/* Checkout Reminder */}
+              {siteSettings?.checkoutReminder?.enabled && (
+                <div className="mb-3 flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
+                  <Tag className="h-3 w-3 flex-shrink-0" />
+                  <span>{siteSettings.checkoutReminder.message}</span>
+                </div>
+              )}
               <div className="mb-4 flex items-center justify-between">
                 <span className="font-body text-lg">Total</span>
                 <span className="font-display text-2xl text-primary">
                   EC${totalPrice.toFixed(2)}
                 </span>
               </div>
-              <Button
-                onClick={() => navigate('/checkout')}
-                className="w-full"
-                size="lg"
-              >
-                Checkout
-              </Button>
+              {siteSettings?.freezeCheckout ? (
+                <div className="space-y-3 text-center">
+                  <div className="flex items-center justify-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    Checkout temporarily paused. Check back soon.
+                  </div>
+                  <Button onClick={() => navigate('/shop')} variant="outline" className="w-full" size="lg">
+                    Continue Browsing
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => navigate('/checkout')}
+                  className="w-full"
+                  size="lg"
+                >
+                  Checkout
+                </Button>
+              )}
             </div>
           </div>
         )}

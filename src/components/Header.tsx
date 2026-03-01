@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { SaleBanner } from "@/components/SaleBanner";
 import { Link } from "react-router-dom";
 import { Menu, X, ShoppingBag, DollarSign, User } from "lucide-react";
 import { Button } from "./ui/button";
@@ -123,6 +124,8 @@ export function Header() {
   }, []);
 
   return (
+    <>
+    <SaleBanner />
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between md:h-20">
         {/* Logo and My Orders */}
@@ -287,6 +290,7 @@ export function Header() {
           </Sheet>
         </div>
       </div>
-    </header>);
+    </header>
+    </>);
 
 }

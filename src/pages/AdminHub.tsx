@@ -12,6 +12,7 @@ import {
   UserCheck,
   Truck,
   Store,
+  Settings,
   LogOut,
   ClipboardList,
   ShieldCheck,
@@ -136,10 +137,19 @@ export default function AdminHub() {
       title: "My Seller Dashboard",
       description: "Access your own seller sales and stats",
       icon: TrendingUp,
-      href: "/seller-dashboard",
+      href: "/seller/dashboard",
       stat: "View sales",
       color: "text-primary",
       bgColor: "bg-primary/10",
+    },
+    {
+      title: "Site Settings",
+      description: "Control popups, checkout, and product visibility",
+      icon: Settings,
+      href: "/admin/site-settings",
+      stat: "Manage",
+      color: "text-pink-500",
+      bgColor: "bg-pink-500/10",
     },
   ];
 

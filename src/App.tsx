@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { RouteGuard } from "@/components/RouteGuard";
+import { SalePopup } from "@/components/SalePopup";
 import Index from "./pages/Index";
 
 // Retry wrapper for lazy imports — handles stale chunk errors after deploys
@@ -70,6 +71,7 @@ const SellerOrders = lazyRetry(() => import("./pages/seller/SellerOrders"));
 const SellerOrderDetail = lazyRetry(() => import("./pages/seller/SellerOrderDetail"));
 const SellerAnalytics = lazyRetry(() => import("./pages/seller/SellerAnalytics"));
 const SellerSettingsPage = lazyRetry(() => import("./pages/seller/SellerSettingsPage"));
+const AdminSiteSettings = lazyRetry(() => import("./pages/AdminSiteSettings"));
 
 const queryClient = new QueryClient();
 
@@ -86,6 +88,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <ScrollToTop />
+        <SalePopup />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public Routes */}
@@ -207,6 +210,11 @@ const App = () => (
             <Route path="/admin/products" element={
               <RouteGuard requiredRole="admin">
                 <AdminProductsPage />
+              </RouteGuard>
+            } />
+            <Route path="/admin/site-settings" element={
+              <RouteGuard requiredRole="admin">
+                <AdminSiteSettings />
               </RouteGuard>
             } />
             <Route path="/admin-orders" element={
