@@ -43,11 +43,18 @@ async function verifyAdmin(req: Request): Promise<boolean> {
   }
 }
 
-function getShopifyHeaders(): { headers: Record<string, string>; token: string } | null {
-  const token = Deno.env.get("SHOPIFY_ADMIN_TOKEN") || Deno.env.get("SHOPIFY_ACCESS_TOKEN");
+// Read token fresh every invocation (no module-level caching).
+// Priority: SHOPIFY_ADMIN_TOKEN (shpat_) → never use SHOPIFY_ACCESS_TOKEN (that's a storefront token).
+function getShopifyAdminToken(): string | null {
+  return Deno.env.get("SHOPIFY_ADMIN_TOKEN") || null;
+}
+
+function getShopifyHeaders(): { headers: Record<string, string>; token: string; source: string } | null {
+  const token = getShopifyAdminToken();
   if (!token) return null;
   return {
     token,
+    source: "SHOPIFY_ADMIN_TOKEN",
     headers: {
       "X-Shopify-Access-Token": token,
       "Content-Type": "application/json",
@@ -69,6 +76,13 @@ async function runTest(name: string, fn: () => Promise<{ message: string; detail
   }
 }
 
+async function sha256Short(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 8);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -84,20 +98,43 @@ serve(async (req) => {
     }
 
     const shopify = getShopifyHeaders();
+    
+    // Also check what SHOPIFY_ACCESS_TOKEN contains for debug comparison
+    const storefrontToken = Deno.env.get("SHOPIFY_ACCESS_TOKEN");
+
     if (!shopify) {
       return new Response(
         JSON.stringify({
           connected: false,
-          error: "No Shopify admin token configured",
+          error: "No SHOPIFY_ADMIN_TOKEN configured. SHOPIFY_ACCESS_TOKEN is a storefront token (shpss) and cannot be used for Admin API.",
           tests: [],
-          scopes: [],
+          granted_scopes: [],
+          debug_auth: {
+            admin_token_present: false,
+            storefront_token_present: !!storefrontToken,
+            storefront_token_prefix: storefrontToken ? storefrontToken.substring(0, 5) : "N/A",
+            shop_domain: SHOPIFY_STORE_DOMAIN,
+            note: "SHOPIFY_ACCESS_TOKEN has prefix 'shpss' = Storefront token. Admin API needs 'shpat_' prefix.",
+          },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const url = new URL(req.url);
-    const testFilter = url.searchParams.get("test"); // optional: run single test
+    const testFilter = url.searchParams.get("test");
+
+    const tokenHash = await sha256Short(shopify.token);
+    const debugAuth = {
+      token_prefix: shopify.token.substring(0, 5),
+      token_length: shopify.token.length,
+      token_hash: tokenHash,
+      shop_domain: SHOPIFY_STORE_DOMAIN,
+      env_var_used: shopify.source,
+      header_used: "X-Shopify-Access-Token",
+      storefront_token_present: !!storefrontToken,
+      storefront_token_prefix: storefrontToken ? storefrontToken.substring(0, 5) : "N/A",
+    };
 
     const allTests: Record<string, () => Promise<{ message: string; details?: any }>> = {
       connection: async () => {
@@ -179,7 +216,6 @@ serve(async (req) => {
       if (fn) results.push(await runTest(name, fn));
     }
 
-    // Extract scopes from the scopes test result
     const scopesResult = results.find((r) => r.name === "scopes");
     const grantedScopes: string[] = scopesResult?.details?.scopes || [];
 
@@ -191,6 +227,7 @@ serve(async (req) => {
         tested_at: new Date().toISOString(),
         granted_scopes: grantedScopes,
         tests: results,
+        debug_auth: debugAuth,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

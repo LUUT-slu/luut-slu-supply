@@ -14,16 +14,17 @@ serve(async (req) => {
   }
 
   try {
-    const adminToken = Deno.env.get("SHOPIFY_ADMIN_TOKEN");
-    const accessToken = Deno.env.get("SHOPIFY_ACCESS_TOKEN");
-    const shopifyAdminToken = adminToken || accessToken;
-    
-    console.log("Token source:", adminToken ? "SHOPIFY_ADMIN_TOKEN" : accessToken ? "SHOPIFY_ACCESS_TOKEN" : "NONE");
-    console.log("Token prefix:", shopifyAdminToken ? shopifyAdminToken.substring(0, 8) + "..." : "EMPTY");
+    // SHOPIFY_ADMIN_TOKEN (shpat_) is for Admin API.
+    // SHOPIFY_ACCESS_TOKEN (shpss) is a Storefront token — NOT usable here.
+    const shopifyToken = Deno.env.get("SHOPIFY_ADMIN_TOKEN");
 
-    if (!shopifyAdminToken) {
+    console.log("Token source: SHOPIFY_ADMIN_TOKEN");
+    console.log("Token present:", !!shopifyToken);
+    console.log("Token prefix:", shopifyToken ? shopifyToken.substring(0, 5) + "..." : "EMPTY");
+
+    if (!shopifyToken) {
       return new Response(
-        JSON.stringify({ valid: false, error: "Discount validation not available" }),
+        JSON.stringify({ valid: false, error: "Discount validation not available (no SHOPIFY_ADMIN_TOKEN)" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -38,18 +39,17 @@ serve(async (req) => {
 
     const trimmedCode = code.trim().toUpperCase();
     const shopifyHeaders = {
-      "X-Shopify-Access-Token": shopifyAdminToken,
+      "X-Shopify-Access-Token": shopifyToken,
       "Content-Type": "application/json",
     };
 
-    // Step 1: Dynamic lookup — resolve discount code to its price rule
     const lookupUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/discount_codes/lookup.json?code=${encodeURIComponent(trimmedCode)}`;
     console.log("Looking up discount code:", trimmedCode);
 
     const lookupRes = await fetch(lookupUrl, {
       method: "GET",
       headers: shopifyHeaders,
-      redirect: "manual", // lookup returns a 303 redirect
+      redirect: "manual",
     });
 
     console.log("Lookup response status:", lookupRes.status);
@@ -57,7 +57,6 @@ serve(async (req) => {
     let priceRuleId: string | null = null;
 
     if (lookupRes.status === 303) {
-      // Extract price rule ID from the Location header redirect URL
       const location = lookupRes.headers.get("location");
       console.log("Redirect location:", location);
       if (location) {
@@ -65,7 +64,6 @@ serve(async (req) => {
         if (match) priceRuleId = match[1];
       }
     } else if (lookupRes.ok) {
-      // Some API versions return the discount code directly
       const lookupData = await lookupRes.json();
       if (lookupData.discount_code?.price_rule_id) {
         priceRuleId = String(lookupData.discount_code.price_rule_id);
@@ -94,7 +92,6 @@ serve(async (req) => {
       );
     }
 
-    // Step 2: Fetch the price rule details
     const priceRuleUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/price_rules/${priceRuleId}.json`;
     console.log("Fetching price rule:", priceRuleId);
 
@@ -115,7 +112,6 @@ serve(async (req) => {
     const priceRuleData = await priceRuleResponse.json();
     const priceRule = priceRuleData.price_rule;
 
-    // Step 3: Check if discount is currently active
     const now = new Date();
     if (priceRule.starts_at && new Date(priceRule.starts_at) > now) {
       return new Response(
