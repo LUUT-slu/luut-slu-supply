@@ -33,6 +33,7 @@ import { useCartStore } from "@/stores/cartStore";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort"];
 const FALLBACK_WHATSAPP_NUMBER = "7587185478";
@@ -118,6 +119,7 @@ export default function Checkout() {
 
   const totalPrice = getTotalPrice();
   const currentSeller = getCurrentSeller();
+  const { data: siteSettings } = useSiteSettings();
 
   // Calculate discount amount
   const discountAmount = appliedDiscount
@@ -553,6 +555,13 @@ export default function Checkout() {
                   </div>
                 </div>
               </div>
+              {/* Checkout Reminder */}
+              {siteSettings?.checkoutReminder?.enabled && !appliedDiscount && (
+                <p className="text-xs text-primary mt-2 flex items-center gap-1">
+                  <Tag className="h-3 w-3" />
+                  {siteSettings.checkoutReminder.message}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground mt-2">
                 Payment: Cash on meetup
               </p>
@@ -672,30 +681,42 @@ export default function Checkout() {
 
         {/* Sticky Footer */}
         <div className="sticky bottom-0 border-t border-border bg-background px-4 py-4">
-          {!isFormComplete && (
+          {!isFormComplete && !siteSettings?.freezeCheckout && (
             <p className="mb-3 text-center text-sm text-muted-foreground">
               Complete all required fields to continue
             </p>
           )}
           
-          <Button
-            onClick={handleConfirmOrder}
-            className="w-full"
-            size="lg"
-            disabled={!isFormComplete || isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating Order...
-              </>
-            ) : (
-              <>
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Confirm Order via WhatsApp
-              </>
-            )}
-          </Button>
+          {siteSettings?.freezeCheckout ? (
+            <div className="space-y-3 text-center">
+              <div className="flex items-center justify-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                <AlertTriangle className="h-4 w-4" />
+                Checkout temporarily paused. Check back soon.
+              </div>
+              <Button onClick={() => navigate('/shop')} variant="outline" className="w-full" size="lg">
+                Continue Browsing
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={handleConfirmOrder}
+              className="w-full"
+              size="lg"
+              disabled={!isFormComplete || isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Order...
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Confirm Order via WhatsApp
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </main>
     </div>
