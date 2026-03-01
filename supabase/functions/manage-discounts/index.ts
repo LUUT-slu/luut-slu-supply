@@ -10,8 +10,9 @@ const SHOPIFY_STORE_DOMAIN = "lovable-project-yf43m.myshopify.com";
 const SHOPIFY_API_VERSION = "2025-01";
 
 function getShopifyHeaders() {
-  const token = Deno.env.get("SHOPIFY_ADMIN_TOKEN") || Deno.env.get("SHOPIFY_ACCESS_TOKEN");
-  if (!token) throw new Error("Shopify admin token not configured");
+  // SHOPIFY_ADMIN_TOKEN (shpat_) = Admin API. SHOPIFY_ACCESS_TOKEN (shpss) = Storefront — wrong for admin calls.
+  const token = Deno.env.get("SHOPIFY_ADMIN_TOKEN");
+  if (!token) throw new Error("SHOPIFY_ADMIN_TOKEN not configured (need shpat_ token for Admin API)");
   return {
     "X-Shopify-Access-Token": token,
     "Content-Type": "application/json",

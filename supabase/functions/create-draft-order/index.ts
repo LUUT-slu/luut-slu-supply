@@ -70,6 +70,7 @@ serve(async (req) => {
   }
 
   try {
+    // SHOPIFY_ADMIN_TOKEN (shpat_) for Admin API calls
     const shopifyAdminToken = Deno.env.get("SHOPIFY_ADMIN_TOKEN");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

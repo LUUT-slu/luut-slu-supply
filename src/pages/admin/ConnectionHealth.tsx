@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminAuth } from "@/components/AdminAuth";
 import { Header } from "@/components/Header";
@@ -7,7 +6,6 @@ import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   CheckCircle2,
   XCircle,
@@ -21,6 +19,7 @@ import {
   FileText,
   Warehouse,
   BookOpen,
+  Bug,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,6 +31,15 @@ interface TestResult {
   duration_ms: number;
 }
 
+interface DebugAuth {
+  token_prefix: string;
+  token_length: number;
+  token_hash: string;
+  shop_domain: string;
+  env_var_used: string;
+  header_used: string;
+}
+
 interface HealthData {
   connected: boolean;
   store_domain: string;
@@ -39,9 +47,9 @@ interface HealthData {
   tested_at: string;
   granted_scopes: string[];
   tests: TestResult[];
+  debug_auth?: DebugAuth;
 }
 
-// Feature → scope mapping
 const SCOPE_MAP: {
   scope: string;
   feature: string;
@@ -86,19 +94,24 @@ const TEST_LABELS: Record<string, string> = {
 };
 
 export default function ConnectionHealth() {
-  const navigate = useNavigate();
   const [healthData, setHealthData] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(false);
   const [runningTest, setRunningTest] = useState<string | null>(null);
 
+  const getSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error("Not authenticated");
+      return null;
+    }
+    return session;
+  };
+
   const runAllTests = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Not authenticated");
-        return;
-      }
+      const session = await getSession();
+      if (!session) return;
 
       const res = await supabase.functions.invoke("shopify-health-check", {
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -117,7 +130,7 @@ export default function ConnectionHealth() {
   const runSingleTest = async (testName: string) => {
     setRunningTest(testName);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = await getSession();
       if (!session) return;
 
       const res = await supabase.functions.invoke("shopify-health-check", {
@@ -127,7 +140,6 @@ export default function ConnectionHealth() {
 
       if (res.error) throw new Error(res.error.message);
 
-      // Update just this test in existing data
       const newData = res.data as HealthData;
       if (healthData) {
         const updatedTests = healthData.tests.map((t) => {
@@ -146,6 +158,7 @@ export default function ConnectionHealth() {
   };
 
   const grantedScopes = healthData?.granted_scopes || [];
+  const debugAuth = healthData?.debug_auth;
 
   return (
     <AdminAuth>
@@ -206,13 +219,56 @@ export default function ConnectionHealth() {
             </CardContent>
           </Card>
 
+          {/* Debug Auth Info */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Bug className="h-5 w-5 text-amber-500" />
+                Debug Auth
+              </CardTitle>
+              <CardDescription>
+                Token fingerprint & auth configuration. Run diagnostics to populate.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!debugAuth ? (
+                <p className="text-sm text-muted-foreground">Run diagnostics to see token debug info.</p>
+              ) : (
+                <div className="grid gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Token Prefix</span>
+                    <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{debugAuth.token_prefix}…</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Token Length</span>
+                    <span>{debugAuth.token_length} chars</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Token Hash (SHA-256)</span>
+                    <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{debugAuth.token_hash}</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Shop Domain</span>
+                    <span className="font-mono text-xs">{debugAuth.shop_domain}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Env Var Used</span>
+                    <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{debugAuth.env_var_used}</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Auth Header</span>
+                    <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{debugAuth.header_used}</code>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Scopes Checklist */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Required vs Granted Scopes</CardTitle>
-              <CardDescription>
-                Based on features implemented in this platform
-              </CardDescription>
+              <CardDescription>Based on features implemented in this platform</CardDescription>
             </CardHeader>
             <CardContent>
               {grantedScopes.length === 0 && !healthData ? (
@@ -306,7 +362,7 @@ export default function ConnectionHealth() {
             </CardContent>
           </Card>
 
-          {/* Update Token Prompt */}
+          {/* Reconnect Shopify */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Reconnect Shopify</CardTitle>
@@ -320,8 +376,9 @@ export default function ConnectionHealth() {
                 <li>Update the required scopes in "API access"</li>
                 <li>Reinstall the app on your store to grant new scopes</li>
                 <li>Copy the new Admin API access token</li>
-                <li>Update the SHOPIFY_ADMIN_TOKEN secret in your project settings</li>
-                <li>Re-run diagnostics above to confirm</li>
+                <li>Update the <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">SHOPIFY_ACCESS_TOKEN</code> secret in your project settings</li>
+                <li>Re-run diagnostics above — verify <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">token_hash</code> changed</li>
+                <li>"Connection" test must show PASS (200)</li>
               </ol>
             </CardContent>
           </Card>
