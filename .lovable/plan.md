@@ -1,75 +1,111 @@
 
-# Structured Seller Application System
 
-## Overview
+## Plan: 1K Followers Sale Experience + Admin Site Settings
 
-Replace the WhatsApp-based "Apply to Sell" flow with a popup form on the Sell on Luut page. Applications go to the `seller_applications` table and are reviewed in the Admin Centre's existing Seller Requests page.
-
----
-
-## Database Migration
-
-Add new columns to the `seller_applications` table for the additional form fields:
-
-```sql
-ALTER TABLE seller_applications
-  ADD COLUMN IF NOT EXISTS business_name text,
-  ADD COLUMN IF NOT EXISTS instagram_url text,
-  ADD COLUMN IF NOT EXISTS facebook_url text,
-  ADD COLUMN IF NOT EXISTS secondary_phone text,
-  ADD COLUMN IF NOT EXISTS email text,
-  ADD COLUMN IF NOT EXISTS tiktok_url text;
-```
-
-The existing columns already cover: `name` (Full Name), `whatsapp` (Phone Number), `location`, `categories`. The `name` column currently stores the applicant's name which maps to "Full Name". The `whatsapp` column maps to "Phone Number".
-
-No RLS changes needed -- existing policies already allow authenticated users to insert their own applications and admins to view/update all.
+### Overview
+Build a database-driven site settings system with an admin UI to control popups, checkout freeze, and sold-out product visibility. Add a premium 1K sale popup and banner to the storefront that respects these settings.
 
 ---
 
-## File Changes
+### 1. Database: `site_settings` table
 
-### 1. `src/pages/SellOnLuut.tsx`
+Create a single `site_settings` table with a key-value/JSON structure:
 
-- Remove the `ChatButton` import used for the CTA
-- Add a `Dialog` (modal) component that opens when "Apply to Sell" is clicked
-- The modal contains a form with:
-  - **Mandatory**: Full Name, Phone Number, Business Name, Location, Instagram Link
-  - **Optional**: Facebook Link, Secondary Phone, Email, TikTok Link
-- On submit: check auth (redirect to `/login?next=/sell` if not logged in), then insert into `seller_applications`
-- On success: show toast, close modal
-- Remove the WhatsApp prefilled message variable (`applyMessage`)
-- Remove the floating `ChatButton` at the bottom (it's a WhatsApp redirect)
+| Column | Type | Purpose |
+|--------|------|---------|
+| `id` | text (PK) | Setting key (e.g. `popups`, `freeze_checkout`, `hide_sold_out`, `checkout_reminder`) |
+| `value` | jsonb | Setting value |
+| `updated_at` | timestamptz | Last modified |
+| `updated_by` | uuid | Admin who changed it |
 
-### 2. `src/pages/AdminSellerRequests.tsx`
+Seed initial rows:
+- `popups` → `[{ "id": "1k-sale", "name": "1K Followers Sale", "enabled": true, "frequency": "once_per_session", "startAt": null, "endAt": null, "pages": ["home", "product"], "buttonUrl": "/shop" }]`
+- `freeze_checkout` → `false`
+- `hide_sold_out` → `false`
+- `checkout_reminder` → `{ "enabled": true, "code": "1KPROMO", "message": "Use code 1KPROMO for 15% OFF (one-time use)." }`
 
-- Update the `SellerApplication` interface to include the new fields (`business_name`, `instagram_url`, `facebook_url`, `secondary_phone`, `email`, `tiktok_url`)
-- Update the details dialog to display all new fields
-- Add a "Message on WhatsApp" button in the details dialog that opens `wa.me/{phone}` with a prefilled clarification message
-- The existing Approve, Reject, and Ban actions remain unchanged
-
-### 3. `src/pages/seller/SellerApply.tsx`
-
-- Remove the WhatsApp notification (`window.open(wa.me/...)`) from the `handleSubmit` function -- applications now go through the admin panel only, no WhatsApp redirect
+RLS: Admins can read/write all. Public can read (storefront needs to fetch settings).
 
 ---
 
-## What Already Works (No Changes Needed)
+### 2. Shopify Discount Setup
 
-- **Admin route**: `/admin/approvals` already renders `AdminSellerRequests` with admin RouteGuard
-- **Approval flow**: `handleApprove` in `AdminSellerRequests` already creates/updates `seller_profiles`, sets `is_approved: true` and `seller_status: "approved"`
-- **Seller access gating**: `RouteGuard` with `requiredRole="seller"` already checks `seller_profiles.is_approved` before granting access
-- **Rejection/Ban**: Already implemented in `AdminSellerRequests`
-- **RLS policies**: `seller_applications` already has policies for user insert and admin CRUD
+Create price rule + discount code `1KPROMO` via Shopify tools:
+- 15% off storewide
+- Once per customer
+- 7-day duration
 
 ---
 
-## Technical Details
+### 3. New Files
 
-| Component | Detail |
-|-----------|--------|
-| Form validation | All mandatory fields checked before submit; zod not needed since fields are simple strings with `required` attribute |
-| Auth check | `supabase.auth.getSession()` before insert; redirect to login if unauthenticated |
-| Duplicate check | Query `seller_applications` for existing application by `user_id` before allowing resubmission |
-| Modal component | Uses existing `Dialog` from `@radix-ui/react-dialog` (already installed) |
-| Admin WhatsApp button | Normalizes phone number and opens `wa.me/` link with prefilled "Regarding your seller application on Luut..." message |
+**`src/hooks/useSiteSettings.ts`** — React Query hook to fetch all site settings from the database. Caches with short stale time for near-instant admin updates.
+
+**`src/components/SalePopup.tsx`** — Premium black/gold modal popup:
+- "WE HIT 1K 🎉" title, code highlight, SHOP THE SALE + COPY CODE buttons
+- Checks `popups` setting for enabled state, frequency, page targeting
+- Uses sessionStorage/localStorage for frequency control
+- Renders nothing if disabled
+
+**`src/components/SaleBanner.tsx`** — Slim top banner above Header:
+- "1K SALE: 15% OFF — Use code 1KPROMO (7 days)"
+- Click copies code or opens popup
+- Controlled by popup enabled state
+
+**`src/pages/AdminSiteSettings.tsx`** — Admin page with sections:
+- **Popups Manager**: List of popups with toggle, frequency selector, date pickers, page targeting
+- **Freeze Checkout**: Single toggle with description
+- **Hide Sold-Out Products**: Single toggle
+- **Checkout Reminder**: Toggle + editable message/code
+
+---
+
+### 4. Modified Files
+
+**`src/App.tsx`**:
+- Add route `/admin/site-settings` with admin RouteGuard
+- Add `SalePopup` component at the root level (inside BrowserRouter, reads current route)
+
+**`src/pages/AdminHub.tsx`**:
+- Add "Site Settings" card to admin modules list (Settings icon, link to `/admin/site-settings`)
+
+**`src/pages/Index.tsx`**:
+- Add `SaleBanner` component above or below Header
+
+**`src/components/Header.tsx`**:
+- Integrate `SaleBanner` as a slim bar above the main header
+
+**`src/pages/Checkout.tsx`**:
+- Read `freeze_checkout` setting; if true, disable submit button and show pause message
+- Read `checkout_reminder` setting; if enabled, show reminder text near discount input
+
+**`src/pages/Cart.tsx`**:
+- Read `freeze_checkout`; if true, disable checkout button and show message
+- Read `checkout_reminder`; show reminder near totals
+
+**`src/components/UnifiedProductCard.tsx`** and **`src/components/ProductGrid.tsx`** / **`src/components/HybridProductGrid.tsx`**:
+- Read `hide_sold_out` setting; filter out sold-out products from grid when enabled
+
+**`src/pages/ProductDetail.tsx`**:
+- If sold out and `hide_sold_out` is on, show product but with "Sold Out" label and hidden checkout
+
+---
+
+### 5. Implementation Order
+
+1. Create `site_settings` table + seed data (migration)
+2. Create Shopify 1KPROMO discount (15% off, once per customer, 7 days)
+3. Build `useSiteSettings` hook
+4. Build Admin Site Settings page + add route + add to Admin Hub
+5. Build SalePopup component (black/gold, mobile-first)
+6. Build SaleBanner component
+7. Integrate freeze checkout + checkout reminder into Cart/Checkout
+8. Integrate hide sold-out into product grids and product detail
+
+### Technical Notes
+
+- Settings fetched via React Query with `staleTime: 30000` so admin changes propagate within ~30s
+- Popup frequency uses `sessionStorage` (once per session) or `localStorage` with timestamp (once per 24h)
+- The popup system stores an array so future popups just need a new entry — no code changes needed for the toggle/display logic
+- Black/gold styling: `bg-black text-white` with `text-yellow-400` accents for the gold elements
+
