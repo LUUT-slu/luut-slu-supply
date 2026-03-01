@@ -8,6 +8,11 @@ const corsHeaders = {
 const SHOPIFY_STORE_DOMAIN = "lovable-project-yf43m.myshopify.com";
 const SHOPIFY_API_VERSION = "2025-01";
 
+// Known price rules mapped by discount code (workaround for token scope limitation)
+const KNOWN_DISCOUNT_CODES: Record<string, { priceRuleId: number }> = {
+  "1KPROMO": { priceRuleId: 1879602397289 },
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -31,58 +36,26 @@ serve(async (req) => {
     }
 
     const trimmedCode = code.trim().toUpperCase();
+    const knownCode = KNOWN_DISCOUNT_CODES[trimmedCode];
 
-    // Search for discount code via Shopify Admin API
-    // First, look up the discount code to find its price rule
-    const searchUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/discount_codes/lookup.json?code=${encodeURIComponent(trimmedCode)}`;
-
-    const searchResponse = await fetch(searchUrl, {
-      method: "GET",
-      headers: {
-        "X-Shopify-Access-Token": shopifyAdminToken,
-      },
-      redirect: "follow",
-    });
-
-    if (searchResponse.status === 404) {
+    if (!knownCode) {
       return new Response(
         JSON.stringify({ valid: false, error: "Invalid discount code" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!searchResponse.ok) {
-      console.error("Shopify lookup error:", searchResponse.status);
-      return new Response(
-        JSON.stringify({ valid: false, error: "Could not validate discount code" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const discountData = await searchResponse.json();
-    const discountCode = discountData.discount_code;
-
-    if (!discountCode) {
-      return new Response(
-        JSON.stringify({ valid: false, error: "Invalid discount code" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Fetch the associated price rule for details
-    const priceRuleId = discountCode.price_rule_id;
-    const priceRuleUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/price_rules/${priceRuleId}.json`;
-
+    // Fetch price rule details using known ID
+    const priceRuleUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/price_rules/${knownCode.priceRuleId}.json`;
     const priceRuleResponse = await fetch(priceRuleUrl, {
       method: "GET",
-      headers: {
-        "X-Shopify-Access-Token": shopifyAdminToken,
-      },
+      headers: { "X-Shopify-Access-Token": shopifyAdminToken },
     });
 
     if (!priceRuleResponse.ok) {
+      console.error("Shopify price_rule error:", priceRuleResponse.status);
       return new Response(
-        JSON.stringify({ valid: false, error: "Could not retrieve discount details" }),
+        JSON.stringify({ valid: false, error: "Could not validate discount code" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -105,14 +78,6 @@ serve(async (req) => {
       );
     }
 
-    // Check usage limits
-    if (priceRule.usage_limit && discountCode.usage_count >= priceRule.usage_limit) {
-      return new Response(
-        JSON.stringify({ valid: false, error: "This discount has reached its usage limit" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // Return discount info
     return new Response(
       JSON.stringify({
@@ -120,10 +85,10 @@ serve(async (req) => {
         discount: {
           code: trimmedCode,
           title: priceRule.title,
-          valueType: priceRule.value_type, // "percentage" or "fixed_amount"
-          value: priceRule.value, // e.g. "-10.0" for 10% off or "-5.00" for $5 off
-          targetType: priceRule.target_type, // "line_item" or "shipping_line"
-          targetSelection: priceRule.target_selection, // "all" or "entitled"
+          valueType: priceRule.value_type,
+          value: priceRule.value,
+          targetType: priceRule.target_type,
+          targetSelection: priceRule.target_selection,
           prerequisiteSubtotalMin: priceRule.prerequisite_subtotal_range?.greater_than_or_equal_to || null,
           oncePerCustomer: priceRule.once_per_customer,
         },

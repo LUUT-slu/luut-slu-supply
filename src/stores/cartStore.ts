@@ -21,7 +21,6 @@ interface CartStore {
   items: CartItem[];
   isLoading: boolean;
   isOpen: boolean;
-  currentSeller: string | null; // Track the current seller (vendor) in cart
   
   addItem: (item: CartItem) => { success: boolean; error?: string };
   updateQuantity: (variantId: string, quantity: number) => void;
@@ -32,6 +31,7 @@ interface CartStore {
   getTotalItems: () => number;
   getTotalPrice: () => number;
   getCurrentSeller: () => string | null;
+  getUniqueVendors: () => string[];
 }
 
 export const useCartStore = create<CartStore>()(
@@ -40,20 +40,9 @@ export const useCartStore = create<CartStore>()(
       items: [],
       isLoading: false,
       isOpen: false,
-      currentSeller: null,
 
       addItem: (item) => {
-        const { items, currentSeller } = get();
-        const itemVendor = item.product.node.vendor;
-        
-        // Enforce single-seller checkout
-        if (items.length > 0 && currentSeller && itemVendor !== currentSeller) {
-          return { 
-            success: false, 
-            error: `Your cart contains items from "${currentSeller}". Please clear your cart before adding items from "${itemVendor}".` 
-          };
-        }
-        
+        const { items } = get();
         const existingItem = items.find(i => i.variantId === item.variantId);
         
         if (existingItem) {
@@ -65,10 +54,7 @@ export const useCartStore = create<CartStore>()(
             )
           });
         } else {
-          set({ 
-            items: [...items, item],
-            currentSeller: itemVendor || currentSeller
-          });
+          set({ items: [...items, item] });
         }
         
         return { success: true };
@@ -88,15 +74,13 @@ export const useCartStore = create<CartStore>()(
       },
 
       removeItem: (variantId) => {
-        const newItems = get().items.filter(item => item.variantId !== variantId);
         set({
-          items: newItems,
-          currentSeller: newItems.length > 0 ? newItems[0].product.node.vendor : null
+          items: get().items.filter(item => item.variantId !== variantId),
         });
       },
 
       clearCart: () => {
-        set({ items: [], currentSeller: null });
+        set({ items: [] });
       },
 
       setLoading: (isLoading) => set({ isLoading }),
@@ -114,13 +98,23 @@ export const useCartStore = create<CartStore>()(
       },
       
       getCurrentSeller: () => {
-        return get().currentSeller;
+        const { items } = get();
+        if (items.length === 0) return null;
+        return items[0].product.node.vendor || null;
+      },
+
+      getUniqueVendors: () => {
+        const { items } = get();
+        const vendors = items
+          .map(i => i.product.node.vendor)
+          .filter(Boolean) as string[];
+        return [...new Set(vendors)];
       },
     }),
     {
       name: 'luut-cart',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ items: state.items, currentSeller: state.currentSeller }),
+      partialize: (state) => ({ items: state.items }),
     }
   )
 );

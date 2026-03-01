@@ -16,12 +16,20 @@ import {
   ShoppingBag,
   Tag,
   X,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -37,6 +45,13 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort"];
 const FALLBACK_WHATSAPP_NUMBER = "7587185478";
+
+const PICKUP_TIME_SLOTS = [
+  "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM",
+  "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM",
+  "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM",
+  "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM",
+];
 
 interface ChecklistItemProps {
   completed: boolean;
@@ -91,6 +106,7 @@ export default function Checkout() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [pickupTime, setPickupTime] = useState('');
   const [note, setNote] = useState('');
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [depositAcknowledged, setDepositAcknowledged] = useState(false);
@@ -114,11 +130,12 @@ export default function Checkout() {
     items,
     getTotalPrice,
     clearCart,
-    getCurrentSeller,
+    getUniqueVendors,
   } = useCartStore();
 
+  const vendors = getUniqueVendors();
   const totalPrice = getTotalPrice();
-  const currentSeller = getCurrentSeller();
+  const currentSeller = vendors[0] || null;
   const { data: siteSettings } = useSiteSettings();
 
   // Calculate discount amount
@@ -235,12 +252,28 @@ export default function Checkout() {
     checkWelcomeDiscount();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-apply discount code from /discount/:code URL
+  useEffect(() => {
+    if (appliedDiscount) return;
+    const savedCode = sessionStorage.getItem("luut-discount-code");
+    if (savedCode) {
+      sessionStorage.removeItem("luut-discount-code");
+      setDiscountCode(savedCode);
+      // Auto-trigger validation
+      setTimeout(() => {
+        const applyBtn = document.querySelector('[data-auto-apply-discount]') as HTMLButtonElement;
+        if (applyBtn) applyBtn.click();
+      }, 300);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const isNameValid = customerName.trim().length >= 2;
   const isPhoneValid = customerPhone.trim().length >= 7;
   const isLocationValid = selectedLocation !== '';
   const isDateValid = selectedDate !== undefined;
+  const isPickupTimeValid = pickupTime !== '';
   const isDepositAcknowledged = depositAcknowledged;
-  const isFormComplete = isNameValid && isPhoneValid && isLocationValid && isDateValid && isDepositAcknowledged;
+  const isFormComplete = isNameValid && isPhoneValid && isLocationValid && isDateValid && isPickupTimeValid && isDepositAcknowledged;
 
   // Get tomorrow as minimum date
   const tomorrow = new Date();
@@ -293,23 +326,26 @@ export default function Checkout() {
     });
 
     try {
-      const sellerVendor = currentSeller || items[0]?.product.node.vendor || '';
-      const sellerWhatsApp = await getSellerWhatsApp(sellerVendor);
-
+      // For multi-vendor carts, use fallback merchant number
+      const sellerVendor = vendors.length === 1 ? (currentSeller || items[0]?.product.node.vendor || '') : '';
+      const sellerWhatsApp = vendors.length === 1
+        ? await getSellerWhatsApp(sellerVendor)
+        : FALLBACK_WHATSAPP_NUMBER;
       // Wrap edge function call with a timeout to prevent infinite loading
       const invokePromise = supabase.functions.invoke('create-draft-order', {
-        body: {
-          customerName: customerName.trim(),
-          customerPhone: customerPhone.trim(),
-          location: selectedLocation,
-          preferredDate: formattedDate,
-          note: note.trim() || null,
-          lineItems,
-          totalPrice: finalPrice,
-          sellerVendor,
-          discountCode: appliedDiscount?.code || null,
-        },
-      });
+          body: {
+            customerName: customerName.trim(),
+            customerPhone: customerPhone.trim(),
+            location: selectedLocation,
+            preferredDate: formattedDate,
+            pickupTime,
+            note: note.trim() || null,
+            lineItems,
+            totalPrice: finalPrice,
+            sellerVendor: vendors.length === 1 ? (currentSeller || '') : '',
+            discountCode: appliedDiscount?.code || null,
+          },
+        });
 
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Order request timed out. Please try again.')), 30000)
@@ -345,6 +381,7 @@ export default function Checkout() {
       }
       message += `📍 Meetup Location: ${selectedLocation}\n`;
       message += `📅 Preferred Date: ${formattedDate}\n`;
+      message += `⏰ Pickup Time: ${pickupTime}\n`;
       message += `\n💳 Payment: Pay on pickup`;
       
       if (note.trim()) {
@@ -382,6 +419,7 @@ export default function Checkout() {
         subtotal: totalPrice,
         location: selectedLocation,
         preferredDate: formattedDate,
+        pickupTime,
         note: note.trim() || undefined,
         timestamp: Date.now(),
       };
@@ -525,6 +563,7 @@ export default function Checkout() {
                         variant="outline"
                         onClick={handleApplyDiscount}
                         disabled={!discountCode.trim() || isValidatingDiscount}
+                        data-auto-apply-discount
                       >
                         {isValidatingDiscount ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
                       </Button>
@@ -624,8 +663,25 @@ export default function Checkout() {
                   />
                 </PopoverContent>
               </Popover>
-              <p className="text-xs text-muted-foreground mt-2">
-                Final time confirmed via WhatsApp after checkout
+            </ChecklistItem>
+
+            {/* Pickup Time Slot */}
+            <ChecklistItem completed={isPickupTimeValid} label="Pickup Time Slot">
+              <Select value={pickupTime} onValueChange={setPickupTime}>
+                <SelectTrigger className="w-full">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Select a time slot" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {PICKUP_TIME_SLOTS.map((slot) => (
+                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Pickups available 9AM–5PM.
               </p>
             </ChecklistItem>
 

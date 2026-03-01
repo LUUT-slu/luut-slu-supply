@@ -1,20 +1,19 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSiteSettings, PopupSetting } from "@/hooks/useSiteSettings";
+import { useCountdown } from "@/hooks/useCountdown";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Copy, ShoppingBag, X } from "lucide-react";
+import { Copy, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 
 function shouldShowPopup(popup: PopupSetting, pathname: string): boolean {
   if (!popup.enabled) return false;
 
-  // Date range check
   const now = new Date();
   if (popup.startAt && new Date(popup.startAt) > now) return false;
   if (popup.endAt && new Date(popup.endAt) < now) return false;
 
-  // Page targeting
   const pageMap: Record<string, string[]> = {
     home: ["/"],
     product: ["/product/", "/product"],
@@ -30,7 +29,6 @@ function shouldShowPopup(popup: PopupSetting, pathname: string): boolean {
     if (!matched) return false;
   }
 
-  // Frequency check
   const storageKey = `popup-seen-${popup.id}`;
   if (popup.frequency === "once_per_session") {
     if (sessionStorage.getItem(storageKey)) return false;
@@ -58,10 +56,11 @@ export function SalePopup() {
   const [activePopup, setActivePopup] = useState<PopupSetting | null>(null);
   const [open, setOpen] = useState(false);
 
+  const { formatted: countdown, isExpired } = useCountdown(activePopup?.endAt);
+
   useEffect(() => {
     if (!settings?.popups) return;
 
-    // Small delay so it feels intentional
     const timer = setTimeout(() => {
       const popup = settings.popups.find((p) => shouldShowPopup(p, location.pathname));
       if (popup) {
@@ -75,6 +74,7 @@ export function SalePopup() {
   }, [settings?.popups, location.pathname]);
 
   if (!activePopup || !open) return null;
+  if (isExpired && activePopup.endAt) return null;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText("1KPROMO");
@@ -90,7 +90,6 @@ export function SalePopup() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-sm border-yellow-500/30 bg-black p-0 text-white sm:max-w-md [&>button]:text-white/60 [&>button]:hover:text-white">
         <div className="flex flex-col items-center px-6 pb-8 pt-10 text-center">
-          {/* Title */}
           <p className="mb-1 text-sm font-medium uppercase tracking-[0.3em] text-yellow-400/80">
             Celebrating
           </p>
@@ -98,11 +97,15 @@ export function SalePopup() {
             WE HIT 1K{" "}
             <span className="inline-block animate-bounce">🎉</span>
           </h2>
-          <p className="mb-6 text-sm text-white/60">
-            15% OFF STOREWIDE for 7 days
+          <p className="mb-1 text-sm text-white/60">
+            15% OFF STOREWIDE
           </p>
+          {countdown && (
+            <p className="mb-5 text-xs font-semibold tracking-widest text-yellow-400/70">
+              ENDS IN: {countdown}
+            </p>
+          )}
 
-          {/* Code highlight */}
           <div className="mb-2 w-full rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-6 py-4">
             <p className="mb-1 text-xs uppercase tracking-widest text-yellow-400/70">
               Use code
@@ -115,7 +118,6 @@ export function SalePopup() {
             One-time use per customer.
           </p>
 
-          {/* Buttons */}
           <div className="flex w-full flex-col gap-3">
             <Button
               onClick={handleShopSale}

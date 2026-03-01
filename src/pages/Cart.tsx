@@ -12,12 +12,12 @@ export default function Cart() {
     removeItem,
     getTotalItems,
     getTotalPrice,
-    getCurrentSeller,
+    getUniqueVendors,
   } = useCartStore();
 
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
-  const currentSeller = getCurrentSeller();
+  const vendors = getUniqueVendors();
   const { data: siteSettings } = useSiteSettings();
 
   return (
@@ -36,7 +36,6 @@ export default function Cart() {
       {/* Main Content */}
       <main className="flex flex-1 flex-col">
         {items.length === 0 ? (
-          /* Empty State */
           <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
             <ShoppingBag className="mb-6 h-20 w-20 text-muted-foreground/50" />
             <h2 className="mb-2 font-display text-2xl">Your Cart is Empty</h2>
@@ -46,15 +45,17 @@ export default function Cart() {
             </Button>
           </div>
         ) : (
-          /* Cart Items */
           <div className="flex flex-1 flex-col">
             <div className="flex-1 overflow-y-auto px-4 py-6">
-              {/* Seller indicator */}
-              {currentSeller && (
+              {/* Vendor indicator */}
+              {vendors.length > 0 && (
                 <div className="mb-6 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
                   <Store className="h-4 w-4 text-primary" />
                   <span className="text-sm">
-                    Shopping from <span className="font-medium text-primary">{currentSeller}</span>
+                    Shopping from{" "}
+                    <span className="font-medium text-primary">
+                      {vendors.join(", ")}
+                    </span>
                   </span>
                 </div>
               )}
@@ -82,6 +83,11 @@ export default function Cart() {
                       {item.variantTitle !== 'Default Title' && (
                         <p className="text-xs text-muted-foreground">
                           {item.selectedOptions.map(o => o.value).join(' • ')}
+                        </p>
+                      )}
+                      {vendors.length > 1 && item.product.node.vendor && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.product.node.vendor}
                         </p>
                       )}
                       <div className="mt-auto flex items-center justify-between pt-2">
@@ -140,7 +146,6 @@ export default function Cart() {
 
             {/* Sticky Footer */}
             <div className="sticky bottom-0 border-t border-border bg-background px-4 py-4">
-              {/* Checkout Reminder */}
               {siteSettings?.checkoutReminder?.enabled && (
                 <div className="mb-3 flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
                   <Tag className="h-3 w-3 flex-shrink-0" />
