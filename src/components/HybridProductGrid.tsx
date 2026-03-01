@@ -1,7 +1,7 @@
-import { UnifiedProduct } from "@/lib/products";
 import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { UnifiedProductCard } from "./UnifiedProductCard";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
 import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -20,10 +20,24 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
   });
   const { data: siteSettings } = useSiteSettings();
 
-  const filteredProducts = useMemo(() => {
-    if (!siteSettings?.hideSoldOut) return products;
-    return products.filter(p => p.stockStatus !== 'out_of_stock');
-  }, [products, siteSettings?.hideSoldOut]);
+  const displayProducts = useMemo(() => {
+    let list = products;
+
+    // Apply variant splitting if enabled
+    if (siteSettings?.colorVariantCards?.enabled) {
+      list = splitByVisualOptions(
+        list,
+        siteSettings.colorVariantCards.showOnlyInStock
+      );
+    }
+
+    // Hide sold out if enabled
+    if (siteSettings?.hideSoldOut) {
+      list = list.filter(p => p.stockStatus !== 'out_of_stock');
+    }
+
+    return list as VariantListingProduct[];
+  }, [products, siteSettings?.hideSoldOut, siteSettings?.colorVariantCards]);
 
   if (loading) {
     return (
@@ -41,7 +55,7 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
     );
   }
 
-  if (filteredProducts.length === 0) {
+  if (displayProducts.length === 0) {
     return (
       <div className="flex min-h-[300px] flex-col items-center justify-center text-center">
         <p className="mb-2 font-body text-lg text-muted-foreground">
@@ -58,7 +72,7 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
     <div className="space-y-6">
       {title && <h2 className="font-display text-2xl md:text-3xl">{title}</h2>}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 rounded-sm">
-        {filteredProducts.map((product) => (
+        {displayProducts.map((product) => (
           <UnifiedProductCard key={product.id} product={product} />
         ))}
       </div>

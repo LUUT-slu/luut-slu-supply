@@ -31,6 +31,10 @@ export interface UnifiedProduct {
       currencyCode: string;
     };
     availableForSale: boolean;
+    image?: {
+      url: string;
+      altText: string | null;
+    } | null;
     selectedOptions: Array<{
       name: string;
       value: string;
@@ -94,6 +98,7 @@ function shopifyToUnified(product: ShopifyProduct): UnifiedProduct {
       title: v.node.title,
       price: v.node.price,
       availableForSale: v.node.availableForSale,
+      image: v.node.image || null,
       selectedOptions: v.node.selectedOptions,
     })),
     originalShopifyProduct: product,

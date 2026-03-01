@@ -31,6 +31,7 @@ const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
 export default function ProductDetail() {
   const { handle } = useParams<{handle: string;}>();
   const navigate = useNavigate();
+  const [searchParams] = [new URLSearchParams(window.location.search)];
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
@@ -47,7 +48,11 @@ export default function ProductDetail() {
         setLoading(true);
         const data = await fetchProductByHandle(handle);
         setProduct(data);
-        if (data?.variants.edges[0]) {
+        // Check for variant query param for deep-linking from color cards
+        const variantParam = searchParams.get('variant');
+        if (variantParam && data?.variants.edges.some(v => v.node.id === variantParam)) {
+          setSelectedVariant(variantParam);
+        } else if (data?.variants.edges[0]) {
           setSelectedVariant(data.variants.edges[0].node.id);
         }
       } catch (err) {
