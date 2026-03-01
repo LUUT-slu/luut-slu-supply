@@ -14,10 +14,10 @@ import {
   Store,
   Settings,
   LogOut,
-  
   ShieldCheck,
   TrendingUp,
   Home,
+  Wifi,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -150,6 +150,15 @@ export default function AdminHub() {
       stat: "Manage",
       color: "text-pink-500",
       bgColor: "bg-pink-500/10",
+    },
+    {
+      title: "Connection Health",
+      description: "Shopify API diagnostics, scope verification, and sync status",
+      icon: Wifi,
+      href: "/admin/connection-health",
+      stat: "Diagnose",
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-500/10",
     },
   ];
 

@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.validate-discount]
 verify_jwt = false
+
+[functions.shopify-health-check]
+verify_jwt = false

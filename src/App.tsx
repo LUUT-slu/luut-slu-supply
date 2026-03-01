@@ -72,6 +72,7 @@ const SellerOrderDetail = lazyRetry(() => import("./pages/seller/SellerOrderDeta
 const SellerAnalytics = lazyRetry(() => import("./pages/seller/SellerAnalytics"));
 const SellerSettingsPage = lazyRetry(() => import("./pages/seller/SellerSettingsPage"));
 const AdminSiteSettings = lazyRetry(() => import("./pages/AdminSiteSettings"));
+const ConnectionHealth = lazyRetry(() => import("./pages/admin/ConnectionHealth"));
 const DiscountRedirect = lazyRetry(() => import("./pages/DiscountRedirect"));
 
 const queryClient = new QueryClient();
@@ -216,6 +217,11 @@ const App = () => (
             <Route path="/admin/site-settings" element={
               <RouteGuard requiredRole="admin">
                 <AdminSiteSettings />
+              </RouteGuard>
+            } />
+            <Route path="/admin/connection-health" element={
+              <RouteGuard requiredRole="admin">
+                <ConnectionHealth />
               </RouteGuard>
             } />
             <Route path="/admin-orders" element={
