@@ -18,11 +18,17 @@ export interface CheckoutReminderSetting {
   message: string;
 }
 
+export interface ColorVariantCardsSetting {
+  enabled: boolean;
+  showOnlyInStock: boolean;
+}
+
 export interface SiteSettings {
   popups: PopupSetting[];
   freezeCheckout: boolean;
   hideSoldOut: boolean;
   checkoutReminder: CheckoutReminderSetting;
+  colorVariantCards: ColorVariantCardsSetting;
 }
 
 async function fetchSiteSettings(): Promise<SiteSettings> {
@@ -45,6 +51,10 @@ async function fetchSiteSettings(): Promise<SiteSettings> {
       enabled: false,
       code: "",
       message: "",
+    },
+    colorVariantCards: (settings.color_variant_cards as ColorVariantCardsSetting) || {
+      enabled: false,
+      showOnlyInStock: true,
     },
   };
 }

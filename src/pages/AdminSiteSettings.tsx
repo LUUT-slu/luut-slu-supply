@@ -10,8 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ShoppingCart, EyeOff, Tag, Save, Loader2, Wifi, CheckCircle2, XCircle } from "lucide-react";
-import { useSiteSettings, updateSiteSetting, CheckoutReminderSetting } from "@/hooks/useSiteSettings";
+import { ArrowLeft, ShoppingCart, EyeOff, Tag, Save, Loader2, Wifi, CheckCircle2, Palette } from "lucide-react";
+import { useSiteSettings, updateSiteSetting, CheckoutReminderSetting, ColorVariantCardsSetting } from "@/hooks/useSiteSettings";
 import { PopupsSection } from "@/components/admin/PopupsSection";
 import { DiscountsSection } from "@/components/admin/DiscountsSection";
 import { toast } from "sonner";
@@ -26,6 +26,9 @@ export default function AdminSiteSettings() {
   const [checkoutReminder, setCheckoutReminder] = useState<CheckoutReminderSetting>({
     enabled: false, code: "", message: "",
   });
+  const [colorVariantCards, setColorVariantCards] = useState<ColorVariantCardsSetting>({
+    enabled: false, showOnlyInStock: true,
+  });
   const [saving, setSaving] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,6 +36,7 @@ export default function AdminSiteSettings() {
       setFreezeCheckout(settings.freezeCheckout);
       setHideSoldOut(settings.hideSoldOut);
       setCheckoutReminder(settings.checkoutReminder);
+      setColorVariantCards(settings.colorVariantCards);
     }
   }, [settings]);
 
@@ -122,6 +126,54 @@ export default function AdminSiteSettings() {
             </section>
 
             <Separator />
+
+            {/* ========== COLOR VARIANT CARDS ========== */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
+                      <Palette className="h-4 w-4 text-violet-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm">Color Variant Cards</CardTitle>
+                      <CardDescription className="text-xs">Show separate cards for each color/style variant</CardDescription>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={colorVariantCards.enabled}
+                    onCheckedChange={(checked) => {
+                      const updated = { ...colorVariantCards, enabled: checked };
+                      setColorVariantCards(updated);
+                      handleSave("color_variant_cards", updated);
+                    }}
+                  />
+                </div>
+              </CardHeader>
+              {colorVariantCards.enabled && (
+                <CardContent className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Products with Color, Style, or Design options will display as separate cards. Size variants remain on the product page.
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs font-medium">Show only in-stock options</Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Hide out-of-stock color options from the grid
+                      </p>
+                    </div>
+                    <Switch
+                      checked={colorVariantCards.showOnlyInStock}
+                      onCheckedChange={(checked) => {
+                        const updated = { ...colorVariantCards, showOnlyInStock: checked };
+                        setColorVariantCards(updated);
+                        handleSave("color_variant_cards", updated);
+                      }}
+                    />
+                  </div>
+                </CardContent>
+              )}
+            </Card>
 
             {/* ========== FREEZE CHECKOUT ========== */}
             <Card>

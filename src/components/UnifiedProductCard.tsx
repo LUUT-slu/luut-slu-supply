@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { UnifiedProduct } from "@/lib/products";
+import { VariantListingProduct } from "@/lib/variantSplitter";
 import { getOptimizedImageUrl } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { Button } from "./ui/button";
@@ -8,7 +9,11 @@ import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface UnifiedProductCardProps {
-  product: UnifiedProduct;
+  product: UnifiedProduct | VariantListingProduct;
+}
+
+function isVariantListing(p: UnifiedProduct | VariantListingProduct): p is VariantListingProduct {
+  return 'visualOptionValue' in p && !!p.visualOptionValue;
 }
 
 function StockBadge({ status }: { status: UnifiedProduct['stockStatus'] }) {
@@ -34,15 +39,30 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
   const isMobile = useIsMobile();
   
+  const isVariant = isVariantListing(product);
   const firstVariant = product.variants[0];
   const price = parseFloat(product.price.amount);
   const rawImageUrl = product.images[0]?.url;
   const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl, 600) : undefined;
   const isOutOfStock = product.stockStatus === 'out_of_stock';
   
-  const productLink = product.source === 'shopify' 
-    ? `/product/${product.handle}` 
-    : `/product/local/${product.id}`;
+  // Build product link — for variant cards, deep-link with variant pre-selection
+  let productLink: string;
+  if (product.source === 'shopify') {
+    // Strip the variant split suffix from id to get the original handle
+    const handle = product.handle;
+    productLink = `/product/${handle}`;
+    if (isVariant && product.preselectedVariantId) {
+      productLink += `?variant=${encodeURIComponent(product.preselectedVariantId)}`;
+    }
+  } else {
+    productLink = `/product/local/${product.id}`;
+  }
+
+  // Display title: append visual option value for variant cards
+  const displayTitle = isVariant
+    ? `${product.title} — ${product.visualOptionValue}`
+    : product.title;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -129,7 +149,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
           {imageUrl ? (
             <img
               src={imageUrl}
-              alt={product.title}
+              alt={displayTitle}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -152,9 +172,14 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
           <div>
             <p className="text-[10px] text-muted-foreground truncate">{product.vendor}</p>
             <h3 className="font-body text-sm font-medium leading-tight line-clamp-2 mt-0.5">
-              {product.title}
+              {displayTitle}
             </h3>
-            {product.category && (
+            {isVariant && product.visualOptionValue && (
+              <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                {product.visualOptionValue}
+              </span>
+            )}
+            {!isVariant && product.category && (
               <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
                 {product.category}
               </span>
@@ -209,7 +234,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
         {imageUrl ? (
           <img
             src={imageUrl}
-            alt={product.title}
+            alt={displayTitle}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
@@ -245,9 +270,14 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
       {/* Content */}
       <div className="flex flex-1 flex-col p-3">
         <p className="mb-1 text-xs text-muted-foreground">{product.vendor}</p>
-        <h3 className="mb-2 line-clamp-2 font-body text-sm font-medium leading-tight">
-          {product.title}
+        <h3 className="mb-1 line-clamp-2 font-body text-sm font-medium leading-tight">
+          {displayTitle}
         </h3>
+        {isVariant && product.visualOptionValue && (
+          <span className="mb-2 inline-block self-start rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+            {product.visualOptionValue}
+          </span>
+        )}
         <div className="mt-auto flex items-center justify-between">
           <span className="font-display text-lg">
             EC${price.toFixed(2)}
