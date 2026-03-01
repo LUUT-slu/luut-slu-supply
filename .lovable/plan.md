@@ -1,90 +1,72 @@
 
 
-## Shopify Connection Health Check + Sync Fixes
+## Plan: Fix Draft Order Customer + Discount Slot Population
 
-### Problem Diagnosis
+### Problem (from screenshot)
+The Shopify draft order is missing two things:
+1. **Customer slot is empty** — shows "Search or create a customer" despite name/phone being in the note
+2. **Discount not applied in Payment section** — shows "Add discount" even though the code applied the `applied_discount` field
 
-**Immediate blocker**: The `manage-discounts` edge function fails with "Unauthorized" on every call. Root cause: `verifyAdmin()` creates a Supabase client with `SUPABASE_ANON_KEY` and the user's JWT, then calls `getUser()` — this pattern is fragile because it depends on the anon key matching the gateway's expectations. The `create-draft-order` function works because it uses `SUPABASE_SERVICE_ROLE_KEY` and bypasses auth entirely.
+### Root Causes
 
-**Other issues**: Discount validation uses hardcoded price rule IDs; no diagnostic visibility for admins; no scope verification.
+**Customer**: Shopify's Draft Order API with just `first_name`/`last_name`/`phone` (no email, no existing customer ID) does not populate the Customer card. Shopify requires either a known `customer.id` or enough info to match an existing customer.
 
-### Plan
+**Discount**: The `applied_discount` code at lines 304-341 looks correct, but if the discount lookup fails silently (e.g. redirect handling, 404), it falls through with no discount applied.
 
-#### Task 1: Fix `manage-discounts` auth (root cause of discount sync failure)
+**Pickup time**: `pickupTime` is sent by checkout but never destructured or used in the edge function.
 
-Change `verifyAdmin()` to use `SUPABASE_SERVICE_ROLE_KEY` (like `create-draft-order` does) instead of anon key with user JWT. Extract user ID from the JWT token directly to verify admin role. This matches the pattern already working in other edge functions.
+### Changes: `supabase/functions/create-draft-order/index.ts`
 
-#### Task 2: Fix `validate-discount` to use dynamic lookup
+#### 1. Add `pickupTime` to interface and destructure it
+Add `pickupTime?: string` to `DraftOrderRequest` and destructure it alongside other fields.
 
-Remove the hardcoded `KNOWN_DISCOUNT_CODES` map. Instead, use Shopify's `discount_codes/lookup.json` endpoint to resolve any code dynamically, then fetch its price rule. This makes discount validation work for all codes (not just 1KPROMO).
+#### 2. Customer lookup by phone before draft order creation
+Before building the draft order payload:
+- Call `GET /admin/api/2025-01/customers/search.json?query=phone:{phone}`
+- If a customer is found, use `{ id: existingCustomerId }` in the draft order
+- If not found, call `POST /admin/api/2025-01/customers.json` to explicitly create the customer with `first_name`, `last_name`, `phone`, then use the returned `id`
+- This ensures the Customer card in Shopify is always populated
 
-#### Task 3: Create `shopify-health-check` edge function
+#### 3. Add `shipping_address` to draft order payload
+Even with a customer attached, add `shipping_address` so phone/name are visible on the order:
+```
+shipping_address: {
+  first_name, last_name,
+  phone: customerPhone,
+  address1: "Pickup",
+  city: location,
+  country: "Saint Lucia",
+  country_code: "LC"
+}
+```
 
-New backend function that runs diagnostic tests against the Shopify Admin API:
-- **Connection test**: Call `shop.json` to verify token validity
-- **Scopes test**: Call `access_scopes.json` to get granted scopes
-- **Products test**: Fetch 5 products
-- **Discounts test**: Fetch price rules
-- **Draft orders test**: Verify draft order access (read only)
-- **Inventory test**: Fetch inventory levels
+#### 4. Add pickup time to note and metafields
+- Update note format: `"📍 Pickup: {location} | 📅 Date: {date} | ⏰ Time: {pickupTime} | 📱 Phone: {phone}"`
+- Add `metafields` array to draft order payload with namespace `pickup` for structured data (location, date, time, phone)
 
-Returns structured results with pass/fail per test and specific error messages.
+#### 5. Improve discount application reliability
+- Add explicit logging when discount lookup fails at each step
+- Handle the redirect scenario for `discount_codes/lookup.json` (Shopify returns 303 redirect — ensure `redirect: "manual"` is used and the redirect Location is followed correctly)
+- If the discount is the internal WELCOME5 (fixed_amount), apply it directly without Shopify lookup since it's a local-only discount
 
-#### Task 4: Build Connection Health admin page
+#### 6. Phone normalization helper
+Add a function to normalize phone to E.164 format for Saint Lucia:
+- 7 digits → `+1758XXXXXXX`
+- 10 digits → `+1XXXXXXXXXX`
+- Already has `+` → leave as-is
 
-New page at `/admin/connection-health` with:
-
-**A) Connection Status card**: Shop domain, API version, connected/disconnected status, last test timestamp.
-
-**B) Required vs Granted Scopes checklist**: Static feature-to-scope mapping based on implemented features. Shows granted (green), missing (red), optional (blue) pills with explanations.
-
-**C) Diagnostic test buttons**: Each test calls the health-check function and shows PASS/FAIL with error details. Tests: Products Read, Discounts Read, Discount Validate, Draft Order Read, Inventory Read, Metafields.
-
-**D) Recent API logs panel**: Shows last results from diagnostic runs.
-
-#### Task 5: Add Connection Health to Admin Hub
-
-Add the health check page as a module card in AdminHub with a Shopify-themed icon. Route: `/admin/connection-health`. Admin-only access.
+### Files Modified
+| File | Change |
+|------|--------|
+| `supabase/functions/create-draft-order/index.ts` | Customer lookup/create, shipping_address, pickupTime in note/metafields, discount reliability, phone normalization |
 
 ### Technical Details
 
-**Auth fix in `manage-discounts`** (Task 1):
-```typescript
-// Replace anon key pattern with service role key
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
-// Extract user ID from JWT in authorization header
-const token = authHeader.replace("Bearer ", "");
-const payload = JSON.parse(atob(token.split(".")[1]));
-const userId = payload.sub;
-// Then check user_roles with service role client
-```
+**Shopify Customer Search API**: `GET /admin/api/2025-01/customers/search.json?query=phone:+1758XXXXXXX` returns matching customers. The first match's `id` is used.
 
-**Scope mapping** (Task 4):
-```text
-Feature                      → Required Scope        → Status
-─────────────────────────────────────────────────────────────
-Products listing             → read_products          → ✅/⚠️
-Order creation (draft)       → write_draft_orders     → ✅/⚠️
-Discount management          → read_price_rules       → ✅/⚠️
-                             → write_price_rules      → ✅/⚠️
-Inventory visibility         → read_inventory         → ✅/⚠️
-Metafields (seller attr.)    → write_metafields       → ✅/⚠️
-```
+**Shopify Customer Create API**: `POST /admin/api/2025-01/customers.json` with `{ customer: { first_name, last_name, phone, tags: "luut-connect" } }`.
 
-**What is NOT feasible in this environment**:
-- OAuth reconnect flow (Shopify token is a stored secret, not managed via OAuth in Lovable Cloud)
-- Instead, a "Reconnect" action will prompt you to update the stored token through the secrets management
-- Real-time webhook sync (would need external infrastructure)
+**Discount redirect fix**: Shopify's `discount_codes/lookup.json` returns a 303 redirect to the actual discount code resource. Current code uses `redirect: "follow"` which may lose auth headers on redirect. Fix: use `redirect: "manual"`, extract Location header, and make a second authenticated request.
 
-### Files to create/modify
-- **Edit**: `supabase/functions/manage-discounts/index.ts` (fix auth)
-- **Edit**: `supabase/functions/validate-discount/index.ts` (dynamic lookup)
-- **Create**: `supabase/functions/shopify-health-check/index.ts`
-- **Create**: `src/pages/admin/ConnectionHealth.tsx`
-- **Edit**: `src/App.tsx` (add route)
-- **Edit**: `src/pages/AdminHub.tsx` (add module card)
-- **Edit**: `supabase/config.toml` (add health-check function)
+**Metafields on Draft Orders**: Shopify Admin API 2025-01 supports `metafields` on draft order creation as an array of `{ namespace, key, value, type }` objects.
 
