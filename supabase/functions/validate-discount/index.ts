@@ -14,7 +14,12 @@ serve(async (req) => {
   }
 
   try {
-    const shopifyAdminToken = Deno.env.get("SHOPIFY_ADMIN_TOKEN") || Deno.env.get("SHOPIFY_ACCESS_TOKEN");
+    const adminToken = Deno.env.get("SHOPIFY_ADMIN_TOKEN");
+    const accessToken = Deno.env.get("SHOPIFY_ACCESS_TOKEN");
+    const shopifyAdminToken = adminToken || accessToken;
+    
+    console.log("Token source:", adminToken ? "SHOPIFY_ADMIN_TOKEN" : accessToken ? "SHOPIFY_ACCESS_TOKEN" : "NONE");
+    console.log("Token prefix:", shopifyAdminToken ? shopifyAdminToken.substring(0, 8) + "..." : "EMPTY");
 
     if (!shopifyAdminToken) {
       return new Response(
