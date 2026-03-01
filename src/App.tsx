@@ -73,6 +73,9 @@ const SellerAnalytics = lazyRetry(() => import("./pages/seller/SellerAnalytics")
 const SellerSettingsPage = lazyRetry(() => import("./pages/seller/SellerSettingsPage"));
 const AdminSiteSettings = lazyRetry(() => import("./pages/AdminSiteSettings"));
 const DiscountRedirect = lazyRetry(() => import("./pages/DiscountRedirect"));
+const MarketingControl = lazyRetry(() => import("./pages/admin/MarketingControl"));
+const PopupsManager = lazyRetry(() => import("./pages/admin/PopupsManager"));
+const DiscountsManager = lazyRetry(() => import("./pages/admin/DiscountsManager"));
 
 const queryClient = new QueryClient();
 
@@ -216,6 +219,21 @@ const App = () => (
             <Route path="/admin/site-settings" element={
               <RouteGuard requiredRole="admin">
                 <AdminSiteSettings />
+              </RouteGuard>
+            } />
+            <Route path="/admin/marketing" element={
+              <RouteGuard requiredRole="admin">
+                <MarketingControl />
+              </RouteGuard>
+            } />
+            <Route path="/admin/marketing/popups" element={
+              <RouteGuard requiredRole="admin">
+                <PopupsManager />
+              </RouteGuard>
+            } />
+            <Route path="/admin/marketing/discounts" element={
+              <RouteGuard requiredRole="admin">
+                <DiscountsManager />
               </RouteGuard>
             } />
             <Route path="/admin-orders" element={
