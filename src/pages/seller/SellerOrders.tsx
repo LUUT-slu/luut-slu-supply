@@ -16,6 +16,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import {
   ShoppingBag,
   RefreshCw,
   Package,
@@ -28,6 +35,7 @@ import {
   Eye,
   EyeOff,
   Filter,
+  CalendarIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, isToday, parseISO } from "date-fns";
@@ -103,7 +111,7 @@ export default function SellerOrders() {
     (key: string, value: string) => {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        if (value === "all" || value === "" || value === "newest") {
+        if (value === "all" || value === "") {
           next.delete(key);
         } else {
           next.set(key, value);
@@ -182,9 +190,18 @@ export default function SellerOrders() {
     if (dateFilter === "today") {
       result = result.filter((o) => {
         try {
-          // Try parsing canonical or ISO date
           const d = new Date(o.preferred_date);
           return !isNaN(d.getTime()) && isToday(d);
+        } catch {
+          return false;
+        }
+      });
+    } else if (dateFilter !== "all") {
+      // Specific date selected from calendar
+      result = result.filter((o) => {
+        try {
+          const orderDate = format(new Date(o.preferred_date), "yyyy-MM-dd");
+          return orderDate === dateFilter;
         } catch {
           return false;
         }
@@ -299,16 +316,26 @@ export default function SellerOrders() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={dateFilter} onValueChange={(v) => updateParam("date", v)}>
-              <SelectTrigger className="w-28 h-9">
-                <Calendar className="h-3.5 w-3.5 mr-1" />
-                <SelectValue placeholder="Date" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Dates</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn("h-9 gap-1.5 min-w-[120px] justify-start", dateFilter !== "all" && "text-foreground")}>
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {dateFilter === "all" ? "All Dates" : dateFilter === "today" ? "Today" : format(new Date(dateFilter), "MMM d")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <div className="flex gap-1 p-2 border-b">
+                  <Button variant={dateFilter === "all" ? "secondary" : "ghost"} size="sm" className="text-xs h-7" onClick={() => updateParam("date", "all")}>All</Button>
+                  <Button variant={dateFilter === "today" ? "secondary" : "ghost"} size="sm" className="text-xs h-7" onClick={() => updateParam("date", "today")}>Today</Button>
+                </div>
+                <CalendarComponent
+                  mode="single"
+                  selected={dateFilter !== "all" && dateFilter !== "today" ? new Date(dateFilter) : undefined}
+                  onSelect={(d) => d ? updateParam("date", format(d, "yyyy-MM-dd")) : updateParam("date", "all")}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
             <Select value={sortBy} onValueChange={(v) => updateParam("sort", v)}>
               <SelectTrigger className="w-36 h-9">
                 <ArrowUpDown className="h-3.5 w-3.5 mr-1" />
