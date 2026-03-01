@@ -78,8 +78,8 @@ export default function AdminSiteSettings() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="font-display text-2xl md:text-3xl">Site Settings</h1>
-              <p className="text-sm text-muted-foreground">Control storefront behavior</p>
+            <h1 className="font-display text-xl md:text-2xl">Site Settings</h1>
+              <p className="text-xs text-muted-foreground">Control storefront behavior</p>
             </div>
           </div>
 
@@ -88,12 +88,12 @@ export default function AdminSiteSettings() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/10">
-                    <Megaphone className="h-5 w-5 text-yellow-500" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10">
+                    <Megaphone className="h-4 w-4 text-yellow-500" />
                   </div>
                   <div>
-                    <CardTitle>Popups Manager</CardTitle>
-                    <CardDescription>Toggle promotional popups on the storefront</CardDescription>
+                    <CardTitle className="text-sm">Popups Manager</CardTitle>
+                    <CardDescription className="text-xs">Toggle promotional popups</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -186,12 +186,12 @@ export default function AdminSiteSettings() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
-                      <ShoppingCart className="h-5 w-5 text-red-500" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/10">
+                      <ShoppingCart className="h-4 w-4 text-red-500" />
                     </div>
                     <div>
-                      <CardTitle>Freeze Checkout</CardTitle>
-                      <CardDescription>Temporarily disable all checkout flows</CardDescription>
+                      <CardTitle className="text-sm">Freeze Checkout</CardTitle>
+                      <CardDescription className="text-xs">Temporarily disable all checkout flows</CardDescription>
                     </div>
                   </div>
                   <Switch
@@ -217,12 +217,12 @@ export default function AdminSiteSettings() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
-                      <EyeOff className="h-5 w-5 text-orange-500" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10">
+                      <EyeOff className="h-4 w-4 text-orange-500" />
                     </div>
                     <div>
-                      <CardTitle>Hide Sold-Out Products</CardTitle>
-                      <CardDescription>Remove sold-out items from grids and search</CardDescription>
+                      <CardTitle className="text-sm">Hide Sold-Out Products</CardTitle>
+                      <CardDescription className="text-xs">Remove sold-out items from grids and search</CardDescription>
                     </div>
                   </div>
                   <Switch
@@ -241,12 +241,12 @@ export default function AdminSiteSettings() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <Tag className="h-5 w-5 text-primary" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Tag className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <CardTitle>Checkout Reminder</CardTitle>
-                      <CardDescription>Show discount code reminder on cart/checkout</CardDescription>
+                      <CardTitle className="text-sm">Checkout Reminder</CardTitle>
+                      <CardDescription className="text-xs">Show discount code reminder on cart/checkout</CardDescription>
                     </div>
                   </div>
                   <Switch
