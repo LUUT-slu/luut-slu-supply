@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { CheckCircle2, MessageCircle, ShoppingBag, MapPin, Calendar, Package } from "lucide-react";
+import { CheckCircle2, MessageCircle, ShoppingBag, MapPin, Calendar, Package, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface OrderConfirmationData {
@@ -20,6 +20,7 @@ interface OrderConfirmationData {
   totalPrice: number;
   location: string;
   preferredDate: string;
+  pickupTime?: string;
   note?: string;
   timestamp: number;
 }
@@ -43,7 +44,6 @@ export default function OrderConfirmed() {
 
     try {
       const parsed = JSON.parse(stored) as OrderConfirmationData;
-      // Only use if less than 1 hour old
       if (Date.now() - parsed.timestamp > 3600000) {
         localStorage.removeItem("luut-order-confirmed");
         setLoaded(true);
@@ -54,10 +54,8 @@ export default function OrderConfirmed() {
       setOrderData(parsed);
       setLoaded(true);
 
-      // Remove from localStorage immediately after reading to prevent re-trigger loops
       localStorage.removeItem("luut-order-confirmed");
 
-      // Auto-open WhatsApp ONCE per session (prevents loop on mobile Safari)
       const alreadyOpened = sessionStorage.getItem(SESSION_KEY);
       if (!alreadyOpened && !didAutoOpen.current) {
         didAutoOpen.current = true;
@@ -77,7 +75,6 @@ export default function OrderConfirmed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Clean up session flag when navigating away
   useEffect(() => {
     return () => {
       sessionStorage.removeItem(SESSION_KEY);
@@ -107,7 +104,7 @@ export default function OrderConfirmed() {
             <p className="text-lg font-semibold text-primary">{orderData.orderName}</p>
           </div>
 
-          {/* WhatsApp CTA - The most important element */}
+          {/* WhatsApp CTA */}
           <div className="rounded-xl border-2 border-primary bg-primary/5 p-6 space-y-4">
             <div className="text-center space-y-2">
               <h2 className="font-display text-lg font-semibold">
@@ -115,7 +112,7 @@ export default function OrderConfirmed() {
               </h2>
               <p className="text-sm text-muted-foreground">
                 {whatsappOpened
-                  ? "WhatsApp should have opened. Tap the button below if it didn't."
+                  ? "WhatsApp opened. Please send the message to confirm your meetup."
                   : "Tap the button below to send your order details via WhatsApp. This confirms your meetup."}
               </p>
             </div>
@@ -126,7 +123,7 @@ export default function OrderConfirmed() {
               size="lg"
             >
               <MessageCircle className="h-5 w-5" />
-              {whatsappOpened ? "Open WhatsApp Again" : "Message Seller on WhatsApp"}
+              {whatsappOpened ? "Confirm With Seller" : "Message Seller on WhatsApp"}
             </Button>
           </div>
 
@@ -163,6 +160,12 @@ export default function OrderConfirmed() {
               <Calendar className="h-4 w-4 text-primary shrink-0" />
               <span>Date: <span className="font-medium">{orderData.preferredDate}</span></span>
             </div>
+            {orderData.pickupTime && (
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary shrink-0" />
+                <span>Time: <span className="font-medium">{orderData.pickupTime}</span></span>
+              </div>
+            )}
             {orderData.note && (
               <p className="text-muted-foreground pl-6">Note: {orderData.note}</p>
             )}

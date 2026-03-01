@@ -72,6 +72,7 @@ const SellerOrderDetail = lazyRetry(() => import("./pages/seller/SellerOrderDeta
 const SellerAnalytics = lazyRetry(() => import("./pages/seller/SellerAnalytics"));
 const SellerSettingsPage = lazyRetry(() => import("./pages/seller/SellerSettingsPage"));
 const AdminSiteSettings = lazyRetry(() => import("./pages/AdminSiteSettings"));
+const DiscountRedirect = lazyRetry(() => import("./pages/DiscountRedirect"));
 
 const queryClient = new QueryClient();
 
@@ -234,6 +235,9 @@ const App = () => (
                 <LuutConnectAdmin />
               </RouteGuard>
             } />
+            
+            {/* Discount redirect route */}
+            <Route path="/discount/:code" element={<DiscountRedirect />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
