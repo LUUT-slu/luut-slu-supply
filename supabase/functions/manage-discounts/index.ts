@@ -26,19 +26,34 @@ async function verifyAdmin(req: Request) {
   const authHeader = req.headers.get("authorization");
   if (!authHeader) throw new Error("Unauthorized");
 
+  // Use service role key to bypass RLS and verify admin role
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { authorization: authHeader } } }
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) throw new Error("Unauthorized");
+  // Extract user ID from JWT payload
+  const token = authHeader.replace("Bearer ", "");
+  let userId: string;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    userId = payload.sub;
+    if (!userId) throw new Error("No sub in token");
+  } catch {
+    throw new Error("Unauthorized");
+  }
 
-  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-  if (!roles?.some((r: any) => r.role === "admin")) throw new Error("Admin access required");
+  // Check admin role using service role client
+  const { data: roles } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
 
-  return user;
+  if (!roles?.some((r: any) => r.role === "admin")) {
+    throw new Error("Admin access required");
+  }
+
+  return { id: userId };
 }
 
 serve(async (req) => {
@@ -63,7 +78,6 @@ serve(async (req) => {
       }
       const { price_rules } = await prRes.json();
 
-      // Fetch discount codes for each price rule
       const enriched = await Promise.all(
         (price_rules || []).map(async (pr: any) => {
           try {
@@ -90,7 +104,7 @@ serve(async (req) => {
       const {
         title, code, value_type, value, target_type = "line_item",
         target_selection = "all", once_per_customer = true,
-        usage_limit, starts_at, ends_at, enabled = true,
+        usage_limit, starts_at, ends_at,
       } = body;
 
       const priceRulePayload = {
@@ -123,7 +137,6 @@ serve(async (req) => {
 
       const { price_rule } = await prRes.json();
 
-      // Create discount code
       const codeRes = await fetch(
         shopifyUrl(`/price_rules/${price_rule.id}/discount_codes.json`),
         {
@@ -179,10 +192,8 @@ serve(async (req) => {
 
       const updatePayload: any = {};
       if (!enabled) {
-        // Disable by setting ends_at to past
         updatePayload.ends_at = new Date(Date.now() - 60000).toISOString();
       } else {
-        // Enable by removing ends_at
         updatePayload.ends_at = null;
         updatePayload.starts_at = new Date().toISOString();
       }

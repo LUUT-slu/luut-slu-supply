@@ -8,24 +8,13 @@ const corsHeaders = {
 const SHOPIFY_STORE_DOMAIN = "lovable-project-yf43m.myshopify.com";
 const SHOPIFY_API_VERSION = "2025-01";
 
-// Known price rules mapped by discount code
-const KNOWN_DISCOUNT_CODES: Record<string, { priceRuleId: number }> = {
-  "1KPROMO": { priceRuleId: 1879602397289 },
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Try both token names for compatibility
     const shopifyAdminToken = Deno.env.get("SHOPIFY_ADMIN_TOKEN") || Deno.env.get("SHOPIFY_ACCESS_TOKEN");
-    
-    console.log("Token available:", {
-      SHOPIFY_ADMIN_TOKEN: !!Deno.env.get("SHOPIFY_ADMIN_TOKEN"),
-      SHOPIFY_ACCESS_TOKEN: !!Deno.env.get("SHOPIFY_ACCESS_TOKEN"),
-    });
 
     if (!shopifyAdminToken) {
       return new Response(
@@ -43,50 +32,46 @@ serve(async (req) => {
     }
 
     const trimmedCode = code.trim().toUpperCase();
-    const knownCode = KNOWN_DISCOUNT_CODES[trimmedCode];
+    const shopifyHeaders = {
+      "X-Shopify-Access-Token": shopifyAdminToken,
+      "Content-Type": "application/json",
+    };
 
-    if (!knownCode) {
-      return new Response(
-        JSON.stringify({ valid: false, error: "Invalid discount code" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Step 1: Dynamic lookup — resolve discount code to its price rule
+    const lookupUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/discount_codes/lookup.json?code=${encodeURIComponent(trimmedCode)}`;
+    console.log("Looking up discount code:", trimmedCode);
 
-    // Fetch price rule details using known ID
-    const priceRuleUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/price_rules/${knownCode.priceRuleId}.json`;
-    console.log("Fetching price rule:", priceRuleUrl);
-    
-    const priceRuleResponse = await fetch(priceRuleUrl, {
+    const lookupRes = await fetch(lookupUrl, {
       method: "GET",
-      headers: { 
-        "X-Shopify-Access-Token": shopifyAdminToken,
-        "Content-Type": "application/json",
-      },
+      headers: shopifyHeaders,
+      redirect: "manual", // lookup returns a 303 redirect
     });
 
-    console.log("Shopify response status:", priceRuleResponse.status);
+    console.log("Lookup response status:", lookupRes.status);
 
-    if (!priceRuleResponse.ok) {
-      const errorBody = await priceRuleResponse.text();
-      console.error("Shopify price_rule error:", priceRuleResponse.status, errorBody);
-      
-      // If Shopify API fails, fall back to local validation for known codes
-      if (trimmedCode === "1KPROMO") {
-        console.log("Falling back to local validation for 1KPROMO");
+    let priceRuleId: string | null = null;
+
+    if (lookupRes.status === 303) {
+      // Extract price rule ID from the Location header redirect URL
+      const location = lookupRes.headers.get("location");
+      console.log("Redirect location:", location);
+      if (location) {
+        const match = location.match(/price_rules\/(\d+)/);
+        if (match) priceRuleId = match[1];
+      }
+    } else if (lookupRes.ok) {
+      // Some API versions return the discount code directly
+      const lookupData = await lookupRes.json();
+      if (lookupData.discount_code?.price_rule_id) {
+        priceRuleId = String(lookupData.discount_code.price_rule_id);
+      }
+    } else {
+      const errBody = await lookupRes.text();
+      console.error("Lookup failed:", lookupRes.status, errBody);
+
+      if (lookupRes.status === 404) {
         return new Response(
-          JSON.stringify({
-            valid: true,
-            discount: {
-              code: "1KPROMO",
-              title: "1K Followers Sale",
-              valueType: "percentage",
-              value: "-15.0",
-              targetType: "line_item",
-              targetSelection: "all",
-              prerequisiteSubtotalMin: null,
-              oncePerCustomer: true,
-            },
-          }),
+          JSON.stringify({ valid: false, error: "Invalid discount code" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -97,10 +82,35 @@ serve(async (req) => {
       );
     }
 
+    if (!priceRuleId) {
+      return new Response(
+        JSON.stringify({ valid: false, error: "Invalid discount code" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Step 2: Fetch the price rule details
+    const priceRuleUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/price_rules/${priceRuleId}.json`;
+    console.log("Fetching price rule:", priceRuleId);
+
+    const priceRuleResponse = await fetch(priceRuleUrl, {
+      method: "GET",
+      headers: shopifyHeaders,
+    });
+
+    if (!priceRuleResponse.ok) {
+      const errorBody = await priceRuleResponse.text();
+      console.error("Price rule fetch error:", priceRuleResponse.status, errorBody);
+      return new Response(
+        JSON.stringify({ valid: false, error: "Could not validate discount code" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const priceRuleData = await priceRuleResponse.json();
     const priceRule = priceRuleData.price_rule;
 
-    // Check if discount is currently active
+    // Step 3: Check if discount is currently active
     const now = new Date();
     if (priceRule.starts_at && new Date(priceRule.starts_at) > now) {
       return new Response(
