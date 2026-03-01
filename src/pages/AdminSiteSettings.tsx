@@ -6,10 +6,11 @@ import { AdminAuth } from "@/components/AdminAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ShoppingCart, EyeOff, Tag, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, ShoppingCart, EyeOff, Tag, Save, Loader2, Wifi, CheckCircle2, XCircle } from "lucide-react";
 import { useSiteSettings, updateSiteSetting, CheckoutReminderSetting } from "@/hooks/useSiteSettings";
 import { PopupsSection } from "@/components/admin/PopupsSection";
 import { DiscountsSection } from "@/components/admin/DiscountsSection";
@@ -78,6 +79,36 @@ export default function AdminSiteSettings() {
           </div>
 
           <div className="space-y-8 max-w-2xl">
+            {/* ========== SHOPIFY CONNECTION ========== */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
+                      <Wifi className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm">Shopify Connection</CardTitle>
+                      <CardDescription className="text-xs">Diagnostics, scopes, token status</CardDescription>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="gap-1 text-xs">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                    Connected
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Run tests to verify scope &amp; token health</p>
+                <Button size="sm" variant="outline" className="gap-2" onClick={() => navigate("/admin/connection-health")}>
+                  <Wifi className="h-4 w-4" />
+                  Open Connection Health
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Separator />
+
             {/* ========== DISCOUNTS MANAGER ========== */}
             <section>
               <DiscountsSection />

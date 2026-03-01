@@ -167,7 +167,7 @@ export default function ConnectionHealth() {
         <main className="container flex-1 py-8 space-y-6 max-w-4xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <BackButton to="/admin" />
+              <BackButton to="/admin/site-settings" />
               <div>
                 <h1 className="font-display text-2xl">Connection Health</h1>
                 <p className="text-sm text-muted-foreground">Shopify API diagnostics & scope verification</p>
