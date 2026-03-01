@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { startOfMonth, endOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { SellerNav } from "@/components/seller/SellerNav";
 import { DateRangePicker } from "@/components/seller/DateRangePicker";
@@ -23,10 +22,7 @@ import {
 export default function SellerDashboardNew() {
   const navigate = useNavigate();
   const { profile, loading: profileLoading } = useSellerProfile();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   
   const { stats, loading: statsLoading } = useSellerStats(profile?.id, dateRange);
 
