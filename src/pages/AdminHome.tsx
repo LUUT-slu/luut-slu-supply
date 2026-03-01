@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -10,10 +9,10 @@ import {
   UserCheck,
   Store,
   LogOut,
-  ShieldCheck,
-  TrendingUp,
   Home,
   ClipboardList,
+  Settings,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -126,9 +125,17 @@ export default function AdminHome() {
       ],
     },
     {
+      title: "Order Management",
+      description: "Browse and manage all orders",
+      icon: ClipboardList,
+      href: "/admin/orders",
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10",
+    },
+    {
       title: "Partner Management",
       description: "View & manage delivery partners",
-      icon: Users,
+      icon: Truck,
       href: "/admin/partners",
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
@@ -142,12 +149,20 @@ export default function AdminHome() {
       bgColor: "bg-orange-500/10",
     },
     {
-      title: "View All Orders",
-      description: "Browse complete order history",
-      icon: ClipboardList,
-      href: "/admin/orders",
-      color: "text-purple-500",
-      bgColor: "bg-purple-500/10",
+      title: "Dispatch Control Tower",
+      description: "Assign partner jobs and operational routing",
+      icon: Users,
+      href: "/connect",
+      color: "text-indigo-500",
+      bgColor: "bg-indigo-500/10",
+    },
+    {
+      title: "Site Settings",
+      description: "Control popups, checkout and visibility",
+      icon: Settings,
+      href: "/admin/site-settings",
+      color: "text-pink-500",
+      bgColor: "bg-pink-500/10",
     },
     {
       title: "Seller Portal",
@@ -156,6 +171,14 @@ export default function AdminHome() {
       href: "/seller/dashboard",
       color: "text-amber-500",
       bgColor: "bg-amber-500/10",
+    },
+    {
+      title: "Main Storefront",
+      description: "Open customer-facing website",
+      icon: Home,
+      href: "/",
+      color: "text-muted-foreground",
+      bgColor: "bg-muted",
     },
   ];
 
@@ -167,10 +190,21 @@ export default function AdminHome() {
           <Link to="/" className="font-display text-xl tracking-wide text-primary">
             Home
           </Link>
-          <Button onClick={handleLogout} variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-destructive">
-            <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">Logout</span>
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              onClick={() => navigate("/admin/site-settings")}
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-muted-foreground hover:text-primary"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Settings</span>
+            </Button>
+            <Button onClick={handleLogout} variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-destructive">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </Button>
+          </div>
         </div>
       </header>
 
