@@ -8,9 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Megaphone, ShoppingCart, EyeOff, Tag, Save, Loader2 } from "lucide-react";
-import { useSiteSettings, updateSiteSetting, PopupSetting, CheckoutReminderSetting } from "@/hooks/useSiteSettings";
+import { Separator } from "@/components/ui/separator";
+import { ArrowLeft, ShoppingCart, EyeOff, Tag, Save, Loader2 } from "lucide-react";
+import { useSiteSettings, updateSiteSetting, CheckoutReminderSetting } from "@/hooks/useSiteSettings";
+import { PopupsSection } from "@/components/admin/PopupsSection";
+import { DiscountsSection } from "@/components/admin/DiscountsSection";
 import { toast } from "sonner";
 
 export default function AdminSiteSettings() {
@@ -18,7 +20,6 @@ export default function AdminSiteSettings() {
   const queryClient = useQueryClient();
   const { data: settings, isLoading } = useSiteSettings();
 
-  const [popups, setPopups] = useState<PopupSetting[]>([]);
   const [freezeCheckout, setFreezeCheckout] = useState(false);
   const [hideSoldOut, setHideSoldOut] = useState(false);
   const [checkoutReminder, setCheckoutReminder] = useState<CheckoutReminderSetting>({
@@ -28,7 +29,6 @@ export default function AdminSiteSettings() {
 
   useEffect(() => {
     if (settings) {
-      setPopups(settings.popups);
       setFreezeCheckout(settings.freezeCheckout);
       setHideSoldOut(settings.hideSoldOut);
       setCheckoutReminder(settings.checkoutReminder);
@@ -47,12 +47,6 @@ export default function AdminSiteSettings() {
     } finally {
       setSaving(null);
     }
-  };
-
-  const updatePopup = (index: number, updates: Partial<PopupSetting>) => {
-    const updated = [...popups];
-    updated[index] = { ...updated[index], ...updates };
-    setPopups(updated);
   };
 
   if (isLoading) {
@@ -78,108 +72,25 @@ export default function AdminSiteSettings() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-            <h1 className="font-display text-xl md:text-2xl">Site Settings</h1>
-              <p className="text-xs text-muted-foreground">Control storefront behavior</p>
+              <h1 className="font-display text-xl md:text-2xl">Site Settings</h1>
+              <p className="text-xs text-muted-foreground">Control storefront behavior, marketing & promotions</p>
             </div>
           </div>
 
-          <div className="space-y-6 max-w-2xl">
+          <div className="space-y-8 max-w-2xl">
+            {/* ========== DISCOUNTS MANAGER ========== */}
+            <section>
+              <DiscountsSection />
+            </section>
+
+            <Separator />
+
             {/* ========== POPUPS MANAGER ========== */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10">
-                    <Megaphone className="h-4 w-4 text-yellow-500" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-sm">Popups Manager</CardTitle>
-                    <CardDescription className="text-xs">Toggle promotional popups</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {popups.map((popup, idx) => (
-                  <div key={popup.id} className="space-y-4 rounded-lg border border-border p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{popup.name}</p>
-                        <p className="text-xs text-muted-foreground">ID: {popup.id}</p>
-                      </div>
-                      <Switch
-                        checked={popup.enabled}
-                        onCheckedChange={(checked) => updatePopup(idx, { enabled: checked })}
-                      />
-                    </div>
+            <section>
+              <PopupsSection initialPopups={settings?.popups || []} />
+            </section>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <Label className="text-xs">Frequency</Label>
-                        <Select
-                          value={popup.frequency}
-                          onValueChange={(v) => updatePopup(idx, { frequency: v as any })}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="once_per_session">Once per session</SelectItem>
-                            <SelectItem value="once_per_24h">Once per 24 hours</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Button URL</Label>
-                        <Input
-                          className="mt-1"
-                          value={popup.buttonUrl}
-                          onChange={(e) => updatePopup(idx, { buttonUrl: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Start Date (optional)</Label>
-                        <Input
-                          className="mt-1"
-                          type="datetime-local"
-                          value={popup.startAt || ""}
-                          onChange={(e) => updatePopup(idx, { startAt: e.target.value || null })}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">End Date (optional)</Label>
-                        <Input
-                          className="mt-1"
-                          type="datetime-local"
-                          value={popup.endAt || ""}
-                          onChange={(e) => updatePopup(idx, { endAt: e.target.value || null })}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-xs">Pages (comma-separated: home, product, shop, all)</Label>
-                      <Input
-                        className="mt-1"
-                        value={popup.pages.join(", ")}
-                        onChange={(e) =>
-                          updatePopup(idx, {
-                            pages: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                ))}
-
-                <Button
-                  onClick={() => handleSave("popups", popups)}
-                  disabled={saving === "popups"}
-                  className="w-full"
-                >
-                  {saving === "popups" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  Save Popups
-                </Button>
-              </CardContent>
-            </Card>
+            <Separator />
 
             {/* ========== FREEZE CHECKOUT ========== */}
             <Card>

@@ -14,7 +14,7 @@ import {
   Store,
   Settings,
   LogOut,
-  Megaphone,
+  
   ShieldCheck,
   TrendingUp,
   Home,
@@ -143,17 +143,8 @@ export default function AdminHub() {
       bgColor: "bg-primary/10",
     },
     {
-      title: "Marketing Control",
-      description: "Manage discounts & promotional popups",
-      icon: Megaphone,
-      href: "/admin/marketing",
-      stat: "Discounts & Popups",
-      color: "text-amber-500",
-      bgColor: "bg-amber-500/10",
-    },
-    {
-      title: "Site Settings",
-      description: "Control popups, checkout, and product visibility",
+      title: "Site Settings & Marketing",
+      description: "Discounts, popups, checkout controls, and product visibility",
       icon: Settings,
       href: "/admin/site-settings",
       stat: "Manage",
