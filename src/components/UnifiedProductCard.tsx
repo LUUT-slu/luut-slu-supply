@@ -11,6 +11,24 @@ interface UnifiedProductCardProps {
   product: UnifiedProduct;
 }
 
+function StockBadge({ status }: { status: UnifiedProduct['stockStatus'] }) {
+  if (status === 'low_stock') {
+    return (
+      <span className="absolute right-2 top-2 z-10 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+        Low Stock
+      </span>
+    );
+  }
+  if (status === 'out_of_stock') {
+    return (
+      <span className="absolute right-2 top-2 z-10 rounded-full bg-destructive/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+        Out of Stock
+      </span>
+    );
+  }
+  return null;
+}
+
 export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
   const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
@@ -20,6 +38,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
   const price = parseFloat(product.price.amount);
   const rawImageUrl = product.images[0]?.url;
   const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl, 600) : undefined;
+  const isOutOfStock = product.stockStatus === 'out_of_stock';
   
   const productLink = product.source === 'shopify' 
     ? `/product/${product.handle}` 
@@ -29,7 +48,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!firstVariant || !firstVariant.availableForSale) {
+    if (!firstVariant || !firstVariant.availableForSale || isOutOfStock) {
       toast.error("This product is currently unavailable");
       return;
     }
@@ -103,7 +122,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
     return (
       <Link
         to={productLink}
-        className="group flex gap-3 overflow-hidden rounded-lg bg-card ring-1 ring-border/50 p-2 transition-all touch-manipulation"
+        className={`group flex gap-3 overflow-hidden rounded-lg bg-card ring-1 ring-border/50 p-2 transition-all touch-manipulation ${isOutOfStock ? 'opacity-[0.65]' : ''}`}
       >
         {/* Square image thumbnail */}
         <div className="relative h-28 w-28 flex-shrink-0 overflow-hidden rounded-md bg-muted">
@@ -118,6 +137,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
               <span className="text-[10px] text-muted-foreground">No image</span>
             </div>
           )}
+          <StockBadge status={product.stockStatus} />
           {product.source === 'lovable' && (
             <div className="absolute left-1 top-1">
               <span className="rounded-full bg-primary/90 px-1.5 py-0.5 text-[9px] font-medium text-primary-foreground">
@@ -127,7 +147,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
           )}
         </div>
 
-        {/* Details - stacked vertically */}
+        {/* Details */}
         <div className="flex flex-1 flex-col justify-between min-w-0 py-0.5">
           <div>
             <p className="text-[10px] text-muted-foreground truncate">{product.vendor}</p>
@@ -142,7 +162,6 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
           </div>
 
           <div className="mt-auto space-y-1">
-            {/* Trust indicators */}
             <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70">
               <span className="flex items-center gap-0.5">
                 <Wallet className="h-2.5 w-2.5 text-primary/60" />
@@ -158,8 +177,10 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
               <span className="font-display text-base text-primary">
                 EC${price.toFixed(2)}
               </span>
-              {!firstVariant?.availableForSale ? (
-                <span className="text-[10px] text-destructive">Out of Stock</span>
+              {isOutOfStock ? (
+                <Button size="sm" className="h-7 px-2 text-xs" disabled variant="outline">
+                  Sold Out
+                </Button>
               ) : (
                 <Button
                   size="sm"
@@ -177,11 +198,11 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
     );
   }
 
-  // Desktop: original vertical card
+  // Desktop: vertical card
   return (
     <Link
       to={productLink}
-      className="group relative flex flex-col overflow-hidden rounded-lg bg-card ring-1 ring-border/50 transition-all duration-300 hover:ring-2 hover:ring-primary/50 hover:shadow-lg"
+      className={`group relative flex flex-col overflow-hidden rounded-lg bg-card ring-1 ring-border/50 transition-all duration-300 hover:ring-2 hover:ring-primary/50 hover:shadow-lg ${isOutOfStock ? 'opacity-[0.65]' : ''}`}
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-muted">
@@ -197,6 +218,8 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
           </div>
         )}
         
+        <StockBadge status={product.stockStatus} />
+        
         {product.source === 'lovable' && (
           <div className="absolute left-2 top-2">
             <span className="rounded-full bg-primary/90 px-2 py-0.5 text-xs font-medium text-primary-foreground">
@@ -205,7 +228,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
           </div>
         )}
 
-        {firstVariant?.availableForSale && (
+        {!isOutOfStock && firstVariant?.availableForSale && (
           <div className="absolute bottom-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
             <Button
               size="sm"
@@ -229,8 +252,10 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
           <span className="font-display text-lg">
             EC${price.toFixed(2)}
           </span>
-          {!firstVariant?.availableForSale && (
-            <span className="text-xs text-destructive">Out of Stock</span>
+          {isOutOfStock && (
+            <Button size="sm" disabled variant="outline" className="text-xs">
+              Sold Out
+            </Button>
           )}
         </div>
       </div>
