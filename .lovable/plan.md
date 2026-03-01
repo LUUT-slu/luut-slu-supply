@@ -1,102 +1,90 @@
 
 
-## Plan: Website + Checkout + Promo Fixes
+## Shopify Connection Health Check + Sync Fixes
 
-This is a large multi-part update covering 6 areas: countdown timer, multi-seller cart, time slot picker, discount validation fix, WhatsApp button label, and order status flow.
+### Problem Diagnosis
 
----
+**Immediate blocker**: The `manage-discounts` edge function fails with "Unauthorized" on every call. Root cause: `verifyAdmin()` creates a Supabase client with `SUPABASE_ANON_KEY` and the user's JWT, then calls `getUser()` — this pattern is fragile because it depends on the anon key matching the gateway's expectations. The `create-draft-order` function works because it uses `SUPABASE_SERVICE_ROLE_KEY` and bypasses auth entirely.
 
-### 1. Countdown Timer (Banner + Popup)
+**Other issues**: Discount validation uses hardcoded price rule IDs; no diagnostic visibility for admins; no scope verification.
 
-**Problem**: Banner shows static "7 days" text instead of a live countdown.
+### Plan
 
-**Solution**: Create a reusable `useCountdown` hook that computes remaining time from the popup's `endAt` datetime (already stored in `site_settings.popups[].endAt`). The popup currently has `endAt: null` — admin must set it via Site Settings (it's already March 7 per the Shopify price rule).
+#### Task 1: Fix `manage-discounts` auth (root cause of discount sync failure)
 
-**Changes**:
-- **New: `src/hooks/useCountdown.ts`** — Hook that takes an end date and returns `{ days, hours, minutes, seconds, isExpired }`, updating every second.
-- **`src/components/SaleBanner.tsx`** — Replace "7 days" with countdown: `"ENDS IN: 5D 03H 12M"`. If expired, hide banner.
-- **`src/components/SalePopup.tsx`** — Add countdown line below subtitle: `"Ends in: 5D 03H 12M"`.
-- **Database update** — Set the popup's `endAt` to `2026-03-07T17:30:59Z` (matching Shopify price rule expiry).
+Change `verifyAdmin()` to use `SUPABASE_SERVICE_ROLE_KEY` (like `create-draft-order` does) instead of anon key with user JWT. Extract user ID from the JWT token directly to verify admin role. This matches the pattern already working in other edge functions.
 
----
+#### Task 2: Fix `validate-discount` to use dynamic lookup
 
-### 2. Multi-Seller Cart Support
+Remove the hardcoded `KNOWN_DISCOUNT_CODES` map. Instead, use Shopify's `discount_codes/lookup.json` endpoint to resolve any code dynamically, then fetch its price rule. This makes discount validation work for all codes (not just 1KPROMO).
 
-**Problem**: `cartStore.addItem()` blocks adding items from different vendors.
+#### Task 3: Create `shopify-health-check` edge function
 
-**Solution**: Remove the single-seller enforcement from the cart store. The existing `create-draft-order` edge function already handles seller attribution per line item via `order_items` table. Seller portal already filters by `seller_id`. Use approach **B** (single order, internal routing per seller).
+New backend function that runs diagnostic tests against the Shopify Admin API:
+- **Connection test**: Call `shop.json` to verify token validity
+- **Scopes test**: Call `access_scopes.json` to get granted scopes
+- **Products test**: Fetch 5 products
+- **Discounts test**: Fetch price rules
+- **Draft orders test**: Verify draft order access (read only)
+- **Inventory test**: Fetch inventory levels
 
-**Changes**:
-- **`src/stores/cartStore.ts`** — Remove `currentSeller` state and the vendor check in `addItem()`. Keep `getCurrentSeller()` as a computed value (first item's vendor or null) for display purposes only.
-- **`src/pages/Cart.tsx`** — Update seller indicator to show multiple sellers if items span vendors: "Shopping from Seller A, Seller B" or remove the single-seller badge in favor of per-item vendor labels.
-- **`src/pages/Checkout.tsx`** — Remove `getCurrentSeller()` usage for WhatsApp routing; instead, if multiple vendors, route to fallback merchant number. WhatsApp message lists items with vendor attribution per line.
+Returns structured results with pass/fail per test and specific error messages.
 
----
+#### Task 4: Build Connection Health admin page
 
-### 3. Pickup Time Slot Picker
+New page at `/admin/connection-health` with:
 
-**Problem**: No time slot collection at checkout; requires WhatsApp follow-up.
+**A) Connection Status card**: Shop domain, API version, connected/disconnected status, last test timestamp.
 
-**Changes**:
-- **Database migration** — The `orders` table already has `pickup_time` column. No schema change needed.
-- **`src/pages/Checkout.tsx`** — Add a new `ChecklistItem` for "Pickup Time Slot" with a `Select` dropdown of 30-min increments from 9:00 AM to 5:00 PM. Make it required for form completion. Save to `pickup_time` field.
-- **`supabase/functions/create-draft-order/index.ts`** — Accept `pickupTime` in the request body, save to `orders.pickup_time`, include in Shopify note and WhatsApp message.
-- **WhatsApp message** — Add `⏰ Pickup Time: [selected time]` line.
-- **Order confirmation page** — Show the selected pickup time in meetup details.
+**B) Required vs Granted Scopes checklist**: Static feature-to-scope mapping based on implemented features. Shows granted (green), missing (red), optional (blue) pills with explanations.
 
----
+**C) Diagnostic test buttons**: Each test calls the health-check function and shows PASS/FAIL with error details. Tests: Products Read, Discounts Read, Discount Validate, Draft Order Read, Inventory Read, Metafields.
 
-### 4. Discount Code Validation Fix
+**D) Recent API logs panel**: Shows last results from diagnostic runs.
 
-**Problem**: "1KPROMO" returns "could not validate discount code".
+#### Task 5: Add Connection Health to Admin Hub
 
-**Root cause analysis**: The `validate-discount` edge function uses Shopify's `/discount_codes/lookup.json` endpoint which returns a 303 redirect. The `redirect: "follow"` is set but the function might not be deployed or the Shopify lookup may require handling the redirect response differently.
+Add the health check page as a module card in AdminHub with a Shopify-themed icon. Route: `/admin/connection-health`. Admin-only access.
 
-**Changes**:
-- **`supabase/functions/validate-discount/index.ts`** — Debug and fix the lookup. The redirect handling may strip the auth header on redirect. Fix by manually following the redirect URL while preserving the `X-Shopify-Access-Token` header. Also ensure the function is deployed.
-- **Test** — Deploy and call the function with `1KPROMO` to verify.
+### Technical Details
 
----
+**Auth fix in `manage-discounts`** (Task 1):
+```typescript
+// Replace anon key pattern with service role key
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
+// Extract user ID from JWT in authorization header
+const token = authHeader.replace("Bearer ", "");
+const payload = JSON.parse(atob(token.split(".")[1]));
+const userId = payload.sub;
+// Then check user_roles with service role client
+```
 
-### 5. WhatsApp Button Label Change
+**Scope mapping** (Task 4):
+```text
+Feature                      → Required Scope        → Status
+─────────────────────────────────────────────────────────────
+Products listing             → read_products          → ✅/⚠️
+Order creation (draft)       → write_draft_orders     → ✅/⚠️
+Discount management          → read_price_rules       → ✅/⚠️
+                             → write_price_rules      → ✅/⚠️
+Inventory visibility         → read_inventory         → ✅/⚠️
+Metafields (seller attr.)    → write_metafields       → ✅/⚠️
+```
 
-**Problem**: After order, button says "Open WhatsApp Again" instead of "Confirm With Seller".
+**What is NOT feasible in this environment**:
+- OAuth reconnect flow (Shopify token is a stored secret, not managed via OAuth in Lovable Cloud)
+- Instead, a "Reconnect" action will prompt you to update the stored token through the secrets management
+- Real-time webhook sync (would need external infrastructure)
 
-**Changes**:
-- **`src/pages/OrderConfirmed.tsx`** — Change button text from `"Open WhatsApp Again"` to `"Confirm With Seller"`. First-time button stays `"Message Seller on WhatsApp"`. Add a small confirmation hint after WhatsApp opens: "WhatsApp opened. Please send the message to confirm."
-- The order status is already NOT set to completed by this flow (it stays `pending`). No status change needed.
-
----
-
-### 6. `/discount/1KPROMO` Route
-
-**Changes**:
-- **`src/App.tsx`** — Add route `/discount/:code` that saves the discount code to sessionStorage and redirects to `/shop`.
-- **`src/pages/Checkout.tsx`** — On mount, check sessionStorage for a saved discount code and auto-apply it.
-
----
-
-### Implementation Order
-
-1. Fix discount validation edge function (most critical — blocks sale launch)
-2. Add countdown hook + update banner/popup
-3. Remove single-seller cart enforcement
-4. Add pickup time slot to checkout
-5. Update WhatsApp button labels on OrderConfirmed
-6. Add `/discount/:code` route
-7. Update `site_settings.popups` endAt in database
-
-### Files Created
-- `src/hooks/useCountdown.ts`
-
-### Files Modified
-- `src/stores/cartStore.ts`
-- `src/components/SaleBanner.tsx`
-- `src/components/SalePopup.tsx`
-- `src/pages/Checkout.tsx`
-- `src/pages/OrderConfirmed.tsx`
-- `src/pages/Cart.tsx`
-- `src/App.tsx`
-- `supabase/functions/validate-discount/index.ts`
-- `supabase/functions/create-draft-order/index.ts`
+### Files to create/modify
+- **Edit**: `supabase/functions/manage-discounts/index.ts` (fix auth)
+- **Edit**: `supabase/functions/validate-discount/index.ts` (dynamic lookup)
+- **Create**: `supabase/functions/shopify-health-check/index.ts`
+- **Create**: `src/pages/admin/ConnectionHealth.tsx`
+- **Edit**: `src/App.tsx` (add route)
+- **Edit**: `src/pages/AdminHub.tsx` (add module card)
+- **Edit**: `supabase/config.toml` (add health-check function)
 
