@@ -376,7 +376,7 @@ export default function ConnectionHealth() {
                 <li>Update the required scopes in "API access"</li>
                 <li>Reinstall the app on your store to grant new scopes</li>
                 <li>Copy the new Admin API access token</li>
-                <li>Update the <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">SHOPIFY_ACCESS_TOKEN</code> secret in your project settings</li>
+                <li>Update the <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">SHOPIFY_ADMIN_TOKEN</code> secret in your project settings</li>
                 <li>Re-run diagnostics above — verify <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">token_hash</code> changed</li>
                 <li>"Connection" test must show PASS (200)</li>
               </ol>
