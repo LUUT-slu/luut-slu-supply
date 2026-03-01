@@ -3,6 +3,8 @@ import { ShopifyProduct, fetchProducts, fetchProductsByCollection, normalizeVend
 import { categoryMatchesSlug, mapShopifyTypeToLabel, getShopifyQueryForSlug } from './categories';
 
 // Unified product interface that works for both Shopify and Lovable products
+export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
+
 export interface UnifiedProduct {
   id: string;
   source: 'shopify' | 'lovable';
@@ -11,6 +13,8 @@ export interface UnifiedProduct {
   handle: string;
   vendor: string;
   category: string | null;
+  stockStatus: StockStatus;
+  quantity?: number;
   price: {
     amount: string;
     currencyCode: string;
@@ -53,10 +57,20 @@ export interface LovableProduct {
 }
 
 // Convert Shopify product to unified format
+function deriveStockStatus(quantity: number | undefined, availableForSale: boolean): StockStatus {
+  if (quantity !== undefined) {
+    if (quantity === 0) return 'out_of_stock';
+    if (quantity <= 5) return 'low_stock';
+    return 'in_stock';
+  }
+  // Shopify: no granular quantity, use boolean
+  return availableForSale ? 'in_stock' : 'out_of_stock';
+}
+
 function shopifyToUnified(product: ShopifyProduct): UnifiedProduct {
   const node = product.node;
-  // Map Shopify productType to our unified category label
   const normalizedCategory = mapShopifyTypeToLabel(node.productType);
+  const anyAvailable = node.variants.edges.some(v => v.node.availableForSale);
   
   return {
     id: node.id,
@@ -66,6 +80,7 @@ function shopifyToUnified(product: ShopifyProduct): UnifiedProduct {
     handle: node.handle,
     vendor: normalizeVendorName(node.vendor),
     category: normalizedCategory,
+    stockStatus: deriveStockStatus(undefined, anyAvailable),
     price: {
       amount: node.priceRange.minVariantPrice.amount,
       currencyCode: node.priceRange.minVariantPrice.currencyCode,
@@ -87,7 +102,6 @@ function shopifyToUnified(product: ShopifyProduct): UnifiedProduct {
 
 // Convert Lovable product to unified format
 function lovableToUnified(product: LovableProduct): UnifiedProduct {
-  // Create a pseudo-handle from the product name
   const handle = `lovable-${product.id}`;
   
   return {
@@ -98,6 +112,8 @@ function lovableToUnified(product: LovableProduct): UnifiedProduct {
     handle,
     vendor: product.seller_name || 'Local Seller',
     category: product.category,
+    stockStatus: deriveStockStatus(product.quantity, product.quantity > 0),
+    quantity: product.quantity,
     price: {
       amount: product.price.toString(),
       currencyCode: 'XCD',
@@ -130,7 +146,6 @@ export async function fetchLovableProducts(): Promise<LovableProduct[]> {
       seller_profiles!inner(seller_name)
     `)
     .eq('status', 'active')
-    .gt('quantity', 0)
     .is('shopify_product_id', null)  // Exclude synced Shopify products to prevent duplicates
     .order('created_at', { ascending: false });
 
@@ -196,8 +211,11 @@ export async function fetchHybridProducts(options: {
     );
   }
 
-  // Combine with Lovable products first (local sellers priority)
-  return [...unifiedLovable, ...unifiedShopify];
+  // Combine and sort by stock status: in_stock first, low_stock second, out_of_stock last
+  const combined = [...unifiedLovable, ...unifiedShopify];
+  const stockOrder: Record<StockStatus, number> = { in_stock: 0, low_stock: 1, out_of_stock: 2 };
+  combined.sort((a, b) => stockOrder[a.stockStatus] - stockOrder[b.stockStatus]);
+  return combined;
 }
 
 // Check if a product is from Lovable (for cart/checkout logic)
