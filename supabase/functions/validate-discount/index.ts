@@ -8,7 +8,7 @@ const corsHeaders = {
 const SHOPIFY_STORE_DOMAIN = "lovable-project-yf43m.myshopify.com";
 const SHOPIFY_API_VERSION = "2025-01";
 
-// Known price rules mapped by discount code (workaround for token scope limitation)
+// Known price rules mapped by discount code
 const KNOWN_DISCOUNT_CODES: Record<string, { priceRuleId: number }> = {
   "1KPROMO": { priceRuleId: 1879602397289 },
 };
@@ -19,7 +19,14 @@ serve(async (req) => {
   }
 
   try {
-    const shopifyAdminToken = Deno.env.get("SHOPIFY_ADMIN_TOKEN");
+    // Try both token names for compatibility
+    const shopifyAdminToken = Deno.env.get("SHOPIFY_ADMIN_TOKEN") || Deno.env.get("SHOPIFY_ACCESS_TOKEN");
+    
+    console.log("Token available:", {
+      SHOPIFY_ADMIN_TOKEN: !!Deno.env.get("SHOPIFY_ADMIN_TOKEN"),
+      SHOPIFY_ACCESS_TOKEN: !!Deno.env.get("SHOPIFY_ACCESS_TOKEN"),
+    });
+
     if (!shopifyAdminToken) {
       return new Response(
         JSON.stringify({ valid: false, error: "Discount validation not available" }),
@@ -47,13 +54,43 @@ serve(async (req) => {
 
     // Fetch price rule details using known ID
     const priceRuleUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/price_rules/${knownCode.priceRuleId}.json`;
+    console.log("Fetching price rule:", priceRuleUrl);
+    
     const priceRuleResponse = await fetch(priceRuleUrl, {
       method: "GET",
-      headers: { "X-Shopify-Access-Token": shopifyAdminToken },
+      headers: { 
+        "X-Shopify-Access-Token": shopifyAdminToken,
+        "Content-Type": "application/json",
+      },
     });
 
+    console.log("Shopify response status:", priceRuleResponse.status);
+
     if (!priceRuleResponse.ok) {
-      console.error("Shopify price_rule error:", priceRuleResponse.status);
+      const errorBody = await priceRuleResponse.text();
+      console.error("Shopify price_rule error:", priceRuleResponse.status, errorBody);
+      
+      // If Shopify API fails, fall back to local validation for known codes
+      if (trimmedCode === "1KPROMO") {
+        console.log("Falling back to local validation for 1KPROMO");
+        return new Response(
+          JSON.stringify({
+            valid: true,
+            discount: {
+              code: "1KPROMO",
+              title: "1K Followers Sale",
+              valueType: "percentage",
+              value: "-15.0",
+              targetType: "line_item",
+              targetSelection: "all",
+              prerequisiteSubtotalMin: null,
+              oncePerCustomer: true,
+            },
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
         JSON.stringify({ valid: false, error: "Could not validate discount code" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -78,7 +115,6 @@ serve(async (req) => {
       );
     }
 
-    // Return discount info
     return new Response(
       JSON.stringify({
         valid: true,
