@@ -14,9 +14,9 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     ViteImageOptimizer({
-      png: { quality: 70 },
-      jpeg: { quality: 70 },
-      webp: { quality: 55 },
+      png: { quality: 60 },
+      jpeg: { quality: 60 },
+      webp: { quality: 35 },
     }),
   ].filter(Boolean),
   resolve: {
