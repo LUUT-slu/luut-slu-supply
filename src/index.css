@@ -46,9 +46,10 @@
     --trust: 142 76% 36%;
     --trust-foreground: 0 0% 100%;
 
-    /* Typography */
-    --font-display: 'Bebas Neue', sans-serif;
-    --font-body: 'DM Sans', sans-serif;
+    /* Typography — Inter + system fallback stack */
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-display: var(--font-sans);
+    --font-body: var(--font-sans);
 
     /* Shadows & Effects */
     --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.2);
@@ -111,7 +112,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-wide;
+    @apply font-display font-semibold tracking-tight leading-tight;
   }
 }
 
