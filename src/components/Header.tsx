@@ -131,8 +131,8 @@ export function Header() {
         {/* Logo and My Orders */}
         <div className="flex-row gap-[14px] flex items-end justify-center">
           <Link to="/" className="flex items-center gap-2">
-            <span className="font-display text-2xl tracking-wide md:text-3xl">
-              <span className="text-primary font-mono py-0 my-0 mx-0 text-lg">Home</span>
+            <span className="text-2xl font-bold tracking-tight md:text-3xl">
+              <span className="text-primary text-lg font-semibold">Home</span>
             </span>
           </Link>
           <Link
