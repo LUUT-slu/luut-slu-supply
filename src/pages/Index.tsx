@@ -63,8 +63,11 @@ export default function Index() {
               src={storefrontHero}
               alt="Luut SLU storefront"
               className="w-full h-full object-cover opacity-70"
+              width={1920}
+              height={1080}
               fetchPriority="high"
-              decoding="sync" />
+              decoding="sync"
+              sizes="100vw" />
 
           </div>
           
