@@ -75,7 +75,16 @@ const AdminSiteSettings = lazyRetry(() => import("./pages/AdminSiteSettings"));
 const ConnectionHealth = lazyRetry(() => import("./pages/admin/ConnectionHealth"));
 const DiscountRedirect = lazyRetry(() => import("./pages/DiscountRedirect"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 min — prevent redundant refetches
+      gcTime: 10 * 60 * 1000, // 10 min garbage collection
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const PageLoader = () => (
   <div className="flex min-h-screen items-center justify-center bg-background">

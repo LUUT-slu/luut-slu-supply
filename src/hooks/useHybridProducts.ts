@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { UnifiedProduct, fetchHybridProducts } from '@/lib/products';
 
 interface UseHybridProductsOptions {
@@ -8,31 +8,17 @@ interface UseHybridProductsOptions {
 }
 
 export function useHybridProducts(options: UseHybridProductsOptions = {}) {
-  const [products, setProducts] = useState<UnifiedProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: products = [], isLoading: loading, error: queryError } = useQuery({
+    queryKey: ['hybridProducts', options.categorySlug, options.shopifyQuery, options.limit],
+    queryFn: () => fetchHybridProducts({
+      categorySlug: options.categorySlug,
+      shopifyQuery: options.shopifyQuery,
+      limit: options.limit,
+    }),
+    staleTime: 5 * 60 * 1000, // 5 minutes — avoid redundant Shopify calls
+  });
 
-  useEffect(() => {
-    async function loadProducts() {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await fetchHybridProducts({
-          categorySlug: options.categorySlug,
-          shopifyQuery: options.shopifyQuery,
-          limit: options.limit,
-        });
-        setProducts(data);
-      } catch (err) {
-        console.error('Failed to load products:', err);
-        setError('Failed to load products');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadProducts();
-  }, [options.categorySlug, options.shopifyQuery, options.limit]);
+  const error = queryError ? 'Failed to load products' : null;
 
   return { products, loading, error };
 }

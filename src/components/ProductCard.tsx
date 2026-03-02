@@ -64,6 +64,9 @@ export function ProductCard({ product }: ProductCardProps) {
             src={image.url}
             alt={image.altText || node.title}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+            width={300}
+            height={300}
           />
         ) : (
           <div className="flex h-full items-center justify-center">

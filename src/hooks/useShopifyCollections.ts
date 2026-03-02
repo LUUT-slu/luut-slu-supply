@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { storefrontApiRequest } from '@/lib/shopify';
 
 export interface ShopifyCollection {
@@ -32,29 +32,19 @@ const COLLECTIONS_QUERY = `
 `;
 
 export function useShopifyCollections(limit: number = 50) {
-  const [collections, setCollections] = useState<ShopifyCollection[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchCollections() {
-      try {
-        setLoading(true);
-        const data = await storefrontApiRequest(COLLECTIONS_QUERY, { first: limit });
-        if (data?.data?.collections?.edges) {
-          const mapped = data.data.collections.edges.map((edge: { node: ShopifyCollection }) => edge.node);
-          setCollections(mapped);
-        }
-      } catch (err) {
-        console.error('Failed to fetch collections:', err);
-        setError('Failed to load categories');
-      } finally {
-        setLoading(false);
+  const { data: collections = [], isLoading: loading, error: queryError } = useQuery({
+    queryKey: ['shopify-collections', limit],
+    queryFn: async (): Promise<ShopifyCollection[]> => {
+      const data = await storefrontApiRequest(COLLECTIONS_QUERY, { first: limit });
+      if (data?.data?.collections?.edges) {
+        return data.data.collections.edges.map((edge: { node: ShopifyCollection }) => edge.node);
       }
-    }
+      return [];
+    },
+    staleTime: 10 * 60 * 1000, // 10 min — collections rarely change
+  });
 
-    fetchCollections();
-  }, [limit]);
+  const error = queryError ? 'Failed to load categories' : null;
 
   return { collections, loading, error };
 }

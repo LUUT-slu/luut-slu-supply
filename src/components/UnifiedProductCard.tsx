@@ -43,7 +43,8 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
   const firstVariant = product.variants[0];
   const price = parseFloat(product.price.amount);
   const rawImageUrl = product.images[0]?.url;
-  const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl, 600) : undefined;
+  // Use smaller thumbnails on mobile (300px) vs desktop (600px)
+  const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl, isMobile ? 300 : 600) : undefined;
   const isOutOfStock = product.stockStatus === 'out_of_stock';
   
   // Build product link — for variant cards, deep-link with variant pre-selection
@@ -147,10 +148,13 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
         {/* Square image thumbnail */}
         <div className="relative h-28 w-28 flex-shrink-0 overflow-hidden rounded-md bg-muted">
           {imageUrl ? (
-            <img
+          <img
               src={imageUrl}
               alt={displayTitle}
               className="h-full w-full object-cover"
+              loading="lazy"
+              width={112}
+              height={112}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-muted">
@@ -236,6 +240,9 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
             src={imageUrl}
             alt={displayTitle}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            loading="lazy"
+            width={300}
+            height={300}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-muted">
