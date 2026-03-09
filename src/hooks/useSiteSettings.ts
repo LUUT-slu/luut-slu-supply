@@ -132,8 +132,9 @@ export function useSiteSettings() {
   return useQuery({
     queryKey: ["site-settings"],
     queryFn: fetchSiteSettings,
-    staleTime: 30000,
+    staleTime: 5000,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 }
 
