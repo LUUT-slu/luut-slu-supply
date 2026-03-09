@@ -66,6 +66,8 @@ export default function AdminSellersNew() {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState<SellerProfile | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignSeller, setAssignSeller] = useState<SellerProfile | null>(null);
 
   useEffect(() => {
     checkAdminAccess();
