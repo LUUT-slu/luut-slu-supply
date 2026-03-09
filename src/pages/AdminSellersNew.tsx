@@ -266,10 +266,13 @@ export default function AdminSellersNew() {
               </p>
             </div>
           </div>
-          <Button onClick={fetchSellers} variant="outline" size="sm" className="gap-2">
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={fetchSellers} variant="outline" size="sm" className="gap-2">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <CreateSellerDialog onCreated={fetchSellers} />
+          </div>
         </div>
 
         {/* Tabs */}
