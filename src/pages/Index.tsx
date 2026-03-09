@@ -7,15 +7,10 @@ import { ChatButton } from "@/components/ChatButton";
 import { BestSellersSection } from "@/components/BestSellersSection";
 import { WhatPeopleAreBuyingSection } from "@/components/WhatPeopleAreBuyingSection";
 import { HomeCategorySection } from "@/components/HomeCategorySection";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { HomeFeaturedSection } from "@/components/HomeFeaturedSection";
+import { HomeNewArrivalsSection } from "@/components/HomeNewArrivalsSection";
+import { useSiteSettings, DEFAULT_HERO } from "@/hooks/useSiteSettings";
 import storefrontHero from "@/assets/storefront-hero.webp";
-
-const FALLBACK_CATEGORIES = [
-  { slug: "beanies-tams", label: "Beanies & Tams", limit: 4 },
-  { slug: "shoes", label: "Shoes", limit: 4 },
-  { slug: "hoodies", label: "Hoodies", limit: 4 },
-  { slug: "shirts", label: "Shirts", limit: 4 },
-];
 
 const howItWorks = [
   { step: 1, title: "Browse Products", description: "Explore outfits from verified local sellers on our marketplace", icon: Package },
@@ -29,32 +24,23 @@ const trustPoints = [
   { icon: Package, title: "Luut Certified", description: "Luut SLU also sells as a certified vendor on the platform" },
 ];
 
-// Homepage
 export default function Index() {
   const { data: settings } = useSiteSettings();
   const layout = settings?.homepageLayout;
-  
-  const categorySections = layout?.sections?.filter(s => s.enabled) ?? FALLBACK_CATEGORIES.map((c, i) => ({
-    id: `fallback-${i}`,
-    type: "category" as const,
-    slug: c.slug,
-    label: c.label,
-    limit: c.limit,
-    enabled: true,
-  }));
-  const showTrending = layout?.showTrending ?? true;
-  const showBestSellers = layout?.showBestSellers ?? true;
+  const hero = layout?.hero || DEFAULT_HERO;
+  const heroImage = hero.imageUrl || storefrontHero;
+  const sections = layout?.sections?.filter(s => s.enabled) || [];
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
 
       <main className="flex-1">
-        {/* Hero Section */}
+        {/* Hero Section — driven by settings */}
         <section className="relative min-h-[90vh] flex flex-col justify-end overflow-hidden">
           <div className="absolute inset-0">
             <img
-              src={storefrontHero}
+              src={heroImage}
               alt="Luut SLU storefront"
               className="w-full h-full object-cover opacity-70"
               width={1920}
@@ -66,16 +52,26 @@ export default function Index() {
           </div>
           <div className="container relative z-10 px-4 pb-8 md:pb-12" style={{ background: 'linear-gradient(to top, hsl(0 0% 0% / 0.85) 0%, hsl(0 0% 0% / 0.4) 60%, transparent 100%)' }}>
             <div className="mx-auto max-w-3xl text-center">
+              {hero.heading && (
+                <h1 className="mb-3 font-display text-3xl text-white md:text-5xl">{hero.heading}</h1>
+              )}
+              {hero.subheading && (
+                <p className="mb-5 font-body text-base text-white/70 md:text-lg">{hero.subheading}</p>
+              )}
               <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-                <Button asChild size="default" className="w-auto font-body shadow-lg">
-                  <Link to="/shop">
-                    Shop Outfits
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10">
-                  <Link to="/shop/new-arrivals">New Arrivals</Link>
-                </Button>
+                {hero.buttonText && (
+                  <Button asChild size="default" className="w-auto font-body shadow-lg">
+                    <Link to={hero.buttonLink || "/shop"}>
+                      {hero.buttonText}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
+                {hero.secondaryButtonText && (
+                  <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10">
+                    <Link to={hero.secondaryButtonLink || "/shop"}>{hero.secondaryButtonText}</Link>
+                  </Button>
+                )}
                 <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10">
                   <Link to="/shop/best-sellers">Best Sellers</Link>
                 </Button>
@@ -89,21 +85,37 @@ export default function Index() {
           </div>
         </section>
 
-        {/* What People Are Buying */}
-        {showTrending && <WhatPeopleAreBuyingSection />}
-
-        {/* Dynamic Category Sections */}
-        {categorySections.map((section) => (
-          <HomeCategorySection
-            key={section.id}
-            slug={section.slug}
-            label={section.label}
-            limit={section.limit}
-          />
-        ))}
-
-        {/* Best Sellers This Week */}
-        {showBestSellers && <BestSellersSection />}
+        {/* Dynamic sections — rendered in order from settings */}
+        {sections.map((section) => {
+          switch (section.type) {
+            case "trending":
+              return <WhatPeopleAreBuyingSection key={section.id} />;
+            case "best_sellers":
+              return <BestSellersSection key={section.id} />;
+            case "new_arrivals":
+              return <HomeNewArrivalsSection key={section.id} label={section.label} limit={section.limit} />;
+            case "featured":
+              return (
+                <HomeFeaturedSection
+                  key={section.id}
+                  label={section.label}
+                  productIds={section.featuredProductIds || []}
+                  limit={section.limit}
+                />
+              );
+            case "category":
+              return (
+                <HomeCategorySection
+                  key={section.id}
+                  slug={section.slug || ""}
+                  label={section.label}
+                  limit={section.limit}
+                />
+              );
+            default:
+              return null;
+          }
+        })}
 
         {/* Trust Section */}
         <section className="border-t border-border bg-card py-12 md:py-16">

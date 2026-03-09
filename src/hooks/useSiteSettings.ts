@@ -25,18 +25,50 @@ export interface ColorVariantCardsSetting {
 
 export interface HomepageSection {
   id: string;
-  type: "category";
-  slug: string;
+  type: "category" | "best_sellers" | "trending" | "new_arrivals" | "featured";
+  slug?: string;
   label: string;
   limit: number;
   enabled: boolean;
+  featuredProductIds?: string[];
+}
+
+export interface HeroConfig {
+  imageUrl: string | null;
+  heading: string;
+  subheading: string;
+  buttonText: string;
+  buttonLink: string;
+  secondaryButtonText: string;
+  secondaryButtonLink: string;
 }
 
 export interface HomepageLayout {
   sections: HomepageSection[];
-  showTrending: boolean;
-  showBestSellers: boolean;
+  hero: HeroConfig;
 }
+
+export const DEFAULT_HERO: HeroConfig = {
+  imageUrl: null,
+  heading: "",
+  subheading: "",
+  buttonText: "Shop Outfits",
+  buttonLink: "/shop",
+  secondaryButtonText: "New Arrivals",
+  secondaryButtonLink: "/shop/new-arrivals",
+};
+
+export const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayout = {
+  sections: [
+    { id: "sec-trending", type: "trending", label: "What's Trending", limit: 6, enabled: true },
+    { id: "sec-1", type: "category", slug: "beanies-tams", label: "Beanies & Tams", limit: 4, enabled: true },
+    { id: "sec-2", type: "category", slug: "shoes", label: "Shoes", limit: 4, enabled: true },
+    { id: "sec-3", type: "category", slug: "hoodies", label: "Hoodies", limit: 4, enabled: true },
+    { id: "sec-4", type: "category", slug: "shirts", label: "Shirts", limit: 4, enabled: true },
+    { id: "sec-best", type: "best_sellers", label: "Best Sellers This Week", limit: 8, enabled: true },
+  ],
+  hero: DEFAULT_HERO,
+};
 
 export interface SiteSettings {
   popups: PopupSetting[];
@@ -46,17 +78,6 @@ export interface SiteSettings {
   colorVariantCards: ColorVariantCardsSetting;
   homepageLayout: HomepageLayout;
 }
-
-const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayout = {
-  sections: [
-    { id: "sec-1", type: "category", slug: "beanies-tams", label: "Beanies & Tams", limit: 4, enabled: true },
-    { id: "sec-2", type: "category", slug: "shoes", label: "Shoes", limit: 4, enabled: true },
-    { id: "sec-3", type: "category", slug: "hoodies", label: "Hoodies", limit: 4, enabled: true },
-    { id: "sec-4", type: "category", slug: "shirts", label: "Shirts", limit: 4, enabled: true },
-  ],
-  showTrending: true,
-  showBestSellers: true,
-};
 
 async function fetchSiteSettings(): Promise<SiteSettings> {
   const { data, error } = await supabase
@@ -69,6 +90,26 @@ async function fetchSiteSettings(): Promise<SiteSettings> {
   (data as any[])?.forEach((row: { id: string; value: any }) => {
     settings[row.id] = row.value;
   });
+
+  const rawLayout = settings.homepage_layout as any;
+
+  // Migrate old format (showTrending/showBestSellers booleans) to new section-based format
+  let homepageLayout: HomepageLayout;
+  if (rawLayout && rawLayout.sections && rawLayout.hero) {
+    homepageLayout = rawLayout as HomepageLayout;
+  } else if (rawLayout && rawLayout.sections) {
+    // Old format: has sections array but no hero — migrate
+    homepageLayout = {
+      sections: [
+        ...(rawLayout.showTrending !== false ? [{ id: "sec-trending", type: "trending" as const, label: "What's Trending", limit: 6, enabled: true }] : []),
+        ...rawLayout.sections,
+        ...(rawLayout.showBestSellers !== false ? [{ id: "sec-best", type: "best_sellers" as const, label: "Best Sellers This Week", limit: 8, enabled: true }] : []),
+      ],
+      hero: DEFAULT_HERO,
+    };
+  } else {
+    homepageLayout = DEFAULT_HOMEPAGE_LAYOUT;
+  }
 
   return {
     popups: (settings.popups as PopupSetting[]) || [],
@@ -83,7 +124,7 @@ async function fetchSiteSettings(): Promise<SiteSettings> {
       enabled: false,
       showOnlyInStock: true,
     },
-    homepageLayout: (settings.homepage_layout as HomepageLayout) || DEFAULT_HOMEPAGE_LAYOUT,
+    homepageLayout,
   };
 }
 
@@ -99,7 +140,6 @@ export function useSiteSettings() {
 export async function updateSiteSetting(id: string, value: any) {
   const { data: { user } } = await supabase.auth.getUser();
   
-  // Upsert to handle new settings that don't exist yet
   const { error } = await supabase
     .from("site_settings" as any)
     .upsert({ id, value, updated_at: new Date().toISOString(), updated_by: user?.id } as any, { onConflict: "id" });
