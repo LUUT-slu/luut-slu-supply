@@ -10,9 +10,13 @@ interface HybridProductGridProps {
   shopifyQuery?: string;
   limit?: number;
   title?: string;
+  /** When true, renders nothing instead of "No products found" for empty results */
+  hideWhenEmpty?: boolean;
+  /** Called after products resolve so parent can know if content exists */
+  onEmpty?: () => void;
 }
 
-export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, title }: HybridProductGridProps) {
+export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, title, hideWhenEmpty }: HybridProductGridProps) {
   const { products, loading, error } = useHybridProducts({
     categorySlug: categorySlug === 'all' ? undefined : categorySlug,
     shopifyQuery,
@@ -23,7 +27,6 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
   const displayProducts = useMemo(() => {
     let list = products;
 
-    // Apply variant splitting if enabled
     if (siteSettings?.colorVariantCards?.enabled) {
       list = splitByVisualOptions(
         list,
@@ -31,7 +34,6 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
       );
     }
 
-    // Hide sold out if enabled
     if (siteSettings?.hideSoldOut) {
       list = list.filter(p => p.stockStatus !== 'out_of_stock');
     }
@@ -40,6 +42,7 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
   }, [products, siteSettings?.hideSoldOut, siteSettings?.colorVariantCards]);
 
   if (loading) {
+    if (hideWhenEmpty) return null; // Don't show spinner for homepage category rows
     return (
       <div className="flex min-h-[300px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -48,6 +51,7 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
   }
 
   if (error) {
+    if (hideWhenEmpty) return null;
     return (
       <div className="flex min-h-[300px] items-center justify-center">
         <p className="text-destructive">{error}</p>
@@ -56,14 +60,11 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
   }
 
   if (displayProducts.length === 0) {
+    if (hideWhenEmpty) return null;
     return (
       <div className="flex min-h-[300px] flex-col items-center justify-center text-center">
-        <p className="mb-2 font-body text-lg text-muted-foreground">
-          No products found
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Check back soon for new arrivals!
-        </p>
+        <p className="mb-2 font-body text-lg text-muted-foreground">No products found</p>
+        <p className="text-sm text-muted-foreground">Check back soon for new arrivals!</p>
       </div>
     );
   }
