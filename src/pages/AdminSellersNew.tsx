@@ -511,6 +511,17 @@ export default function AdminSellersNew() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Assign Seller Dialog */}
+        {assignSeller && (
+          <AssignSellerDialog
+            sellerId={assignSeller.id}
+            sellerName={assignSeller.seller_name}
+            open={assignDialogOpen}
+            onOpenChange={setAssignDialogOpen}
+            onAssigned={fetchSellers}
+          />
+        )}
       </main>
     </div>
   );
