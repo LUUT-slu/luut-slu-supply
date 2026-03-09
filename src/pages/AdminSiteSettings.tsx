@@ -84,6 +84,11 @@ export default function AdminSiteSettings() {
           </div>
 
           <div className="space-y-8 max-w-2xl">
+            {/* ========== HOMEPAGE LAYOUT ========== */}
+            <HomepageEditor initialLayout={settings?.homepageLayout} />
+
+            <Separator />
+
             {/* ========== SHOPIFY CONNECTION ========== */}
             <Card>
               <CardHeader>
