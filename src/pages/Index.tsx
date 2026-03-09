@@ -30,6 +30,7 @@ const trustPoints = [
   { icon: Package, title: "Luut Certified", description: "Luut SLU also sells as a certified vendor on the platform" },
 ];
 
+// Homepage
 export default function Index() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
