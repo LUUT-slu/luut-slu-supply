@@ -34,8 +34,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, RefreshCw, Eye, Check, X, Trash2, ShieldCheck, LogOut, Ban, Store } from "lucide-react";
+import { Users, RefreshCw, Eye, Check, X, Trash2, ShieldCheck, LogOut, Ban, Store, Link2, Unlink } from "lucide-react";
 import { toast } from "sonner";
+import { CreateSellerDialog } from "@/components/admin/CreateSellerDialog";
+import { AssignSellerDialog } from "@/components/admin/AssignSellerDialog";
+
+const PLACEHOLDER_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 interface SellerProfile {
   id: string;
