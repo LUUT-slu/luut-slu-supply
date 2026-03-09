@@ -34,8 +34,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, RefreshCw, Eye, Check, X, Trash2, ShieldCheck, LogOut, Ban, Store } from "lucide-react";
+import { Users, RefreshCw, Eye, Check, X, Trash2, ShieldCheck, LogOut, Ban, Store, Link2, Unlink } from "lucide-react";
 import { toast } from "sonner";
+import { CreateSellerDialog } from "@/components/admin/CreateSellerDialog";
+import { AssignSellerDialog } from "@/components/admin/AssignSellerDialog";
+
+const PLACEHOLDER_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 interface SellerProfile {
   id: string;
@@ -62,6 +66,8 @@ export default function AdminSellersNew() {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState<SellerProfile | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignSeller, setAssignSeller] = useState<SellerProfile | null>(null);
 
   useEffect(() => {
     checkAdminAccess();
@@ -260,10 +266,13 @@ export default function AdminSellersNew() {
               </p>
             </div>
           </div>
-          <Button onClick={fetchSellers} variant="outline" size="sm" className="gap-2">
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={fetchSellers} variant="outline" size="sm" className="gap-2">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <CreateSellerDialog onCreated={fetchSellers} />
+          </div>
         </div>
 
         {/* Tabs */}
@@ -330,7 +339,15 @@ export default function AdminSellersNew() {
                         )}
                       </TableCell>
                       <TableCell className="py-2">
-                        <div className="font-medium text-sm">{seller.seller_name}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-sm">{seller.seller_name}</span>
+                          {seller.user_id === PLACEHOLDER_USER_ID && (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 border-dashed">
+                              <Unlink className="h-2.5 w-2.5 mr-0.5" />
+                              Unlinked
+                            </Badge>
+                          )}
+                        </div>
                         {seller.location && (
                           <div className="text-xs text-muted-foreground">{seller.location}</div>
                         )}
@@ -356,7 +373,23 @@ export default function AdminSellersNew() {
                             <Eye className="h-4 w-4" />
                           </Button>
                           
-                          {/* Actions based on status */}
+                          {/* Assign to user (for unlinked profiles) */}
+                          {seller.user_id === PLACEHOLDER_USER_ID && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                              onClick={() => {
+                                setAssignSeller(seller);
+                                setAssignDialogOpen(true);
+                              }}
+                              title="Assign to user"
+                            >
+                              <Link2 className="h-4 w-4" />
+                            </Button>
+                          )}
+
+                          
                           {!seller.is_primary_seller && (
                             <>
                               {/* Approve (for pending) */}
@@ -478,6 +511,17 @@ export default function AdminSellersNew() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Assign Seller Dialog */}
+        {assignSeller && (
+          <AssignSellerDialog
+            sellerId={assignSeller.id}
+            sellerName={assignSeller.seller_name}
+            open={assignDialogOpen}
+            onOpenChange={setAssignDialogOpen}
+            onAssigned={fetchSellers}
+          />
+        )}
       </main>
     </div>
   );
