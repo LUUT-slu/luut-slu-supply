@@ -23,13 +23,40 @@ export interface ColorVariantCardsSetting {
   showOnlyInStock: boolean;
 }
 
+export interface HomepageSection {
+  id: string;
+  type: "category";
+  slug: string;
+  label: string;
+  limit: number;
+  enabled: boolean;
+}
+
+export interface HomepageLayout {
+  sections: HomepageSection[];
+  showTrending: boolean;
+  showBestSellers: boolean;
+}
+
 export interface SiteSettings {
   popups: PopupSetting[];
   freezeCheckout: boolean;
   hideSoldOut: boolean;
   checkoutReminder: CheckoutReminderSetting;
   colorVariantCards: ColorVariantCardsSetting;
+  homepageLayout: HomepageLayout;
 }
+
+const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayout = {
+  sections: [
+    { id: "sec-1", type: "category", slug: "beanies-tams", label: "Beanies & Tams", limit: 4, enabled: true },
+    { id: "sec-2", type: "category", slug: "shoes", label: "Shoes", limit: 4, enabled: true },
+    { id: "sec-3", type: "category", slug: "hoodies", label: "Hoodies", limit: 4, enabled: true },
+    { id: "sec-4", type: "category", slug: "shirts", label: "Shirts", limit: 4, enabled: true },
+  ],
+  showTrending: true,
+  showBestSellers: true,
+};
 
 async function fetchSiteSettings(): Promise<SiteSettings> {
   const { data, error } = await supabase
@@ -56,6 +83,7 @@ async function fetchSiteSettings(): Promise<SiteSettings> {
       enabled: false,
       showOnlyInStock: true,
     },
+    homepageLayout: (settings.homepage_layout as HomepageLayout) || DEFAULT_HOMEPAGE_LAYOUT,
   };
 }
 
@@ -70,9 +98,10 @@ export function useSiteSettings() {
 
 export async function updateSiteSetting(id: string, value: any) {
   const { data: { user } } = await supabase.auth.getUser();
+  
+  // Upsert to handle new settings that don't exist yet
   const { error } = await supabase
     .from("site_settings" as any)
-    .update({ value, updated_at: new Date().toISOString(), updated_by: user?.id } as any)
-    .eq("id", id);
+    .upsert({ id, value, updated_at: new Date().toISOString(), updated_by: user?.id } as any, { onConflict: "id" });
   if (error) throw error;
 }
