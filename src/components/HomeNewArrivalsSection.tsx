@@ -13,19 +13,21 @@ interface HomeNewArrivalsSectionProps {
 }
 
 export function HomeNewArrivalsSection({ label, limit = 4 }: HomeNewArrivalsSectionProps) {
-  const { products, loading } = useHybridProducts({ sortBy: "created_at", limit });
+  // Fetch all products — we'll sort client-side since useHybridProducts doesn't support sortBy
+  const { products, loading } = useHybridProducts({ limit: limit * 2 });
   const { data: siteSettings } = useSiteSettings();
 
   const displayProducts = useMemo(() => {
-    let list = products;
+    let list = [...products];
     if (siteSettings?.colorVariantCards?.enabled) {
       list = splitByVisualOptions(list, siteSettings.colorVariantCards.showOnlyInStock);
     }
     if (siteSettings?.hideSoldOut) {
       list = list.filter(p => p.stockStatus !== 'out_of_stock');
     }
-    return list as VariantListingProduct[];
-  }, [products, siteSettings?.hideSoldOut, siteSettings?.colorVariantCards]);
+    // No reliable sort key, just take first N as "newest" from the API response
+    return (list as VariantListingProduct[]).slice(0, limit);
+  }, [products, siteSettings?.hideSoldOut, siteSettings?.colorVariantCards, limit]);
 
   if (loading || displayProducts.length === 0) return null;
 

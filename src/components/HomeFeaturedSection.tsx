@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
+import { UnifiedProduct } from "@/lib/products";
 
 interface HomeFeaturedSectionProps {
   label: string;
@@ -9,7 +10,7 @@ interface HomeFeaturedSectionProps {
 }
 
 export function HomeFeaturedSection({ label, productIds, limit = 4 }: HomeFeaturedSectionProps) {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<UnifiedProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,35 +21,41 @@ export function HomeFeaturedSection({ label, productIds, limit = 4 }: HomeFeatur
         .select("*")
         .in("id", productIds.slice(0, limit))
         .eq("status", "active");
-      setProducts(data || []);
+
+      const mapped: UnifiedProduct[] = (data || []).map((p: any) => ({
+        id: p.id,
+        source: "lovable" as const,
+        title: p.name,
+        description: p.description || "",
+        handle: p.id,
+        vendor: "",
+        category: p.category || null,
+        stockStatus: p.quantity > 0 ? ("in_stock" as const) : ("out_of_stock" as const),
+        quantity: p.quantity,
+        price: { amount: String(p.price), currencyCode: "XCD" },
+        images: (p.images || []).map((url: string) => ({ url, altText: null })),
+        variants: [{
+          id: p.id,
+          title: "Default",
+          price: { amount: String(p.price), currencyCode: "XCD" },
+          availableForSale: p.quantity > 0,
+          selectedOptions: [],
+        }],
+      }));
+
+      setProducts(mapped);
       setLoading(false);
     })();
   }, [productIds, limit]);
 
   if (loading || products.length === 0) return null;
 
-  // Map to UnifiedProductCard format
-  const mapped = products.map(p => ({
-    id: p.id,
-    title: p.name,
-    handle: p.id,
-    price: String(p.price),
-    currencyCode: "XCD",
-    imageUrl: p.images?.[0] || null,
-    stockStatus: p.quantity > 0 ? "in_stock" as const : "out_of_stock" as const,
-    source: "local" as const,
-    vendor: null,
-    productType: p.category || null,
-    variantId: null,
-    variantTitle: null,
-  }));
-
   return (
     <section className="border-t border-border/50 py-10 md:py-14">
       <div className="container">
         <h2 className="mb-6 text-xl font-semibold tracking-tight md:text-2xl">{label}</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 rounded-sm">
-          {mapped.map(product => (
+          {products.map(product => (
             <UnifiedProductCard key={product.id} product={product} />
           ))}
         </div>
