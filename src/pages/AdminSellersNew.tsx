@@ -339,7 +339,15 @@ export default function AdminSellersNew() {
                         )}
                       </TableCell>
                       <TableCell className="py-2">
-                        <div className="font-medium text-sm">{seller.seller_name}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-sm">{seller.seller_name}</span>
+                          {seller.user_id === PLACEHOLDER_USER_ID && (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 border-dashed">
+                              <Unlink className="h-2.5 w-2.5 mr-0.5" />
+                              Unlinked
+                            </Badge>
+                          )}
+                        </div>
                         {seller.location && (
                           <div className="text-xs text-muted-foreground">{seller.location}</div>
                         )}
