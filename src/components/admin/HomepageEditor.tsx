@@ -71,7 +71,8 @@ export function HomepageEditor({ initialLayout }: HomepageEditorProps) {
     setSaving(true);
     try {
       await updateSiteSetting("homepage_layout", layout);
-      queryClient.invalidateQueries({ queryKey: ["site-settings"] });
+      await queryClient.invalidateQueries({ queryKey: ["site-settings"] });
+      await queryClient.refetchQueries({ queryKey: ["site-settings"] });
       setDirty(false);
       toast.success("Homepage layout saved!");
     } catch (err) {
