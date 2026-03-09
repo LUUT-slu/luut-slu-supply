@@ -3,51 +3,32 @@ import { ArrowRight, MapPin, ShieldCheck, Users, Package, MessageCircle } from "
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { ProductGrid } from "@/components/ProductGrid";
 import { ChatButton } from "@/components/ChatButton";
 import { BestSellersSection } from "@/components/BestSellersSection";
 import { WhatPeopleAreBuyingSection } from "@/components/WhatPeopleAreBuyingSection";
+import { HybridProductGrid } from "@/components/HybridProductGrid";
 import storefrontHero from "@/assets/storefront-hero.webp";
 
+const HOMEPAGE_CATEGORIES = [
+  { slug: "beanies-tams", label: "Beanies & Tams" },
+  { slug: "shoes", label: "Shoes" },
+  { slug: "hoodies", label: "Hoodies" },
+  { slug: "shirts", label: "Shirts" },
+  { slug: "jackets", label: "Jackets" },
+  { slug: "bags", label: "Bags" },
+];
 
 const howItWorks = [
-{
-  step: 1,
-  title: "Browse Products",
-  description: "Explore outfits from verified local sellers on our marketplace",
-  icon: Package
-},
-{
-  step: 2,
-  title: "Message the Seller",
-  description: "Contact the seller on WhatsApp to confirm details and arrange meetup",
-  icon: MessageCircle
-},
-{
-  step: 3,
-  title: "Meet & Pay",
-  description: "The seller meets you at a safe location — pay them directly in cash",
-  icon: MapPin
-}];
-
+  { step: 1, title: "Browse Products", description: "Explore outfits from verified local sellers on our marketplace", icon: Package },
+  { step: 2, title: "Message the Seller", description: "Contact the seller on WhatsApp to confirm details and arrange meetup", icon: MessageCircle },
+  { step: 3, title: "Meet & Pay", description: "The seller meets you at a safe location — pay them directly in cash", icon: MapPin },
+];
 
 const trustPoints = [
-{
-  icon: ShieldCheck,
-  title: "Verified Sellers",
-  description: "Every vendor is vetted before joining our marketplace"
-},
-{
-  icon: Users,
-  title: "Marketplace Platform",
-  description: "We connect you with local sellers who handle meetups & delivery"
-},
-{
-  icon: Package,
-  title: "Luut Certified",
-  description: "Luut SLU also sells as a certified vendor on the platform"
-}];
-
+  { icon: ShieldCheck, title: "Verified Sellers", description: "Every vendor is vetted before joining our marketplace" },
+  { icon: Users, title: "Marketplace Platform", description: "We connect you with local sellers who handle meetups & delivery" },
+  { icon: Package, title: "Luut Certified", description: "Luut SLU also sells as a certified vendor on the platform" },
+];
 
 export default function Index() {
   return (
@@ -57,7 +38,6 @@ export default function Index() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative min-h-[90vh] flex flex-col justify-end overflow-hidden">
-          {/* Background Image - Static */}
           <div className="absolute inset-0">
             <img
               src={storefrontHero}
@@ -67,11 +47,9 @@ export default function Index() {
               height={1080}
               fetchPriority="high"
               decoding="sync"
-              sizes="100vw" />
-
+              sizes="100vw"
+            />
           </div>
-          
-          {/* Bottom Content */}
           <div className="container relative z-10 px-4 pb-8 md:pb-12" style={{ background: 'linear-gradient(to top, hsl(0 0% 0% / 0.85) 0%, hsl(0 0% 0% / 0.4) 60%, transparent 100%)' }}>
             <div className="mx-auto max-w-3xl text-center">
               <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -89,10 +67,7 @@ export default function Index() {
                 </Button>
               </div>
               <div className="mt-5">
-                <Link
-                  to="/sell"
-                  className="font-body text-sm text-primary underline-offset-4 hover:underline">
-
+                <Link to="/sell" className="font-body text-sm text-primary underline-offset-4 hover:underline">
                   Want to sell? Join as a vendor →
                 </Link>
               </div>
@@ -100,78 +75,67 @@ export default function Index() {
           </div>
         </section>
 
-        {/* What People Are Buying - Social proof section */}
+        {/* What People Are Buying - Social proof */}
         <WhatPeopleAreBuyingSection />
 
-
-        {/* Luut SLU Products */}
-        <section className="py-12 md:py-16 bg-card/50">
-          <div className="container">
-            <div className="mb-8 flex items-center justify-between">
-              <div>
-                <h2 className="font-display text-2xl md:text-3xl">FROM LUUT SLU</h2>
-                <p className="mt-1 font-body text-sm text-muted-foreground">
-                  Our own curated collection
-                </p>
+        {/* Category Sections */}
+        {HOMEPAGE_CATEGORIES.map((cat) => (
+          <section key={cat.slug} className="border-t border-border/50 py-10 md:py-14">
+            <div className="container">
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
+                  {cat.label}
+                </h2>
+                <Button asChild variant="ghost" size="sm" className="font-body text-sm">
+                  <Link to={`/shop/${cat.slug}`}>
+                    View All
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
               </div>
-              <Button asChild variant="ghost" className="font-body">
-                <Link to="/sellers">
-                  View All
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
+              <HybridProductGrid categorySlug={cat.slug} limit={4} />
             </div>
-            <ProductGrid query="vendor:Luut SLU" limit={4} />
-          </div>
-        </section>
-
-        {/* Trust Section */}
-        <section className="border-t border-border bg-card py-12 md:py-16">
-          <div className="container">
-            <h2 className="mb-10 text-center font-display text-2xl md:text-3xl">
-              WHY SHOP WITH LUUT
-            </h2>
-            <div className="grid gap-6 md:grid-cols-3">
-              {trustPoints.map(({ icon: Icon, title, description }) =>
-              <div
-                key={title}
-                className="rounded-lg border border-border bg-background p-6 text-center">
-
-                  <Icon className="mx-auto mb-4 h-10 w-10 text-trust" />
-                  <h3 className="mb-2 font-display text-lg">{title}</h3>
-                  <p className="font-body text-sm text-muted-foreground">
-                    {description}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+          </section>
+        ))}
 
         {/* Best Sellers This Week */}
         <BestSellersSection />
 
+        {/* Trust Section */}
+        <section className="border-t border-border bg-card py-12 md:py-16">
+          <div className="container">
+            <h2 className="mb-10 text-center text-xl font-semibold tracking-tight md:text-2xl">
+              WHY SHOP WITH LUUT
+            </h2>
+            <div className="grid gap-6 md:grid-cols-3">
+              {trustPoints.map(({ icon: Icon, title, description }) => (
+                <div key={title} className="rounded-lg border border-border bg-background p-6 text-center">
+                  <Icon className="mx-auto mb-4 h-10 w-10 text-trust" />
+                  <h3 className="mb-2 text-base font-semibold">{title}</h3>
+                  <p className="font-body text-sm text-muted-foreground">{description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* How it Works */}
         <section className="border-y border-border py-12 md:py-16">
           <div className="container">
-            <h2 className="mb-10 text-center font-display text-2xl md:text-3xl">
+            <h2 className="mb-10 text-center text-xl font-semibold tracking-tight md:text-2xl">
               HOW IT WORKS
             </h2>
             <div className="grid gap-8 md:grid-cols-3">
-              {howItWorks.map(({ step, title, description, icon: Icon }) =>
-              <div key={step} className="text-center">
+              {howItWorks.map(({ step, title, description, icon: Icon }) => (
+                <div key={step} className="text-center">
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                     <Icon className="h-8 w-8 text-primary" />
                   </div>
-                  <div className="mb-2 font-display text-4xl text-primary/30">
-                    0{step}
-                  </div>
-                  <h3 className="mb-2 font-display text-xl">{title}</h3>
-                  <p className="font-body text-sm text-muted-foreground">
-                    {description}
-                  </p>
+                  <div className="mb-2 text-4xl font-bold text-primary/30">0{step}</div>
+                  <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+                  <p className="font-body text-sm text-muted-foreground">{description}</p>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </section>
@@ -180,7 +144,7 @@ export default function Index() {
         <section className="py-12 md:py-16">
           <div className="container">
             <div className="mx-auto max-w-2xl rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 p-8 text-center md:p-12">
-              <h2 className="mb-4 font-display text-2xl md:text-3xl">
+              <h2 className="mb-4 text-xl font-semibold tracking-tight md:text-2xl">
                 READY TO SHOP?
               </h2>
               <p className="mb-6 font-body text-muted-foreground">
@@ -199,6 +163,6 @@ export default function Index() {
 
       <Footer />
       <ChatButton variant="floating" />
-    </div>);
-
+    </div>
+  );
 }
