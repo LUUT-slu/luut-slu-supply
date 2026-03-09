@@ -78,24 +78,9 @@ export default function Index() {
         {/* What People Are Buying - Social proof */}
         <WhatPeopleAreBuyingSection />
 
-        {/* Category Sections */}
+        {/* Category Sections — only rendered when products exist */}
         {HOMEPAGE_CATEGORIES.map((cat) => (
-          <section key={cat.slug} className="border-t border-border/50 py-10 md:py-14">
-            <div className="container">
-              <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
-                  {cat.label}
-                </h2>
-                <Button asChild variant="ghost" size="sm" className="font-body text-sm">
-                  <Link to={`/shop/${cat.slug}`}>
-                    View All
-                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              </div>
-              <HybridProductGrid categorySlug={cat.slug} limit={4} />
-            </div>
-          </section>
+          <HomeCategorySection key={cat.slug} slug={cat.slug} label={cat.label} limit={4} />
         ))}
 
         {/* Best Sellers This Week */}
