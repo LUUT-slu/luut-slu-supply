@@ -7,15 +7,14 @@ import { ChatButton } from "@/components/ChatButton";
 import { BestSellersSection } from "@/components/BestSellersSection";
 import { WhatPeopleAreBuyingSection } from "@/components/WhatPeopleAreBuyingSection";
 import { HomeCategorySection } from "@/components/HomeCategorySection";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import storefrontHero from "@/assets/storefront-hero.webp";
 
-const HOMEPAGE_CATEGORIES = [
-  { slug: "beanies-tams", label: "Beanies & Tams" },
-  { slug: "shoes", label: "Shoes" },
-  { slug: "hoodies", label: "Hoodies" },
-  { slug: "shirts", label: "Shirts" },
-  { slug: "jackets", label: "Jackets" },
-  { slug: "bags", label: "Bags" },
+const FALLBACK_CATEGORIES = [
+  { slug: "beanies-tams", label: "Beanies & Tams", limit: 4 },
+  { slug: "shoes", label: "Shoes", limit: 4 },
+  { slug: "hoodies", label: "Hoodies", limit: 4 },
+  { slug: "shirts", label: "Shirts", limit: 4 },
 ];
 
 const howItWorks = [
@@ -32,6 +31,20 @@ const trustPoints = [
 
 // Homepage
 export default function Index() {
+  const { data: settings } = useSiteSettings();
+  const layout = settings?.homepageLayout;
+  
+  const categorySections = layout?.sections?.filter(s => s.enabled) ?? FALLBACK_CATEGORIES.map((c, i) => ({
+    id: `fallback-${i}`,
+    type: "category" as const,
+    slug: c.slug,
+    label: c.label,
+    limit: c.limit,
+    enabled: true,
+  }));
+  const showTrending = layout?.showTrending ?? true;
+  const showBestSellers = layout?.showBestSellers ?? true;
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -76,16 +89,21 @@ export default function Index() {
           </div>
         </section>
 
-        {/* What People Are Buying - Social proof */}
-        <WhatPeopleAreBuyingSection />
+        {/* What People Are Buying */}
+        {showTrending && <WhatPeopleAreBuyingSection />}
 
-        {/* Category Sections — only rendered when products exist */}
-        {HOMEPAGE_CATEGORIES.map((cat) => (
-          <HomeCategorySection key={cat.slug} slug={cat.slug} label={cat.label} limit={4} />
+        {/* Dynamic Category Sections */}
+        {categorySections.map((section) => (
+          <HomeCategorySection
+            key={section.id}
+            slug={section.slug}
+            label={section.label}
+            limit={section.limit}
+          />
         ))}
 
         {/* Best Sellers This Week */}
-        <BestSellersSection />
+        {showBestSellers && <BestSellersSection />}
 
         {/* Trust Section */}
         <section className="border-t border-border bg-card py-12 md:py-16">

@@ -11,9 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, ShoppingCart, EyeOff, Tag, Save, Loader2, Wifi, CheckCircle2, Palette } from "lucide-react";
-import { useSiteSettings, updateSiteSetting, CheckoutReminderSetting, ColorVariantCardsSetting } from "@/hooks/useSiteSettings";
+import { useSiteSettings, updateSiteSetting, CheckoutReminderSetting, ColorVariantCardsSetting, HomepageLayout } from "@/hooks/useSiteSettings";
 import { PopupsSection } from "@/components/admin/PopupsSection";
 import { DiscountsSection } from "@/components/admin/DiscountsSection";
+import { HomepageEditor } from "@/components/admin/HomepageEditor";
 import { toast } from "sonner";
 
 export default function AdminSiteSettings() {
@@ -83,6 +84,11 @@ export default function AdminSiteSettings() {
           </div>
 
           <div className="space-y-8 max-w-2xl">
+            {/* ========== HOMEPAGE LAYOUT ========== */}
+            <HomepageEditor initialLayout={settings?.homepageLayout} />
+
+            <Separator />
+
             {/* ========== SHOPIFY CONNECTION ========== */}
             <Card>
               <CardHeader>
