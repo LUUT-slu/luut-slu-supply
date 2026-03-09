@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 import { ChatButton } from "@/components/ChatButton";
 import { BestSellersSection } from "@/components/BestSellersSection";
 import { WhatPeopleAreBuyingSection } from "@/components/WhatPeopleAreBuyingSection";
-import { HybridProductGrid } from "@/components/HybridProductGrid";
+import { HomeCategorySection } from "@/components/HomeCategorySection";
 import storefrontHero from "@/assets/storefront-hero.webp";
 
 const HOMEPAGE_CATEGORIES = [
