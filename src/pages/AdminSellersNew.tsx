@@ -373,7 +373,23 @@ export default function AdminSellersNew() {
                             <Eye className="h-4 w-4" />
                           </Button>
                           
-                          {/* Actions based on status */}
+                          {/* Assign to user (for unlinked profiles) */}
+                          {seller.user_id === PLACEHOLDER_USER_ID && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                              onClick={() => {
+                                setAssignSeller(seller);
+                                setAssignDialogOpen(true);
+                              }}
+                              title="Assign to user"
+                            >
+                              <Link2 className="h-4 w-4" />
+                            </Button>
+                          )}
+
+                          
                           {!seller.is_primary_seller && (
                             <>
                               {/* Approve (for pending) */}
