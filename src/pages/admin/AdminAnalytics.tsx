@@ -2,6 +2,8 @@ import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { subDays, startOfDay, endOfDay } from "date-fns";
 import { ArrowLeft, Download } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { AdminAuth } from "@/components/AdminAuth";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,19 @@ export default function AdminAnalytics() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
   const { data: events, isLoading } = useAnalyticsData(filters);
+
+  const { data: totalRevenue = 0 } = useQuery({
+    queryKey: ["admin-revenue", filters.startDate, filters.endDate],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("total_price")
+        .eq("order_status", "COMPLETED")
+        .gte("created_at", filters.startDate)
+        .lte("created_at", filters.endDate);
+      return (data || []).reduce((sum, o) => sum + Number(o.total_price || 0), 0);
+    },
+  });
 
   const metrics = useMemo(() => {
     if (!events) return null;
@@ -85,7 +100,7 @@ export default function AdminAnalytics() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="font-display text-xl md:text-2xl">Analytics Dashboard</h1>
+                <h1 className="font-display text-xl md:text-2xl">Analysis</h1>
                 <p className="text-xs text-muted-foreground">Product performance & customer behavior</p>
               </div>
             </div>
@@ -122,6 +137,7 @@ export default function AdminAnalytics() {
                 totalAddToCarts={metrics.totalAddToCarts}
                 totalOrders={metrics.totalOrders}
                 avgConversionRate={metrics.avgConversionRate}
+                totalRevenue={totalRevenue}
               />
 
               {/* Insights */}
