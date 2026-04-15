@@ -57,6 +57,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <Link
       to={`/product/${node.handle}`}
+      onClick={() => trackEvent({ eventType: "product_clicked", productId: node.id, productName: node.title, productCategory: node.productType || undefined, sellerId: node.vendor || undefined })}
       className="group block overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg touch-manipulation"
     >
       {/* Image with trust badge overlay */}
