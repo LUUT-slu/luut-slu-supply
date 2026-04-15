@@ -373,12 +373,24 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
               {items.map((item) => (
                 <div key={item.id} className="space-y-1 pb-2 border-b border-border last:border-0">
                   <div className="flex items-center justify-between gap-2">
-                    <Input
-                      value={item.name}
-                      onChange={(e) => handleNameChange(item.id, e.target.value)}
-                      placeholder="Item name"
-                      className="h-7 text-sm font-medium flex-1 min-w-0"
-                    />
+                    <Select
+                      value={item.product_id || "__custom__"}
+                      onValueChange={(val) => handleProductSelect(item.id, val)}
+                    >
+                      <SelectTrigger className="h-8 text-sm flex-1 min-w-0">
+                        <SelectValue placeholder="Select product">
+                          {item.name || "Select product"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} — EC${p.price}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__custom__">Custom item...</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button
                       type="button"
                       variant="ghost"
