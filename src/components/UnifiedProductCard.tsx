@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { ShoppingCart, MapPin, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 
 interface UnifiedProductCardProps {
   product: UnifiedProduct | VariantListingProduct;
@@ -38,6 +39,17 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
   const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
   const isMobile = useIsMobile();
+  const { trackEvent } = useAnalyticsTracker();
+
+  const handleCardClick = () => {
+    trackEvent({
+      eventType: "product_clicked",
+      productId: product.id,
+      productName: product.title,
+      productCategory: product.category || undefined,
+      sellerId: product.vendor || undefined,
+    });
+  };
   
   const isVariant = isVariantListing(product);
   const firstVariant = product.variants[0];
