@@ -52,6 +52,8 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
   const [location, setLocation] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [sellerNotes, setSellerNotes] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [items, setItems] = useState<{ id: string; name: string; quantity: number; unit_price: number }[]>([]);
 
   useEffect(() => {
@@ -60,6 +62,8 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
       setLocation(order.location);
       setPickupTime(order.pickup_time || order.pickup_time_window || "");
       setSellerNotes(order.seller_notes || "");
+      setCustomerName(order.customer_name || "");
+      setCustomerPhone(order.customer_phone || "");
       setItems(
         order.items.map((item) => ({
           id: item.id,
@@ -89,12 +93,30 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
     setItems((prev) => prev.filter((item) => item.id !== itemId));
   };
 
+  const handlePriceChange = (itemId: string, newPrice: string) => {
+    const price = parseFloat(newPrice) || 0;
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, unit_price: price } : item
+      )
+    );
+  };
+
   const handleSave = async () => {
     if (!order || !date) return;
 
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+
+      const newTotal = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+
+      // Build updated line_items JSON
+      const updatedLineItems = items.map((item) => ({
+        title: item.name,
+        quantity: item.quantity,
+        price: item.unit_price.toFixed(2),
+      }));
 
       // Update order
       const { error: orderError } = await supabase
@@ -104,6 +126,10 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
           location,
           pickup_time: pickupTime,
           seller_notes: sellerNotes,
+          customer_name: customerName,
+          customer_phone: customerPhone || null,
+          total_price: newTotal,
+          line_items: updatedLineItems,
           updated_at: new Date().toISOString(),
           last_edited_at: new Date().toISOString(),
           last_edited_by: user?.id || null,
@@ -112,14 +138,15 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
 
       if (orderError) throw orderError;
 
-      // Update items
+      // Update items (quantity and price)
       for (const item of items) {
         const originalItem = order.items.find((i) => i.id === item.id);
-        if (originalItem && originalItem.quantity !== item.quantity) {
+        if (originalItem && (originalItem.quantity !== item.quantity || originalItem.unit_price !== item.unit_price)) {
           const { error: itemError } = await supabase
             .from("order_items")
             .update({
               quantity: item.quantity,
+              unit_price: item.unit_price,
               total_price: item.quantity * item.unit_price,
             })
             .eq("id", item.id);
