@@ -52,10 +52,12 @@ export function CreateOrderDialog({
   onOrderCreated,
 }: CreateOrderDialogProps) {
   const [open, setOpen] = useState(false);
+  const [quickMode, setQuickMode] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [discount, setDiscount] = useState("");
 
   // Customer form fields
   const [customerName, setCustomerName] = useState("");
