@@ -227,14 +227,6 @@ export default function Checkout() {
     }
   }, [hasHydrated, items.length, navigate]);
 
-  if (!hasHydrated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
-  }
-
   // Auto-fill customer info from profile
   useEffect(() => {
     const loadCustomerProfile = async () => {
