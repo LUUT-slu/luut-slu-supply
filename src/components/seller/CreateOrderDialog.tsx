@@ -358,7 +358,6 @@ export function CreateOrderDialog({
                   value={preferredDate}
                   onChange={(e) => setPreferredDate(e.target.value)}
                   className="h-9"
-                  min={new Date().toISOString().split("T")[0]}
                 />
               </div>
             </div>
