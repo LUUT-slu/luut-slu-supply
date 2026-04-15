@@ -30,6 +30,19 @@ export default function AdminAnalytics() {
 
   const { data: events, isLoading } = useAnalyticsData(filters);
 
+  const { data: totalRevenue = 0 } = useQuery({
+    queryKey: ["admin-revenue", filters.startDate, filters.endDate],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("total_price")
+        .eq("order_status", "COMPLETED")
+        .gte("created_at", filters.startDate)
+        .lte("created_at", filters.endDate);
+      return (data || []).reduce((sum, o) => sum + Number(o.total_price || 0), 0);
+    },
+  });
+
   const metrics = useMemo(() => {
     if (!events) return null;
     return computeMetrics(events);
