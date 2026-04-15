@@ -135,7 +135,28 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
   const handleNameChange = (itemId: string, newName: string) => {
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId ? { ...item, name: newName } : item
+        item.id === itemId ? { ...item, name: newName, product_id: null } : item
+      )
+    );
+  };
+
+  const handleProductSelect = (itemId: string, productId: string) => {
+    if (productId === "__custom__") {
+      // Switch to custom/manual entry
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId ? { ...item, name: "", product_id: null, image_url: null } : item
+        )
+      );
+      return;
+    }
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? { ...item, name: product.name, unit_price: product.price, product_id: product.id, image_url: product.images?.[0] || null }
+          : item
       )
     );
   };
