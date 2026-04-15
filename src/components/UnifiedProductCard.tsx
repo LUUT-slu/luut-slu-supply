@@ -155,6 +155,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
     return (
       <Link
         to={productLink}
+        onClick={handleCardClick}
         className={`group flex gap-3 overflow-hidden rounded-lg bg-card ring-1 ring-border/50 p-2 transition-all touch-manipulation ${isOutOfStock ? 'opacity-[0.65]' : ''}`}
       >
         {/* Square image thumbnail */}
