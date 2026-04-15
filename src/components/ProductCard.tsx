@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { ShopifyProduct, getOptimizedImageUrl, normalizeVendorName } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
+import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 
 interface ProductCardProps {
   product: ShopifyProduct;
@@ -12,6 +13,7 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
   const setOpen = useCartStore((state) => state.setOpen);
+  const { trackEvent } = useAnalyticsTracker();
   const { node } = product;
 
   const firstVariant = node.variants.edges[0]?.node;
