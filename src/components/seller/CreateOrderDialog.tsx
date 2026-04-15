@@ -18,9 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Minus, Package, X, ShoppingBag } from "lucide-react";
+import { Plus, Minus, Package, X, ShoppingBag, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { format, parse } from "date-fns";
+import { Switch } from "@/components/ui/switch";
 
 interface Product {
   id: string;
@@ -51,10 +52,12 @@ export function CreateOrderDialog({
   onOrderCreated,
 }: CreateOrderDialogProps) {
   const [open, setOpen] = useState(false);
+  const [quickMode, setQuickMode] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [discount, setDiscount] = useState("");
 
   // Customer form fields
   const [customerName, setCustomerName] = useState("");
@@ -131,10 +134,12 @@ export function CreateOrderDialog({
     setCart(cart.filter((item) => item.product.id !== productId));
   };
 
-  const totalPrice = cart.reduce(
+  const discountAmount = parseFloat(discount) || 0;
+  const subtotal = cart.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0
   );
+  const totalPrice = Math.max(0, subtotal - discountAmount);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -152,23 +157,26 @@ export function CreateOrderDialog({
     setPreferredDate("");
     setPickupTime("");
     setNote("");
+    setDiscount("");
   };
 
   const handleSubmit = async () => {
-    if (!customerName.trim()) {
-      toast.error("Customer name is required");
-      return;
-    }
-    if (!customerPhone.trim()) {
-      toast.error("Customer phone is required");
-      return;
-    }
-    if (!location) {
-      toast.error("Location is required");
-      return;
+    if (!quickMode) {
+      if (!customerName.trim()) {
+        toast.error("Customer name is required");
+        return;
+      }
+      if (!customerPhone.trim()) {
+        toast.error("Customer phone is required");
+        return;
+      }
+      if (!location) {
+        toast.error("Location is required");
+        return;
+      }
     }
     if (!preferredDate) {
-      toast.error("Preferred date is required");
+      toast.error("Date is required");
       return;
     }
     if (cart.length === 0) {
@@ -191,15 +199,21 @@ export function CreateOrderDialog({
         image_url: item.product.images?.[0] || null,
       }));
 
+      const orderNote = [
+        note.trim() || null,
+        discountAmount > 0 ? `Discount applied: ${formatCurrency(discountAmount)}` : null,
+        quickMode ? "⚡ Quick order — details pending" : null,
+      ].filter(Boolean).join("\n");
+
       // Create order
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
-          customer_name: customerName.trim(),
-          customer_phone: customerPhone.trim(),
-          location,
+          customer_name: quickMode ? "Quick Order" : customerName.trim(),
+          customer_phone: quickMode ? null : customerPhone.trim(),
+          location: quickMode ? "TBD" : location,
           preferred_date: formattedDate,
-          note: note.trim() || null,
+          note: orderNote || null,
           pickup_time: pickupTime || null,
           total_price: totalPrice,
           line_items: lineItems,
@@ -300,8 +314,21 @@ export function CreateOrderDialog({
           </DialogTitle>
         </DialogHeader>
 
+        {/* Quick Mode Toggle */}
+        <div className="flex items-center justify-between rounded-lg border border-border/60 p-3 bg-muted/20">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-amber-500" />
+            <div>
+              <p className="text-sm font-medium">Quick Order</p>
+              <p className="text-xs text-muted-foreground">Item, qty, discount & date only</p>
+            </div>
+          </div>
+          <Switch checked={quickMode} onCheckedChange={setQuickMode} />
+        </div>
+
         <div className="space-y-4">
-          {/* Customer Info Section */}
+          {/* Customer Info Section - hidden in quick mode */}
+          {!quickMode && (
           <div className="space-y-3">
             <h3 className="text-sm font-medium">Customer Information</h3>
             <div className="grid grid-cols-2 gap-3">
@@ -390,6 +417,36 @@ export function CreateOrderDialog({
               />
             </div>
           </div>
+          )}
+
+          {/* Quick mode: date + discount only */}
+          {quickMode && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="preferredDateQuick" className="text-xs">Date *</Label>
+                <Input
+                  id="preferredDateQuick"
+                  type="date"
+                  value={preferredDate}
+                  onChange={(e) => setPreferredDate(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="discountQuick" className="text-xs">Discount (EC$)</Label>
+                <Input
+                  id="discountQuick"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={discount}
+                  onChange={(e) => setDiscount(e.target.value)}
+                  placeholder="0"
+                  className="h-9"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Products Section */}
           <div className="space-y-3">
@@ -497,12 +554,43 @@ export function CreateOrderDialog({
                 ))}
               </div>
 
+              {/* Discount (full mode) */}
+              {!quickMode && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="discountFull" className="text-xs">Discount (EC$)</Label>
+                  <Input
+                    id="discountFull"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value)}
+                    placeholder="0"
+                    className="h-9"
+                  />
+                </div>
+              )}
+
               {/* Total */}
-              <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                <span className="text-sm font-medium">Total</span>
-                <span className="text-lg font-bold text-primary">
-                  {formatCurrency(totalPrice)}
-                </span>
+              <div className="pt-2 border-t border-border/40 space-y-1">
+                {discountAmount > 0 && (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(subtotal)}</span>
+                  </div>
+                )}
+                {discountAmount > 0 && (
+                  <div className="flex items-center justify-between text-xs text-green-600">
+                    <span>Discount</span>
+                    <span>-{formatCurrency(discountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Total</span>
+                  <span className="text-lg font-bold text-primary">
+                    {formatCurrency(totalPrice)}
+                  </span>
+                </div>
               </div>
             </div>
           )}
