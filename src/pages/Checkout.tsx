@@ -336,12 +336,6 @@ export default function Checkout() {
 
   const availableTimeSlots = getAvailableTimeSlots(selectedDate);
 
-  // Reset pickup time if no longer available after date change
-  useEffect(() => {
-    if (pickupTime && !getAvailableTimeSlots(selectedDate).includes(pickupTime)) {
-      setPickupTime('');
-    }
-  }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getSellerWhatsApp = async (vendorName: string): Promise<string> => {
     try {
