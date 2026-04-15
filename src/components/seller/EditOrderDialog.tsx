@@ -54,7 +54,7 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
   const [sellerNotes, setSellerNotes] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [items, setItems] = useState<{ id: string; name: string; quantity: number; unit_price: number }[]>([]);
+  const [items, setItems] = useState<{ id: string; name: string; quantity: number; unit_price: number; product_id: string | null }[]>([]);
 
   useEffect(() => {
     if (order) {
@@ -70,6 +70,7 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
           name: item.product_name,
           quantity: item.quantity,
           unit_price: item.unit_price,
+          product_id: item.product_id,
         }))
       );
     }
@@ -100,6 +101,21 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
         item.id === itemId ? { ...item, unit_price: price } : item
       )
     );
+  };
+
+  const handleNameChange = (itemId: string, newName: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, name: newName } : item
+      )
+    );
+  };
+
+  const handleAddItem = () => {
+    setItems((prev) => [
+      ...prev,
+      { id: `new-${Date.now()}`, name: "", quantity: 1, unit_price: 0, product_id: null },
+    ]);
   };
 
   const handleSave = async () => {
@@ -138,13 +154,15 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
 
       if (orderError) throw orderError;
 
-      // Update items (quantity and price)
+      // Update existing items (quantity, price, and name)
       for (const item of items) {
+        if (item.id.startsWith("new-")) continue; // skip new items here
         const originalItem = order.items.find((i) => i.id === item.id);
-        if (originalItem && (originalItem.quantity !== item.quantity || originalItem.unit_price !== item.unit_price)) {
+        if (originalItem && (originalItem.quantity !== item.quantity || originalItem.unit_price !== item.unit_price || originalItem.product_name !== item.name)) {
           const { error: itemError } = await supabase
             .from("order_items")
             .update({
+              product_name: item.name,
               quantity: item.quantity,
               unit_price: item.unit_price,
               total_price: item.quantity * item.unit_price,
@@ -153,6 +171,26 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
 
           if (itemError) throw itemError;
         }
+      }
+
+      // Insert new items
+      const newItems = items.filter((item) => item.id.startsWith("new-"));
+      if (newItems.length > 0) {
+        const { error: insertError } = await supabase
+          .from("order_items")
+          .insert(
+            newItems.map((item) => ({
+              order_id: order.id,
+              product_name: item.name,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              total_price: item.quantity * item.unit_price,
+              product_id: null,
+              seller_id: order.items[0]?.seller_id || null,
+            }))
+          );
+
+        if (insertError) throw insertError;
       }
 
       // Delete removed items
@@ -285,7 +323,12 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
               {items.map((item) => (
                 <div key={item.id} className="space-y-1 pb-2 border-b border-border last:border-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium line-clamp-1 flex-1 min-w-0">{item.name}</p>
+                    <Input
+                      value={item.name}
+                      onChange={(e) => handleNameChange(item.id, e.target.value)}
+                      placeholder="Item name"
+                      className="h-7 text-sm font-medium flex-1 min-w-0"
+                    />
                     <Button
                       type="button"
                       variant="ghost"
@@ -336,6 +379,15 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
                   </div>
                 </div>
               ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={handleAddItem}
+              >
+                <Plus className="h-3 w-3 mr-1" /> Add Item
+              </Button>
               <div className="border-t border-border pt-3 flex justify-between text-sm font-medium">
                 <span>Total</span>
                 <span>
