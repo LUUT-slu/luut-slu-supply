@@ -46,6 +46,13 @@ const TIME_SLOTS = [
   "5:00 PM - 7:00 PM",
 ];
 
+interface ProductOption {
+  id: string;
+  name: string;
+  price: number;
+  images: string[] | null;
+}
+
 export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrderDialogProps) {
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState<Date | undefined>();
@@ -54,7 +61,28 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
   const [sellerNotes, setSellerNotes] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [items, setItems] = useState<{ id: string; name: string; quantity: number; unit_price: number; product_id: string | null }[]>([]);
+  const [items, setItems] = useState<{ id: string; name: string; quantity: number; unit_price: number; product_id: string | null; image_url: string | null }[]>([]);
+  const [products, setProducts] = useState<ProductOption[]>([]);
+
+  // Fetch available products when dialog opens
+  useEffect(() => {
+    if (!open || !order) return;
+    const fetchProducts = async () => {
+      // Get the seller_id from the order items
+      const sellerId = order.items[0]?.seller_id;
+      if (!sellerId) return;
+      
+      const { data } = await supabase
+        .from("seller_products")
+        .select("id, name, price, images")
+        .eq("seller_id", sellerId)
+        .eq("status", "active")
+        .order("name");
+      
+      if (data) setProducts(data);
+    };
+    fetchProducts();
+  }, [open, order]);
 
   useEffect(() => {
     if (order) {
@@ -71,6 +99,7 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
           quantity: item.quantity,
           unit_price: item.unit_price,
           product_id: item.product_id,
+          image_url: item.product_image_url,
         }))
       );
     }
