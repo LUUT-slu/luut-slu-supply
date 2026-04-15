@@ -41,7 +41,20 @@ export default function ProductDetail() {
   const galleryRef = useRef<HTMLDivElement>(null);
 
   const addItem = useCartStore((state) => state.addItem);
+  const { trackEvent } = useAnalyticsTracker();
 
+  // Track product view once loaded
+  useEffect(() => {
+    if (product) {
+      trackEvent({
+        eventType: "product_viewed",
+        productId: product.id,
+        productName: product.title,
+        productCategory: product.productType || undefined,
+        sellerId: product.vendor || undefined,
+      });
+    }
+  }, [product?.id]);
   useEffect(() => {
     async function loadProduct() {
       if (!handle) return;
