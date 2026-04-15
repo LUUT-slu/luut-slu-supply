@@ -213,6 +213,8 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
             .from("order_items")
             .update({
               product_name: item.name,
+              product_id: item.product_id,
+              product_image_url: item.image_url,
               quantity: item.quantity,
               unit_price: item.unit_price,
               total_price: item.quantity * item.unit_price,
@@ -232,10 +234,11 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
             newItems.map((item) => ({
               order_id: order.id,
               product_name: item.name,
+              product_image_url: item.image_url,
               quantity: item.quantity,
               unit_price: item.unit_price,
               total_price: item.quantity * item.unit_price,
-              product_id: null,
+              product_id: item.product_id,
               seller_id: order.items[0]?.seller_id || null,
             }))
           );
