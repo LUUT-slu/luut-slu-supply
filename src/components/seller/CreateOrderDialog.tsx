@@ -18,9 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Minus, Package, X, ShoppingBag } from "lucide-react";
+import { Plus, Minus, Package, X, ShoppingBag, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { format, parse } from "date-fns";
+import { Switch } from "@/components/ui/switch";
 
 interface Product {
   id: string;
