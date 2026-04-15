@@ -427,11 +427,18 @@ export default function SellerOrders() {
                   return (
                     <div
                       key={order.id}
-                      className={`p-3 md:p-4 cursor-pointer active:bg-muted/40 transition-colors ${isArchived ? "opacity-60" : ""}`}
+                      className={`p-3 md:p-4 cursor-pointer active:bg-muted/40 transition-colors ${isArchived ? "opacity-60" : ""} ${selectedOrders.has(order.id) ? "bg-primary/5" : ""}`}
                       onClick={() => navigate(`/seller/orders/${order.id}`)}
                     >
                       {/* Mobile-first card layout */}
                       <div className="flex items-start justify-between gap-3">
+                        {/* Checkbox */}
+                        <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedOrders.has(order.id)}
+                            onCheckedChange={() => { const next = new Set(selectedOrders); next.has(order.id) ? next.delete(order.id) : next.add(order.id); setSelectedOrders(next); }}
+                          />
+                        </div>
                         {/* Left: Customer + Items */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
