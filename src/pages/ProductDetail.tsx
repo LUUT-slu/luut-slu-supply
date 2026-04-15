@@ -24,6 +24,7 @@ import { fetchProductByHandle, ShopifyProduct, normalizeVendorName } from "@/lib
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 
 // Meetup locations - can be extracted from product description or configured per seller
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
