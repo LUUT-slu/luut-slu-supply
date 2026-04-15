@@ -382,6 +382,26 @@ export default function SellerOrders() {
             </Button>
           </div>
 
+          {/* Bulk Actions Bar */}
+          {selectedOrders.size > 0 && (
+            <div className="mb-3 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2">
+              <span className="text-xs font-medium">{selectedOrders.size} selected</span>
+              <Select onValueChange={(v) => handleBulkStatusChange(v as OrderStatus)} disabled={bulkUpdating}>
+                <SelectTrigger className="h-8 w-[140px] text-xs">
+                  <SelectValue placeholder="Change status..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {ORDER_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setSelectedOrders(new Set())}>
+                Clear
+              </Button>
+            </div>
+          )}
+
           {/* Orders List */}
           <div className="rounded-lg border border-border/60 bg-card/50">
             {loading ? (
