@@ -307,6 +307,14 @@ export default function Checkout() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  if (!hasHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
   const isNameValid = customerName.trim().length >= 2;
   const isPhoneValid = customerPhone.trim().length >= 7;
   const isLocationValid = selectedLocation !== '';
