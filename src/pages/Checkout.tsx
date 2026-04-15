@@ -218,12 +218,22 @@ export default function Checkout() {
     setDiscountError(null);
   };
 
-  // Redirect if cart is empty (skip during order completion)
+  const hasHydrated = useCartStore(s => s._hasHydrated);
+
+  // Redirect if cart is empty (skip during order completion and before hydration)
   useEffect(() => {
-    if (items.length === 0 && !orderCompletingRef.current) {
+    if (hasHydrated && items.length === 0 && !orderCompletingRef.current) {
       navigate('/cart');
     }
-  }, [items.length, navigate]);
+  }, [hasHydrated, items.length, navigate]);
+
+  if (!hasHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
 
   // Auto-fill customer info from profile
   useEffect(() => {

@@ -22,6 +22,7 @@ interface CartStore {
   items: CartItem[];
   isLoading: boolean;
   isOpen: boolean;
+  _hasHydrated: boolean;
   
   addItem: (item: CartItem) => { success: boolean; error?: string };
   updateQuantity: (variantId: string, quantity: number) => void;
@@ -41,6 +42,7 @@ export const useCartStore = create<CartStore>()(
       items: [],
       isLoading: false,
       isOpen: false,
+      _hasHydrated: false,
 
       addItem: (item) => {
         const { items } = get();
@@ -126,6 +128,9 @@ export const useCartStore = create<CartStore>()(
       name: 'luut-cart',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ items: state.items }),
+      onRehydrateStorage: () => (state) => {
+        if (state) state._hasHydrated = true;
+      },
     }
   )
 );
