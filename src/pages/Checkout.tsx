@@ -218,12 +218,14 @@ export default function Checkout() {
     setDiscountError(null);
   };
 
-  // Redirect if cart is empty (skip during order completion)
+  const hasHydrated = useCartStore(s => s._hasHydrated);
+
+  // Redirect if cart is empty (skip during order completion and before hydration)
   useEffect(() => {
-    if (items.length === 0 && !orderCompletingRef.current) {
+    if (hasHydrated && items.length === 0 && !orderCompletingRef.current) {
       navigate('/cart');
     }
-  }, [items.length, navigate]);
+  }, [hasHydrated, items.length, navigate]);
 
   // Auto-fill customer info from profile
   useEffect(() => {
@@ -305,6 +307,21 @@ export default function Checkout() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset pickup time if no longer available after date change
+  useEffect(() => {
+    if (pickupTime && !getAvailableTimeSlots(selectedDate).includes(pickupTime)) {
+      setPickupTime('');
+    }
+  }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!hasHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
   const isNameValid = customerName.trim().length >= 2;
   const isPhoneValid = customerPhone.trim().length >= 7;
   const isLocationValid = selectedLocation !== '';
@@ -319,12 +336,6 @@ export default function Checkout() {
 
   const availableTimeSlots = getAvailableTimeSlots(selectedDate);
 
-  // Reset pickup time if no longer available after date change
-  useEffect(() => {
-    if (pickupTime && !getAvailableTimeSlots(selectedDate).includes(pickupTime)) {
-      setPickupTime('');
-    }
-  }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getSellerWhatsApp = async (vendorName: string): Promise<string> => {
     try {
