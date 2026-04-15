@@ -283,12 +283,56 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
             <Label>Order Items</Label>
             <div className="space-y-3 rounded-lg border border-border p-3">
               {items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium line-clamp-1">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(item.unit_price)} each
-                    </p>
+                <div key={item.id} className="space-y-1 pb-2 border-b border-border last:border-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium line-clamp-1 flex-1 min-w-0">{item.name}</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive shrink-0"
+                      onClick={() => handleRemoveItem(item.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs text-muted-foreground">Price:</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={item.unit_price}
+                        onChange={(e) => handlePriceChange(item.id, e.target.value)}
+                        className="h-7 w-20 text-xs"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleQuantityChange(item.id, -1)}
+                        disabled={item.quantity <= 1}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleQuantityChange(item.id, 1)}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      {formatCurrency(item.unit_price * item.quantity)}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
