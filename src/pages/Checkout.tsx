@@ -307,6 +307,13 @@ export default function Checkout() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset pickup time if no longer available after date change
+  useEffect(() => {
+    if (pickupTime && !getAvailableTimeSlots(selectedDate).includes(pickupTime)) {
+      setPickupTime('');
+    }
+  }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!hasHydrated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
