@@ -134,10 +134,12 @@ export function CreateOrderDialog({
     setCart(cart.filter((item) => item.product.id !== productId));
   };
 
-  const totalPrice = cart.reduce(
+  const discountAmount = parseFloat(discount) || 0;
+  const subtotal = cart.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0
   );
+  const totalPrice = Math.max(0, subtotal - discountAmount);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
