@@ -1,141 +1,49 @@
 
 
-# Admin Analytics Dashboard
+# Fix Order Date Restriction + Pickup Logic
 
-## Current State
-- `seller_products` has `views_count` and `clicks_count` columns but all values are 0 — no tracking code exists
-- No analytics events table exists in the database
-- No client-side event tracking is implemented anywhere
-- The admin hub at `/admin` has basic stats (orders, sellers, partners) but no product analytics
-- The project uses Recharts (via `chart.tsx` UI component) for charting
+## Problem
+Four files enforce a "tomorrow minimum" date restriction, blocking same-day orders. Pickup time slots are 9 AM–5 PM but need to be 8 AM–6 PM with same-day filtering.
 
-## What We'll Build
+## Changes
 
-### Phase 1: Event Tracking Infrastructure
+### 1. Checkout.tsx
+- Remove `const tomorrow` variable (line 288-289)
+- Change calendar `disabled` from `date < tomorrow` to `date < today` (start of today)
+- Expand `PICKUP_TIME_SLOTS` to 8:00 AM–5:30 PM range (adding 8:00 AM, 8:30 AM slots; already has up to 5 PM)
+- Add smart same-day filtering: when selected date is today, filter out time slots that have already passed
+- Default `selectedDate` to today instead of undefined
+- If current time is past 5:30 PM, auto-default to tomorrow
 
-**New database table: `analytics_events`**
-Captures granular user actions with columns: `id`, `event_type`, `product_id`, `product_name`, `product_category`, `seller_id`, `session_id`, `user_id` (nullable), `metadata` (jsonb), `created_at`.
+### 2. CartDrawer.tsx
+- Same calendar fix: remove `tomorrow`, allow today's date
+- Remove the `disabled={(date) => date < tomorrow}` restriction
 
-Event types tracked:
-- `product_viewed` — product detail page opened
-- `product_clicked` — product card clicked from any listing
-- `image_interacted` — gallery swiped/clicked
-- `variant_selected` — variant option changed
-- `add_to_cart` — item added to cart
-- `checkout_started` — checkout page opened
-- `order_completed` — order placed
+### 3. OrderDetails.tsx (customer edit flow)
+- Same fix: remove `tomorrow`, allow today onward
 
-**New hook: `useAnalyticsTracker`** — provides a `trackEvent()` function that fires-and-forgets inserts into `analytics_events`. Generates a session ID (stored in sessionStorage) for unique visitor tracking.
+### 4. EditOrderDialog.tsx (seller edit)
+- Already allows today (`date < new Date()`) — just needs `pointer-events-auto` class fix
+- No date restriction changes needed here
 
-**Instrumentation points:**
-- `ProductDetail.tsx` and `LocalProductDetail.tsx` — track `product_viewed`, `image_interacted`, `variant_selected`
-- `ProductCard.tsx` / `UnifiedProductCard.tsx` — track `product_clicked` on card click
-- `cartStore.ts` `addItem` — track `add_to_cart`
-- `Checkout.tsx` — track `checkout_started` on mount
-- `create-draft-order` edge function or order confirmation — track `order_completed`
+### 5. CreateOrderDialog.tsx (seller manual orders)
+- `min` on date input already allows today — no change needed
+- Time slots use Morning/Afternoon/Evening format — keep as-is for seller simplicity
 
-Also: a cron-like approach to aggregate `views_count` / `clicks_count` on `seller_products` is not needed — the dashboard will query `analytics_events` directly with date filters.
+### Pickup Time Logic (Checkout.tsx)
+- New `PICKUP_TIME_SLOTS` array: 8:00 AM through 5:30 PM in 30-min increments
+- Helper function: `getAvailableTimeSlots(selectedDate)` returns all slots if future date, or only future slots if today
+- When user picks today and all slots have passed, show message "No slots available today" and auto-suggest tomorrow
+- Reset `pickupTime` when date changes and the previously selected slot is no longer available
+- Update helper text to "Pickups available 8AM–6PM"
 
-### Phase 2: Analytics Dashboard Page
-
-**New route:** `/admin/analytics` — lazy-loaded, admin-only.
-
-**New page:** `src/pages/admin/AdminAnalytics.tsx`
-
-Layout (responsive, mobile-first):
-
-1. **Filter bar** — Date range (Today / 7d / 30d / Custom), Category dropdown, Seller dropdown, Stock filter. Uses existing Shadcn components (Select, Popover + Calendar for custom range).
-
-2. **Summary cards row** — Total Visitors (unique sessions), Total Views, Total Clicks, Total Add-to-Carts, Total Orders, Avg Conversion Rate. Each card shows value + % change vs previous period.
-
-3. **Charts section** (2-column grid on desktop, stacked on mobile):
-   - Views over time (area chart)
-   - Add-to-cart trend (bar chart)
-   - Conversion funnel (funnel/bar: views → clicks → cart → checkout → order)
-   - Top products by attention (horizontal bar)
-
-4. **Leaderboard tables** (tabbed):
-   - Most Viewed
-   - Most Clicked
-   - Most Added to Cart
-   - Best Converting (view→order rate)
-   - High Views, Low Cart (attention but no conversion)
-
-5. **Insights section** — Auto-generated text alerts:
-   - "Product X gets many views but low cart adds"
-   - "Product Y has strong add-to-cart rate — consider promoting"
-   - "Product Z is underperforming in its category"
-
-6. **Product detail slide-over** — Click any product row to see: image, name, category, price, stock, full funnel metrics, click trend sparkline, last interaction date.
-
-7. **Compare mode** — Select 2-3 products via checkboxes, show side-by-side metrics table.
-
-8. **Export** — CSV download button for current filtered data.
-
-### Phase 3: Admin Hub Integration
-
-Add an "Analytics" module card to `AdminHub.tsx` linking to `/admin/analytics`.
-
-### File Changes Summary
-
-| File | Action |
+### Files Modified
+| File | Change |
 |---|---|
-| Migration | Create `analytics_events` table + RLS policies |
-| `src/hooks/useAnalyticsTracker.ts` | New — `trackEvent()` hook |
-| `src/pages/ProductDetail.tsx` | Add view/variant/image tracking calls |
-| `src/pages/LocalProductDetail.tsx` | Add view tracking calls |
-| `src/components/UnifiedProductCard.tsx` | Add click tracking |
-| `src/components/ProductCard.tsx` | Add click tracking |
-| `src/stores/cartStore.ts` | Add add-to-cart tracking |
-| `src/pages/Checkout.tsx` | Add checkout-started tracking |
-| `src/pages/admin/AdminAnalytics.tsx` | New — full dashboard page |
-| `src/components/admin/AnalyticsFilters.tsx` | New — filter bar component |
-| `src/components/admin/AnalyticsCards.tsx` | New — summary cards |
-| `src/components/admin/AnalyticsCharts.tsx` | New — charts section |
-| `src/components/admin/AnalyticsLeaderboard.tsx` | New — tabbed tables |
-| `src/components/admin/AnalyticsInsights.tsx` | New — auto-generated insights |
-| `src/components/admin/ProductAnalyticsDetail.tsx` | New — product detail panel |
-| `src/hooks/useAnalyticsData.ts` | New — queries for dashboard data |
-| `src/App.tsx` | Add `/admin/analytics` route |
-| `src/pages/AdminHub.tsx` | Add Analytics module card |
+| `src/pages/Checkout.tsx` | Allow today, expand hours to 8AM–6PM, smart same-day slot filtering, default to today |
+| `src/components/CartDrawer.tsx` | Allow today's date in calendar |
+| `src/pages/OrderDetails.tsx` | Allow today's date in calendar |
+| `src/components/seller/EditOrderDialog.tsx` | Add `pointer-events-auto` to calendar |
 
-### Database Migration
-
-```sql
-CREATE TABLE public.analytics_events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_type text NOT NULL,
-  product_id text,
-  product_name text,
-  product_category text,
-  seller_id text,
-  session_id text,
-  user_id uuid,
-  metadata jsonb DEFAULT '{}',
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_analytics_events_type_created ON analytics_events(event_type, created_at);
-CREATE INDEX idx_analytics_events_product ON analytics_events(product_id, created_at);
-CREATE INDEX idx_analytics_events_session ON analytics_events(session_id);
-
-ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
-
--- Anyone can insert events (anonymous tracking)
-CREATE POLICY "Anyone can insert analytics events"
-  ON analytics_events FOR INSERT WITH CHECK (true);
-
--- Only admins can read
-CREATE POLICY "Admins can read analytics events"
-  ON analytics_events FOR SELECT
-  USING (has_role(auth.uid(), 'admin'::app_role));
-```
-
-### Technical Notes
-- All tracking is fire-and-forget (no await, no error handling that blocks UX)
-- Session ID generated once per browser session via `crypto.randomUUID()`, stored in `sessionStorage`
-- Dashboard queries use date-filtered aggregations with `GROUP BY product_id`
-- Charts use the existing Recharts setup via `chart.tsx`
-- CSV export uses client-side blob generation
-- No external dependencies needed — all built with existing stack
+No database or migration changes needed.
 
