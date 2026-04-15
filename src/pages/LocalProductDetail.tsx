@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Minus, Plus, MapPin, CreditCard } from "lucide-react";
 import { toast } from "sonner";
+import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 
 interface LocalProduct {
   id: string;
@@ -34,11 +35,25 @@ export default function LocalProductDetail() {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
+  const { trackEvent } = useAnalyticsTracker();
   
   const [product, setProduct] = useState<LocalProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+
+  // Track view
+  useEffect(() => {
+    if (product) {
+      trackEvent({
+        eventType: "product_viewed",
+        productId: product.id,
+        productName: product.name,
+        productCategory: product.category || undefined,
+        sellerId: product.seller_id,
+      });
+    }
+  }, [product?.id]);
 
   useEffect(() => {
     async function fetchProduct() {

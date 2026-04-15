@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { ShopifyProduct, getOptimizedImageUrl, normalizeVendorName } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
+import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 
 interface ProductCardProps {
   product: ShopifyProduct;
@@ -12,6 +13,7 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
   const setOpen = useCartStore((state) => state.setOpen);
+  const { trackEvent } = useAnalyticsTracker();
   const { node } = product;
 
   const firstVariant = node.variants.edges[0]?.node;
@@ -55,6 +57,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <Link
       to={`/product/${node.handle}`}
+      onClick={() => trackEvent({ eventType: "product_clicked", productId: node.id, productName: node.title, productCategory: node.productType || undefined, sellerId: node.vendor || undefined })}
       className="group block overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg touch-manipulation"
     >
       {/* Image with trust badge overlay */}

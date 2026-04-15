@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { ShoppingCart, MapPin, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 
 interface UnifiedProductCardProps {
   product: UnifiedProduct | VariantListingProduct;
@@ -38,6 +39,17 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
   const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
   const isMobile = useIsMobile();
+  const { trackEvent } = useAnalyticsTracker();
+
+  const handleCardClick = () => {
+    trackEvent({
+      eventType: "product_clicked",
+      productId: product.id,
+      productName: product.title,
+      productCategory: product.category || undefined,
+      sellerId: product.vendor || undefined,
+    });
+  };
   
   const isVariant = isVariantListing(product);
   const firstVariant = product.variants[0];
@@ -143,6 +155,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
     return (
       <Link
         to={productLink}
+        onClick={handleCardClick}
         className={`group flex gap-3 overflow-hidden rounded-lg bg-card ring-1 ring-border/50 p-2 transition-all touch-manipulation ${isOutOfStock ? 'opacity-[0.65]' : ''}`}
       >
         {/* Square image thumbnail */}
@@ -231,6 +244,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
   return (
     <Link
       to={productLink}
+      onClick={handleCardClick}
       className={`group relative flex flex-col overflow-hidden rounded-lg bg-card ring-1 ring-border/50 transition-all duration-300 hover:ring-2 hover:ring-primary/50 hover:shadow-lg ${isOutOfStock ? 'opacity-[0.65]' : ''}`}
     >
       {/* Image */}

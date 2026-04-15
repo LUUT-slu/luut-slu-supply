@@ -18,6 +18,7 @@ import {
   TrendingUp,
   Home,
   Wifi,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -159,6 +160,15 @@ export default function AdminHub() {
       stat: "Diagnose",
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
+    },
+    {
+      title: "Analytics Dashboard",
+      description: "Product performance, conversion funnels, and customer behavior insights",
+      icon: BarChart3,
+      href: "/admin/analytics",
+      stat: "View insights",
+      color: "text-cyan-500",
+      bgColor: "bg-cyan-500/10",
     },
   ];
 

@@ -24,6 +24,7 @@ import { fetchProductByHandle, ShopifyProduct, normalizeVendorName } from "@/lib
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 
 // Meetup locations - can be extracted from product description or configured per seller
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
@@ -40,7 +41,20 @@ export default function ProductDetail() {
   const galleryRef = useRef<HTMLDivElement>(null);
 
   const addItem = useCartStore((state) => state.addItem);
+  const { trackEvent } = useAnalyticsTracker();
 
+  // Track product view once loaded
+  useEffect(() => {
+    if (product) {
+      trackEvent({
+        eventType: "product_viewed",
+        productId: product.id,
+        productName: product.title,
+        productCategory: product.productType || undefined,
+        sellerId: product.vendor || undefined,
+      });
+    }
+  }, [product?.id]);
   useEffect(() => {
     async function loadProduct() {
       if (!handle) return;

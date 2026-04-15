@@ -70,6 +70,45 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          product_category: string | null
+          product_id: string | null
+          product_name: string | null
+          seller_id: string | null
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          product_category?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          seller_id?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          product_category?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          seller_id?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       customer_discounts: {
         Row: {
           created_at: string
