@@ -9,6 +9,13 @@ export interface AnalyticsFilters {
 }
 
 async function fetchAnalyticsEvents(filters: AnalyticsFilters) {
+  // First get admin user IDs to exclude
+  const { data: adminRoles } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin" as any);
+  const adminIds = (adminRoles || []).map((r) => r.user_id);
+
   let query = supabase
     .from("analytics_events" as any)
     .select("*")
@@ -25,7 +32,12 @@ async function fetchAnalyticsEvents(filters: AnalyticsFilters) {
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []) as unknown as AnalyticsEvent[];
+
+  // Filter out admin events client-side
+  const filtered = (data || []).filter(
+    (e: any) => !e.user_id || !adminIds.includes(e.user_id)
+  );
+  return filtered as unknown as AnalyticsEvent[];
 }
 
 export interface AnalyticsEvent {
