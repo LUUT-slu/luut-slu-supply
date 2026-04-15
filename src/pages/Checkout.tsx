@@ -133,6 +133,14 @@ export default function Checkout() {
     clearCart,
     getUniqueVendors,
   } = useCartStore();
+  const { trackEvent } = useAnalyticsTracker();
+
+  // Track checkout started
+  useEffect(() => {
+    if (items.length > 0) {
+      trackEvent({ eventType: "checkout_started", metadata: { itemCount: items.length } });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const vendors = getUniqueVendors();
   const totalPrice = getTotalPrice();
