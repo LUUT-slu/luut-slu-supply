@@ -46,6 +46,13 @@ const TIME_SLOTS = [
   "5:00 PM - 7:00 PM",
 ];
 
+interface ProductOption {
+  id: string;
+  name: string;
+  price: number;
+  images: string[] | null;
+}
+
 export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrderDialogProps) {
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState<Date | undefined>();
@@ -54,7 +61,28 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
   const [sellerNotes, setSellerNotes] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [items, setItems] = useState<{ id: string; name: string; quantity: number; unit_price: number; product_id: string | null }[]>([]);
+  const [items, setItems] = useState<{ id: string; name: string; quantity: number; unit_price: number; product_id: string | null; image_url: string | null }[]>([]);
+  const [products, setProducts] = useState<ProductOption[]>([]);
+
+  // Fetch available products when dialog opens
+  useEffect(() => {
+    if (!open || !order) return;
+    const fetchProducts = async () => {
+      // Get the seller_id from the order items
+      const sellerId = order.items[0]?.seller_id;
+      if (!sellerId) return;
+      
+      const { data } = await supabase
+        .from("seller_products")
+        .select("id, name, price, images")
+        .eq("seller_id", sellerId)
+        .eq("status", "active")
+        .order("name");
+      
+      if (data) setProducts(data);
+    };
+    fetchProducts();
+  }, [open, order]);
 
   useEffect(() => {
     if (order) {
@@ -71,6 +99,7 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
           quantity: item.quantity,
           unit_price: item.unit_price,
           product_id: item.product_id,
+          image_url: item.product_image_url,
         }))
       );
     }
@@ -106,7 +135,28 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
   const handleNameChange = (itemId: string, newName: string) => {
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId ? { ...item, name: newName } : item
+        item.id === itemId ? { ...item, name: newName, product_id: null } : item
+      )
+    );
+  };
+
+  const handleProductSelect = (itemId: string, productId: string) => {
+    if (productId === "__custom__") {
+      // Switch to custom/manual entry
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId ? { ...item, name: "", product_id: null, image_url: null } : item
+        )
+      );
+      return;
+    }
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? { ...item, name: product.name, unit_price: product.price, product_id: product.id, image_url: product.images?.[0] || null }
+          : item
       )
     );
   };
@@ -114,7 +164,7 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
   const handleAddItem = () => {
     setItems((prev) => [
       ...prev,
-      { id: `new-${Date.now()}`, name: "", quantity: 1, unit_price: 0, product_id: null },
+      { id: `new-${Date.now()}`, name: "", quantity: 1, unit_price: 0, product_id: null, image_url: null },
     ]);
   };
 
@@ -163,6 +213,8 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
             .from("order_items")
             .update({
               product_name: item.name,
+              product_id: item.product_id,
+              product_image_url: item.image_url,
               quantity: item.quantity,
               unit_price: item.unit_price,
               total_price: item.quantity * item.unit_price,
@@ -182,10 +234,11 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
             newItems.map((item) => ({
               order_id: order.id,
               product_name: item.name,
+              product_image_url: item.image_url,
               quantity: item.quantity,
               unit_price: item.unit_price,
               total_price: item.quantity * item.unit_price,
-              product_id: null,
+              product_id: item.product_id,
               seller_id: order.items[0]?.seller_id || null,
             }))
           );
@@ -323,12 +376,24 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
               {items.map((item) => (
                 <div key={item.id} className="space-y-1 pb-2 border-b border-border last:border-0">
                   <div className="flex items-center justify-between gap-2">
-                    <Input
-                      value={item.name}
-                      onChange={(e) => handleNameChange(item.id, e.target.value)}
-                      placeholder="Item name"
-                      className="h-7 text-sm font-medium flex-1 min-w-0"
-                    />
+                    <Select
+                      value={item.product_id || "__custom__"}
+                      onValueChange={(val) => handleProductSelect(item.id, val)}
+                    >
+                      <SelectTrigger className="h-8 text-sm flex-1 min-w-0">
+                        <SelectValue placeholder="Select product">
+                          {item.name || "Select product"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} — EC${p.price}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__custom__">Custom item...</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button
                       type="button"
                       variant="ghost"
@@ -339,6 +404,14 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
+                  {!item.product_id && (
+                    <Input
+                      value={item.name}
+                      onChange={(e) => handleNameChange(item.id, e.target.value)}
+                      placeholder="Enter custom item name"
+                      className="h-7 text-xs"
+                    />
+                  )}
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1">
                       <Label className="text-xs text-muted-foreground">Price:</Label>
