@@ -379,6 +379,15 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
                   </div>
                 </div>
               ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={handleAddItem}
+              >
+                <Plus className="h-3 w-3 mr-1" /> Add Item
+              </Button>
               <div className="border-t border-border pt-3 flex justify-between text-sm font-medium">
                 <span>Total</span>
                 <span>
