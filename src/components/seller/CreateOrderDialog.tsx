@@ -161,20 +161,22 @@ export function CreateOrderDialog({
   };
 
   const handleSubmit = async () => {
-    if (!customerName.trim()) {
-      toast.error("Customer name is required");
-      return;
-    }
-    if (!customerPhone.trim()) {
-      toast.error("Customer phone is required");
-      return;
-    }
-    if (!location) {
-      toast.error("Location is required");
-      return;
+    if (!quickMode) {
+      if (!customerName.trim()) {
+        toast.error("Customer name is required");
+        return;
+      }
+      if (!customerPhone.trim()) {
+        toast.error("Customer phone is required");
+        return;
+      }
+      if (!location) {
+        toast.error("Location is required");
+        return;
+      }
     }
     if (!preferredDate) {
-      toast.error("Preferred date is required");
+      toast.error("Date is required");
       return;
     }
     if (cart.length === 0) {
