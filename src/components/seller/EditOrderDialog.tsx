@@ -54,7 +54,7 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
   const [sellerNotes, setSellerNotes] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [items, setItems] = useState<{ id: string; name: string; quantity: number; unit_price: number }[]>([]);
+  const [items, setItems] = useState<{ id: string; name: string; quantity: number; unit_price: number; product_id: string | null }[]>([]);
 
   useEffect(() => {
     if (order) {
@@ -70,6 +70,7 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
           name: item.product_name,
           quantity: item.quantity,
           unit_price: item.unit_price,
+          product_id: item.product_id,
         }))
       );
     }
@@ -100,6 +101,21 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
         item.id === itemId ? { ...item, unit_price: price } : item
       )
     );
+  };
+
+  const handleNameChange = (itemId: string, newName: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, name: newName } : item
+      )
+    );
+  };
+
+  const handleAddItem = () => {
+    setItems((prev) => [
+      ...prev,
+      { id: `new-${Date.now()}`, name: "", quantity: 1, unit_price: 0, product_id: null },
+    ]);
   };
 
   const handleSave = async () => {
