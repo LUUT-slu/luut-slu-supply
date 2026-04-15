@@ -188,9 +188,9 @@ export function CartDrawer() {
     }
   };
 
-  // Get tomorrow as minimum date
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // Get start of today as minimum date
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   // Look up seller's WhatsApp number from their profile
   const getSellerWhatsApp = async (vendorName: string): Promise<string> => {
@@ -588,7 +588,7 @@ export function CartDrawer() {
                             setSelectedDate(date);
                             setCalendarOpen(false);
                           }}
-                          disabled={(date) => date < tomorrow}
+                          disabled={(date) => date < today}
                           initialFocus
                           className="p-3 pointer-events-auto"
                         />

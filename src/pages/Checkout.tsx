@@ -47,12 +47,41 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort"];
 const FALLBACK_WHATSAPP_NUMBER = "7587185478";
 
-const PICKUP_TIME_SLOTS = [
-  "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM",
+const ALL_PICKUP_TIME_SLOTS = [
+  "8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM",
   "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM",
   "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM",
-  "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM",
+  "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM",
 ];
+
+function parseSlotHour(slot: string): number {
+  const [time, period] = slot.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0;
+  return hours + minutes / 60;
+}
+
+function getDefaultDate(): Date {
+  const now = new Date();
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+  // If past 5:30 PM (17.5), default to tomorrow
+  if (currentHour >= 17.5) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
+  }
+  return now;
+}
+
+function getAvailableTimeSlots(selectedDate: Date | undefined): string[] {
+  if (!selectedDate) return ALL_PICKUP_TIME_SLOTS;
+  const now = new Date();
+  const isToday = selectedDate.toDateString() === now.toDateString();
+  if (!isToday) return ALL_PICKUP_TIME_SLOTS;
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+  return ALL_PICKUP_TIME_SLOTS.filter(slot => parseSlotHour(slot) > currentHour);
+}
 
 interface ChecklistItemProps {
   completed: boolean;
@@ -106,7 +135,7 @@ export default function Checkout() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedDate, setSelectedDate] = useState<Date>(getDefaultDate());
   const [pickupTime, setPickupTime] = useState('');
   const [note, setNote] = useState('');
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -284,9 +313,18 @@ export default function Checkout() {
   const isDepositAcknowledged = depositAcknowledged;
   const isFormComplete = isNameValid && isPhoneValid && isLocationValid && isDateValid && isPickupTimeValid && isDepositAcknowledged;
 
-  // Get tomorrow as minimum date
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // Get start of today as minimum date
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const availableTimeSlots = getAvailableTimeSlots(selectedDate);
+
+  // Reset pickup time if no longer available after date change
+  useEffect(() => {
+    if (pickupTime && !getAvailableTimeSlots(selectedDate).includes(pickupTime)) {
+      setPickupTime('');
+    }
+  }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getSellerWhatsApp = async (vendorName: string): Promise<string> => {
     try {
@@ -666,7 +704,7 @@ export default function Checkout() {
                       setSelectedDate(date);
                       setCalendarOpen(false);
                     }}
-                    disabled={(date) => date < tomorrow}
+                    disabled={(date) => date < today}
                     initialFocus
                     className="p-3 pointer-events-auto"
                   />
@@ -684,13 +722,22 @@ export default function Checkout() {
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  {PICKUP_TIME_SLOTS.map((slot) => (
-                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                  ))}
+                  {availableTimeSlots.length > 0 ? (
+                    availableTimeSlots.map((slot) => (
+                      <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">No slots available today</div>
+                  )}
                 </SelectContent>
               </Select>
+              {availableTimeSlots.length === 0 && selectedDate?.toDateString() === new Date().toDateString() && (
+                <p className="text-xs text-destructive mt-1">
+                  All time slots have passed for today. Please select tomorrow.
+                </p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
-                Pickups available 9AM–5PM.
+                Pickups available 8AM–6PM.
               </p>
             </ChecklistItem>
 
