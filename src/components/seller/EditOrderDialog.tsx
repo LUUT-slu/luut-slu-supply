@@ -191,11 +191,12 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  disabled={(date) => date < new Date()}
-                />
+                   mode="single"
+                   selected={date}
+                   onSelect={setDate}
+                   disabled={(d) => { const t = new Date(); t.setHours(0,0,0,0); return d < t; }}
+                   className="p-3 pointer-events-auto"
+                 />
               </PopoverContent>
             </Popover>
           </div>

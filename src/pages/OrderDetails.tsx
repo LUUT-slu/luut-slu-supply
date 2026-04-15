@@ -238,8 +238,8 @@ export default function OrderDetails() {
     }
   };
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   if (loading) {
     return (
@@ -405,7 +405,7 @@ export default function OrderDetails() {
                             setEditDate(date);
                             setCalendarOpen(false);
                           }}
-                          disabled={(date) => date < tomorrow}
+                          disabled={(date) => date < today}
                           initialFocus
                         />
                       </PopoverContent>
