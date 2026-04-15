@@ -158,7 +158,7 @@ export default function SellerOrderDetail() {
       new Date(order.created_at) < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
   );
 
-  const isEditable = order && order.status !== "completed";
+  const isEditable = true;
 
   if (loading) {
     return (
@@ -474,11 +474,6 @@ export default function SellerOrderDetail() {
                 </CardContent>
               </Card>
 
-              {!isEditable && (
-                <p className="text-xs text-muted-foreground text-center">
-                  Completed orders cannot be edited
-                </p>
-              )}
             </div>
           </div>
         </main>
