@@ -137,6 +137,7 @@ export default function AdminAnalytics() {
                 totalAddToCarts={metrics.totalAddToCarts}
                 totalOrders={metrics.totalOrders}
                 avgConversionRate={metrics.avgConversionRate}
+                totalRevenue={totalRevenue}
               />
 
               {/* Insights */}
