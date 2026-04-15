@@ -417,6 +417,36 @@ export function CreateOrderDialog({
               />
             </div>
           </div>
+          )}
+
+          {/* Quick mode: date + discount only */}
+          {quickMode && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="preferredDateQuick" className="text-xs">Date *</Label>
+                <Input
+                  id="preferredDateQuick"
+                  type="date"
+                  value={preferredDate}
+                  onChange={(e) => setPreferredDate(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="discountQuick" className="text-xs">Discount (EC$)</Label>
+                <Input
+                  id="discountQuick"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={discount}
+                  onChange={(e) => setDiscount(e.target.value)}
+                  placeholder="0"
+                  className="h-9"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Products Section */}
           <div className="space-y-3">
