@@ -323,7 +323,12 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
               {items.map((item) => (
                 <div key={item.id} className="space-y-1 pb-2 border-b border-border last:border-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium line-clamp-1 flex-1 min-w-0">{item.name}</p>
+                    <Input
+                      value={item.name}
+                      onChange={(e) => handleNameChange(item.id, e.target.value)}
+                      placeholder="Item name"
+                      className="h-7 text-sm font-medium flex-1 min-w-0"
+                    />
                     <Button
                       type="button"
                       variant="ghost"
