@@ -314,8 +314,21 @@ export function CreateOrderDialog({
           </DialogTitle>
         </DialogHeader>
 
+        {/* Quick Mode Toggle */}
+        <div className="flex items-center justify-between rounded-lg border border-border/60 p-3 bg-muted/20">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-amber-500" />
+            <div>
+              <p className="text-sm font-medium">Quick Order</p>
+              <p className="text-xs text-muted-foreground">Item, qty, discount & date only</p>
+            </div>
+          </div>
+          <Switch checked={quickMode} onCheckedChange={setQuickMode} />
+        </div>
+
         <div className="space-y-4">
-          {/* Customer Info Section */}
+          {/* Customer Info Section - hidden in quick mode */}
+          {!quickMode && (
           <div className="space-y-3">
             <h3 className="text-sm font-medium">Customer Information</h3>
             <div className="grid grid-cols-2 gap-3">
