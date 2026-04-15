@@ -113,10 +113,6 @@ export function CreateOrderDialog({
           if (item.product.id === productId) {
             const newQty = item.quantity + delta;
             if (newQty <= 0) return null;
-            if (newQty > item.product.quantity) {
-              toast.error("Not enough stock");
-              return item;
-            }
             return { ...item, quantity: newQty };
           }
           return item;
