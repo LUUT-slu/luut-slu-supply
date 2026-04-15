@@ -163,6 +163,29 @@ export default function SellerOrders() {
     setArchivedOrders(profile.id, next);
   };
 
+  const toggleSelectOrder = (orderId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = new Set(selectedOrders);
+    next.has(orderId) ? next.delete(orderId) : next.add(orderId);
+    setSelectedOrders(next);
+  };
+
+  const handleBulkStatusChange = async (newStatus: OrderStatus) => {
+    if (selectedOrders.size === 0) return;
+    setBulkUpdating(true);
+    const ids = Array.from(selectedOrders);
+    let successCount = 0;
+    for (const id of ids) {
+      const ok = await updateOrderStatus(id, newStatus);
+      if (ok) successCount++;
+    }
+    if (successCount > 0) {
+      toast.success(`${successCount} order(s) updated to ${ORDER_STATUSES.find(s => s.value === newStatus)?.label || newStatus}`);
+    }
+    setSelectedOrders(new Set());
+    setBulkUpdating(false);
+  };
+
   // Derive unique locations and dates from orders for advanced filters
   const uniqueLocations = useMemo(() => {
     const locs = new Set(orders.map((o) => o.location));
