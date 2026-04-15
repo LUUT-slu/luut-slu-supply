@@ -94,17 +94,13 @@ export function CreateOrderDialog({
   const addToCart = (product: Product) => {
     const existing = cart.find((item) => item.product.id === product.id);
     if (existing) {
-      if (existing.quantity < product.quantity) {
-        setCart(
-          cart.map((item) =>
-            item.product.id === product.id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          )
-        );
-      } else {
-        toast.error("Not enough stock");
-      }
+      setCart(
+        cart.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      );
     } else {
       setCart([...cart, { product, quantity: 1 }]);
     }
