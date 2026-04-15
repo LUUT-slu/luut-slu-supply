@@ -554,12 +554,43 @@ export function CreateOrderDialog({
                 ))}
               </div>
 
+              {/* Discount (full mode) */}
+              {!quickMode && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="discountFull" className="text-xs">Discount (EC$)</Label>
+                  <Input
+                    id="discountFull"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value)}
+                    placeholder="0"
+                    className="h-9"
+                  />
+                </div>
+              )}
+
               {/* Total */}
-              <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                <span className="text-sm font-medium">Total</span>
-                <span className="text-lg font-bold text-primary">
-                  {formatCurrency(totalPrice)}
-                </span>
+              <div className="pt-2 border-t border-border/40 space-y-1">
+                {discountAmount > 0 && (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(subtotal)}</span>
+                  </div>
+                )}
+                {discountAmount > 0 && (
+                  <div className="flex items-center justify-between text-xs text-green-600">
+                    <span>Discount</span>
+                    <span>-{formatCurrency(discountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Total</span>
+                  <span className="text-lg font-bold text-primary">
+                    {formatCurrency(totalPrice)}
+                  </span>
+                </div>
               </div>
             </div>
           )}
