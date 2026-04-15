@@ -197,6 +197,26 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Customer Name */}
+          <div className="space-y-2">
+            <Label>Customer Name</Label>
+            <Input
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="Customer name"
+            />
+          </div>
+
+          {/* Customer Phone */}
+          <div className="space-y-2">
+            <Label>Customer Phone</Label>
+            <Input
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              placeholder="Phone number"
+            />
+          </div>
+
           {/* Pickup Date */}
           <div className="space-y-2">
             <Label>Pickup Date</Label>
@@ -218,7 +238,6 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
                    mode="single"
                    selected={date}
                    onSelect={setDate}
-                   disabled={(d) => { const t = new Date(); t.setHours(0,0,0,0); return d < t; }}
                    className="p-3 pointer-events-auto"
                  />
               </PopoverContent>
