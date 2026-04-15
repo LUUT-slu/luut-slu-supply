@@ -170,7 +170,6 @@ export default function AdminOrdersPage() {
     ));
 
     try {
-      // 1. Update order in DB
       const updatePayload: Record<string, any> = {
         order_status: newStatus,
         status: newStatus.toLowerCase(),
@@ -190,7 +189,6 @@ export default function AdminOrdersPage() {
 
       if (updateError) throw updateError;
 
-      // 2. Audit log
       await supabase.from("order_events").insert({
         order_id: orderId,
         actor_user_id: adminUserId,
@@ -204,7 +202,6 @@ export default function AdminOrdersPage() {
 
       toast.success(`Order updated to ${statusOptions.find(s => s.value === newStatus)?.label || newStatus}`);
     } catch (err) {
-      // Rollback on failure
       console.error("Status update failed:", err);
       setOrders(prev => prev.map(o =>
         o.id === orderId ? { ...o, order_status: previousStatus, status: previousStatus.toLowerCase() } : o
@@ -212,6 +209,54 @@ export default function AdminOrdersPage() {
       toast.error("Failed to update order status");
     } finally {
       setUpdatingStatus(null);
+    }
+  };
+
+  // ─── BULK STATUS UPDATE ───
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+  const handleBulkStatusChange = async (newStatus: string) => {
+    if (selectedOrders.size === 0 || !adminUserId) return;
+    const ids = Array.from(selectedOrders);
+    setBulkUpdating(true);
+
+    // Optimistic
+    setOrders(prev => prev.map(o =>
+      ids.includes(o.id) ? { ...o, order_status: newStatus, status: newStatus.toLowerCase() } : o
+    ));
+
+    try {
+      const updatePayload: Record<string, any> = {
+        order_status: newStatus,
+        status: newStatus.toLowerCase(),
+        updated_at: new Date().toISOString(),
+        last_edited_by: adminUserId,
+        last_edited_at: new Date().toISOString(),
+      };
+      if (newStatus === "COMPLETED") updatePayload.completed_at = new Date().toISOString();
+      if (newStatus === "CANCELLED") updatePayload.cancelled_at = new Date().toISOString();
+      if (newStatus === "NO_SHOW") updatePayload.no_sale_at = new Date().toISOString();
+
+      const { error } = await supabase.from("orders").update(updatePayload).in("id", ids);
+      if (error) throw error;
+
+      // Audit logs
+      await supabase.from("order_events").insert(
+        ids.map(id => ({
+          order_id: id,
+          actor_user_id: adminUserId,
+          event_type: "status_changed",
+          event_payload: { new_status: newStatus, channel: "admin_bulk" },
+        })) as any
+      );
+
+      toast.success(`${ids.length} order(s) updated to ${statusOptions.find(s => s.value === newStatus)?.label || newStatus}`);
+      setSelectedOrders(new Set());
+    } catch (err) {
+      console.error("Bulk status update failed:", err);
+      await fetchOrders();
+      toast.error("Failed to update orders");
+    } finally {
+      setBulkUpdating(false);
     }
   };
 
@@ -486,10 +531,22 @@ export default function AdminOrdersPage() {
               <Home className="h-3 w-3" />
             </Button>
             {selectedOrders.size > 0 && (
-              <Button onClick={() => setDeleteDialogOpen(true)} variant="destructive" size="sm" className="gap-1 text-xs">
-                <Trash2 className="h-3 w-3" />
-                ({selectedOrders.size})
-              </Button>
+              <>
+                <Select onValueChange={handleBulkStatusChange} disabled={bulkUpdating}>
+                  <SelectTrigger className="h-8 w-[140px] text-xs">
+                    <SelectValue placeholder={`Status (${selectedOrders.size})`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {adminUpdatableStatuses.map(s => (
+                      <SelectItem key={s} value={s}>{statusOptions.find(x => x.value === s)?.label || s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={() => setDeleteDialogOpen(true)} variant="destructive" size="sm" className="gap-1 text-xs">
+                  <Trash2 className="h-3 w-3" />
+                  ({selectedOrders.size})
+                </Button>
+              </>
             )}
             <Button onClick={() => { fetchOrders(); fetchPartners(); }} variant="outline" size="sm" className="gap-1 text-xs">
               <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />

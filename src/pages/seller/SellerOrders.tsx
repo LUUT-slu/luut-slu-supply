@@ -8,6 +8,7 @@ import { useSellerOrders, ORDER_STATUSES, OrderStatus } from "@/hooks/useSellerO
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -92,8 +93,9 @@ export default function SellerOrders() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile } = useSellerProfile();
-  const { orders, loading, refetch } = useSellerOrders(profile?.id);
-
+  const { orders, loading, refetch, updateOrderStatus } = useSellerOrders(profile?.id);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   // Read filters from URL params for persistence across navigation
   const statusFilter = (searchParams.get("status") || "all") as FilterOption;
   const sortBy = (searchParams.get("sort") || "pickup-soonest") as SortOption;
@@ -159,6 +161,29 @@ export default function SellerOrders() {
     }
     setArchivedIdsState(next);
     setArchivedOrders(profile.id, next);
+  };
+
+  const toggleSelectOrder = (orderId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = new Set(selectedOrders);
+    next.has(orderId) ? next.delete(orderId) : next.add(orderId);
+    setSelectedOrders(next);
+  };
+
+  const handleBulkStatusChange = async (newStatus: OrderStatus) => {
+    if (selectedOrders.size === 0) return;
+    setBulkUpdating(true);
+    const ids = Array.from(selectedOrders);
+    let successCount = 0;
+    for (const id of ids) {
+      const ok = await updateOrderStatus(id, newStatus);
+      if (ok) successCount++;
+    }
+    if (successCount > 0) {
+      toast.success(`${successCount} order(s) updated to ${ORDER_STATUSES.find(s => s.value === newStatus)?.label || newStatus}`);
+    }
+    setSelectedOrders(new Set());
+    setBulkUpdating(false);
   };
 
   // Derive unique locations and dates from orders for advanced filters
@@ -357,6 +382,26 @@ export default function SellerOrders() {
             </Button>
           </div>
 
+          {/* Bulk Actions Bar */}
+          {selectedOrders.size > 0 && (
+            <div className="mb-3 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2">
+              <span className="text-xs font-medium">{selectedOrders.size} selected</span>
+              <Select onValueChange={(v) => handleBulkStatusChange(v as OrderStatus)} disabled={bulkUpdating}>
+                <SelectTrigger className="h-8 w-[140px] text-xs">
+                  <SelectValue placeholder="Change status..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {ORDER_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setSelectedOrders(new Set())}>
+                Clear
+              </Button>
+            </div>
+          )}
+
           {/* Orders List */}
           <div className="rounded-lg border border-border/60 bg-card/50">
             {loading ? (
@@ -382,11 +427,18 @@ export default function SellerOrders() {
                   return (
                     <div
                       key={order.id}
-                      className={`p-3 md:p-4 cursor-pointer active:bg-muted/40 transition-colors ${isArchived ? "opacity-60" : ""}`}
+                      className={`p-3 md:p-4 cursor-pointer active:bg-muted/40 transition-colors ${isArchived ? "opacity-60" : ""} ${selectedOrders.has(order.id) ? "bg-primary/5" : ""}`}
                       onClick={() => navigate(`/seller/orders/${order.id}`)}
                     >
                       {/* Mobile-first card layout */}
                       <div className="flex items-start justify-between gap-3">
+                        {/* Checkbox */}
+                        <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedOrders.has(order.id)}
+                            onCheckedChange={() => { const next = new Set(selectedOrders); next.has(order.id) ? next.delete(order.id) : next.add(order.id); setSelectedOrders(next); }}
+                          />
+                        </div>
                         {/* Left: Customer + Items */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
