@@ -80,7 +80,6 @@ export function CreateOrderDialog({
       .select("id, name, price, quantity, images")
       .eq("seller_id", sellerId)
       .eq("status", "active")
-      .gt("quantity", 0)
       .order("name");
 
     if (error) {
