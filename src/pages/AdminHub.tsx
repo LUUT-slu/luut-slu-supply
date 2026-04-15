@@ -162,8 +162,8 @@ export default function AdminHub() {
       bgColor: "bg-emerald-500/10",
     },
     {
-      title: "Analytics Dashboard",
-      description: "Product performance, conversion funnels, and customer behavior insights",
+      title: "Analysis",
+      description: "View traffic, sales, and store performance",
       icon: BarChart3,
       href: "/admin/analytics",
       stat: "View insights",
