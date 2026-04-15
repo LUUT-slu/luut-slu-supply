@@ -472,7 +472,7 @@ export function CreateOrderDialog({
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium truncate">{product.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatCurrency(product.price)} · {product.quantity} left
+                        {formatCurrency(product.price)} · {product.quantity > 0 ? `${product.quantity} left` : "Sold out"}
                       </p>
                     </div>
                   </button>
