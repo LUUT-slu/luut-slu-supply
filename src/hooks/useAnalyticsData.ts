@@ -25,7 +25,7 @@ async function fetchAnalyticsEvents(filters: AnalyticsFilters) {
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []) as AnalyticsEvent[];
+  return (data || []) as unknown as AnalyticsEvent[];
 }
 
 export interface AnalyticsEvent {
