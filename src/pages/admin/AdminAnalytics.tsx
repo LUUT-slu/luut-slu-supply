@@ -100,7 +100,7 @@ export default function AdminAnalytics() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="font-display text-xl md:text-2xl">Analytics Dashboard</h1>
+                <h1 className="font-display text-xl md:text-2xl">Analysis</h1>
                 <p className="text-xs text-muted-foreground">Product performance & customer behavior</p>
               </div>
             </div>
