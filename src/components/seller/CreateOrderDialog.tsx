@@ -157,6 +157,7 @@ export function CreateOrderDialog({
     setPreferredDate("");
     setPickupTime("");
     setNote("");
+    setDiscount("");
   };
 
   const handleSubmit = async () => {
