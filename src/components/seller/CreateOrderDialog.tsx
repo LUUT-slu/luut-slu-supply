@@ -80,7 +80,6 @@ export function CreateOrderDialog({
       .select("id, name, price, quantity, images")
       .eq("seller_id", sellerId)
       .eq("status", "active")
-      .gt("quantity", 0)
       .order("name");
 
     if (error) {
@@ -95,17 +94,13 @@ export function CreateOrderDialog({
   const addToCart = (product: Product) => {
     const existing = cart.find((item) => item.product.id === product.id);
     if (existing) {
-      if (existing.quantity < product.quantity) {
-        setCart(
-          cart.map((item) =>
-            item.product.id === product.id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          )
-        );
-      } else {
-        toast.error("Not enough stock");
-      }
+      setCart(
+        cart.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      );
     } else {
       setCart([...cart, { product, quantity: 1 }]);
     }
@@ -118,10 +113,6 @@ export function CreateOrderDialog({
           if (item.product.id === productId) {
             const newQty = item.quantity + delta;
             if (newQty <= 0) return null;
-            if (newQty > item.product.quantity) {
-              toast.error("Not enough stock");
-              return item;
-            }
             return { ...item, quantity: newQty };
           }
           return item;
@@ -481,7 +472,7 @@ export function CreateOrderDialog({
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium truncate">{product.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatCurrency(product.price)} · {product.quantity} left
+                        {formatCurrency(product.price)} · {product.quantity > 0 ? `${product.quantity} left` : "Sold out"}
                       </p>
                     </div>
                   </button>
