@@ -154,13 +154,15 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
 
       if (orderError) throw orderError;
 
-      // Update items (quantity and price)
+      // Update existing items (quantity, price, and name)
       for (const item of items) {
+        if (item.id.startsWith("new-")) continue; // skip new items here
         const originalItem = order.items.find((i) => i.id === item.id);
-        if (originalItem && (originalItem.quantity !== item.quantity || originalItem.unit_price !== item.unit_price)) {
+        if (originalItem && (originalItem.quantity !== item.quantity || originalItem.unit_price !== item.unit_price || originalItem.product_name !== item.name)) {
           const { error: itemError } = await supabase
             .from("order_items")
             .update({
+              product_name: item.name,
               quantity: item.quantity,
               unit_price: item.unit_price,
               total_price: item.quantity * item.unit_price,
@@ -169,6 +171,26 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
 
           if (itemError) throw itemError;
         }
+      }
+
+      // Insert new items
+      const newItems = items.filter((item) => item.id.startsWith("new-"));
+      if (newItems.length > 0) {
+        const { error: insertError } = await supabase
+          .from("order_items")
+          .insert(
+            newItems.map((item) => ({
+              order_id: order.id,
+              product_name: item.name,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              total_price: item.quantity * item.unit_price,
+              product_id: null,
+              seller_id: order.items[0]?.seller_id || null,
+            }))
+          );
+
+        if (insertError) throw insertError;
       }
 
       // Delete removed items
