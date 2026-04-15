@@ -199,15 +199,21 @@ export function CreateOrderDialog({
         image_url: item.product.images?.[0] || null,
       }));
 
+      const orderNote = [
+        note.trim() || null,
+        discountAmount > 0 ? `Discount applied: ${formatCurrency(discountAmount)}` : null,
+        quickMode ? "⚡ Quick order — details pending" : null,
+      ].filter(Boolean).join("\n");
+
       // Create order
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
-          customer_name: customerName.trim(),
-          customer_phone: customerPhone.trim(),
-          location,
+          customer_name: quickMode ? "Quick Order" : customerName.trim(),
+          customer_phone: quickMode ? null : customerPhone.trim(),
+          location: quickMode ? "TBD" : location,
           preferred_date: formattedDate,
-          note: note.trim() || null,
+          note: orderNote || null,
           pickup_time: pickupTime || null,
           total_price: totalPrice,
           line_items: lineItems,
