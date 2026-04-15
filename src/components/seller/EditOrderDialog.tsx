@@ -334,37 +334,6 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
                       {formatCurrency(item.unit_price * item.quantity)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => handleQuantityChange(item.id, -1)}
-                      disabled={item.quantity <= 1}
-                    >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                    <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => handleQuantityChange(item.id, 1)}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive"
-                      onClick={() => handleRemoveItem(item.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
                 </div>
               ))}
               <div className="border-t border-border pt-3 flex justify-between text-sm font-medium">
