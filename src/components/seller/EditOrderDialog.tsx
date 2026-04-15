@@ -401,6 +401,14 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
+                  {!item.product_id && (
+                    <Input
+                      value={item.name}
+                      onChange={(e) => handleNameChange(item.id, e.target.value)}
+                      placeholder="Enter custom item name"
+                      className="h-7 text-xs"
+                    />
+                  )}
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1">
                       <Label className="text-xs text-muted-foreground">Price:</Label>
