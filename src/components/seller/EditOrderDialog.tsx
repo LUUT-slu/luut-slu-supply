@@ -143,7 +143,7 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
   const handleAddItem = () => {
     setItems((prev) => [
       ...prev,
-      { id: `new-${Date.now()}`, name: "", quantity: 1, unit_price: 0, product_id: null },
+      { id: `new-${Date.now()}`, name: "", quantity: 1, unit_price: 0, product_id: null, image_url: null },
     ]);
   };
 
