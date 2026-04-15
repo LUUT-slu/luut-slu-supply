@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { ShopifyProduct } from '@/lib/shopify';
+import { trackAnalyticsEvent } from '@/hooks/useAnalyticsTracker';
 
 export interface CartItem {
   product: ShopifyProduct;
@@ -56,6 +57,16 @@ export const useCartStore = create<CartStore>()(
         } else {
           set({ items: [...items, item] });
         }
+
+        // Fire-and-forget analytics
+        trackAnalyticsEvent({
+          eventType: "add_to_cart",
+          productId: item.product.node.id,
+          productName: item.product.node.title,
+          productCategory: item.product.node.productType || undefined,
+          sellerId: item.product.node.vendor || undefined,
+          metadata: { variantId: item.variantId, quantity: item.quantity },
+        });
         
         return { success: true };
       },

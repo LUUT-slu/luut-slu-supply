@@ -244,6 +244,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
   return (
     <Link
       to={productLink}
+      onClick={handleCardClick}
       className={`group relative flex flex-col overflow-hidden rounded-lg bg-card ring-1 ring-border/50 transition-all duration-300 hover:ring-2 hover:ring-primary/50 hover:shadow-lg ${isOutOfStock ? 'opacity-[0.65]' : ''}`}
     >
       {/* Image */}

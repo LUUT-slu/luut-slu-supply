@@ -38,6 +38,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useCartStore } from "@/stores/cartStore";
+import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
