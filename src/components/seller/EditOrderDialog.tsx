@@ -169,9 +169,6 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
         if (deleteError) throw deleteError;
       }
 
-      // Recalculate order total
-      const newTotal = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
-      await supabase.from("orders").update({ total_price: newTotal }).eq("id", order.id);
 
       toast.success("Order updated successfully");
       onSave();
