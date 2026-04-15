@@ -1,72 +1,141 @@
 
 
-## Plan: Fix Draft Order Customer + Discount Slot Population
+# Admin Analytics Dashboard
 
-### Problem (from screenshot)
-The Shopify draft order is missing two things:
-1. **Customer slot is empty** — shows "Search or create a customer" despite name/phone being in the note
-2. **Discount not applied in Payment section** — shows "Add discount" even though the code applied the `applied_discount` field
+## Current State
+- `seller_products` has `views_count` and `clicks_count` columns but all values are 0 — no tracking code exists
+- No analytics events table exists in the database
+- No client-side event tracking is implemented anywhere
+- The admin hub at `/admin` has basic stats (orders, sellers, partners) but no product analytics
+- The project uses Recharts (via `chart.tsx` UI component) for charting
 
-### Root Causes
+## What We'll Build
 
-**Customer**: Shopify's Draft Order API with just `first_name`/`last_name`/`phone` (no email, no existing customer ID) does not populate the Customer card. Shopify requires either a known `customer.id` or enough info to match an existing customer.
+### Phase 1: Event Tracking Infrastructure
 
-**Discount**: The `applied_discount` code at lines 304-341 looks correct, but if the discount lookup fails silently (e.g. redirect handling, 404), it falls through with no discount applied.
+**New database table: `analytics_events`**
+Captures granular user actions with columns: `id`, `event_type`, `product_id`, `product_name`, `product_category`, `seller_id`, `session_id`, `user_id` (nullable), `metadata` (jsonb), `created_at`.
 
-**Pickup time**: `pickupTime` is sent by checkout but never destructured or used in the edge function.
+Event types tracked:
+- `product_viewed` — product detail page opened
+- `product_clicked` — product card clicked from any listing
+- `image_interacted` — gallery swiped/clicked
+- `variant_selected` — variant option changed
+- `add_to_cart` — item added to cart
+- `checkout_started` — checkout page opened
+- `order_completed` — order placed
 
-### Changes: `supabase/functions/create-draft-order/index.ts`
+**New hook: `useAnalyticsTracker`** — provides a `trackEvent()` function that fires-and-forgets inserts into `analytics_events`. Generates a session ID (stored in sessionStorage) for unique visitor tracking.
 
-#### 1. Add `pickupTime` to interface and destructure it
-Add `pickupTime?: string` to `DraftOrderRequest` and destructure it alongside other fields.
+**Instrumentation points:**
+- `ProductDetail.tsx` and `LocalProductDetail.tsx` — track `product_viewed`, `image_interacted`, `variant_selected`
+- `ProductCard.tsx` / `UnifiedProductCard.tsx` — track `product_clicked` on card click
+- `cartStore.ts` `addItem` — track `add_to_cart`
+- `Checkout.tsx` — track `checkout_started` on mount
+- `create-draft-order` edge function or order confirmation — track `order_completed`
 
-#### 2. Customer lookup by phone before draft order creation
-Before building the draft order payload:
-- Call `GET /admin/api/2025-01/customers/search.json?query=phone:{phone}`
-- If a customer is found, use `{ id: existingCustomerId }` in the draft order
-- If not found, call `POST /admin/api/2025-01/customers.json` to explicitly create the customer with `first_name`, `last_name`, `phone`, then use the returned `id`
-- This ensures the Customer card in Shopify is always populated
+Also: a cron-like approach to aggregate `views_count` / `clicks_count` on `seller_products` is not needed — the dashboard will query `analytics_events` directly with date filters.
 
-#### 3. Add `shipping_address` to draft order payload
-Even with a customer attached, add `shipping_address` so phone/name are visible on the order:
+### Phase 2: Analytics Dashboard Page
+
+**New route:** `/admin/analytics` — lazy-loaded, admin-only.
+
+**New page:** `src/pages/admin/AdminAnalytics.tsx`
+
+Layout (responsive, mobile-first):
+
+1. **Filter bar** — Date range (Today / 7d / 30d / Custom), Category dropdown, Seller dropdown, Stock filter. Uses existing Shadcn components (Select, Popover + Calendar for custom range).
+
+2. **Summary cards row** — Total Visitors (unique sessions), Total Views, Total Clicks, Total Add-to-Carts, Total Orders, Avg Conversion Rate. Each card shows value + % change vs previous period.
+
+3. **Charts section** (2-column grid on desktop, stacked on mobile):
+   - Views over time (area chart)
+   - Add-to-cart trend (bar chart)
+   - Conversion funnel (funnel/bar: views → clicks → cart → checkout → order)
+   - Top products by attention (horizontal bar)
+
+4. **Leaderboard tables** (tabbed):
+   - Most Viewed
+   - Most Clicked
+   - Most Added to Cart
+   - Best Converting (view→order rate)
+   - High Views, Low Cart (attention but no conversion)
+
+5. **Insights section** — Auto-generated text alerts:
+   - "Product X gets many views but low cart adds"
+   - "Product Y has strong add-to-cart rate — consider promoting"
+   - "Product Z is underperforming in its category"
+
+6. **Product detail slide-over** — Click any product row to see: image, name, category, price, stock, full funnel metrics, click trend sparkline, last interaction date.
+
+7. **Compare mode** — Select 2-3 products via checkboxes, show side-by-side metrics table.
+
+8. **Export** — CSV download button for current filtered data.
+
+### Phase 3: Admin Hub Integration
+
+Add an "Analytics" module card to `AdminHub.tsx` linking to `/admin/analytics`.
+
+### File Changes Summary
+
+| File | Action |
+|---|---|
+| Migration | Create `analytics_events` table + RLS policies |
+| `src/hooks/useAnalyticsTracker.ts` | New — `trackEvent()` hook |
+| `src/pages/ProductDetail.tsx` | Add view/variant/image tracking calls |
+| `src/pages/LocalProductDetail.tsx` | Add view tracking calls |
+| `src/components/UnifiedProductCard.tsx` | Add click tracking |
+| `src/components/ProductCard.tsx` | Add click tracking |
+| `src/stores/cartStore.ts` | Add add-to-cart tracking |
+| `src/pages/Checkout.tsx` | Add checkout-started tracking |
+| `src/pages/admin/AdminAnalytics.tsx` | New — full dashboard page |
+| `src/components/admin/AnalyticsFilters.tsx` | New — filter bar component |
+| `src/components/admin/AnalyticsCards.tsx` | New — summary cards |
+| `src/components/admin/AnalyticsCharts.tsx` | New — charts section |
+| `src/components/admin/AnalyticsLeaderboard.tsx` | New — tabbed tables |
+| `src/components/admin/AnalyticsInsights.tsx` | New — auto-generated insights |
+| `src/components/admin/ProductAnalyticsDetail.tsx` | New — product detail panel |
+| `src/hooks/useAnalyticsData.ts` | New — queries for dashboard data |
+| `src/App.tsx` | Add `/admin/analytics` route |
+| `src/pages/AdminHub.tsx` | Add Analytics module card |
+
+### Database Migration
+
+```sql
+CREATE TABLE public.analytics_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type text NOT NULL,
+  product_id text,
+  product_name text,
+  product_category text,
+  seller_id text,
+  session_id text,
+  user_id uuid,
+  metadata jsonb DEFAULT '{}',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_analytics_events_type_created ON analytics_events(event_type, created_at);
+CREATE INDEX idx_analytics_events_product ON analytics_events(product_id, created_at);
+CREATE INDEX idx_analytics_events_session ON analytics_events(session_id);
+
+ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can insert events (anonymous tracking)
+CREATE POLICY "Anyone can insert analytics events"
+  ON analytics_events FOR INSERT WITH CHECK (true);
+
+-- Only admins can read
+CREATE POLICY "Admins can read analytics events"
+  ON analytics_events FOR SELECT
+  USING (has_role(auth.uid(), 'admin'::app_role));
 ```
-shipping_address: {
-  first_name, last_name,
-  phone: customerPhone,
-  address1: "Pickup",
-  city: location,
-  country: "Saint Lucia",
-  country_code: "LC"
-}
-```
 
-#### 4. Add pickup time to note and metafields
-- Update note format: `"📍 Pickup: {location} | 📅 Date: {date} | ⏰ Time: {pickupTime} | 📱 Phone: {phone}"`
-- Add `metafields` array to draft order payload with namespace `pickup` for structured data (location, date, time, phone)
-
-#### 5. Improve discount application reliability
-- Add explicit logging when discount lookup fails at each step
-- Handle the redirect scenario for `discount_codes/lookup.json` (Shopify returns 303 redirect — ensure `redirect: "manual"` is used and the redirect Location is followed correctly)
-- If the discount is the internal WELCOME5 (fixed_amount), apply it directly without Shopify lookup since it's a local-only discount
-
-#### 6. Phone normalization helper
-Add a function to normalize phone to E.164 format for Saint Lucia:
-- 7 digits → `+1758XXXXXXX`
-- 10 digits → `+1XXXXXXXXXX`
-- Already has `+` → leave as-is
-
-### Files Modified
-| File | Change |
-|------|--------|
-| `supabase/functions/create-draft-order/index.ts` | Customer lookup/create, shipping_address, pickupTime in note/metafields, discount reliability, phone normalization |
-
-### Technical Details
-
-**Shopify Customer Search API**: `GET /admin/api/2025-01/customers/search.json?query=phone:+1758XXXXXXX` returns matching customers. The first match's `id` is used.
-
-**Shopify Customer Create API**: `POST /admin/api/2025-01/customers.json` with `{ customer: { first_name, last_name, phone, tags: "luut-connect" } }`.
-
-**Discount redirect fix**: Shopify's `discount_codes/lookup.json` returns a 303 redirect to the actual discount code resource. Current code uses `redirect: "follow"` which may lose auth headers on redirect. Fix: use `redirect: "manual"`, extract Location header, and make a second authenticated request.
-
-**Metafields on Draft Orders**: Shopify Admin API 2025-01 supports `metafields` on draft order creation as an array of `{ namespace, key, value, type }` objects.
+### Technical Notes
+- All tracking is fire-and-forget (no await, no error handling that blocks UX)
+- Session ID generated once per browser session via `crypto.randomUUID()`, stored in `sessionStorage`
+- Dashboard queries use date-filtered aggregations with `GROUP BY product_id`
+- Charts use the existing Recharts setup via `chart.tsx`
+- CSV export uses client-side blob generation
+- No external dependencies needed — all built with existing stack
 
