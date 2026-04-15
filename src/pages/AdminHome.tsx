@@ -13,6 +13,7 @@ import {
   ClipboardList,
   Settings,
   Truck,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -155,6 +156,14 @@ export default function AdminHome() {
       href: "/connect",
       color: "text-indigo-500",
       bgColor: "bg-indigo-500/10",
+    },
+    {
+      title: "Analysis",
+      description: "View traffic, sales, and store performance",
+      icon: BarChart3,
+      href: "/admin/analytics",
+      color: "text-cyan-500",
+      bgColor: "bg-cyan-500/10",
     },
     {
       title: "Site Settings",
