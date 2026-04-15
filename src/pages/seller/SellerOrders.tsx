@@ -8,6 +8,7 @@ import { useSellerOrders, ORDER_STATUSES, OrderStatus } from "@/hooks/useSellerO
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -92,8 +93,9 @@ export default function SellerOrders() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile } = useSellerProfile();
-  const { orders, loading, refetch } = useSellerOrders(profile?.id);
-
+  const { orders, loading, refetch, updateOrderStatus } = useSellerOrders(profile?.id);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   // Read filters from URL params for persistence across navigation
   const statusFilter = (searchParams.get("status") || "all") as FilterOption;
   const sortBy = (searchParams.get("sort") || "pickup-soonest") as SortOption;
