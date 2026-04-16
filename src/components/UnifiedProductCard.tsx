@@ -156,7 +156,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
       <Link
         to={productLink}
         onClick={handleCardClick}
-        className={`group flex gap-3 overflow-hidden rounded-lg bg-card ring-1 ring-border/50 p-2 transition-all touch-manipulation ${isOutOfStock ? 'opacity-[0.65]' : ''}`}
+        className="group flex gap-3 overflow-hidden rounded-lg bg-card ring-1 ring-border/50 p-2 transition-all touch-manipulation"
       >
         {/* Square image thumbnail */}
         <div className="relative h-28 w-28 flex-shrink-0 overflow-hidden rounded-md bg-muted">
@@ -245,7 +245,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
     <Link
       to={productLink}
       onClick={handleCardClick}
-      className={`group relative flex flex-col overflow-hidden rounded-lg bg-card ring-1 ring-border/50 transition-all duration-300 hover:ring-2 hover:ring-primary/50 hover:shadow-lg ${isOutOfStock ? 'opacity-[0.65]' : ''}`}
+      className="group relative flex flex-col overflow-hidden rounded-lg bg-card ring-1 ring-border/50 transition-all duration-300 hover:ring-2 hover:ring-primary/50 hover:shadow-lg"
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-muted">
