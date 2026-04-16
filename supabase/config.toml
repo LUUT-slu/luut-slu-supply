@@ -33,8 +33,5 @@ verify_jwt = false
 [functions.ai-seller-assistant]
 verify_jwt = false
 
-[functions.ai-chat]
-verify_jwt = false
-
-[functions.ai-generate-description]
+[functions.send-welcome-email]
 verify_jwt = false

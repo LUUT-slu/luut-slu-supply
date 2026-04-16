@@ -241,6 +241,11 @@ export default function Login() {
       toast.success("Account created! You can now sign in.");
       setActiveTab("login");
       setEmail(signupEmail);
+      
+      // Fire-and-forget welcome email
+      supabase.functions.invoke("send-welcome-email", {
+        body: { userId: null, email: signupEmail },
+      }).catch(() => {});
     }
     
     setIsLoading(false);
