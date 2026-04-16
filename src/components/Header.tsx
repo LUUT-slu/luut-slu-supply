@@ -132,12 +132,12 @@ export function Header() {
         <div className="flex-row gap-[14px] flex items-end justify-center">
           <Link to="/" className="flex items-center gap-2">
             <span className="text-2xl font-bold tracking-tight md:text-3xl">
-              <span className="text-primary text-lg font-semibold">Home</span>
+              <span className="text-foreground text-lg font-semibold">Home</span>
             </span>
           </Link>
           <Link
             to="/my-orders"
-            className="relative tracking-wide text-primary transition-colors hover:text-primary/80 text-base font-sans">
+            className="relative tracking-wide text-foreground transition-colors hover:text-foreground/70 text-base font-sans">
 
             My Orders
             {orderCount > 0 &&
@@ -217,7 +217,7 @@ export function Header() {
             <SheetContent side="left" className="w-80 bg-background p-0 overflow-y-auto">
               <div className="flex flex-col min-h-full">
                 <div className="border-b border-border p-6 sticky top-0 bg-background z-10">
-                  <span className="font-display text-2xl text-primary">Home</span>
+                  <span className="font-display text-2xl font-bold text-foreground">Home</span>
                 </div>
                 
                 <nav className="flex flex-col p-4">
@@ -271,7 +271,7 @@ export function Header() {
                   <Link
                     to="/sell"
                     onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-primary">
+                    className="py-3 font-body text-lg font-medium text-foreground">
 
                     Sell on Luut
                   </Link>
