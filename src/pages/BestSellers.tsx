@@ -67,6 +67,9 @@ export default function BestSellers() {
                     </div>
                     <div className="p-3">
                       <p className="font-medium text-sm line-clamp-1">{item.product_title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {item.total_sold} sold
+                      </p>
                       <p className="text-sm font-bold text-primary mt-1">
                         {formatCurrency(item.price || 0)}
                       </p>
