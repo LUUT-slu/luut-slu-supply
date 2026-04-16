@@ -126,9 +126,9 @@ serve(async (req) => {
 
     const { userId, email } = await req.json();
 
-    if (!userId || !email) {
+    if (!email) {
       return new Response(
-        JSON.stringify({ error: "Missing userId or email" }),
+        JSON.stringify({ error: "Missing email" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
