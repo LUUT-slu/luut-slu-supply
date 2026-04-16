@@ -1,59 +1,86 @@
 
 
-## Homepage Review Popup System
+## Transactional Email System with Resend
 
 ### Overview
-Build a full review system: a popup form on the homepage for anyone to submit star-rated reviews with images, a display section for approved reviews, and admin management.
+Set up a Resend-powered email system that sends order confirmation, pickup details, and order-ready emails to customers. This requires adding an email field to checkout since one doesn't exist today.
 
-### Database
+### Problem: No Customer Email Collected
+The current checkout collects name and phone only — no email. The `orders` table has no email column. This must be added first.
 
-**New table: `reviews`**
-- `id` uuid PK
-- `reviewer_name` text (nullable, anonymous if empty)
-- `rating` integer NOT NULL (1-5)
-- `comment` text (max 200 chars, validated via trigger)
-- `image_urls` text[] (max 2)
-- `status` text DEFAULT 'pending' (pending/approved/rejected)
-- `show_on_homepage` boolean DEFAULT false
-- `created_at` timestamptz DEFAULT now()
+### Database Changes
 
-**RLS policies:**
-- Anyone can INSERT (public form, no login required)
-- Anyone can SELECT where `status = 'approved'` and `show_on_homepage = true`
-- Admins can do ALL
+**Migration: Add `customer_email` to `orders` table**
+```sql
+ALTER TABLE public.orders ADD COLUMN customer_email text;
+```
+Nullable — email remains optional so existing orders and non-email checkouts still work.
 
-**Storage:** Use existing `seller-assets` public bucket with a `reviews/` prefix for uploaded images.
+### New Edge Function: `send-order-email`
 
-### New Components
+Single edge function that handles all three email types based on a `type` parameter:
+- `order_confirmation` — sent after order creation
+- `order_confirmed` — sent when seller confirms order
+- `order_ready` — sent when order is marked completed/ready
 
-1. **`src/components/ReviewPopup.tsx`** — Dialog triggered by a floating "Leave a Review" button on homepage
-   - 5-star rating selector (tap-friendly, large touch targets)
-   - Optional reviewer name field
-   - Comment textarea with 200-char counter
-   - Image upload (max 2, preview with remove)
-   - Submit button with loading state and success toast
-   - Uploads images to `seller-assets/reviews/` bucket
+Uses the `RESEND_API_KEY` secret (already configured) via the Resend connector gateway pattern with `LOVABLE_API_KEY`.
 
-2. **`src/components/HomepageReviews.tsx`** — Section on homepage displaying approved reviews
-   - Fetches reviews where `status = 'approved'` AND `show_on_homepage = true`
-   - Shows star rating, comment, images, date, and reviewer name or "Anonymous"
-   - Horizontal scroll or grid layout
+Builds clean, mobile-friendly HTML emails with Luut SLU branding. Each email includes:
+- Customer name, order number
+- Items list with prices
+- Pickup location, date, time
+- Total price
+- Appropriate messaging per email type
 
-3. **`src/pages/admin/AdminReviews.tsx`** — Admin review management page
-   - Table of all reviews with status filter
-   - Approve/reject/delete actions
-   - Toggle homepage visibility
-   - View uploaded images
+Only sends if `customer_email` is present on the order.
 
-### File Changes
+### Checkout Changes (`src/pages/Checkout.tsx`)
 
-- **`src/pages/Index.tsx`** — Add `<ReviewPopup />` floating button and `<HomepageReviews />` section before trust section
-- **`src/App.tsx`** — Add `/admin/reviews` route
-- **`src/pages/AdminHome.tsx`** — Add reviews link card to admin dashboard
+1. Add optional `customerEmail` state field with email input (Mail icon, placed after phone)
+2. Pass `customerEmail` to `create-draft-order` edge function
+3. Auto-fill from `customer_profiles.email` if logged in (existing autofill pattern)
 
-### Validation
-- Rating required (1-5)
-- Comment max 200 chars (client + DB trigger)
-- Max 2 images, image types only (client-side)
-- Debounce/disable submit to prevent duplicates
+### Edge Function Changes (`create-draft-order/index.ts`)
+
+1. Accept `customerEmail` in the request body
+2. Save to `orders.customer_email`
+3. After successful order creation, call `send-order-email` with `type: order_confirmation`
+
+### Status Change Email Triggers
+
+**`src/pages/seller/SellerOrderDetail.tsx`** — After `handleStatusChange`:
+- When status changes to `confirmed` → invoke `send-order-email` with `type: order_confirmed`
+- When status changes to `completed` → invoke `send-order-email` with `type: order_ready`
+
+**`src/pages/AdminOrders.tsx`** — Same triggers for admin status changes.
+
+### Edge Function Config (`supabase/config.toml`)
+```toml
+[functions.send-order-email]
+verify_jwt = false
+```
+
+### Email Templates (inline HTML in edge function)
+
+Clean minimal design with:
+- Luut SLU header
+- Order number prominently displayed
+- Items table
+- Pickup details card
+- Mobile-responsive layout
+- Brand colors from site
+
+### Files Changed
+1. `supabase/migrations/` — Add `customer_email` column
+2. `supabase/functions/send-order-email/index.ts` — New edge function
+3. `supabase/functions/create-draft-order/index.ts` — Save email, trigger confirmation
+4. `supabase/config.toml` — Add function config
+5. `src/pages/Checkout.tsx` — Add email input field, pass to edge function
+6. `src/pages/seller/SellerOrderDetail.tsx` — Trigger emails on status change
+7. `src/pages/AdminOrders.tsx` — Trigger emails on status change
+
+### Security
+- Email only sent if customer provided one (no empty sends)
+- Resend API key accessed via server-side env only
+- No sensitive data exposed to client beyond what's already shown
 
