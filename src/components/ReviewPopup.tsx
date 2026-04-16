@@ -92,11 +92,11 @@ export function ReviewPopup({ productHandle, productTitle }: ReviewPopupProps) {
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
         <Button
-          size={productHandle ? "sm" : "lg"}
+          size={productHandle ? "sm" : "default"}
           variant={productHandle ? "outline" : "default"}
           className={productHandle
             ? "gap-2 font-body"
-            : "fixed bottom-20 right-4 z-40 rounded-full shadow-lg gap-2 font-body md:bottom-6"
+            : "fixed top-16 right-4 z-40 rounded-full shadow-lg gap-2 font-body text-sm"
           }
         >
           <Star className="h-4 w-4" />
