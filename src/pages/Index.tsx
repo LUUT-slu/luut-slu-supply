@@ -184,7 +184,7 @@ export default function Index() {
       </main>
 
       <Footer />
-      
+      <SignupDiscountPopup />
       <ChatButton variant="floating" />
       <AIChatWidget />
     </div>
