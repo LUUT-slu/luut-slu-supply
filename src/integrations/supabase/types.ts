@@ -70,6 +70,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_logs: {
+        Row: {
+          created_at: string
+          feature: string
+          id: string
+          tokens_used: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feature: string
+          id?: string
+          tokens_used?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feature?: string
+          id?: string
+          tokens_used?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       analytics_events: {
         Row: {
           created_at: string
