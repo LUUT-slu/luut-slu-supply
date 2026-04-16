@@ -89,7 +89,9 @@ export function BestSellersSection({ limit }: BestSellersSectionProps) {
                   </p>
                 </div>
             </Link>
-          ))}
+            );
+          })}
+
         </div>
       </div>
     </section>
