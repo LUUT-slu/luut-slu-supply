@@ -525,6 +525,26 @@ serve(async (req) => {
 
     console.log("Order complete. Local:", localOrder.id, "Shopify:", draftOrder?.id || "none");
 
+    // Trigger order confirmation email (fire-and-forget)
+    if (localOrder.customer_email) {
+      try {
+        const emailUrl = `${supabaseUrl}/functions/v1/send-order-email`;
+        fetch(emailUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ orderId: localOrder.id, type: "order_confirmation" }),
+        }).then(res => {
+          if (!res.ok) console.error("Confirmation email failed:", res.status);
+          else console.log("Confirmation email triggered for order", localOrder.id);
+        }).catch(err => console.error("Confirmation email error:", err));
+      } catch (emailErr) {
+        console.error("Email trigger error (non-fatal):", emailErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
