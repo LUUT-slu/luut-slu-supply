@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, MapPin, ShieldCheck, Users, Package, MessageCircle } from "lucide-react";
+import { ArrowRight, MapPin, ShieldCheck, Users, Package, MessageCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -22,9 +22,9 @@ const howItWorks = [
 ];
 
 const trustPoints = [
-  { icon: ShieldCheck, title: "Verified Sellers", description: "Every vendor is vetted before joining our marketplace" },
-  { icon: Users, title: "Marketplace Platform", description: "We connect you with local sellers who handle meetups & delivery" },
-  { icon: Package, title: "Luut Certified", description: "Luut SLU also sells as a certified vendor on the platform" },
+  { icon: ShieldCheck, title: "Verified Sellers", description: "Every vendor is vetted before joining" },
+  { icon: Users, title: "Marketplace Platform", description: "We connect you with local sellers" },
+  { icon: Package, title: "Luut Certified", description: "Luut SLU is also a certified vendor" },
 ];
 
 export default function Index() {
@@ -39,13 +39,28 @@ export default function Index() {
       <Header />
 
       <main className="flex-1">
-        {/* Hero Section — driven by settings */}
-        <section className="relative min-h-[90vh] flex flex-col justify-end overflow-hidden">
+        {/* Trust bar — DHgate inspired horizontal strip */}
+        <div className="border-b border-border bg-card">
+          <div className="container py-2.5">
+            <div className="flex items-center justify-center gap-6 md:gap-10 text-xs text-muted-foreground overflow-x-auto scrollbar-hide">
+              {trustPoints.map(({ icon: Icon, title, description }) => (
+                <div key={title} className="flex items-center gap-2 shrink-0">
+                  <Icon className="h-4 w-4 text-trust shrink-0" />
+                  <span className="font-medium text-foreground">{title}</span>
+                  <span className="hidden sm:inline">— {description}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Hero Section — compact marketplace style */}
+        <section className="relative overflow-hidden bg-foreground">
           <div className="absolute inset-0">
             <img
               src={heroImage}
               alt="Luut SLU storefront"
-              className="w-full h-full object-cover bg-secondary-foreground opacity-100"
+              className="w-full h-full object-cover opacity-60"
               width={1920}
               height={1080}
               fetchPriority="high"
@@ -53,42 +68,32 @@ export default function Index() {
               sizes="100vw"
             />
           </div>
-          <div className="container relative z-10 px-4 pb-8 md:pb-12" style={{ background: 'linear-gradient(to top, hsl(0 0% 0% / 0.85) 0%, hsl(0 0% 0% / 0.4) 60%, transparent 100%)' }}>
-            <div className="mx-auto max-w-3xl text-center">
+          <div className="container relative z-10 py-16 md:py-24 px-4">
+            <div className="max-w-xl">
               {hero.heading && (
-                <h1 className="mb-3 font-display text-3xl text-white md:text-5xl">{hero.heading}</h1>
+                <h1 className="mb-3 font-display text-2xl text-white md:text-4xl font-bold">{hero.heading}</h1>
               )}
               {hero.subheading && (
-                <p className="mb-5 font-body text-base text-white/70 md:text-lg">{hero.subheading}</p>
+                <p className="mb-5 font-body text-sm text-white/70 md:text-base max-w-md">{hero.subheading}</p>
               )}
-              <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+              <div className="flex flex-wrap items-center gap-3">
                 {hero.buttonText && (
-                  <Button asChild size="default" className="w-auto font-body shadow-lg">
+                  <Button asChild size="default" className="font-body shadow-lg">
                     <Link to={hero.buttonLink || "/shop"}>
                       {hero.buttonText}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
                 )}
-                {hero.secondaryButtonText && (
-                  <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10">
-                    <Link to={hero.secondaryButtonLink || "/shop"}>{hero.secondaryButtonText}</Link>
-                  </Button>
-                )}
-                <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10">
+                <Button asChild variant="outline" size="default" className="font-body bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white">
                   <Link to="/shop/best-sellers">Best Sellers</Link>
                 </Button>
-              </div>
-              <div className="mt-5">
-                <Link to="/sell" className="font-body text-sm text-white/70 underline-offset-4 hover:underline hover:text-white">
-                  Want to sell? Join as a vendor →
-                </Link>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Dynamic sections — rendered in order from settings */}
+        {/* Dynamic sections — each in its own block */}
         {sections.map((section) => {
           switch (section.type) {
             case "trending":
@@ -123,39 +128,23 @@ export default function Index() {
         {/* Customer Reviews */}
         <HomepageReviews />
 
-        {/* Trust Section */}
-        <section className="border-t border-border bg-secondary py-12 md:py-16">
-          <div className="container">
-            <h2 className="mb-10 text-center text-xl font-semibold tracking-tight md:text-2xl">
-              WHY SHOP WITH LUUT
+        {/* How it Works — structured block */}
+        <section className="bg-card border-t border-border">
+          <div className="container py-10 md:py-14">
+            <h2 className="mb-8 text-center text-lg font-bold tracking-tight text-foreground md:text-xl uppercase">
+              How It Works
             </h2>
             <div className="grid gap-6 md:grid-cols-3">
-              {trustPoints.map(({ icon: Icon, title, description }) => (
-                <div key={title} className="rounded-lg border border-border bg-background p-6 text-center">
-                  <Icon className="mx-auto mb-4 h-10 w-10 text-trust" />
-                  <h3 className="mb-2 text-base font-semibold">{title}</h3>
-                  <p className="font-body text-sm text-muted-foreground">{description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* How it Works */}
-        <section className="border-y border-border py-12 md:py-16">
-          <div className="container">
-            <h2 className="mb-10 text-center text-xl font-semibold tracking-tight md:text-2xl">
-              HOW IT WORKS
-            </h2>
-            <div className="grid gap-8 md:grid-cols-3">
               {howItWorks.map(({ step, title, description, icon: Icon }) => (
-                <div key={step} className="text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                    <Icon className="h-8 w-8 text-primary" />
+                <div key={step} className="flex items-start gap-4 rounded-lg border border-border bg-background p-5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <Icon className="h-5 w-5 text-primary" />
                   </div>
-                  <div className="mb-2 text-4xl font-bold text-foreground/20">0{step}</div>
-                  <h3 className="mb-2 text-lg font-semibold">{title}</h3>
-                  <p className="font-body text-sm text-muted-foreground">{description}</p>
+                  <div>
+                    <div className="text-[11px] font-semibold text-muted-foreground/50 uppercase mb-0.5">Step {step}</div>
+                    <h3 className="text-sm font-semibold text-foreground mb-1">{title}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -163,20 +152,25 @@ export default function Index() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-12 md:py-16">
+        <section className="border-t border-border bg-background py-10 md:py-14">
           <div className="container">
-            <div className="mx-auto max-w-2xl rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 p-8 text-center md:p-12">
-              <h2 className="mb-4 text-xl font-semibold tracking-tight md:text-2xl">
-                READY TO SHOP?
+            <div className="mx-auto max-w-lg rounded-xl border border-border bg-card p-6 text-center md:p-10 shadow-[var(--shadow-card)]">
+              <h2 className="mb-2 text-lg font-bold tracking-tight text-foreground md:text-xl">
+                Ready to Shop?
               </h2>
-              <p className="mb-6 font-body text-muted-foreground">
+              <p className="mb-5 text-sm text-muted-foreground">
                 Browse our collection or start a chat with us
               </p>
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <Button asChild size="lg">
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:justify-center">
+                <Button asChild size="default">
                   <Link to="/shop">Browse Outfits</Link>
                 </Button>
-                <ChatButton size="lg" />
+                <ChatButton size="default" />
+              </div>
+              <div className="mt-4">
+                <Link to="/sell" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  Want to sell? Join as a vendor →
+                </Link>
               </div>
             </div>
           </div>
