@@ -11,7 +11,7 @@ import { HomeFeaturedSection } from "@/components/HomeFeaturedSection";
 import { HomeNewArrivalsSection } from "@/components/HomeNewArrivalsSection";
 import { useSiteSettings, DEFAULT_HERO } from "@/hooks/useSiteSettings";
 import storefrontHero from "@/assets/storefront-hero.webp";
-import { ReviewPopup } from "@/components/ReviewPopup";
+
 import { HomepageReviews } from "@/components/HomepageReviews";
 import { AIChatWidget } from "@/components/AIChatWidget";
 
@@ -184,7 +184,7 @@ export default function Index() {
       </main>
 
       <Footer />
-      <ReviewPopup />
+      
       <ChatButton variant="floating" />
       <AIChatWidget />
     </div>
