@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { SaleBanner } from "@/components/SaleBanner";
-import { Link } from "react-router-dom";
-import { Menu, X, ShoppingBag, DollarSign, User } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { Menu, X, ShoppingBag, User, ChevronRight, Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
@@ -27,6 +27,13 @@ const fallbackCategories = [
 { name: "Sandals", path: "/shop/sandals" },
 { name: "Socks", path: "/shop/socks" }];
 
+const mainNav = [
+  { label: "Shop All", path: "/shop" },
+  { label: "New Arrivals", path: "/shop?filter=new" },
+  { label: "Best Sellers", path: "/shop?filter=best" },
+  { label: "Sellers", path: "/sellers" },
+  { label: "Sell on Luut", path: "/sell" },
+];
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
@@ -35,6 +42,7 @@ export function Header() {
   const [portalLink, setPortalLink] = useState<string | null>(null);
   const totalItems = useCartStore((state) => state.getTotalItems());
   const { collections } = useShopifyCollections();
+  const location = useLocation();
 
   // Use Shopify collections if available, otherwise fallback
   const outfitCategories = collections.length > 0 ?
@@ -61,7 +69,6 @@ export function Header() {
     }
 
     const checkPortal = async () => {
-      // Check admin first
       const { data: roles } = await supabase.
       from("user_roles").
       select("role").
@@ -73,7 +80,6 @@ export function Header() {
         return;
       }
 
-      // Check approved seller
       const { data: sellerProfile } = await supabase.
       from("seller_profiles").
       select("is_approved").
@@ -101,7 +107,6 @@ export function Header() {
         return;
       }
 
-      // Fetch actual order statuses from database
       const { data, error } = await supabase.
       from("orders").
       select("id, status").
@@ -112,7 +117,6 @@ export function Header() {
         return;
       }
 
-      // Count non-completed orders
       const activeOrders = (data || []).filter(
         (order) => order.status !== "completed" && order.status !== "cancelled"
       );
@@ -123,165 +127,134 @@ export function Header() {
     fetchActiveOrderCount();
   }, []);
 
+  const isActive = (path: string) => {
+    if (path === "/shop" && location.pathname === "/shop" && !location.search) return true;
+    if (path.includes("?")) return location.pathname + location.search === path;
+    return location.pathname === path;
+  };
+
   return (
     <>
     <SaleBanner />
-    <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between md:h-20">
-        {/* Logo and My Orders */}
-        <div className="flex-row gap-[14px] flex items-end justify-center">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-2xl font-bold tracking-tight md:text-3xl">
-              <span className="text-foreground text-lg font-semibold">Home</span>
-            </span>
-          </Link>
-          <Link
-            to="/my-orders"
-            className="relative tracking-wide text-foreground transition-colors hover:text-foreground/70 text-base font-sans">
+    {/* Top bar */}
+    <header className="sticky top-0 z-40 w-full bg-card border-b border-border shadow-sm">
+      {/* Main header row */}
+      <div className="container flex h-14 items-center justify-between gap-4">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-1.5 shrink-0">
+          <span className="font-display text-xl font-bold tracking-tight text-foreground">LUUT</span>
+          <span className="text-xs font-medium text-muted-foreground">SLU</span>
+        </Link>
 
-            My Orders
-            {orderCount > 0 &&
-            <Badge className="absolute -right-5 -top-2 h-5 min-w-5 justify-center rounded-full px-1.5 text-xs">
-                {orderCount === 10 ? "10+" : orderCount}
-              </Badge>
-            }
-          </Link>
-        </div>
-
-        {/* Desktop Navigation */}
-        <nav className="hidden items-center gap-6 lg:flex">
-          <Link
-            to="/shop"
-            className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
-
-            Shop Outfits
-          </Link>
-          <Link
-            to="/shop?filter=new"
-            className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
-
-            New Arrivals
-          </Link>
-          <Link
-            to="/shop?filter=best"
-            className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
-
-            Best Sellers
-          </Link>
-          <Link
-            to="/sellers"
-            className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
-
-            Sellers
-          </Link>
-          <Link
-            to="/sell"
-            className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
-
-            Sell on Luut
-          </Link>
+        {/* Desktop nav */}
+        <nav className="hidden items-center gap-1 lg:flex">
+          {mainNav.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                isActive(item.path)
+                  ? "bg-foreground/5 text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
-        {/* Right side actions */}
-        <div className="flex-row flex items-center justify-center gap-px">
-          <Link to={currentUser ? "/account" : "/login"}>
-            <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
-              <User className="h-5 w-[20px]" />
+        {/* Right actions */}
+        <div className="flex items-center gap-1">
+          <Link to="/my-orders" className="relative">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground text-xs font-medium gap-1 h-8">
+              My Orders
+              {orderCount > 0 && (
+                <Badge className="h-4 min-w-4 justify-center rounded-full px-1 text-[10px] bg-destructive text-white">
+                  {orderCount === 10 ? "10+" : orderCount}
+                </Badge>
+              )}
             </Button>
           </Link>
-          {portalLink &&
-          <Link to={portalLink}>
-              <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
-                <DollarSign className="h-5 w-5" />
+          
+          <Link to={currentUser ? "/account" : "/login"}>
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-8 w-8">
+              <User className="h-4 w-4" />
+            </Button>
+          </Link>
+
+          {portalLink && (
+            <Link to={portalLink}>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground text-xs h-8">
+                Portal
               </Button>
             </Link>
-          }
+          )}
+
           <Link to="/cart">
-            <Button variant="ghost" size="icon" className="relative text-foreground hover:text-primary">
-              <ShoppingBag className="h-5 w-5" />
-              {totalItems > 0 &&
-              <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary p-0 text-xs text-primary-foreground">
+            <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground h-8 w-8">
+              <ShoppingBag className="h-4 w-4" />
+              {totalItems > 0 && (
+                <Badge className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary p-0 text-[10px] text-primary-foreground">
                   {totalItems}
                 </Badge>
-              }
+              )}
             </Button>
           </Link>
 
           {/* Mobile menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild className="lg:hidden">
-              <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Menu className="h-4 w-4" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 bg-background p-0 overflow-y-auto">
+            <SheetContent side="left" className="w-80 bg-card p-0 overflow-y-auto">
               <div className="flex flex-col min-h-full">
-                <div className="border-b border-border p-6 sticky top-0 bg-background z-10">
-                  <span className="font-display text-2xl font-bold text-foreground">Home</span>
+                <div className="border-b border-border p-4 sticky top-0 bg-card z-10">
+                  <span className="font-display text-lg font-bold text-foreground">LUUT SLU</span>
                 </div>
                 
-                <nav className="flex flex-col p-4">
-                  <Link
-                    to="/shop"
-                    onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-foreground">
-
-                    Shop All Outfits
-                  </Link>
-                  <Link
-                    to="/shop?filter=new"
-                    onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-foreground">
-
-                    New Arrivals
-                  </Link>
-                  <Link
-                    to="/shop?filter=best"
-                    onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-foreground">
-
-                    Best Sellers
-                  </Link>
-                  <Link
-                    to="/sellers"
-                    onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-foreground">
-
-                    Sellers
-                  </Link>
+                <nav className="flex flex-col p-3 gap-0.5">
+                  {mainNav.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setIsOpen(false)}
+                      className={`flex items-center justify-between py-2.5 px-3 rounded-md text-sm font-medium transition-colors ${
+                        isActive(item.path)
+                          ? "bg-foreground/5 text-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                      }`}
+                    >
+                      {item.label}
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+                    </Link>
+                  ))}
                   
-                  <div className="my-4 border-t border-border" />
+                  <div className="my-3 border-t border-border" />
                   
-                  <span className="py-2 font-display text-sm text-muted-foreground">
-                    SHOP BY CATEGORY
+                  <span className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    Categories
                   </span>
-                  {outfitCategories.map((cat) =>
-                  <Link
-                    key={cat.path}
-                    to={cat.path}
-                    onClick={() => setIsOpen(false)}
-                    className="py-2 font-body text-sm text-foreground/80 transition-colors hover:text-primary">
-
+                  {outfitCategories.map((cat) => (
+                    <Link
+                      key={cat.path}
+                      to={cat.path}
+                      onClick={() => setIsOpen(false)}
+                      className="py-2 px-3 text-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-foreground/5 rounded-md"
+                    >
                       {cat.name}
                     </Link>
-                  )}
+                  ))}
                   
-                  <div className="my-4 border-t border-border" />
-                  
-                  <Link
-                    to="/sell"
-                    onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-foreground">
-
-                    Sell on Luut
-                  </Link>
+                  <div className="my-3 border-t border-border" />
                   
                   <Link
                     to={currentUser ? "/account" : "/login"}
                     onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-foreground flex items-center gap-2">
-
-                    <User className="h-5 w-5" />
+                    className="flex items-center gap-2 py-2.5 px-3 text-sm font-medium text-muted-foreground hover:text-foreground rounded-md"
+                  >
+                    <User className="h-4 w-4" />
                     {currentUser ? "My Account" : "Sign In"}
                   </Link>
                 </nav>
@@ -292,5 +265,4 @@ export function Header() {
       </div>
     </header>
     </>);
-
 }
