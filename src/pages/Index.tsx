@@ -76,7 +76,7 @@ export default function Index() {
               {hero.subheading && (
                 <p className="mb-5 font-body text-sm text-white/70 md:text-base max-w-md">{hero.subheading}</p>
               )}
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex-wrap gap-3 text-left flex items-center justify-center">
                 {hero.buttonText && (
                   <Button asChild size="default" className="font-body shadow-lg">
                     <Link to={hero.buttonLink || "/shop"}>
