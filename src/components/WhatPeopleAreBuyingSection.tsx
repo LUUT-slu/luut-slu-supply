@@ -33,29 +33,30 @@ function ProductCard({ product, index }: ProductCardProps) {
   return (
     <Link
       to={`/product/${node.handle}`}
-      className="group relative flex-shrink-0 w-[70vw] sm:w-[45vw] md:w-auto snap-start"
+      className={`group relative flex-shrink-0 w-[70vw] sm:w-[45vw] md:w-auto snap-start ${!anyAvailable ? 'opacity-[0.65]' : ''}`}
+      style={{ animationDelay: `${index * 100}ms`, animationFillMode: "forwards" }}
     >
-      <div className="relative overflow-hidden rounded-lg bg-card border border-border transition-all duration-200 hover:shadow-[var(--shadow-elevated)]">
+      <div className="relative overflow-hidden rounded-lg bg-card/50 border border-border/20 transition-all duration-300 group-hover:border-primary/20 group-hover:-translate-y-0.5">
         {/* Badge */}
-        <div className="absolute top-2 right-2 z-10">
+        <div className="absolute top-3 right-3 z-10">
           {anyAvailable ? (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider bg-card/90 text-muted-foreground border border-border backdrop-blur-sm">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-medium uppercase tracking-wider bg-primary/10 text-primary/80 border border-primary/15 backdrop-blur-sm">
               {badge}
             </span>
           ) : (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-destructive text-white">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wider bg-destructive/90 text-white">
               Sold Out
             </span>
           )}
         </div>
 
         {/* Image */}
-        <div className="aspect-square overflow-hidden bg-muted">
+        <div className="aspect-square overflow-hidden bg-muted/30">
           {imageUrl ? (
             <img
               src={imageUrl}
               alt={node.title}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-103"
               loading="lazy"
               width={400}
               height={400}
@@ -68,14 +69,15 @@ function ProductCard({ product, index }: ProductCardProps) {
         </div>
 
         {/* Product Info */}
-        <div className="p-3">
-          <h3 className="font-body text-sm font-medium text-foreground line-clamp-1 mb-1">
+        <div className="p-4">
+          <h3 className="font-body text-base font-semibold text-foreground/90 line-clamp-1 mb-1">
             {node.title}
           </h3>
-          <p className="text-base font-bold text-foreground mb-1">
+          <p className="text-lg font-bold text-primary/90 mb-1">
             {formatPrice(price.amount, price.currencyCode)}
           </p>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-[10px] text-muted-foreground/60">
+            <span className="text-muted-foreground/40">·</span>{" "}
             Sold by:{" "}
             <span
               onClick={(e) => {
@@ -84,12 +86,14 @@ function ProductCard({ product, index }: ProductCardProps) {
                 const normalized = normalizeVendorName(node.vendor || 'Luut SLU');
                 window.location.href = `/seller/${encodeURIComponent(normalized.toLowerCase().replace(/\s+/g, '-'))}`;
               }}
-              className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              className="text-muted-foreground/70 hover:text-muted-foreground cursor-pointer transition-colors"
             >
               {normalizeVendorName(node.vendor || "Luut SLU")}
             </span>
           </p>
         </div>
+
+        <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-primary/0 transition-all duration-300 group-hover:ring-primary/10 pointer-events-none" />
       </div>
     </Link>
   );
@@ -114,22 +118,23 @@ export function WhatPeopleAreBuyingSection() {
     loadProducts();
   }, []);
 
+  // Filter out sold-out, shuffle, and limit to 6
   const displayProducts = useMemo(() => {
     if (products.length === 0) return [];
     const inStock = products.filter(p =>
       p.node.variants.edges.some(v => v.node.availableForSale)
     );
-    const pool = inStock.length > 0 ? inStock : products;
+    const pool = inStock.length > 0 ? inStock : products; // fallback if everything is sold out
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 6);
   }, [products]);
 
   if (loading) {
     return (
-      <section className="py-10 md:py-14 bg-background border-t border-border">
+      <section className="py-12 md:py-16 bg-background">
         <div className="container">
-          <div className="flex min-h-[200px] items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="flex min-h-[300px] items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         </div>
       </section>
@@ -139,20 +144,23 @@ export function WhatPeopleAreBuyingSection() {
   if (displayProducts.length === 0) return null;
 
   return (
-    <section className="bg-background border-t border-border py-10 md:py-14">
-      <div className="container">
-        <div className="mb-6">
-          <h2 className="text-lg font-bold tracking-tight text-foreground uppercase md:text-xl">
-            What's Trending
+    <section className="relative md:py-16 overflow-hidden py-[30px]">
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+
+      <div className="container relative">
+        <div className="mb-10">
+          <h2 className="text-xl font-semibold tracking-tight text-center md:text-2xl">
+            WHAT'S TRENDING
           </h2>
-          <p className="mt-1 font-body text-xs text-muted-foreground">
+          <p className="mt-3 font-body text-sm text-muted-foreground/70 text-center">
             See what's moving in your community right now
           </p>
         </div>
 
         {/* Mobile: Horizontal Scroll */}
         <div className="md:hidden -mx-4 px-4">
-          <div className="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
+          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
             {displayProducts.map((product, index) => (
               <ProductCard key={product.node.id} product={product} index={index} />
             ))}
@@ -160,7 +168,7 @@ export function WhatPeopleAreBuyingSection() {
         </div>
 
         {/* Desktop: Grid */}
-        <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+        <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           {displayProducts.map((product, index) => (
             <ProductCard key={product.node.id} product={product} index={index} />
           ))}

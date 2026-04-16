@@ -32,43 +32,43 @@ export function HomepageReviews() {
   if (loading || reviews.length === 0) return null;
 
   return (
-    <section className="border-t border-border bg-background py-10 md:py-14">
+    <section className="border-t border-border py-12 md:py-16">
       <div className="container">
-        <h2 className="mb-6 text-lg font-bold tracking-tight text-foreground uppercase md:text-xl">
-          What Our Customers Say
+        <h2 className="mb-8 text-center text-xl font-semibold tracking-tight md:text-2xl">
+          WHAT OUR CUSTOMERS SAY
         </h2>
-        <div className="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
           {reviews.map(r => (
             <div
               key={r.id}
-              className="min-w-[260px] max-w-[300px] shrink-0 snap-start rounded-lg border border-border bg-card p-4 flex flex-col gap-2.5"
+              className="min-w-[280px] max-w-[320px] shrink-0 snap-start rounded-lg border border-border bg-card p-5 flex flex-col gap-3"
             >
               <div className="flex gap-0.5">
                 {[1, 2, 3, 4, 5].map(s => (
                   <Star
                     key={s}
-                    className={`h-3.5 w-3.5 ${s <= r.rating ? "fill-amber-400 text-amber-400" : "text-border"}`}
+                    className={`h-4 w-4 ${s <= r.rating ? "fill-primary text-primary" : "text-muted-foreground/20"}`}
                   />
                 ))}
               </div>
               {r.comment && (
-                <p className="font-body text-xs text-foreground leading-relaxed line-clamp-4">"{r.comment}"</p>
+                <p className="font-body text-sm text-foreground line-clamp-4">"{r.comment}"</p>
               )}
               {r.image_urls && r.image_urls.length > 0 && (
-                <div className="flex gap-1.5">
+                <div className="flex gap-2">
                   {r.image_urls.map((url, i) => (
                     <img
                       key={i}
                       src={url}
                       alt="Review"
-                      className="h-14 w-14 rounded object-cover border border-border"
+                      className="h-16 w-16 rounded-md object-cover border border-border"
                       loading="lazy"
                     />
                   ))}
                 </div>
               )}
-              <div className="mt-auto flex items-center justify-between text-[10px] text-muted-foreground pt-2 border-t border-border/50">
-                <span className="font-medium text-foreground">{r.reviewer_name || "Anonymous"}</span>
+              <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground">
+                <span className="font-medium">{r.reviewer_name || "Anonymous"}</span>
                 <span>{new Date(r.created_at).toLocaleDateString()}</span>
               </div>
             </div>

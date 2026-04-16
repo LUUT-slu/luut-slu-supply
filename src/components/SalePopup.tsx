@@ -88,7 +88,7 @@ export function SalePopup() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-sm border-yellow-500/30 bg-[hsl(0,0%,7%)] p-0 text-white sm:max-w-md [&>button]:text-white/60 [&>button]:hover:text-white">
+      <DialogContent className="max-w-sm border-yellow-500/30 bg-black p-0 text-white sm:max-w-md [&>button]:text-white/60 [&>button]:hover:text-white">
         <div className="flex flex-col items-center px-6 pb-8 pt-10 text-center">
           <p className="mb-1 text-sm font-medium uppercase tracking-[0.3em] text-yellow-400/80">
             Celebrating

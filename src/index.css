@@ -6,35 +6,35 @@
 
 @layer base {
   :root {
-    /* Luut SLU — Clean Marketplace Light Theme */
-    --background: 0 0% 96%;
-    --foreground: 220 20% 14%;
+    /* Luut SLU - Dark Streetwear Palette */
+    --background: 0 0% 5%;
+    --foreground: 0 0% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 20% 14%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 14%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
 
-    /* Brand accent — warm gold, used ONLY for CTAs/badges */
+    /* Gold accent for Caribbean warmth */
     --primary: 43 74% 49%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 0 0% 5%;
 
-    --secondary: 220 14% 94%;
-    --secondary-foreground: 220 20% 14%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 220 14% 94%;
-    --muted-foreground: 220 10% 42%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 220 14% 94%;
-    --accent-foreground: 220 20% 14%;
+    --accent: 43 74% 49%;
+    --accent-foreground: 0 0% 5%;
 
     --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 0 0% 95%;
 
-    --border: 220 13% 85%;
-    --input: 220 13% 85%;
-    --ring: 220 20% 50%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 43 74% 49%;
 
     --radius: 0.5rem;
 
@@ -52,9 +52,8 @@
     --font-body: var(--font-sans);
 
     /* Shadows & Effects */
-    --shadow-glow: 0 0 40px hsl(220 20% 50% / 0.06);
-    --shadow-card: 0 1px 2px hsl(0 0% 0% / 0.04), 0 1px 6px hsl(0 0% 0% / 0.03);
-    --shadow-elevated: 0 4px 12px hsl(0 0% 0% / 0.08), 0 1px 3px hsl(0 0% 0% / 0.04);
+    --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.2);
+    --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.4);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -65,6 +64,28 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  .dark {
+    --background: 0 0% 5%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 43 74% 49%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 43 74% 49%;
+    --accent-foreground: 0 0% 5%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 43 74% 49%;
+  }
 }
 
 @layer base {
@@ -73,12 +94,12 @@
   }
 
   html {
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   body {
     @apply bg-background text-foreground font-body antialiased;
-    overflow-x: clip;
+    overflow-x: hidden;
     position: relative;
     width: 100%;
     max-width: 100vw;
@@ -86,7 +107,7 @@
 
   /* Prevent horizontal scroll on mobile */
   #root {
-    overflow-x: clip;
+    overflow-x: hidden;
     max-width: 100vw;
   }
 
@@ -97,7 +118,7 @@
 
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent;
   }
 
   .glass {
@@ -118,6 +139,9 @@
   }
 }
 
+
+
+
 /* Fix mobile double-tap issue: neutralize hover background/color changes on touch devices */
 @media (hover: none) {
   button, a, [role="button"], .cursor-pointer {
@@ -127,18 +151,18 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(220 14% 96%);
+  background: hsl(var(--background));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(220 13% 80%);
-  border-radius: 3px;
+  background: hsl(var(--muted));
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(220 13% 65%);
+  background: hsl(var(--muted-foreground));
 }

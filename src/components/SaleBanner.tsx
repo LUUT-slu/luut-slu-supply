@@ -25,7 +25,7 @@ export function SaleBanner() {
   return (
     <div
       onClick={handleCopy}
-      className="flex cursor-pointer items-center justify-center gap-2 bg-foreground px-4 py-2 text-center text-xs font-medium text-yellow-400 transition-colors hover:bg-foreground/90 sm:text-sm"
+      className="flex cursor-pointer items-center justify-center gap-2 bg-black px-4 py-2 text-center text-xs font-medium text-yellow-400 transition-colors hover:bg-black/90 sm:text-sm"
     >
       <span>
         🎉 1K SALE: <strong>15% OFF</strong> — CODE:{" "}
