@@ -216,7 +216,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
             </div>
             
             <div className="flex items-center justify-between">
-              <span className="font-display text-base text-primary">
+              <span className="font-display text-base font-bold text-foreground">
                 EC${price.toFixed(2)}
               </span>
               {isOutOfStock ? (

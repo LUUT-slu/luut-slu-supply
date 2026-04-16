@@ -80,7 +80,7 @@ export default function Index() {
                 </Button>
               </div>
               <div className="mt-5">
-                <Link to="/sell" className="font-body text-sm text-primary underline-offset-4 hover:underline">
+                <Link to="/sell" className="font-body text-sm text-white/70 underline-offset-4 hover:underline hover:text-white">
                   Want to sell? Join as a vendor →
                 </Link>
               </div>
@@ -153,7 +153,7 @@ export default function Index() {
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                     <Icon className="h-8 w-8 text-primary" />
                   </div>
-                  <div className="mb-2 text-4xl font-bold text-primary/30">0{step}</div>
+                  <div className="mb-2 text-4xl font-bold text-foreground/20">0{step}</div>
                   <h3 className="mb-2 text-lg font-semibold">{title}</h3>
                   <p className="font-body text-sm text-muted-foreground">{description}</p>
                 </div>

@@ -73,7 +73,7 @@ function ProductCard({ product, index }: ProductCardProps) {
           <h3 className="font-body text-base font-semibold text-foreground/90 line-clamp-1 mb-1">
             {node.title}
           </h3>
-          <p className="text-lg font-bold text-primary/90 mb-1">
+          <p className="text-lg font-bold text-foreground mb-1">
             {formatPrice(price.amount, price.currencyCode)}
           </p>
           <p className="text-[10px] text-muted-foreground/60">
