@@ -6,35 +6,35 @@
 
 @layer base {
   :root {
-    /* Luut SLU - Light Premium Palette */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 4%;
+    /* Luut SLU — Clean Marketplace Light Theme */
+    --background: 0 0% 96%;
+    --foreground: 220 20% 14%;
 
-    --card: 0 0% 97%;
-    --card-foreground: 0 0% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 4%;
+    --popover-foreground: 220 20% 14%;
 
-    /* Gold accent for Caribbean warmth */
+    /* Brand accent — warm gold, used ONLY for CTAs/badges */
     --primary: 43 74% 49%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary: 220 14% 94%;
+    --secondary-foreground: 220 20% 14%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 0 0% 35%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 10% 42%;
 
-    --accent: 43 74% 49%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 220 14% 94%;
+    --accent-foreground: 220 20% 14%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 82%;
-    --input: 220 13% 87%;
-    --ring: 43 74% 49%;
+    --border: 220 13% 85%;
+    --input: 220 13% 85%;
+    --ring: 220 20% 50%;
 
     --radius: 0.5rem;
 
@@ -52,9 +52,9 @@
     --font-body: var(--font-sans);
 
     /* Shadows & Effects */
-    --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.08);
-    --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.04), 0 4px 16px hsl(0 0% 0% / 0.06);
-    --shadow-elevated: 0 2px 8px hsl(0 0% 0% / 0.06), 0 8px 32px hsl(0 0% 0% / 0.08);
+    --shadow-glow: 0 0 40px hsl(220 20% 50% / 0.06);
+    --shadow-card: 0 1px 2px hsl(0 0% 0% / 0.04), 0 1px 6px hsl(0 0% 0% / 0.03);
+    --shadow-elevated: 0 4px 12px hsl(0 0% 0% / 0.08), 0 1px 3px hsl(0 0% 0% / 0.04);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -97,7 +97,7 @@
 
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent;
   }
 
   .glass {
@@ -118,9 +118,6 @@
   }
 }
 
-
-
-
 /* Fix mobile double-tap issue: neutralize hover background/color changes on touch devices */
 @media (hover: none) {
   button, a, [role="button"], .cursor-pointer {
@@ -130,18 +127,18 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(0 0% 100%);
+  background: hsl(220 14% 96%);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 85%);
-  border-radius: 4px;
+  background: hsl(220 13% 80%);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 65%);
+  background: hsl(220 13% 65%);
 }
