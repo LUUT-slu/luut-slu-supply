@@ -678,6 +678,8 @@ export type Database = {
           created_at: string
           id: string
           image_urls: string[] | null
+          product_handle: string | null
+          product_title: string | null
           rating: number
           reviewer_name: string | null
           show_on_homepage: boolean
@@ -688,6 +690,8 @@ export type Database = {
           created_at?: string
           id?: string
           image_urls?: string[] | null
+          product_handle?: string | null
+          product_title?: string | null
           rating: number
           reviewer_name?: string | null
           show_on_homepage?: boolean
@@ -698,6 +702,8 @@ export type Database = {
           created_at?: string
           id?: string
           image_urls?: string[] | null
+          product_handle?: string | null
+          product_title?: string | null
           rating?: number
           reviewer_name?: string | null
           show_on_homepage?: boolean

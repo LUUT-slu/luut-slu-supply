@@ -10,7 +10,12 @@ import { toast } from "sonner";
 const MAX_COMMENT = 200;
 const MAX_IMAGES = 2;
 
-export function ReviewPopup() {
+interface ReviewPopupProps {
+  productHandle?: string;
+  productTitle?: string;
+}
+
+export function ReviewPopup({ productHandle, productTitle }: ReviewPopupProps) {
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
@@ -68,6 +73,8 @@ export function ReviewPopup() {
         rating,
         comment: comment.trim() || null,
         image_urls: imageUrls.length > 0 ? imageUrls : [],
+        product_handle: productHandle || null,
+        product_title: productTitle || null,
       });
       if (error) throw error;
 
@@ -85,17 +92,23 @@ export function ReviewPopup() {
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
         <Button
-          size="lg"
-          className="fixed bottom-20 right-4 z-40 rounded-full shadow-lg gap-2 font-body md:bottom-6"
+          size={productHandle ? "sm" : "lg"}
+          variant={productHandle ? "outline" : "default"}
+          className={productHandle
+            ? "gap-2 font-body"
+            : "fixed bottom-20 right-4 z-40 rounded-full shadow-lg gap-2 font-body md:bottom-6"
+          }
         >
           <Star className="h-4 w-4" />
-          Leave a Review
+          {productHandle ? "Write a Review" : "Leave a Review"}
         </Button>
       </DialogTrigger>
 
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display text-lg">Share Your Experience</DialogTitle>
+          <DialogTitle className="font-display text-lg">
+            {productTitle ? `Review: ${productTitle}` : "Share Your Experience"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">

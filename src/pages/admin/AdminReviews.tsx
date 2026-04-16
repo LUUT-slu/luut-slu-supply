@@ -17,6 +17,8 @@ interface Review {
   status: string;
   show_on_homepage: boolean;
   created_at: string;
+  product_handle: string | null;
+  product_title: string | null;
 }
 
 export default function AdminReviews() {
@@ -114,6 +116,11 @@ export default function AdminReviews() {
                   </div>
 
                   {r.comment && <p className="text-sm text-foreground">"{r.comment}"</p>}
+                  {r.product_title && (
+                    <p className="text-xs text-primary">
+                      Product: {r.product_title}
+                    </p>
+                  )}
 
                   {r.image_urls && r.image_urls.length > 0 && (
                     <div className="flex gap-2">
