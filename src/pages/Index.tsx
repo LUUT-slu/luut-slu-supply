@@ -11,6 +11,8 @@ import { HomeFeaturedSection } from "@/components/HomeFeaturedSection";
 import { HomeNewArrivalsSection } from "@/components/HomeNewArrivalsSection";
 import { useSiteSettings, DEFAULT_HERO } from "@/hooks/useSiteSettings";
 import storefrontHero from "@/assets/storefront-hero.webp";
+import { ReviewPopup } from "@/components/ReviewPopup";
+import { HomepageReviews } from "@/components/HomepageReviews";
 
 const howItWorks = [
   { step: 1, title: "Browse Products", description: "Explore outfits from verified local sellers on our marketplace", icon: Package },
@@ -117,6 +119,9 @@ export default function Index() {
           }
         })}
 
+        {/* Customer Reviews */}
+        <HomepageReviews />
+
         {/* Trust Section */}
         <section className="border-t border-border bg-card py-12 md:py-16">
           <div className="container">
@@ -178,6 +183,7 @@ export default function Index() {
       </main>
 
       <Footer />
+      <ReviewPopup />
       <ChatButton variant="floating" />
     </div>
   );
