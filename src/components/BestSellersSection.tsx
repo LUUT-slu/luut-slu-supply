@@ -72,14 +72,9 @@ export function BestSellersSection() {
                 <h3 className="font-display text-sm line-clamp-2">
                   {product.product_title}
                 </h3>
-                <div className="mt-1 flex items-center justify-between">
-                  <p className="font-body text-sm text-primary">
-                    {product.currency_code} {Number(product.price).toFixed(2)}
-                  </p>
-                  <p className="font-body text-xs text-muted-foreground">
-                    {product.total_sold} sold
-                  </p>
-                </div>
+                <p className="mt-1 font-body text-sm text-primary">
+                  {product.currency_code} {Number(product.price).toFixed(2)}
+                </p>
               </div>
             </Link>
           ))}
