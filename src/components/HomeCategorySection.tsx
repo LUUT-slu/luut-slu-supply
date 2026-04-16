@@ -25,8 +25,9 @@ export function HomeCategorySection({ slug, label, limit = 4 }: HomeCategorySect
     if (siteSettings?.hideSoldOut) {
       list = list.filter(p => p.stockStatus !== 'out_of_stock');
     }
-    return list as VariantListingProduct[];
-  }, [products, siteSettings?.hideSoldOut, siteSettings?.colorVariantCards]);
+    // Slice to the configured limit
+    return (list as VariantListingProduct[]).slice(0, limit);
+  }, [products, siteSettings?.hideSoldOut, siteSettings?.colorVariantCards, limit]);
 
   // Hide entire section if loading or empty
   if (loading || displayProducts.length === 0) return null;
