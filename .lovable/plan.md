@@ -1,64 +1,59 @@
 
 
-## Fix: Order Creation Reload Loop
+## Homepage Review Popup System
 
-### Problem
-The Checkout page redirects to `/cart` whenever `items.length === 0` (line 222-226). Zustand's `persist` middleware initializes with empty state (`items: []`) before hydrating from localStorage. During that brief hydration window, the redirect fires, sending the user away before cart data loads. This creates a loop where the user keeps getting bounced.
+### Overview
+Build a full review system: a popup form on the homepage for anyone to submit star-rated reviews with images, a display section for approved reviews, and admin management.
 
-### Root Cause
-```
-1. User navigates to /checkout
-2. Zustand store initializes with items: [] (default)
-3. useEffect fires: items.length === 0 → navigate('/cart')
-4. User gets redirected before localStorage hydration completes
-5. User navigates back → same thing happens again
-```
+### Database
 
-### Fix
+**New table: `reviews`**
+- `id` uuid PK
+- `reviewer_name` text (nullable, anonymous if empty)
+- `rating` integer NOT NULL (1-5)
+- `comment` text (max 200 chars, validated via trigger)
+- `image_urls` text[] (max 2)
+- `status` text DEFAULT 'pending' (pending/approved/rejected)
+- `show_on_homepage` boolean DEFAULT false
+- `created_at` timestamptz DEFAULT now()
 
-**1. Add hydration tracking to cart store** (`src/stores/cartStore.ts`)
-- Add a `_hasHydrated` boolean to the store
-- Use zustand persist's `onRehydrateStorage` callback to set it to `true` after hydration
+**RLS policies:**
+- Anyone can INSERT (public form, no login required)
+- Anyone can SELECT where `status = 'approved'` and `show_on_homepage = true`
+- Admins can do ALL
 
-**2. Guard the empty-cart redirect** (`src/pages/Checkout.tsx`)
-- Only redirect to `/cart` when the store has confirmed hydration AND items are empty
-- Show a brief loading state while hydration is pending
+**Storage:** Use existing `seller-assets` public bucket with a `reviews/` prefix for uploaded images.
 
-### Technical Details
+### New Components
 
-In `cartStore.ts`, add:
-```typescript
-_hasHydrated: false,
-setHasHydrated: (val: boolean) => set({ _hasHydrated: val }),
-```
-And in persist config:
-```typescript
-onRehydrateStorage: () => (state) => {
-  state?.setHasHydrated(true);
-},
-```
+1. **`src/components/ReviewPopup.tsx`** — Dialog triggered by a floating "Leave a Review" button on homepage
+   - 5-star rating selector (tap-friendly, large touch targets)
+   - Optional reviewer name field
+   - Comment textarea with 200-char counter
+   - Image upload (max 2, preview with remove)
+   - Submit button with loading state and success toast
+   - Uploads images to `seller-assets/reviews/` bucket
 
-In `Checkout.tsx`, change the redirect effect:
-```typescript
-const hasHydrated = useCartStore(s => s._hasHydrated);
+2. **`src/components/HomepageReviews.tsx`** — Section on homepage displaying approved reviews
+   - Fetches reviews where `status = 'approved'` AND `show_on_homepage = true`
+   - Shows star rating, comment, images, date, and reviewer name or "Anonymous"
+   - Horizontal scroll or grid layout
 
-useEffect(() => {
-  if (hasHydrated && items.length === 0 && !orderCompletingRef.current) {
-    navigate('/cart');
-  }
-}, [hasHydrated, items.length, navigate]);
-```
+3. **`src/pages/admin/AdminReviews.tsx`** — Admin review management page
+   - Table of all reviews with status filter
+   - Approve/reject/delete actions
+   - Toggle homepage visibility
+   - View uploaded images
 
-And add an early return while not hydrated:
-```typescript
-if (!hasHydrated) {
-  return <div className="min-h-screen flex items-center justify-center">
-    <Loader2 className="h-6 w-6 animate-spin" />
-  </div>;
-}
-```
+### File Changes
 
-### Files Changed
-- `src/stores/cartStore.ts` — Add hydration state tracking
-- `src/pages/Checkout.tsx` — Gate redirect on hydration complete
+- **`src/pages/Index.tsx`** — Add `<ReviewPopup />` floating button and `<HomepageReviews />` section before trust section
+- **`src/App.tsx`** — Add `/admin/reviews` route
+- **`src/pages/AdminHome.tsx`** — Add reviews link card to admin dashboard
+
+### Validation
+- Rating required (1-5)
+- Comment max 200 chars (client + DB trigger)
+- Max 2 images, image types only (client-side)
+- Debounce/disable submit to prevent duplicates
 
