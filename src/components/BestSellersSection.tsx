@@ -47,10 +47,17 @@ export function BestSellersSection({ limit }: BestSellersSectionProps) {
         </div>
         
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {bestSellers.map((product, index) => (
+          {bestSellers.map((product, index) => {
+            // Shopify product IDs start with "gid://", local products are UUIDs
+            const isShopify = product.product_id.startsWith('gid://');
+            const productLink = isShopify
+              ? `/product/${product.product_handle}`
+              : `/product/local/${product.product_id}`;
+            
+            return (
             <Link
               key={product.product_id}
-              to={`/product/${product.product_handle}`}
+              to={productLink}
               className="group relative rounded-lg border border-border bg-card p-4 transition-all hover:border-primary/50 hover:shadow-lg"
             >
               {index < 3 && (
