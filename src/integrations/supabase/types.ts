@@ -672,6 +672,39 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          image_urls: string[] | null
+          rating: number
+          reviewer_name: string | null
+          show_on_homepage: boolean
+          status: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          image_urls?: string[] | null
+          rating: number
+          reviewer_name?: string | null
+          show_on_homepage?: boolean
+          status?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          image_urls?: string[] | null
+          rating?: number
+          reviewer_name?: string | null
+          show_on_homepage?: boolean
+          status?: string
+        }
+        Relationships: []
+      }
       seller_applications: {
         Row: {
           business_name: string | null
