@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Upload, X, Package } from "lucide-react";
+import { Loader2, Upload, X, Package, Sparkles } from "lucide-react";
 import { CATEGORY_OPTIONS } from "@/lib/categories";
 import { resizeImageToSquare } from "@/lib/imageResize";
 
@@ -46,6 +46,7 @@ export default function SellerProductForm() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
+  const [generatingDesc, setGeneratingDesc] = useState(false);
   const [formData, setFormData] = useState<ProductData>({
     name: "",
     price: "",
@@ -54,6 +55,28 @@ export default function SellerProductForm() {
     description: "",
     category: "",
   });
+
+  const generateDescription = async () => {
+    if (!formData.name) {
+      toast.error("Enter a product name first");
+      return;
+    }
+    setGeneratingDesc(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-generate-description", {
+        body: { productName: formData.name, category: formData.category, price: formData.price },
+      });
+      if (error) throw error;
+      if (data?.description) {
+        setFormData((prev) => ({ ...prev, description: data.description }));
+        toast.success("Description generated!");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate description");
+    } finally {
+      setGeneratingDesc(false);
+    }
+  };
 
   useEffect(() => {
     if (isEditing && profile?.id) {
@@ -394,7 +417,24 @@ export default function SellerProductForm() {
 
                   {/* Description */}
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="description">Description</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        onClick={generateDescription}
+                        disabled={generatingDesc}
+                      >
+                        {generatingDesc ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3 w-3" />
+                        )}
+                        Generate with AI
+                      </Button>
+                    </div>
                     <Textarea
                       id="description"
                       value={formData.description}

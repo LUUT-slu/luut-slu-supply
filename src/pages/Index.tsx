@@ -13,6 +13,7 @@ import { useSiteSettings, DEFAULT_HERO } from "@/hooks/useSiteSettings";
 import storefrontHero from "@/assets/storefront-hero.webp";
 import { ReviewPopup } from "@/components/ReviewPopup";
 import { HomepageReviews } from "@/components/HomepageReviews";
+import { AIChatWidget } from "@/components/AIChatWidget";
 
 const howItWorks = [
   { step: 1, title: "Browse Products", description: "Explore outfits from verified local sellers on our marketplace", icon: Package },
@@ -185,6 +186,7 @@ export default function Index() {
       <Footer />
       <ReviewPopup />
       <ChatButton variant="floating" />
+      <AIChatWidget />
     </div>
   );
 }
