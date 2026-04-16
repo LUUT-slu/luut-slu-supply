@@ -94,10 +94,7 @@ export function ReviewPopup({ productHandle, productTitle }: ReviewPopupProps) {
         <Button
           size={productHandle ? "sm" : "default"}
           variant={productHandle ? "outline" : "default"}
-          className={productHandle
-            ? "gap-2 font-body"
-            : "fixed bottom-28 right-4 z-40 rounded-full shadow-lg gap-2 font-body md:bottom-20"
-          }
+          className="gap-2 font-body"
         >
           <Star className="h-4 w-4" />
           {productHandle ? "Write a Review" : "Leave a Review"}
