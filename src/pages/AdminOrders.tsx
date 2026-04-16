@@ -99,6 +99,14 @@ export default function AdminOrders() {
     } else {
       toast.success("Order status updated");
       setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+
+      // Trigger email on status change
+      if (newStatus === "confirmed" || newStatus === "completed") {
+        const emailType = newStatus === "confirmed" ? "order_confirmed" : "order_ready";
+        supabase.functions.invoke("send-order-email", {
+          body: { orderId, type: emailType },
+        }).catch(err => console.error("Email trigger error:", err));
+      }
     }
     setUpdating(null);
   };

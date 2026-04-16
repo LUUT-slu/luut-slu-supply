@@ -344,6 +344,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           currency_code: string
+          customer_email: string | null
           customer_name: string
           customer_phone: string | null
           customer_user_id: string | null
@@ -376,6 +377,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           currency_code?: string
+          customer_email?: string | null
           customer_name: string
           customer_phone?: string | null
           customer_user_id?: string | null
@@ -408,6 +410,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           currency_code?: string
+          customer_email?: string | null
           customer_name?: string
           customer_phone?: string | null
           customer_user_id?: string | null

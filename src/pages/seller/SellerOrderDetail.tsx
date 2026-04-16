@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { SellerNav } from "@/components/seller/SellerNav";
@@ -124,6 +125,14 @@ export default function SellerOrderDetail() {
   const handleStatusChange = async (newStatus: string) => {
     if (!order) return;
     await updateOrderStatus(order.id, newStatus as OrderStatus);
+
+    // Trigger email on status change
+    if (newStatus === "confirmed" || newStatus === "completed") {
+      const emailType = newStatus === "confirmed" ? "order_confirmed" : "order_ready";
+      supabase.functions.invoke("send-order-email", {
+        body: { orderId: order.id, type: emailType },
+      }).catch(err => console.error("Email trigger error:", err));
+    }
   };
 
   const handleDelete = async () => {

@@ -20,6 +20,7 @@ interface LineItem {
 interface DraftOrderRequest {
   customerName: string;
   customerPhone: string;
+  customerEmail?: string | null;
   location: string;
   preferredDate: string;
   pickupTime?: string;
@@ -256,7 +257,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: DraftOrderRequest = await req.json();
-    const { customerName, customerPhone, location, preferredDate, pickupTime, note, lineItems, totalPrice, discountCode } = body;
+    const { customerName, customerPhone, customerEmail, location, preferredDate, pickupTime, note, lineItems, totalPrice, discountCode } = body;
 
     if (!customerName || !customerPhone || !location || !preferredDate || !lineItems?.length) {
       return new Response(
@@ -283,6 +284,7 @@ serve(async (req) => {
       .insert({
         customer_name: customerName,
         customer_phone: customerPhone,
+        customer_email: customerEmail || null,
         location: location,
         preferred_date: preferredDate,
         pickup_time: pickupTime || null,
@@ -522,6 +524,26 @@ serve(async (req) => {
     const merchantWhatsAppUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(merchantMessage)}`;
 
     console.log("Order complete. Local:", localOrder.id, "Shopify:", draftOrder?.id || "none");
+
+    // Trigger order confirmation email (fire-and-forget)
+    if (localOrder.customer_email) {
+      try {
+        const emailUrl = `${supabaseUrl}/functions/v1/send-order-email`;
+        fetch(emailUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ orderId: localOrder.id, type: "order_confirmation" }),
+        }).then(res => {
+          if (!res.ok) console.error("Confirmation email failed:", res.status);
+          else console.log("Confirmation email triggered for order", localOrder.id);
+        }).catch(err => console.error("Confirmation email error:", err));
+      } catch (emailErr) {
+        console.error("Email trigger error (non-fatal):", emailErr);
+      }
+    }
 
     return new Response(
       JSON.stringify({

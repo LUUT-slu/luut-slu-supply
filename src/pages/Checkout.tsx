@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   User,
   Phone,
+  Mail,
   MapPin,
   Calendar,
   MessageSquare,
@@ -134,6 +135,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>(getDefaultDate());
   const [pickupTime, setPickupTime] = useState('');
@@ -237,7 +239,7 @@ export default function Checkout() {
 
       const { data: profile } = await supabase
         .from('customer_profiles')
-        .select('full_name, phone, preferred_location, meetup_notes')
+        .select('full_name, phone, email, preferred_location, meetup_notes')
         .eq('user_id', user.id)
         .single();
 
@@ -247,6 +249,9 @@ export default function Checkout() {
         }
         if (profile.phone && !customerPhone) {
           setCustomerPhone(profile.phone);
+        }
+        if (profile.email && !customerEmail) {
+          setCustomerEmail(profile.email);
         }
         if (profile.preferred_location && !selectedLocation && MEETUP_LOCATIONS.includes(profile.preferred_location)) {
           setSelectedLocation(profile.preferred_location);
@@ -394,6 +399,7 @@ export default function Checkout() {
           body: {
             customerName: customerName.trim(),
             customerPhone: customerPhone.trim(),
+            customerEmail: customerEmail.trim() || null,
             location: selectedLocation,
             preferredDate: formattedDate,
             pickupTime,
@@ -557,6 +563,23 @@ export default function Checkout() {
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 We'll use this to contact you about your order
+              </p>
+            </ChecklistItem>
+
+            {/* Email (Optional) */}
+            <ChecklistItem completed={customerEmail.trim().length > 0} label="Email (optional)">
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="your@email.com"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  className="pl-10"
+                  type="email"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Get order confirmations and pickup reminders by email
               </p>
             </ChecklistItem>
 
