@@ -40,7 +40,7 @@ function ProductCard({ product, index }: ProductCardProps) {
         {/* Badge */}
         <div className="absolute top-3 right-3 z-10">
           {anyAvailable ? (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-medium uppercase tracking-wider bg-primary/10 text-primary/80 border border-primary/15 backdrop-blur-sm">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-medium uppercase tracking-wider bg-foreground/5 text-foreground/60 border border-border backdrop-blur-sm">
               {badge}
             </span>
           ) : (
