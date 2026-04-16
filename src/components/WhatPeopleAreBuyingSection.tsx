@@ -33,7 +33,7 @@ function ProductCard({ product, index }: ProductCardProps) {
   return (
     <Link
       to={`/product/${node.handle}`}
-      className={`group relative flex-shrink-0 w-[70vw] sm:w-[45vw] md:w-auto snap-start ${!anyAvailable ? 'opacity-60' : ''}`}
+      className="group relative flex-shrink-0 w-[70vw] sm:w-[45vw] md:w-auto snap-start"
     >
       <div className="relative overflow-hidden rounded-lg bg-card border border-border transition-all duration-200 hover:shadow-[var(--shadow-elevated)]">
         {/* Badge */}
