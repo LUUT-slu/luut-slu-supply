@@ -10,7 +10,7 @@
     --background: 0 0% 100%;
     --foreground: 0 0% 4%;
 
-    --card: 0 0% 99%;
+    --card: 0 0% 100%;
     --card-foreground: 0 0% 4%;
 
     --popover: 0 0% 100%;
@@ -20,10 +20,10 @@
     --primary: 43 74% 49%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 96%;
+    --secondary: 220 14% 96%;
     --secondary-foreground: 0 0% 9%;
 
-    --muted: 0 0% 96%;
+    --muted: 220 14% 96%;
     --muted-foreground: 0 0% 35%;
 
     --accent: 43 74% 49%;
@@ -32,8 +32,8 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
+    --border: 220 13% 87%;
+    --input: 220 13% 87%;
     --ring: 43 74% 49%;
 
     --radius: 0.5rem;
@@ -52,8 +52,9 @@
     --font-body: var(--font-sans);
 
     /* Shadows & Effects */
-    --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.1);
-    --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.06);
+    --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.08);
+    --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.04), 0 4px 16px hsl(0 0% 0% / 0.06);
+    --shadow-elevated: 0 2px 8px hsl(0 0% 0% / 0.06), 0 8px 32px hsl(0 0% 0% / 0.08);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
