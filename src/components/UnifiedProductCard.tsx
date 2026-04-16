@@ -192,7 +192,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
               {displayTitle}
             </h3>
             {isVariant && product.visualOptionValue && (
-              <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+              <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground/70">
                 {product.visualOptionValue}
               </span>
             )}
@@ -216,7 +216,7 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
             </div>
             
             <div className="flex items-center justify-between">
-              <span className="font-display text-base text-primary">
+              <span className="font-display text-base font-bold text-foreground">
                 EC${price.toFixed(2)}
               </span>
               {isOutOfStock ? (
@@ -295,12 +295,12 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
           {displayTitle}
         </h3>
         {isVariant && product.visualOptionValue && (
-          <span className="mb-2 inline-block self-start rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+          <span className="mb-2 inline-block self-start rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground/70">
             {product.visualOptionValue}
           </span>
         )}
         <div className="mt-auto flex items-center justify-between">
-          <span className="font-display text-lg">
+          <span className="font-display text-lg font-bold text-foreground">
             EC${price.toFixed(2)}
           </span>
           {isOutOfStock && (

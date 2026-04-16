@@ -40,7 +40,7 @@ function ProductCard({ product, index }: ProductCardProps) {
         {/* Badge */}
         <div className="absolute top-3 right-3 z-10">
           {anyAvailable ? (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-medium uppercase tracking-wider bg-primary/10 text-primary/80 border border-primary/15 backdrop-blur-sm">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-medium uppercase tracking-wider bg-foreground/5 text-foreground/60 border border-border backdrop-blur-sm">
               {badge}
             </span>
           ) : (
@@ -73,7 +73,7 @@ function ProductCard({ product, index }: ProductCardProps) {
           <h3 className="font-body text-base font-semibold text-foreground/90 line-clamp-1 mb-1">
             {node.title}
           </h3>
-          <p className="text-lg font-bold text-primary/90 mb-1">
+          <p className="text-lg font-bold text-foreground mb-1">
             {formatPrice(price.amount, price.currencyCode)}
           </p>
           <p className="text-[10px] text-muted-foreground/60">
