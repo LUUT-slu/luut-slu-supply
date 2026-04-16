@@ -14,6 +14,7 @@ import {
   Settings,
   Truck,
   BarChart3,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -172,6 +173,14 @@ export default function AdminHome() {
       href: "/admin/site-settings",
       color: "text-pink-500",
       bgColor: "bg-pink-500/10",
+    },
+    {
+      title: "Reviews",
+      description: "Moderate customer reviews & homepage display",
+      icon: MessageSquare,
+      href: "/admin/reviews",
+      color: "text-teal-500",
+      bgColor: "bg-teal-500/10",
     },
     {
       title: "Seller Portal",
