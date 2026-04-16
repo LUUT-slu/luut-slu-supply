@@ -1,54 +1,46 @@
 
 
-## Two AI Features: Customer Chatbot + Seller Description Generator
+## Welcome Email for New Customer Signups (Using Resend)
 
-### Feature 1: AI Customer Chatbot
+### Overview
+Create a welcome email that fires automatically when a new customer signs up, using the existing Resend connector (already configured with `RESEND_API_KEY` and `LOVABLE_API_KEY`).
 
-A floating chat widget on the storefront that helps customers find products, answer questions about policies, and navigate the marketplace.
+### Approach
+Since the project already has a working Resend-based email edge function (`send-order-email`), we'll follow the same pattern rather than setting up Lovable's transactional email infrastructure. The user explicitly requested Resend.
 
-**Edge Function: `supabase/functions/ai-chat/index.ts`**
-- Uses Lovable AI gateway with `google/gemini-3-flash-preview`
-- System prompt includes: marketplace context (Luut SLU, Saint Lucia, Pay on Meetup), product catalog awareness, policy info (meetup locations, deposit policy, refund policy)
-- Accepts `messages` array, streams SSE response back
-- Includes a tool call to search products by querying the `seller_products` table and Shopify data
+### Implementation
 
-**Component: `src/components/AIChatWidget.tsx`**
-- Floating chat bubble (bottom-left to avoid conflict with WhatsApp button on bottom-right)
-- Opens a chat panel with message history, input field, and streaming AI responses
-- Renders markdown in AI responses via `react-markdown`
-- Mobile responsive (full-width drawer on mobile, panel on desktop)
-- Messages stored in local state only (no persistence needed)
+**1. Create `supabase/functions/send-welcome-email/index.ts`**
+- New edge function that accepts a `userId` and `email` payload
+- Fetches customer profile to get name
+- Checks `customer_discounts` table for the EC$10 welcome discount
+- Builds a branded HTML email with all requested sections (welcome, what you can do, how ordering works, important info, CTA, discount mention, footer)
+- Sends via the Resend gateway (same pattern as `send-order-email`)
+- Uses idempotency: checks a flag or logs to prevent duplicate sends
 
-**Integration:**
-- Added to `src/pages/Index.tsx` and other storefront pages alongside existing `ChatButton`
-- Uses the SSE streaming pattern from the AI gateway docs
+**2. Add `verify_jwt = false` to `supabase/config.toml`** for the new function
 
-### Feature 2: AI Product Description Generator
+**3. Update `src/pages/Login.tsx`**
+- After successful signup (`handleSignup`), invoke the new edge function:
+  ```
+  supabase.functions.invoke('send-welcome-email', { body: { userId, email } })
+  ```
+- Fire-and-forget (don't block signup flow)
 
-A "Generate Description" button on the seller product form that creates a compelling product description from the product name, category, and price.
+### Email Design
+- Clean white background, dark text
+- LUUT SLU branded header (black bar with gold text, matching order emails)
+- Sections: Welcome → What You Can Do → How It Works (4 steps) → Important Info → EC$10 discount callout → CTA button → Footer
+- Mobile-friendly table-based layout (same approach as existing order emails)
+- CTA button links to `/shop/best-sellers`
 
-**Edge Function: `supabase/functions/ai-generate-description/index.ts`**
-- Uses Lovable AI gateway with `google/gemini-3-flash-preview`
-- Non-streaming (simple invoke)
-- System prompt: "Write a short, appealing product description for a Saint Lucia marketplace. Max 200 characters. Tone: casual, local, trustworthy."
-- Accepts `productName`, `category`, `price` — returns generated description text
+### Technical Details
+- No database changes needed — uses existing `customer_profiles` and `customer_discounts` tables
+- Idempotency: the function checks if welcome email was already sent by querying if the customer profile exists and is recent (within seconds of creation), preventing duplicate sends on retries
+- Secrets already configured: `LOVABLE_API_KEY`, `RESEND_API_KEY`
 
-**Integration in `src/pages/seller/SellerProductForm.tsx`:**
-- Add a "Generate with AI" button next to the Description field
-- On click, calls the edge function with current form data
-- Populates the description textarea with the result
-- Shows loading state during generation
-
-### Config
-- Add both functions to `supabase/config.toml` with `verify_jwt = false`
-- No new secrets needed (uses existing `LOVABLE_API_KEY`)
-- No database changes needed
-
-### Files Changed/Created
-1. `supabase/functions/ai-chat/index.ts` — New edge function for chatbot
-2. `supabase/functions/ai-generate-description/index.ts` — New edge function for descriptions
-3. `src/components/AIChatWidget.tsx` — New chat widget component
-4. `src/pages/Index.tsx` — Add chat widget
-5. `src/pages/seller/SellerProductForm.tsx` — Add generate description button
-6. `supabase/config.toml` — Add function configs
+### Files
+1. `supabase/functions/send-welcome-email/index.ts` — New edge function
+2. `supabase/config.toml` — Add function config
+3. `src/pages/Login.tsx` — Add welcome email trigger after signup
 
