@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { AIOrderHelper } from "@/components/seller/AIOrderHelper";
+import { SellerAIPanel } from "@/components/seller/SellerAIPanel";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { SellerNav } from "@/components/seller/SellerNav";
