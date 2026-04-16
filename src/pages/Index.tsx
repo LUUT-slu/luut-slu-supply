@@ -124,7 +124,7 @@ export default function Index() {
         <HomepageReviews />
 
         {/* Trust Section */}
-        <section className="border-t border-border bg-card py-12 md:py-16">
+        <section className="border-t border-border bg-secondary py-12 md:py-16">
           <div className="container">
             <h2 className="mb-10 text-center text-xl font-semibold tracking-tight md:text-2xl">
               WHY SHOP WITH LUUT
