@@ -284,13 +284,13 @@ export default function Checkout() {
 
       if (discount) {
         setAppliedDiscount({
-          code: 'WELCOME5',
+          code: 'WELCOME10',
           valueType: 'fixed_amount',
           value: String(discount.discount_amount),
           title: 'Welcome Discount',
           welcomeDiscountId: discount.id,
         });
-        toast.success('EC$5 welcome discount auto-applied!', { position: 'top-center' });
+        toast.success(`EC$${discount.discount_amount} welcome discount auto-applied!`, { position: 'top-center' });
       }
     };
 
