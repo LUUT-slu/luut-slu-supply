@@ -135,25 +135,34 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get customer name from profile
-    const { data: profile } = await supabase
-      .from("customer_profiles")
-      .select("full_name")
-      .eq("user_id", userId)
-      .maybeSingle();
+    let customerName = "";
+    let hasDiscount = false;
 
-    const customerName = profile?.full_name || "";
+    if (userId) {
+      // Get customer name from profile
+      const { data: profile } = await supabase
+        .from("customer_profiles")
+        .select("full_name")
+        .eq("user_id", userId)
+        .maybeSingle();
 
-    // Check for welcome discount
-    const { data: discount } = await supabase
-      .from("customer_discounts")
-      .select("id, discount_amount")
-      .eq("user_id", userId)
-      .eq("discount_type", "welcome")
-      .eq("is_used", false)
-      .maybeSingle();
+      customerName = profile?.full_name || "";
 
-    const hasDiscount = !!discount;
+      // Check for welcome discount
+      const { data: discount } = await supabase
+        .from("customer_discounts")
+        .select("id, discount_amount")
+        .eq("user_id", userId)
+        .eq("discount_type", "welcome")
+        .eq("is_used", false)
+        .maybeSingle();
+
+      hasDiscount = !!discount;
+    } else {
+      // User ID not available yet (email confirmation pending)
+      // Assume discount exists since grant_welcome_discount trigger fires on auth.users insert
+      hasDiscount = true;
+    }
 
     const html = buildWelcomeEmailHtml(customerName, hasDiscount);
     const subject = "Welcome to Luut SLU 👋";
