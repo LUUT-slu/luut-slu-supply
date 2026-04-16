@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SellerAIPanel } from "@/components/seller/SellerAIPanel";
 import { useNavigate } from "react-router-dom";
 import { DateRange } from "react-day-picker";
 import { SellerNav } from "@/components/seller/SellerNav";
@@ -66,6 +67,7 @@ export default function SellerDashboardNew() {
   ];
 
   return (
+    <>
     <div className="flex min-h-screen flex-col bg-background">
         <SellerNav 
           sellerName={profile?.seller_name} 
@@ -244,5 +246,7 @@ export default function SellerDashboardNew() {
           )}
         </main>
       </div>
+      <SellerAIPanel />
+    </>
   );
 }

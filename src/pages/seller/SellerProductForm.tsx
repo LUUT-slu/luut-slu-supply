@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { Loader2, Upload, X, Package, Sparkles } from "lucide-react";
 import { CATEGORY_OPTIONS } from "@/lib/categories";
 import { resizeImageToSquare } from "@/lib/imageResize";
+import { AIListingAssistant } from "@/components/seller/AIListingAssistant";
+import { SellerAIPanel } from "@/components/seller/SellerAIPanel";
 
 // Categories now come from the unified category system
 const LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort", "Rodney Bay", "Soufriere", "Other"];
@@ -444,6 +446,15 @@ export default function SellerProductForm() {
                     />
                   </div>
 
+                  {/* AI Listing Assistant */}
+                  <AIListingAssistant
+                    productName={formData.name}
+                    category={formData.category}
+                    price={formData.price}
+                    currentDescription={formData.description}
+                    onApplyDescription={(desc) => setFormData({ ...formData, description: desc })}
+                  />
+
                   {/* Submit */}
                   <div className="flex gap-2 pt-2">
                     <Button
@@ -473,6 +484,7 @@ export default function SellerProductForm() {
           </div>
         </main>
       </div>
+      <SellerAIPanel defaultMode="listing" />
     </>
   );
 }

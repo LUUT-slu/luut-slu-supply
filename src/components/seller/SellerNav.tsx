@@ -10,6 +10,7 @@ import {
   Home,
   Settings,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 

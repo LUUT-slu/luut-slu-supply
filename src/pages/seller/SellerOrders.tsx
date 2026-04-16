@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { SellerAIPanel } from "@/components/seller/SellerAIPanel";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { SellerNav } from "@/components/seller/SellerNav";
@@ -517,6 +518,7 @@ export default function SellerOrders() {
           </div>
         </main>
       </div>
+      <SellerAIPanel defaultMode="order" />
     </>
   );
 }

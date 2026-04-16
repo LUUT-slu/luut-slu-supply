@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { AIOrderHelper } from "@/components/seller/AIOrderHelper";
+import { SellerAIPanel } from "@/components/seller/SellerAIPanel";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { SellerNav } from "@/components/seller/SellerNav";
@@ -373,6 +375,26 @@ export default function SellerOrderDetail() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* AI Order Helper */}
+              <Card>
+                <CardContent className="pt-4">
+                  <AIOrderHelper
+                    order={{
+                      orderNumber: formatOrderNumber(order.order_number),
+                      customerName: order.customer_name,
+                      customerPhone: order.customer_phone,
+                      status: order.status,
+                      totalPrice: order.total_price,
+                      location: order.location,
+                      preferredDate: order.preferred_date,
+                      pickupTime: order.pickup_time || order.pickup_time_window,
+                      items: order.items,
+                      sellerName: profile?.seller_name,
+                    }}
+                  />
+                </CardContent>
+              </Card>
             </div>
 
             {/* Sidebar Actions */}
@@ -494,6 +516,7 @@ export default function SellerOrderDetail() {
         order={order}
         onSave={refetch}
       />
+      <SellerAIPanel defaultMode="order" />
     </>
   );
 }

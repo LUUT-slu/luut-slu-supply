@@ -29,3 +29,12 @@ verify_jwt = false
 
 [functions.ai-generate-description]
 verify_jwt = false
+
+[functions.ai-seller-assistant]
+verify_jwt = false
+
+[functions.ai-chat]
+verify_jwt = false
+
+[functions.ai-generate-description]
+verify_jwt = false
