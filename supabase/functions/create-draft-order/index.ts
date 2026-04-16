@@ -20,6 +20,7 @@ interface LineItem {
 interface DraftOrderRequest {
   customerName: string;
   customerPhone: string;
+  customerEmail?: string | null;
   location: string;
   preferredDate: string;
   pickupTime?: string;
@@ -256,7 +257,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: DraftOrderRequest = await req.json();
-    const { customerName, customerPhone, location, preferredDate, pickupTime, note, lineItems, totalPrice, discountCode } = body;
+    const { customerName, customerPhone, customerEmail, location, preferredDate, pickupTime, note, lineItems, totalPrice, discountCode } = body;
 
     if (!customerName || !customerPhone || !location || !preferredDate || !lineItems?.length) {
       return new Response(
@@ -283,6 +284,7 @@ serve(async (req) => {
       .insert({
         customer_name: customerName,
         customer_phone: customerPhone,
+        customer_email: customerEmail || null,
         location: location,
         preferred_date: preferredDate,
         pickup_time: pickupTime || null,
