@@ -1,86 +1,54 @@
 
 
-## Transactional Email System with Resend
+## Two AI Features: Customer Chatbot + Seller Description Generator
 
-### Overview
-Set up a Resend-powered email system that sends order confirmation, pickup details, and order-ready emails to customers. This requires adding an email field to checkout since one doesn't exist today.
+### Feature 1: AI Customer Chatbot
 
-### Problem: No Customer Email Collected
-The current checkout collects name and phone only — no email. The `orders` table has no email column. This must be added first.
+A floating chat widget on the storefront that helps customers find products, answer questions about policies, and navigate the marketplace.
 
-### Database Changes
+**Edge Function: `supabase/functions/ai-chat/index.ts`**
+- Uses Lovable AI gateway with `google/gemini-3-flash-preview`
+- System prompt includes: marketplace context (Luut SLU, Saint Lucia, Pay on Meetup), product catalog awareness, policy info (meetup locations, deposit policy, refund policy)
+- Accepts `messages` array, streams SSE response back
+- Includes a tool call to search products by querying the `seller_products` table and Shopify data
 
-**Migration: Add `customer_email` to `orders` table**
-```sql
-ALTER TABLE public.orders ADD COLUMN customer_email text;
-```
-Nullable — email remains optional so existing orders and non-email checkouts still work.
+**Component: `src/components/AIChatWidget.tsx`**
+- Floating chat bubble (bottom-left to avoid conflict with WhatsApp button on bottom-right)
+- Opens a chat panel with message history, input field, and streaming AI responses
+- Renders markdown in AI responses via `react-markdown`
+- Mobile responsive (full-width drawer on mobile, panel on desktop)
+- Messages stored in local state only (no persistence needed)
 
-### New Edge Function: `send-order-email`
+**Integration:**
+- Added to `src/pages/Index.tsx` and other storefront pages alongside existing `ChatButton`
+- Uses the SSE streaming pattern from the AI gateway docs
 
-Single edge function that handles all three email types based on a `type` parameter:
-- `order_confirmation` — sent after order creation
-- `order_confirmed` — sent when seller confirms order
-- `order_ready` — sent when order is marked completed/ready
+### Feature 2: AI Product Description Generator
 
-Uses the `RESEND_API_KEY` secret (already configured) via the Resend connector gateway pattern with `LOVABLE_API_KEY`.
+A "Generate Description" button on the seller product form that creates a compelling product description from the product name, category, and price.
 
-Builds clean, mobile-friendly HTML emails with Luut SLU branding. Each email includes:
-- Customer name, order number
-- Items list with prices
-- Pickup location, date, time
-- Total price
-- Appropriate messaging per email type
+**Edge Function: `supabase/functions/ai-generate-description/index.ts`**
+- Uses Lovable AI gateway with `google/gemini-3-flash-preview`
+- Non-streaming (simple invoke)
+- System prompt: "Write a short, appealing product description for a Saint Lucia marketplace. Max 200 characters. Tone: casual, local, trustworthy."
+- Accepts `productName`, `category`, `price` — returns generated description text
 
-Only sends if `customer_email` is present on the order.
+**Integration in `src/pages/seller/SellerProductForm.tsx`:**
+- Add a "Generate with AI" button next to the Description field
+- On click, calls the edge function with current form data
+- Populates the description textarea with the result
+- Shows loading state during generation
 
-### Checkout Changes (`src/pages/Checkout.tsx`)
+### Config
+- Add both functions to `supabase/config.toml` with `verify_jwt = false`
+- No new secrets needed (uses existing `LOVABLE_API_KEY`)
+- No database changes needed
 
-1. Add optional `customerEmail` state field with email input (Mail icon, placed after phone)
-2. Pass `customerEmail` to `create-draft-order` edge function
-3. Auto-fill from `customer_profiles.email` if logged in (existing autofill pattern)
-
-### Edge Function Changes (`create-draft-order/index.ts`)
-
-1. Accept `customerEmail` in the request body
-2. Save to `orders.customer_email`
-3. After successful order creation, call `send-order-email` with `type: order_confirmation`
-
-### Status Change Email Triggers
-
-**`src/pages/seller/SellerOrderDetail.tsx`** — After `handleStatusChange`:
-- When status changes to `confirmed` → invoke `send-order-email` with `type: order_confirmed`
-- When status changes to `completed` → invoke `send-order-email` with `type: order_ready`
-
-**`src/pages/AdminOrders.tsx`** — Same triggers for admin status changes.
-
-### Edge Function Config (`supabase/config.toml`)
-```toml
-[functions.send-order-email]
-verify_jwt = false
-```
-
-### Email Templates (inline HTML in edge function)
-
-Clean minimal design with:
-- Luut SLU header
-- Order number prominently displayed
-- Items table
-- Pickup details card
-- Mobile-responsive layout
-- Brand colors from site
-
-### Files Changed
-1. `supabase/migrations/` — Add `customer_email` column
-2. `supabase/functions/send-order-email/index.ts` — New edge function
-3. `supabase/functions/create-draft-order/index.ts` — Save email, trigger confirmation
-4. `supabase/config.toml` — Add function config
-5. `src/pages/Checkout.tsx` — Add email input field, pass to edge function
-6. `src/pages/seller/SellerOrderDetail.tsx` — Trigger emails on status change
-7. `src/pages/AdminOrders.tsx` — Trigger emails on status change
-
-### Security
-- Email only sent if customer provided one (no empty sends)
-- Resend API key accessed via server-side env only
-- No sensitive data exposed to client beyond what's already shown
+### Files Changed/Created
+1. `supabase/functions/ai-chat/index.ts` — New edge function for chatbot
+2. `supabase/functions/ai-generate-description/index.ts` — New edge function for descriptions
+3. `src/components/AIChatWidget.tsx` — New chat widget component
+4. `src/pages/Index.tsx` — Add chat widget
+5. `src/pages/seller/SellerProductForm.tsx` — Add generate description button
+6. `supabase/config.toml` — Add function configs
 
