@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Minus, Plus, MapPin, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
+import { ProductReviews } from "@/components/ProductReviews";
+import { ReviewPopup } from "@/components/ReviewPopup";
 
 interface LocalProduct {
   id: string;
@@ -303,6 +305,12 @@ export default function LocalProductDetail() {
               </span>
             </div>
           )}
+        </div>
+
+        {/* Product Reviews */}
+        <div className="mt-8 space-y-4">
+          <ProductReviews productHandle={`lovable-${product.id}`} productTitle={product.name} />
+          <ReviewPopup productHandle={`lovable-${product.id}`} productTitle={product.name} />
         </div>
 
         {/* Info sections */}

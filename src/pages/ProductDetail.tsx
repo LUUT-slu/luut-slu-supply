@@ -25,6 +25,8 @@ import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
+import { ProductReviews } from "@/components/ProductReviews";
+import { ReviewPopup } from "@/components/ReviewPopup";
 
 // Meetup locations - can be extracted from product description or configured per seller
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
@@ -517,6 +519,11 @@ export default function ProductDetail() {
                   </p>
                 </div>
               }
+
+              {/* ========== PRODUCT REVIEWS ========== */}
+              <Separator />
+              <ProductReviews productHandle={handle || ""} productTitle={product.title} />
+              <ReviewPopup productHandle={handle} productTitle={product.title} />
 
               {/* ========== TAGS ========== */}
               {product.tags && product.tags.length > 0 &&
