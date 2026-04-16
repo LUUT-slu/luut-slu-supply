@@ -67,6 +67,7 @@ export default function SellerDashboardNew() {
   ];
 
   return (
+    <>
     <div className="flex min-h-screen flex-col bg-background">
         <SellerNav 
           sellerName={profile?.seller_name} 
@@ -246,5 +247,6 @@ export default function SellerDashboardNew() {
         </main>
       </div>
       <SellerAIPanel />
+    </>
   );
 }
