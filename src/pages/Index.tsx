@@ -45,7 +45,7 @@ export default function Index() {
             <img
               src={heroImage}
               alt="Luut SLU storefront"
-              className="w-full h-full object-cover opacity-70"
+              className="w-full h-full object-cover bg-secondary-foreground opacity-100"
               width={1920}
               height={1080}
               fetchPriority="high"
