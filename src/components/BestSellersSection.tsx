@@ -3,8 +3,13 @@ import { useBestSellers } from "@/hooks/useBestSellers";
 import { getOptimizedImageUrl } from "@/lib/shopify";
 import { TrendingUp } from "lucide-react";
 
-export function BestSellersSection() {
-  const { data: bestSellers, isLoading } = useBestSellers();
+interface BestSellersSectionProps {
+  limit?: number;
+}
+
+export function BestSellersSection({ limit }: BestSellersSectionProps) {
+  const { data: rawBestSellers, isLoading } = useBestSellers();
+  const bestSellers = limit ? rawBestSellers?.slice(0, limit) : rawBestSellers;
 
   if (isLoading) {
     return (

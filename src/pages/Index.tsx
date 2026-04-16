@@ -94,7 +94,7 @@ export default function Index() {
             case "trending":
               return <WhatPeopleAreBuyingSection key={section.id} />;
             case "best_sellers":
-              return <BestSellersSection key={section.id} />;
+              return <BestSellersSection key={section.id} limit={section.limit} />;
             case "new_arrivals":
               return <HomeNewArrivalsSection key={section.id} label={section.label} limit={section.limit} />;
             case "featured":
