@@ -23,7 +23,6 @@ import { CATEGORY_OPTIONS } from "@/lib/categories";
 import { resizeImageToSquare } from "@/lib/imageResize";
 import { AIListingAssistant } from "@/components/seller/AIListingAssistant";
 import { SellerAIPanel } from "@/components/seller/SellerAIPanel";
-import { resizeImageToSquare } from "@/lib/imageResize";
 
 // Categories now come from the unified category system
 const LOCATIONS = ["Castries", "Gros Islet", "Vieux Fort", "Rodney Bay", "Soufriere", "Other"];
