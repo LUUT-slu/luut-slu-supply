@@ -116,6 +116,20 @@ serve(async (req) => {
 
     console.log("Order token:", order.order_token);
 
+    // Fire-and-forget merchant notification email (never blocks order creation)
+    try {
+      fetch(`${supabaseUrl}/functions/v1/send-merchant-order-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ orderId: order.id }),
+      }).catch((e) => console.error("Merchant email dispatch failed:", e));
+    } catch (e) {
+      console.error("Merchant email dispatch threw:", e);
+    }
+
     // Return order confirmation
     return new Response(
       JSON.stringify({
