@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const MERCHANT_EMAIL = "usual.suspect118@gmail.com";
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
+const RESEND_URL = "https://api.resend.com/emails";
 
 interface LineItem {
   title: string;
@@ -112,11 +112,10 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     const resendKey = Deno.env.get("RESEND_API_KEY");
 
-    if (!lovableKey || !resendKey) {
-      console.error("Missing email gateway secrets");
+    if (!resendKey) {
+      console.error("Missing RESEND_API_KEY");
       return new Response(JSON.stringify({ error: "Email not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -146,12 +145,11 @@ serve(async (req) => {
     const subject = `New Order ${orderNumber} — ${firstItem}`;
     const html = buildHtml(order);
 
-    const resp = await fetch(`${GATEWAY_URL}/emails`, {
+    const resp = await fetch(RESEND_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": resendKey,
+        Authorization: `Bearer ${resendKey}`,
       },
       body: JSON.stringify({
         from: "Luut SLU <onboarding@resend.dev>",
