@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const MERCHANT_EMAIL = "usual.suspect.118@gmail.com";
 const RESEND_URL = "https://api.resend.com/emails";
+const SITE_URL = "https://luut-slu-supply.lovable.app";
 
 interface LineItem {
   title: string;
@@ -61,6 +62,17 @@ function buildHtml(order: any): string {
             <tr><td style="padding:8px 0;color:#666;">Pickup date</td><td style="padding:8px 0;">${escape(order.preferred_date)}</td></tr>
             ${pickupTime ? `<tr><td style="padding:8px 0;color:#666;">Pickup time</td><td style="padding:8px 0;">${escape(pickupTime)}</td></tr>` : ""}
             ${noteRow}
+          </table>
+
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+            <tr>
+              <td style="padding-right:8px;">
+                <a href="${SITE_URL}/admin/orders/${order.id}" style="display:inline-block;background:#000;color:#d4af37;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:700;font-size:14px;">View Order →</a>
+              </td>
+              <td>
+                <a href="${SITE_URL}/admin/orders" style="display:inline-block;background:#fff;color:#000;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:700;font-size:14px;border:1px solid #000;">View All Orders</a>
+              </td>
+            </tr>
           </table>
 
           <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:6px;overflow:hidden;font-size:14px;">

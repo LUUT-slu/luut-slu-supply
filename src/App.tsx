@@ -210,6 +210,11 @@ const App = () => (
                 <AdminOrdersPage />
               </RouteGuard>
             } />
+            <Route path="/admin/orders/:orderId" element={
+              <RouteGuard requiredRole="admin">
+                <OrderDetails />
+              </RouteGuard>
+            } />
             <Route path="/admin/partners" element={
               <RouteGuard requiredRole="admin">
                 <ManagePartners />
