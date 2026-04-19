@@ -47,6 +47,7 @@ const MyOrders = lazyRetry(() => import("./pages/MyOrders"));
 const OrderDetails = lazyRetry(() => import("./pages/OrderDetails"));
 const OrderComplete = lazyRetry(() => import("./pages/OrderComplete"));
 const OrderConfirmed = lazyRetry(() => import("./pages/OrderConfirmed"));
+const OrderStatus = lazyRetry(() => import("./pages/OrderStatus"));
 const AdminSellersNew = lazyRetry(() => import("./pages/AdminSellersNew"));
 const AdminSellerRequests = lazyRetry(() => import("./pages/AdminSellerRequests"));
 const AdminHome = lazyRetry(() => import("./pages/AdminHome"));
@@ -123,6 +124,7 @@ const App = () => (
             <Route path="/contact" element={<Contact />} />
             <Route path="/my-orders" element={<MyOrders />} />
             <Route path="/order/:orderId" element={<OrderDetails />} />
+            <Route path="/order-status/:orderId" element={<OrderStatus />} />
             <Route path="/order-confirmed" element={<OrderConfirmed />} />
             <Route path="/order-complete" element={<OrderComplete />} />
             
