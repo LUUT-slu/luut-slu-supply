@@ -525,6 +525,28 @@ serve(async (req) => {
 
     console.log("Order complete. Local:", localOrder.id, "Shopify:", draftOrder?.id || "none");
 
+    // Trigger merchant notification email after successful order creation (fire-and-forget)
+    try {
+      const merchantEmailUrl = `${supabaseUrl}/functions/v1/send-merchant-order-email`;
+      fetch(merchantEmailUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ orderId: localOrder.id }),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const detail = await res.text();
+          console.error("Merchant email failed:", res.status, detail);
+        } else {
+          console.log("Merchant email triggered for order", localOrder.id);
+        }
+      }).catch(err => console.error("Merchant email error:", err));
+    } catch (merchantEmailErr) {
+      console.error("Merchant email trigger error (non-fatal):", merchantEmailErr);
+    }
+
     // Trigger order confirmation email (fire-and-forget)
     if (localOrder.customer_email) {
       try {

@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MERCHANT_EMAIL = "usual.suspect118@gmail.com";
+const MERCHANT_EMAIL = "usual.suspect.118@gmail.com";
 const RESEND_URL = "https://api.resend.com/emails";
 
 interface LineItem {
