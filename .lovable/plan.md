@@ -1,67 +1,51 @@
 
 
-## Improved Poster Export — Mobile + Desktop
+## Fix: Style & Branding (Presets) Not Affecting Single-Product Posters
 
-Replace the simple `<a download>` flow with a device-aware export that uses the Web Share API (Level 2, with files) on mobile when available and falls back to a real file download elsewhere. Filenames become descriptive and format-aware.
+### Root cause
+The Style & Branding panel writes to `activePresetId` + `presetOverrides` → `activePreset` is correctly piped into `MultiProductTemplate.preset`, but **the single-product `MarketingTemplate` ignores `preset` entirely**. Its three layouts (`CleanLayout`, `HypeLayout`, `MinimalLayout` at lines 981/1078/1203 of `templates.tsx`) hardcode all colors, fonts, radii, badge & CTA shapes. They only switch on `style="clean"|"hype"|"minimal"`, and `style` is now permanently `"hype"` (the old style chip row was removed when PresetPicker landed).
 
-### Behavior matrix
+Result: changing preset, accent, density, badge shape, CTA shape, etc. does nothing visible on Single Promo posters (the most-used type).
 
-| Device | Capability | Action |
-|---|---|---|
-| Desktop (Chrome/Edge/Firefox/Safari) | — | Blob → `<a download>` → saves to Downloads folder |
-| Mobile w/ `navigator.canShare({files})` (iOS Safari 15+, Android Chrome) | Share sheet | Opens native share → user taps "Save Image" / "Save to Photos" |
-| Mobile without share-files support | — | Blob URL download fallback + toast hint "Tap and hold the image to save" |
+### Fix
 
-Detection: `'share' in navigator && navigator.canShare?.({ files: [testFile] })` — only call share path when truly supported, otherwise fall back. Wrap in try/catch so a user cancelling share doesn't show error.
+**1. Make the single-product template preset-driven** (`src/components/marketing/templates.tsx`)
+- In `MarketingTemplate`, when `props.preset` is provided, route to a new unified `PresetLayout` instead of CleanLayout/HypeLayout/MinimalLayout. Keep the old three layouts as fallback when no preset is supplied (back-compat).
+- `PresetLayout` reuses the same token-mapping pattern already in `MultiProductTemplate`:
+  - `bg = preset.palette.bg` (with `gradient`/`glow`/`dark`/`minimal` background variants)
+  - `accent`, `text`, `muted`, `surface` from palette
+  - `densityScale(preset.layout.density)` → padding/gap multipliers
+  - `preset.layout.radius` → image & card corner radii
+  - `preset.typography.scale` × base headline size, `headlineWeight`, `headlineCase`
+  - Badge shape/fill via existing `PresetBadge` helper
+  - CTA shape/fill via existing `PresetCTA` helper
+- Layout structure: hero product image (centered, 1:1 with preset radius), brand mark top-right, headline + tagline + price block, urgency ribbon, CTA button, meetup line bottom — same composition as today's HypeLayout but every visual token reads from preset.
+- Variant grid (when `variantImages` present) uses preset surface + radius too.
 
-### Filename format
+**2. Remove the dead `style` switching logic from MarketingStudio**
+- Delete the unused `STYLES` const and `style` state (`src/pages/admin/MarketingStudio.tsx`).
+- Stop passing `style` to `templateProps` / `multiTemplateProps`. The PresetPicker is now the sole styling control.
 
-`luutslu-{posterType}-{slug}-{format}.png`
-
-- Single product: `luutslu-product-{productSlug}-{format}.png` → `luutslu-product-blue-hoodie-story.png`
-- Best Sellers: `luutslu-best-sellers-week-{yyyy-mm-dd}.png`
-- New Arrivals / Restocked / Almost Gone / Promotions: `luutslu-{type}-{yyyy-mm-dd}-{format}.png`
-- Promotion campaign selected: `luutslu-promo-{campaignSlug}-{format}.png`
-
-Helper `buildPosterFilename(posterType, format, opts)` lives next to `handleExport`.
-
-### Export pipeline (replace existing `handleExport`)
-
-1. Render `exportRef` via `toPng` with `pixelRatio: 2` (sharper download — preview stays at 1) and `cacheBust: true`.
-2. Convert data URL → `Blob` → `File` (`new File([blob], filename, {type:'image/png'})`).
-3. **Try share path** if `navigator.canShare?.({ files: [file] })` and `isMobile` → `await navigator.share({ files: [file], title, text })`. On `AbortError` silently no-op. On other errors fall through.
-4. **Fallback download** path: create blob URL → temp `<a>` → click → `URL.revokeObjectURL` after 1s.
-5. iOS Safari quirk: when share unavailable, briefly show a sheet/toast "Press and hold the image below to save" and render a temporary preview image (download often fails to save to Photos directly on iOS without share).
-
-### UI updates in MarketingStudio
-
-- Rename button text: **Save / Share** on mobile (when share-files supported), **Download PNG** otherwise. Detect once at mount.
-- Keep existing icon (Download) but swap to `Share2` icon when share path active.
-- Disable + spinner unchanged.
-- Toast messaging:
-  - Desktop: "Saved to Downloads"
-  - Mobile share: no toast (the OS sheet handles feedback)
-  - Mobile fallback: "Image ready — tap and hold to save to Photos"
+**3. Wire density override correctly to multi**
+- `MultiProductTemplate` already reads `preset.layout.density` — confirm overrides flow through `mergePreset` (they do, verified in `marketingPresets.ts` lines 200-220).
 
 ### Files
 
-**Edited (1)**
-- `src/pages/admin/MarketingStudio.tsx`
-  - Add `buildPosterFilename()` helper
-  - Add `canShareFiles()` detection helper
-  - Rewrite `handleExport` with share-first then download fallback
-  - Bump `pixelRatio` to 2 for export
-  - Dynamic button label/icon based on capability
+**Edited (2)**
+- `src/components/marketing/templates.tsx` — add `PresetLayout` (single-product, preset-aware); branch `MarketingTemplate` to it when `preset` is present
+- `src/pages/admin/MarketingStudio.tsx` — drop unused `style` state and `STYLES` const; remove `style` prop from template props
+
+### Verification (after switch to default mode)
+- Switch preset (Clean → Hype → Sale → Luxury) on a Single Promo poster → background, accent, headline color, CTA shape, badge shape all change live
+- Tweak Accent color in override panel → headline glow + CTA bg update instantly
+- Tweak Density (tight/normal/spaced) → padding & spacing visibly change
+- Tweak Badge shape (pill/ribbon/chip) → urgency ribbon shape changes
+- Tweak CTA shape (pill/block/outline) → CTA renders correctly
+- Multi-product posters still respond to all the same controls (already worked, just confirm no regression)
 
 ### Out of scope
-- Native gallery write (browser sandbox prevents direct Photos API access — share sheet is the canonical mobile path)
-- Capacitor / native plugin route (would require packaging as a native app)
-- PDF / multi-format export
-- Bulk export of multiple posters at once
-
-### Result
-- Desktop: tap **Download PNG** → file lands in Downloads folder named `luutslu-best-sellers-week-2026-04-20.png`
-- Android Chrome / iOS Safari (modern): tap **Save / Share** → native share sheet opens → user picks "Save to Photos" / "Save Image"
-- Older mobile browser: PNG downloads + clear instruction toast for saving to gallery
-- Preview always matches export (same render node, just at 2× pixel ratio)
+- Reworking multi-product (already correctly preset-driven)
+- Changing PresetPicker, PresetOverridePanel, or AI extraction
+- Persisting presets server-side
+- Mobile layout (already addressed in prior turn)
 
