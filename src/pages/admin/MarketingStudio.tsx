@@ -687,9 +687,9 @@ export default function MarketingStudio() {
             </Card>
           )}
 
-          <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)}>
-            <div className="-mx-1 overflow-x-auto px-1">
-              <TabsList className="grid w-full min-w-[480px] grid-cols-6">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)} className="w-full min-w-0">
+            <div className="w-full overflow-x-auto">
+              <TabsList className="inline-flex w-auto min-w-full justify-start">
                 {FORMATS.map((f) => (
                   <TabsTrigger key={f.key} value={f.key} className="text-xs">
                     {f.label}
@@ -704,7 +704,7 @@ export default function MarketingStudio() {
             {/* Image tabs */}
             {FORMATS.map((f) => (
               <TabsContent key={f.key} value={f.key} className="mt-4">
-                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_320px] [&>*]:min-w-0">
                   {/* Preview */}
                   <Card>
                     <CardHeader className="pb-2">
