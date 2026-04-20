@@ -1,9 +1,20 @@
 import { forwardRef } from "react";
 import type { PosterPreset } from "@/lib/marketingPresets";
 import { densityScale } from "@/lib/marketingPresets";
+import { cropToTransform, DEFAULT_CROP, type CropState } from "@/lib/imageCropState";
 
 export type TemplateStyle = "clean" | "hype" | "minimal";
 export type TemplateFormat = "story" | "post" | "ad" | "portrait";
+
+/**
+ * Props passed by Marketing Studio so any hero/tile image becomes editable.
+ *  - cropMap: per-image crop state (`scale`, normalized offsets)
+ *  - onImageClick: open the image editor for that image URL
+ */
+export interface EditableImageContext {
+  cropMap?: Record<string, CropState>;
+  onImageClick?: (imageUrl: string) => void;
+}
 
 // Format poster prices: no decimal places, EC$ prefix.
 export function formatPosterPrice(amount?: string | number): string {
