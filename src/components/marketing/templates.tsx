@@ -36,6 +36,399 @@ const SIZE: Record<TemplateFormat, { w: number; h: number }> = {
 
 export const TEMPLATE_SIZE = SIZE;
 
+// ---------------- Multi-product (content-engine) template ----------------
+
+export interface MultiProductItem {
+  id: string;
+  title: string;
+  imageUrl?: string;
+  price?: string;
+  badge?: string;
+  hint?: string;
+}
+
+export interface MultiTemplateProps {
+  style: TemplateStyle;
+  format: TemplateFormat;
+  headline: string;
+  subhead?: string;
+  products: MultiProductItem[];
+  brandName: string;
+  brandLogoUrl?: string;
+  meetupText: string;
+  ctaText: string;
+  urgencyText?: string;
+  showPrice: boolean;
+  showBadges: boolean;
+  showLabels: boolean;
+}
+
+export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProps>(
+  function MultiProductTemplate(props, ref) {
+    const { format } = props;
+    const { w, h } = SIZE[format];
+    const dark = props.style === "hype";
+    const cream = props.style === "minimal";
+
+    const bg = dark
+      ? "#0a0a0a"
+      : cream
+        ? "linear-gradient(135deg, #f6f1ea 0%, #e8dcc8 100%)"
+        : "#ffffff";
+    const fg = dark ? "#ffffff" : "#0a0a0a";
+    const accent = dark ? "#39ff14" : cream ? "#7a6a52" : "#ff3d00";
+
+    const isStory = format === "story";
+    const isAd = format === "ad";
+    const isPortrait = format === "portrait";
+    const padding = isStory || isPortrait ? "70px 56px" : isAd ? "44px" : "56px";
+
+    return (
+      <div
+        ref={ref}
+        style={{
+          width: `${w}px`,
+          height: `${h}px`,
+          position: "relative",
+          overflow: "hidden",
+          fontFamily:
+            "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+          background: bg,
+          color: fg,
+          padding,
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {dark && (
+          <>
+            <div
+              style={{
+                position: "absolute",
+                top: -180,
+                right: -180,
+                width: 520,
+                height: 520,
+                borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(255,87,34,0.5), transparent 70%)",
+                filter: "blur(20px)",
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: -150,
+                left: -150,
+                width: 460,
+                height: 460,
+                borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(57,255,20,0.32), transparent 70%)",
+                filter: "blur(20px)",
+                pointerEvents: "none",
+              }}
+            />
+          </>
+        )}
+
+        {/* Header */}
+        <div
+          style={{
+            position: "relative",
+            zIndex: 2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 24,
+          }}
+        >
+          <div
+            style={{
+              background: accent,
+              color: dark ? "#0a0a0a" : "#ffffff",
+              padding: "10px 20px",
+              borderRadius: 999,
+              fontSize: isAd ? 18 : 22,
+              fontWeight: 800,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+            }}
+          >
+            {props.urgencyText || "FEATURED"}
+          </div>
+          <BrandMark
+            brandName={props.brandName}
+            brandLogoUrl={props.brandLogoUrl}
+            dark={dark}
+            size={isAd ? 44 : 64}
+          />
+        </div>
+
+        {/* Headline */}
+        <div
+          style={{
+            position: "relative",
+            zIndex: 2,
+            fontSize: isStory ? 92 : isAd ? 56 : isPortrait ? 80 : 72,
+            fontWeight: 900,
+            lineHeight: 0.95,
+            letterSpacing: "-0.03em",
+            textTransform: "uppercase",
+            marginBottom: props.subhead ? 8 : 24,
+          }}
+        >
+          {props.headline}
+        </div>
+        {props.subhead && (
+          <div
+            style={{
+              position: "relative",
+              zIndex: 2,
+              fontSize: isStory ? 26 : 22,
+              color: dark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.55)",
+              marginBottom: 24,
+            }}
+          >
+            {props.subhead}
+          </div>
+        )}
+
+        {/* Product grid */}
+        <div style={{ position: "relative", zIndex: 2, flex: 1, minHeight: 0 }}>
+          <ProductGrid
+            items={props.products}
+            dark={dark}
+            showPrice={props.showPrice}
+            showBadges={props.showBadges}
+            showLabels={props.showLabels}
+          />
+        </div>
+
+        {/* Footer CTA */}
+        <div
+          style={{
+            position: "relative",
+            zIndex: 2,
+            marginTop: 24,
+            display: "flex",
+            flexDirection: isAd ? "row" : "column",
+            gap: 12,
+            alignItems: isAd ? "center" : "stretch",
+            justifyContent: isAd ? "space-between" : "flex-start",
+          }}
+        >
+          <div
+            style={{
+              fontSize: isAd ? 20 : 24,
+              color: dark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.6)",
+              fontWeight: 600,
+            }}
+          >
+            📍 {props.meetupText}
+          </div>
+          <div
+            style={{
+              background: dark ? "#ffffff" : "#0a0a0a",
+              color: dark ? "#0a0a0a" : "#ffffff",
+              padding: "18px 28px",
+              borderRadius: 14,
+              fontSize: isAd ? 22 : 28,
+              fontWeight: 800,
+              letterSpacing: 2,
+              textAlign: "center",
+              textTransform: "uppercase",
+            }}
+          >
+            {props.ctaText}
+          </div>
+        </div>
+      </div>
+    );
+  },
+);
+
+function ProductGrid({
+  items,
+  dark,
+  showPrice,
+  showBadges,
+  showLabels,
+}: {
+  items: MultiProductItem[];
+  dark: boolean;
+  showPrice: boolean;
+  showBadges: boolean;
+  showLabels: boolean;
+}) {
+  const tiles = items.slice(0, 4);
+  const overflow = items.length - tiles.length;
+  const count = tiles.length;
+
+  let columns = "1fr 1fr";
+  let rows = "1fr 1fr";
+  if (count === 1) {
+    columns = "1fr";
+    rows = "1fr";
+  } else if (count === 2) {
+    columns = "1fr 1fr";
+    rows = "1fr";
+  } else if (count === 3) {
+    columns = "1fr 1fr";
+    rows = "1fr 1fr";
+  }
+
+  const tileBg = dark ? "rgba(255,255,255,0.06)" : "#f4f4f4";
+  const labelBg = dark ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.92)";
+  const labelFg = dark ? "#ffffff" : "#0a0a0a";
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "grid",
+        gridTemplateColumns: columns,
+        gridTemplateRows: rows,
+        gap: 12,
+      }}
+    >
+      {tiles.map((item, i) => {
+        const spanFull = count === 3 && i === 0;
+        return (
+          <div
+            key={item.id}
+            style={{
+              gridColumn: spanFull ? "1 / span 2" : "auto",
+              position: "relative",
+              overflow: "hidden",
+              borderRadius: 18,
+              background: tileBg,
+            }}
+          >
+            {item.imageUrl ? (
+              <img
+                src={item.imageUrl}
+                crossOrigin="anonymous"
+                alt=""
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: dark ? "rgba(255,255,255,0.4)" : "#999",
+                  fontSize: 22,
+                }}
+              >
+                No image
+              </div>
+            )}
+
+            {/* Badge top-left */}
+            {showBadges && item.badge && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  left: 12,
+                  background: "#ff3d00",
+                  color: "#ffffff",
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  fontSize: 18,
+                  fontWeight: 800,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                }}
+              >
+                {item.badge}
+              </div>
+            )}
+
+            {/* Overflow chip top-right on last tile */}
+            {overflow > 0 && i === tiles.length - 1 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  background: "#0a0a0a",
+                  color: "#ffffff",
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  fontSize: 20,
+                  fontWeight: 900,
+                }}
+              >
+                +{overflow}
+              </div>
+            )}
+
+            {/* Bottom label: name + price */}
+            {(showLabels || showPrice) && (item.title || item.price) && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  right: 12,
+                  bottom: 12,
+                  background: labelBg,
+                  color: labelFg,
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                }}
+              >
+                {showLabels && (
+                  <div
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 700,
+                      lineHeight: 1.1,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      flex: 1,
+                    }}
+                  >
+                    {item.title}
+                  </div>
+                )}
+                {showPrice && item.price && (
+                  <div
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 800,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    EC${item.price}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------- Single-product template (existing) ----------------
+
 export const MarketingTemplate = forwardRef<HTMLDivElement, TemplateProps>(
   function MarketingTemplate(props, ref) {
     const { format, style } = props;

@@ -24,11 +24,19 @@ import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { useSiteSettings, DEFAULT_MARKETING_STUDIO } from "@/hooks/useSiteSettings";
 import {
   MarketingTemplate,
+  MultiProductTemplate,
   TemplateFormat,
   TemplateStyle,
 } from "@/components/marketing/templates";
 import { CopyPanel } from "@/components/marketing/CopyPanel";
 import { VariantSelector, VariantMode, VariantOption } from "@/components/marketing/VariantSelector";
+import { PosterTypeSelector } from "@/components/marketing/PosterTypeSelector";
+import { ProductSourceCard } from "@/components/marketing/ProductSourceCard";
+import {
+  PosterType,
+  MarketingProduct,
+  getPosterTypeMeta,
+} from "@/lib/marketingPosterTypes";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
@@ -128,10 +136,29 @@ export default function MarketingStudio() {
   const [tagline, setTagline] = useState("");
   const [showPrice, setShowPrice] = useState(defaults.showPriceByDefault);
 
-  // Variant selection
+  // Poster type (content engine)
+  const [posterType, setPosterType] = useState<PosterType>("single");
+  const [sourceSelectedIds, setSourceSelectedIds] = useState<string[]>([]);
+  const [sourceLimit, setSourceLimit] = useState(4);
+  const [sourceProducts, setSourceProducts] = useState<MarketingProduct[]>([]);
+  const [showTileBadges, setShowTileBadges] = useState(true);
+  const [showTileLabels, setShowTileLabels] = useState(true);
+
+  // Variant selection (single-promo only)
   const [variantMode, setVariantMode] = useState<VariantMode>("single");
   const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([]);
   const [showVariantLabels, setShowVariantLabels] = useState(true);
+
+  // Switch poster type → adapt urgency / CTA defaults so the new poster reads correctly
+  useEffect(() => {
+    const meta = getPosterTypeMeta(posterType);
+    if (posterType !== "single") {
+      setUrgencyText(meta.defaultUrgency);
+      if (meta.defaultCta) setCtaText(meta.defaultCta);
+    }
+    // reset source selection when changing type
+    setSourceSelectedIds([]);
+  }, [posterType]);
 
   useEffect(() => {
     setBrandName(defaults.brandName);
@@ -231,8 +258,16 @@ export default function MarketingStudio() {
   const exportRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
+  const isMulti = posterType !== "single";
+  const meta = getPosterTypeMeta(posterType);
+
   const handleExport = async () => {
-    if (!exportRef.current || !productPayload) return;
+    if (!exportRef.current) return;
+    if (!isMulti && !productPayload) return;
+    if (isMulti && sourceProducts.length === 0) {
+      toast.error("Select at least one product to generate a poster");
+      return;
+    }
     setExporting(true);
     try {
       const dataUrl = await toPng(exportRef.current, {
@@ -241,8 +276,13 @@ export default function MarketingStudio() {
         skipFonts: false,
       });
       const link = document.createElement("a");
-      const safeName = productPayload.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 40);
-      link.download = `${safeName}-${tab}-${style}.png`;
+      const baseName = isMulti
+        ? meta.label.toLowerCase().replace(/\s+/g, "-")
+        : (productPayload?.name || "poster")
+            .replace(/[^a-z0-9]+/gi, "-")
+            .toLowerCase()
+            .slice(0, 40);
+      link.download = `${baseName}-${tab}-${style}.png`;
       link.href = dataUrl;
       link.click();
       toast.success("Image downloaded");
@@ -275,6 +315,31 @@ export default function MarketingStudio() {
       }
     : null;
 
+  const multiTemplateProps = isMulti
+    ? {
+        format: tab,
+        style,
+        headline: meta.headline,
+        subhead: tagline || undefined,
+        products: sourceProducts.map((p) => ({
+          id: p.id,
+          title: p.title,
+          imageUrl: p.imageUrl,
+          price: p.price,
+          badge: p.badge,
+          hint: p.hint,
+        })),
+        brandName,
+        brandLogoUrl: brandLogoUrl || undefined,
+        meetupText,
+        ctaText,
+        urgencyText,
+        showPrice,
+        showBadges: showTileBadges,
+        showLabels: showTileLabels,
+      }
+    : null;
+
   return (
     <AdminAuth>
       <div className="flex min-h-screen flex-col bg-background">
@@ -293,54 +358,85 @@ export default function MarketingStudio() {
             </div>
           </div>
 
-          {/* Product picker */}
+          {/* Poster Type chips */}
           <Card className="mb-4">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Pick a product</CardTitle>
+              <CardTitle className="text-sm">Poster Type</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Input
-                placeholder="Search products..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <Select value={selectedId} onValueChange={setSelectedId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={loading ? "Loading..." : "Select a product"} />
-                </SelectTrigger>
-                <SelectContent className="max-h-[60vh]">
-                  {filtered.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.title} — EC${p.price?.amount}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedProduct && (
-                <div className="flex items-center gap-3 rounded-md border p-2">
-                  {selectedProduct.images?.[0]?.url && (
-                    <img
-                      src={selectedProduct.images[0].url}
-                      alt=""
-                      className="h-12 w-12 rounded object-cover"
-                    />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{selectedProduct.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      EC${selectedProduct.price?.amount} ·{" "}
-                      <Badge variant="outline" className="text-[10px]">
-                        {selectedProduct.stockStatus.replace("_", " ")}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <CardContent>
+              <PosterTypeSelector value={posterType} onChange={setPosterType} />
             </CardContent>
           </Card>
 
-          {/* Variant selection */}
-          {variantOptions.length > 1 && (
+          {/* Single-product picker (only for Single Promo) */}
+          {!isMulti && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Pick a product</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Input
+                  placeholder="Search products..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <Select value={selectedId} onValueChange={setSelectedId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={loading ? "Loading..." : "Select a product"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[60vh]">
+                    {filtered.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.title} — EC${p.price?.amount}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedProduct && (
+                  <div className="flex items-center gap-3 rounded-md border p-2">
+                    {selectedProduct.images?.[0]?.url && (
+                      <img
+                        src={selectedProduct.images[0].url}
+                        alt=""
+                        className="h-12 w-12 rounded object-cover"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{selectedProduct.title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        EC${selectedProduct.price?.amount} ·{" "}
+                        <Badge variant="outline" className="text-[10px]">
+                          {selectedProduct.stockStatus.replace("_", " ")}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Multi-product source (everything except Single Promo) */}
+          {isMulti && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Products in poster</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProductSourceCard
+                  posterType={posterType}
+                  selectedIds={sourceSelectedIds}
+                  onSelectionChange={setSourceSelectedIds}
+                  limit={sourceLimit}
+                  onLimitChange={setSourceLimit}
+                  onProductsResolved={setSourceProducts}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Variant selection — only relevant for single product */}
+          {!isMulti && variantOptions.length > 1 && (
             <Card className="mb-4">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Select Variants</CardTitle>
@@ -386,7 +482,20 @@ export default function MarketingStudio() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      {!templateProps ? (
+                      {isMulti ? (
+                        !multiTemplateProps || multiTemplateProps.products.length === 0 ? (
+                          <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+                            Select products to preview
+                          </div>
+                        ) : (
+                          <PreviewBox
+                            templateWidth={PREVIEW_DIMS[f.key].w}
+                            templateHeight={PREVIEW_DIMS[f.key].h}
+                          >
+                            <MultiProductTemplate {...multiTemplateProps} />
+                          </PreviewBox>
+                        )
+                      ) : !templateProps ? (
                         <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
                           Pick a product to preview
                         </div>
@@ -401,7 +510,12 @@ export default function MarketingStudio() {
                       <Button
                         className="mt-4 w-full gap-2"
                         onClick={handleExport}
-                        disabled={!templateProps || exporting}
+                        disabled={
+                          exporting ||
+                          (isMulti
+                            ? !multiTemplateProps || multiTemplateProps.products.length === 0
+                            : !templateProps)
+                        }
                       >
                         {exporting ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -489,7 +603,19 @@ export default function MarketingStudio() {
                         <Label className="text-xs">Show price</Label>
                         <Switch checked={showPrice} onCheckedChange={setShowPrice} />
                       </div>
-                      {variantMode === "multi" && selectedVariantIds.length > 1 && (
+                      {isMulti && (
+                        <>
+                          <div className="flex items-center justify-between rounded-md border p-2">
+                            <Label className="text-xs">Show tile badges</Label>
+                            <Switch checked={showTileBadges} onCheckedChange={setShowTileBadges} />
+                          </div>
+                          <div className="flex items-center justify-between rounded-md border p-2">
+                            <Label className="text-xs">Show product names</Label>
+                            <Switch checked={showTileLabels} onCheckedChange={setShowTileLabels} />
+                          </div>
+                        </>
+                      )}
+                      {!isMulti && variantMode === "multi" && selectedVariantIds.length > 1 && (
                         <div className="flex items-center justify-between rounded-md border p-2">
                           <Label className="text-xs">Show variant labels</Label>
                           <Switch
@@ -537,9 +663,13 @@ export default function MarketingStudio() {
             }}
             aria-hidden
           >
-            {templateProps && tab !== ("copy" as any) && (
+            {tab !== ("copy" as any) && (
               <div ref={exportRef}>
-                <MarketingTemplate {...templateProps} />
+                {isMulti && multiTemplateProps && multiTemplateProps.products.length > 0 ? (
+                  <MultiProductTemplate {...multiTemplateProps} />
+                ) : !isMulti && templateProps ? (
+                  <MarketingTemplate {...templateProps} />
+                ) : null}
               </div>
             )}
           </div>
