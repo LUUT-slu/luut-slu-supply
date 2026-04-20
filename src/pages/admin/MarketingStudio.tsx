@@ -257,6 +257,24 @@ export default function MarketingStudio() {
     };
   }, [selectedProduct, variantMode, variantImages]);
 
+  // ---- AI-assisted image prep (single-product hero image) ----
+  const singlePrep = useImagePrep(productPayload?.productImage, tab);
+
+  // ---- AI-assisted image prep (multi-product, applied to all tiles) ----
+  const [multiPrepMode, setMultiPrepMode] = useState<
+    import("@/hooks/useImagePrep").PrepMode
+  >("original");
+  // Show prep preview against the first tile so admin sees what will apply.
+  const firstSourceImage = sourceProducts[0]?.imageUrl;
+  const multiPrepPreview = useImagePrep(firstSourceImage, tab);
+  // Keep the preview hook in sync with the global multi mode.
+  useEffect(() => {
+    if (multiPrepPreview.mode !== multiPrepMode) {
+      multiPrepPreview.setMode(multiPrepMode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [multiPrepMode]);
+
   const exportRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
