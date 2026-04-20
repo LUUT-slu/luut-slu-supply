@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { toJpeg, toCanvas } from "html-to-image";
+// html-to-image is large (~80KB) — lazy-loaded inside export handlers below.
+type ToJpegFn = (node: HTMLElement, opts?: any) => Promise<string>;
+type ToCanvasFn = (node: HTMLElement, opts?: any) => Promise<HTMLCanvasElement>;
+let _htmlToImageMod: { toJpeg: ToJpegFn; toCanvas: ToCanvasFn } | null = null;
+async function loadHtmlToImage() {
+  if (!_htmlToImageMod) {
+    _htmlToImageMod = await import("html-to-image");
+  }
+  return _htmlToImageMod;
+}
 import { Header } from "@/components/Header";
 import { AdminAuth } from "@/components/AdminAuth";
 import { BackButton } from "@/components/BackButton";
@@ -497,6 +506,7 @@ export default function MarketingStudio() {
         if (useHybrid) {
           dataUrl = await captureHybrid(exportRef.current, placeholders);
         } else {
+          const { toJpeg } = await loadHtmlToImage();
           dataUrl = await toJpeg(exportRef.current, {
             cacheBust: false,
             pixelRatio: 2,
@@ -610,6 +620,7 @@ export default function MarketingStudio() {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const pixelRatio = 2;
+          const { toCanvas } = await loadHtmlToImage();
           const canvas = await toCanvas(node, {
             cacheBust: false,
             pixelRatio,

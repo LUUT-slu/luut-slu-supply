@@ -26,9 +26,13 @@ function ProductCard({ product, index }: ProductCardProps) {
   const { node } = product;
   const rawImageUrl = node.images.edges[0]?.node.url;
   const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl, 400) : undefined;
+  const imageSrcSet = rawImageUrl
+    ? `${getOptimizedImageUrl(rawImageUrl, 300)} 300w, ${getOptimizedImageUrl(rawImageUrl, 500)} 500w, ${getOptimizedImageUrl(rawImageUrl, 800)} 800w`
+    : undefined;
   const price = node.priceRange.minVariantPrice;
   const badge = getBadgeForProduct(node.id);
   const anyAvailable = node.variants.edges.some(v => v.node.availableForSale);
+  const priority = index < 4;
 
   return (
     <Link
@@ -55,9 +59,13 @@ function ProductCard({ product, index }: ProductCardProps) {
           {imageUrl ? (
             <img
               src={imageUrl}
+              srcSet={imageSrcSet}
+              sizes="(max-width: 640px) 70vw, (max-width: 768px) 45vw, 16vw"
               alt={node.title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-103"
-              loading="lazy"
+              loading={priority ? "eager" : "lazy"}
+              fetchPriority={priority ? "high" : "auto"}
+              decoding="async"
               width={400}
               height={400}
             />
@@ -118,14 +126,22 @@ export function WhatPeopleAreBuyingSection() {
     loadProducts();
   }, []);
 
-  // Filter out sold-out, shuffle, and limit to 6
+  // Stable daily-seeded shuffle: prevents reorder thrash on re-renders
+  // and keeps a consistent above-the-fold image order across the session.
   const displayProducts = useMemo(() => {
     if (products.length === 0) return [];
     const inStock = products.filter(p =>
       p.node.variants.edges.some(v => v.node.availableForSale)
     );
-    const pool = inStock.length > 0 ? inStock : products; // fallback if everything is sold out
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    const pool = inStock.length > 0 ? inStock : products;
+    // Seed = day-of-year so order is deterministic per day per visitor.
+    const today = new Date();
+    let seed = today.getFullYear() * 1000 + today.getMonth() * 31 + today.getDate();
+    const rand = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+    const shuffled = [...pool].sort(() => rand() - 0.5);
     return shuffled.slice(0, 6);
   }, [products]);
 

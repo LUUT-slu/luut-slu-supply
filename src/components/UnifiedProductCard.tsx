@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { UnifiedProduct } from "@/lib/products";
 import { VariantListingProduct } from "@/lib/variantSplitter";
-import { getOptimizedImageUrl } from "@/lib/shopify";
+import { getOptimizedImageUrl, getImageSrcSet } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { Button } from "./ui/button";
 import { ShoppingCart, MapPin, Wallet } from "lucide-react";
@@ -11,6 +11,8 @@ import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 
 interface UnifiedProductCardProps {
   product: UnifiedProduct | VariantListingProduct;
+  /** Marks this card as above-the-fold so the image loads eagerly with high priority. */
+  priority?: boolean;
 }
 
 function isVariantListing(p: UnifiedProduct | VariantListingProduct): p is VariantListingProduct {
@@ -35,7 +37,7 @@ function StockBadge({ status }: { status: UnifiedProduct['stockStatus'] }) {
   return null;
 }
 
-export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
+export function UnifiedProductCard({ product, priority = false }: UnifiedProductCardProps) {
   const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
   const isMobile = useIsMobile();
@@ -55,8 +57,13 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
   const firstVariant = product.variants[0];
   const price = parseFloat(product.price.amount);
   const rawImageUrl = product.images[0]?.url;
-  // Use smaller thumbnails on mobile (300px) vs desktop (600px)
-  const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl, isMobile ? 300 : 600) : undefined;
+  // Mobile thumb 224px (covers 112px @ 2x DPR), desktop card 600px
+  const baseWidth = isMobile ? 224 : 600;
+  const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl, baseWidth) : undefined;
+  const imageSrcSet = rawImageUrl ? getImageSrcSet(rawImageUrl, baseWidth) : undefined;
+  const imageSizes = isMobile
+    ? "112px"
+    : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw";
   const isOutOfStock = product.stockStatus === 'out_of_stock';
   
   // Build product link — for variant cards, deep-link with variant pre-selection
@@ -163,9 +170,13 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
           {imageUrl ? (
           <img
               src={imageUrl}
+              srcSet={imageSrcSet}
+              sizes={imageSizes}
               alt={displayTitle}
               className="h-full w-full object-cover"
-              loading="lazy"
+              loading={priority ? "eager" : "lazy"}
+              fetchPriority={priority ? "high" : "auto"}
+              decoding="async"
               width={112}
               height={112}
             />
@@ -252,11 +263,15 @@ export function UnifiedProductCard({ product }: UnifiedProductCardProps) {
         {imageUrl ? (
           <img
             src={imageUrl}
+            srcSet={imageSrcSet}
+            sizes={imageSizes}
             alt={displayTitle}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-            loading="lazy"
-            width={300}
-            height={300}
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
+            decoding="async"
+            width={600}
+            height={600}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-muted">

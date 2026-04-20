@@ -70,8 +70,15 @@ export function BestSellersSection({ limit }: BestSellersSectionProps) {
                 {product.product_image_url ? (
                   <img
                     src={getOptimizedImageUrl(product.product_image_url, 500)}
+                    srcSet={`${getOptimizedImageUrl(product.product_image_url, 300)} 300w, ${getOptimizedImageUrl(product.product_image_url, 500)} 500w, ${getOptimizedImageUrl(product.product_image_url, 800)} 800w`}
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                     alt={product.product_title}
                     className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    loading={index < 4 ? "eager" : "lazy"}
+                    fetchPriority={index < 4 ? "high" : "auto"}
+                    decoding="async"
+                    width={500}
+                    height={500}
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center">

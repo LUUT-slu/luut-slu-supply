@@ -53,7 +53,8 @@ export function Header() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Determine which portal the user can access
+  // Determine which portal the user can access — runs after first paint
+  // and batches the two role/profile lookups so it never blocks LCP.
   useEffect(() => {
     if (!currentUser) {
       setPortalLink(null);
@@ -61,35 +62,42 @@ export function Header() {
     }
 
     const checkPortal = async () => {
-      // Check admin first
-      const { data: roles } = await supabase.
-      from("user_roles").
-      select("role").
-      eq("user_id", currentUser.id);
+      const [rolesRes, sellerRes] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", currentUser.id),
+        supabase
+          .from("seller_profiles")
+          .select("is_approved")
+          .eq("user_id", currentUser.id)
+          .eq("is_approved", true)
+          .maybeSingle(),
+      ]);
 
-      const roleNames = roles?.map((r) => r.role as string) || [];
+      const roleNames = rolesRes.data?.map((r) => r.role as string) || [];
       if (roleNames.includes("admin")) {
         setPortalLink("/admin");
         return;
       }
-
-      // Check approved seller
-      const { data: sellerProfile } = await supabase.
-      from("seller_profiles").
-      select("is_approved").
-      eq("user_id", currentUser.id).
-      eq("is_approved", true).
-      maybeSingle();
-
-      if (sellerProfile) {
+      if (sellerRes.data) {
         setPortalLink("/seller");
         return;
       }
-
       setPortalLink(null);
     };
 
-    checkPortal();
+    // Defer to idle so it never competes with LCP/initial paint.
+    const ric: typeof window.requestIdleCallback | undefined =
+      typeof window !== "undefined" ? window.requestIdleCallback : undefined;
+    const handle = ric
+      ? ric(() => { void checkPortal(); }, { timeout: 2000 })
+      : window.setTimeout(() => { void checkPortal(); }, 200);
+
+    return () => {
+      if (ric && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(handle as number);
+      } else {
+        window.clearTimeout(handle as number);
+      }
+    };
   }, [currentUser]);
 
   useEffect(() => {
