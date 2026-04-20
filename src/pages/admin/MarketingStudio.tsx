@@ -579,6 +579,22 @@ export default function MarketingStudio() {
       }
     : null;
 
+  // Gate export until every external image referenced by the current poster
+  // is reachable. Prevents mobile users from triggering a half-loaded capture.
+  const exportImageUrls = useMemo(() => {
+    const out: string[] = [];
+    if (brandLogoUrl) out.push(brandLogoUrl);
+    if (!isMulti) {
+      const hero = singlePrep.preparedUrl || productPayload?.productImage;
+      if (hero) out.push(hero);
+      for (const v of variantImages) if (v.url) out.push(v.url);
+    } else if (multiTemplateProps) {
+      for (const p of multiTemplateProps.products) if (p.imageUrl) out.push(p.imageUrl);
+    }
+    return out;
+  }, [brandLogoUrl, isMulti, singlePrep.preparedUrl, productPayload?.productImage, variantImages, multiTemplateProps]);
+  const imagesReady = useImagesReady(exportImageUrls);
+
   return (
     <AdminAuth>
       <div className="flex min-h-screen flex-col bg-background">
