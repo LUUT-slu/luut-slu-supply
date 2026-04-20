@@ -573,23 +573,20 @@ export default function MarketingStudio() {
             const dataUrl = placeholders[hr.src] || hr.src;
             try {
               const img = await loadImageElement(dataUrl);
-              // object-fit: cover — fill the box, preserve aspect ratio.
               const dx = hr.x * pixelRatio;
               const dy = hr.y * pixelRatio;
               const dw = hr.w * pixelRatio;
               const dh = hr.h * pixelRatio;
-              const srcRatio = img.naturalWidth / img.naturalHeight;
-              const dstRatio = dw / dh;
-              let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
-              if (srcRatio > dstRatio) {
-                // source wider — crop sides
-                sw = img.naturalHeight * dstRatio;
-                sx = (img.naturalWidth - sw) / 2;
-              } else {
-                // source taller — crop top/bottom
-                sh = img.naturalWidth / dstRatio;
-                sy = (img.naturalHeight - sh) / 2;
-              }
+              // Honor per-image crop (scale + normalized offset). Falls back
+              // to a centered "object-fit: cover" rect when no edits exist.
+              const crop = cropMap[hr.src] ?? DEFAULT_CROP;
+              const { sx, sy, sw, sh } = cropToSourceRect(
+                img.naturalWidth,
+                img.naturalHeight,
+                dw,
+                dh,
+                crop,
+              );
               ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
             } catch (err) {
               console.warn("Hero composite failed for", hr.src, err);
