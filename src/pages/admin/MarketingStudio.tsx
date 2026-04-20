@@ -499,7 +499,6 @@ export default function MarketingStudio() {
   const multiTemplateProps = isMulti
     ? {
         format: tab,
-        style,
         headline: meta.headline,
         subhead: tagline || undefined,
         products: preparedTiles.map((p) => ({
