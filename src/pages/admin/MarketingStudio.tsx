@@ -258,8 +258,16 @@ export default function MarketingStudio() {
   const exportRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
+  const isMulti = posterType !== "single";
+  const meta = getPosterTypeMeta(posterType);
+
   const handleExport = async () => {
-    if (!exportRef.current || !productPayload) return;
+    if (!exportRef.current) return;
+    if (!isMulti && !productPayload) return;
+    if (isMulti && sourceProducts.length === 0) {
+      toast.error("Select at least one product to generate a poster");
+      return;
+    }
     setExporting(true);
     try {
       const dataUrl = await toPng(exportRef.current, {
@@ -268,8 +276,13 @@ export default function MarketingStudio() {
         skipFonts: false,
       });
       const link = document.createElement("a");
-      const safeName = productPayload.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 40);
-      link.download = `${safeName}-${tab}-${style}.png`;
+      const baseName = isMulti
+        ? meta.label.toLowerCase().replace(/\s+/g, "-")
+        : (productPayload?.name || "poster")
+            .replace(/[^a-z0-9]+/gi, "-")
+            .toLowerCase()
+            .slice(0, 40);
+      link.download = `${baseName}-${tab}-${style}.png`;
       link.href = dataUrl;
       link.click();
       toast.success("Image downloaded");
@@ -299,6 +312,31 @@ export default function MarketingStudio() {
         urgencyText,
         variantImages: variantMode === "multi" && variantImages.length > 1 ? variantImages : undefined,
         showVariantLabels,
+      }
+    : null;
+
+  const multiTemplateProps = isMulti
+    ? {
+        format: tab,
+        style,
+        headline: meta.headline,
+        subhead: tagline || undefined,
+        products: sourceProducts.map((p) => ({
+          id: p.id,
+          title: p.title,
+          imageUrl: p.imageUrl,
+          price: p.price,
+          badge: p.badge,
+          hint: p.hint,
+        })),
+        brandName,
+        brandLogoUrl: brandLogoUrl || undefined,
+        meetupText,
+        ctaText,
+        urgencyText,
+        showPrice,
+        showBadges: showTileBadges,
+        showLabels: showTileLabels,
       }
     : null;
 
