@@ -1141,6 +1141,15 @@ export default function MarketingStudio() {
             )}
           </div>
         </main>
+
+        <ImageEditorModal
+          open={!!editorImage}
+          imageUrl={editorImage}
+          format={tab}
+          initialCrop={editorImage ? cropMap[editorImage] : undefined}
+          onSave={handleEditorSave}
+          onClose={() => setEditorImage(null)}
+        />
       </div>
     </AdminAuth>
   );
