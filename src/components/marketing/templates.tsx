@@ -257,11 +257,13 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
     const { format } = props;
     const { w, h } = SIZE[format];
 
-    const theme = pickTheme(props.headline, props.urgencyText);
+    const theme = props.preset ? presetToTheme(props.preset) : pickTheme(props.headline, props.urgencyText);
+    const dscale = densityScale(props.preset?.layout.density ?? "normal");
     const isStory = format === "story";
     const isAd = format === "ad";
     const isPortrait = format === "portrait";
-    const padding = isStory || isPortrait ? "64px 52px" : isAd ? "40px" : "52px";
+    const basePad = isStory || isPortrait ? 56 : isAd ? 40 : 52;
+    const padding = `${Math.round(basePad * dscale.pad)}px`;
 
     // Split headline into two words to color the second one with the glow,
     // matching the reference (e.g. "BEST SELLERS" → "BEST" white, "SELLERS" green)
@@ -269,7 +271,15 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
     const firstWord = headlineParts[0] ?? "";
     const restWords = headlineParts.slice(1).join(" ");
 
-    const headlineSize = isStory ? 110 : isAd ? 64 : isPortrait ? 96 : 86;
+    const tScale = props.preset?.typography.scale ?? 1;
+    const headlineSize = Math.round((isStory ? 110 : isAd ? 64 : isPortrait ? 96 : 86) * tScale);
+    const headlineWeight = props.preset?.typography.headlineWeight ?? 900;
+    const headlineCase = props.preset?.typography.headlineCase ?? "upper";
+    const ctaShape = props.preset?.cta.shape ?? "pill";
+    const ctaFill = props.preset?.cta.fill ?? "glow";
+    const gridGap = Math.round((props.preset?.layout.gridGap ?? 18) * dscale.gap);
+    const textColor = props.preset?.palette.text ?? "#ffffff";
+    const mutedColor = props.preset?.palette.muted ?? "rgba(255,255,255,0.7)";
 
     return (
       <div
