@@ -1024,6 +1024,8 @@ function PresetLayout(p: TemplateProps) {
               surface={surface}
               radius={radius}
               text={text}
+              cropMap={p.cropMap}
+              onImageClick={p.onImageClick}
             />
           </div>
         ) : (
@@ -1049,7 +1051,26 @@ function PresetLayout(p: TemplateProps) {
                 crossOrigin="anonymous"
                 alt=""
                 data-export-hero="true"
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                data-editable-hero={p.onImageClick ? "true" : undefined}
+                onClick={
+                  p.onImageClick
+                    ? (e) => {
+                        e.stopPropagation();
+                        p.onImageClick!(heroImage);
+                      }
+                    : undefined
+                }
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                  transform: cropToTransform(
+                    p.cropMap?.[heroImage] ?? DEFAULT_CROP,
+                  ),
+                  transformOrigin: "center center",
+                  cursor: p.onImageClick ? "pointer" : undefined,
+                }}
               />
             ) : (
               <div style={{ color: muted, fontSize: 22 }}>No image</div>
