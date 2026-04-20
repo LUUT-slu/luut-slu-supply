@@ -27,7 +27,6 @@ import {
   MarketingTemplate,
   MultiProductTemplate,
   TemplateFormat,
-  TemplateStyle,
 } from "@/components/marketing/templates";
 import { CopyPanel } from "@/components/marketing/CopyPanel";
 import { VariantSelector, VariantMode, VariantOption } from "@/components/marketing/VariantSelector";
