@@ -319,7 +319,7 @@ export default function MarketingStudio() {
         format: tab,
         style,
         productName: productPayload.name,
-        productImage: productPayload.productImage,
+        productImage: singlePrep.preparedUrl || productPayload.productImage,
         price: productPayload.price ? String(productPayload.price) : undefined,
         showPrice,
         description: productPayload.description,
@@ -335,19 +335,71 @@ export default function MarketingStudio() {
       }
     : null;
 
+  // Apply the chosen multi-prep mode to every tile via a per-image
+  // useImagePrep call would be N hooks — instead we use a tiny inline
+  // canvas pass for canvas-only modes and skip AI modes for multi (cost).
+  const preparedTiles = useMemo(() => {
+    return sourceProducts.map((p) => ({
+      id: p.id,
+      title: p.title,
+      imageUrl: p.imageUrl, // placeholder; replaced async below via cache
+      price: p.price,
+      badge: p.badge,
+      hint: p.hint,
+    }));
+    // We intentionally exclude multiPrepMode here — tiles map is async.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceProducts]);
+
+  // Async tile preparation: when mode/format/source changes, run canvas ops
+  // for each tile and stash the results in local state.
+  const [tilePreparedMap, setTilePreparedMap] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!isMulti) return;
+    if (multiPrepMode === "original") {
+      setTilePreparedMap({});
+      return;
+    }
+    // AI modes are disabled for multi-product to avoid N gateway calls.
+    if (multiPrepMode === "remove-bg" || multiPrepMode === "expand") {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { autoFitProduct, smartReframe, enhanceImage } = await import(
+        "@/lib/imagePrep"
+      );
+      const next: Record<string, string> = {};
+      await Promise.all(
+        sourceProducts.map(async (p) => {
+          if (!p.imageUrl) return;
+          try {
+            let r: string;
+            if (multiPrepMode === "auto-fit") r = await autoFitProduct(p.imageUrl, tab);
+            else if (multiPrepMode === "reframe") r = await smartReframe(p.imageUrl, tab);
+            else r = await enhanceImage(p.imageUrl);
+            next[p.id] = r;
+          } catch (e) {
+            console.warn("Tile prep failed for", p.id, e);
+          }
+        }),
+      );
+      if (!cancelled) setTilePreparedMap(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isMulti, multiPrepMode, tab, sourceProducts]);
+
   const multiTemplateProps = isMulti
     ? {
         format: tab,
         style,
         headline: meta.headline,
         subhead: tagline || undefined,
-        products: sourceProducts.map((p) => ({
-          id: p.id,
-          title: p.title,
-          imageUrl: p.imageUrl,
-          price: p.price,
-          badge: p.badge,
-          hint: p.hint,
+        products: preparedTiles.map((p) => ({
+          ...p,
+          imageUrl: tilePreparedMap[p.id] || p.imageUrl,
         })),
         brandName,
         brandLogoUrl: brandLogoUrl || undefined,
