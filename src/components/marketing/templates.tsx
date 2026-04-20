@@ -991,13 +991,17 @@ function PresetLayout(p: TemplateProps) {
         </div>
       </div>
 
-      {/* Hero image (or variant grid) — flexes to fill available space */}
+      {/* Hero image (or variant grid). In Story format we cap the hero at
+          56% of the poster height so headline / price / pills / CTA always
+          have guaranteed space below. Other formats keep flex:1. */}
       <div
+        id="hero-region"
         style={{
           position: "relative",
           zIndex: 2,
           flex: 1,
           minHeight: 0,
+          maxHeight: isStory ? "56%" : undefined,
           display: "flex",
           alignItems: "stretch",
           justifyContent: "center",
@@ -1012,6 +1016,7 @@ function PresetLayout(p: TemplateProps) {
               surface={surface}
               radius={radius}
               text={text}
+              format={p.format}
             />
           </div>
         ) : (
@@ -1032,12 +1037,15 @@ function PresetLayout(p: TemplateProps) {
             }}
           >
             {heroImage ? (
+              // object-fit: contain — the framing pipeline has already
+              // cropped/padded the image to this container's aspect, so
+              // contain renders pixel-perfect with no further crop or stretch.
               <img
                 src={heroImage}
                 crossOrigin="anonymous"
                 alt=""
                 data-export-hero="true"
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
               />
             ) : (
               <div style={{ color: muted, fontSize: 22 }}>No image</div>
