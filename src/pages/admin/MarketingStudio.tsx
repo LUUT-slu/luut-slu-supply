@@ -688,16 +688,18 @@ export default function MarketingStudio() {
           )}
 
           <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)}>
-            <TabsList className="grid w-full grid-cols-5">
-              {FORMATS.map((f) => (
-                <TabsTrigger key={f.key} value={f.key} className="text-xs">
-                  {f.label}
+            <div className="-mx-1 overflow-x-auto px-1">
+              <TabsList className="grid w-full min-w-[420px] grid-cols-5">
+                {FORMATS.map((f) => (
+                  <TabsTrigger key={f.key} value={f.key} className="text-xs">
+                    {f.label}
+                  </TabsTrigger>
+                ))}
+                <TabsTrigger value="copy" className="text-xs">
+                  Copy
                 </TabsTrigger>
-              ))}
-              <TabsTrigger value="copy" className="text-xs">
-                Copy
-              </TabsTrigger>
-            </TabsList>
+              </TabsList>
+            </div>
 
             {/* Image tabs */}
             {FORMATS.map((f) => (
