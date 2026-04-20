@@ -49,6 +49,13 @@ import {
   loadImageElement,
   isIOSSafari,
 } from "@/lib/exportImageCache";
+import { ImageEditorModal } from "@/components/marketing/ImageEditorModal";
+import {
+  CropState,
+  DEFAULT_CROP,
+  cropToSourceRect,
+  isDefaultCrop,
+} from "@/lib/imageCropState";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
@@ -319,6 +326,20 @@ export default function MarketingStudio() {
   const isMobile = useIsMobile();
   const [canShare, setCanShare] = useState(false);
 
+  // ---- Manual image editor (per-image crop / zoom / pan) ----
+  const [cropMap, setCropMap] = useState<Record<string, CropState>>({});
+  const [editorImage, setEditorImage] = useState<string | null>(null);
+  const handleImageClick = (url: string) => setEditorImage(url);
+  const handleEditorSave = (next: CropState) => {
+    if (!editorImage) return;
+    setCropMap((prev) => {
+      const out = { ...prev };
+      if (isDefaultCrop(next)) delete out[editorImage];
+      else out[editorImage] = next;
+      return out;
+    });
+  };
+
   // Detect Web Share API (Level 2 — files) once at mount
   useEffect(() => {
     try {
@@ -552,23 +573,20 @@ export default function MarketingStudio() {
             const dataUrl = placeholders[hr.src] || hr.src;
             try {
               const img = await loadImageElement(dataUrl);
-              // object-fit: cover — fill the box, preserve aspect ratio.
               const dx = hr.x * pixelRatio;
               const dy = hr.y * pixelRatio;
               const dw = hr.w * pixelRatio;
               const dh = hr.h * pixelRatio;
-              const srcRatio = img.naturalWidth / img.naturalHeight;
-              const dstRatio = dw / dh;
-              let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
-              if (srcRatio > dstRatio) {
-                // source wider — crop sides
-                sw = img.naturalHeight * dstRatio;
-                sx = (img.naturalWidth - sw) / 2;
-              } else {
-                // source taller — crop top/bottom
-                sh = img.naturalWidth / dstRatio;
-                sy = (img.naturalHeight - sh) / 2;
-              }
+              // Honor per-image crop (scale + normalized offset). Falls back
+              // to a centered "object-fit: cover" rect when no edits exist.
+              const crop = cropMap[hr.src] ?? DEFAULT_CROP;
+              const { sx, sy, sw, sh } = cropToSourceRect(
+                img.naturalWidth,
+                img.naturalHeight,
+                dw,
+                dh,
+                crop,
+              );
               ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
             } catch (err) {
               console.warn("Hero composite failed for", hr.src, err);
@@ -633,6 +651,7 @@ export default function MarketingStudio() {
         variantImages: variantMode === "multi" && variantImages.length > 1 ? variantImages : undefined,
         showVariantLabels,
         preset: activePreset,
+        cropMap,
       }
     : null;
 
@@ -710,6 +729,7 @@ export default function MarketingStudio() {
         showBadges: showTileBadges,
         showLabels: showTileLabels,
         preset: activePreset,
+        cropMap,
       }
     : null;
 
@@ -932,7 +952,7 @@ export default function MarketingStudio() {
                             templateWidth={PREVIEW_DIMS[f.key].w}
                             templateHeight={PREVIEW_DIMS[f.key].h}
                           >
-                            <MultiProductTemplate {...multiTemplateProps} />
+                            <MultiProductTemplate {...multiTemplateProps} onImageClick={handleImageClick} />
                           </PreviewBox>
                         )
                       ) : !templateProps ? (
@@ -944,7 +964,7 @@ export default function MarketingStudio() {
                           templateWidth={PREVIEW_DIMS[f.key].w}
                           templateHeight={PREVIEW_DIMS[f.key].h}
                         >
-                          <MarketingTemplate {...templateProps} />
+                          <MarketingTemplate {...templateProps} onImageClick={handleImageClick} />
                         </PreviewBox>
                       )}
                       <Button
@@ -1121,6 +1141,15 @@ export default function MarketingStudio() {
             )}
           </div>
         </main>
+
+        <ImageEditorModal
+          open={!!editorImage}
+          imageUrl={editorImage}
+          format={tab}
+          initialCrop={editorImage ? cropMap[editorImage] : undefined}
+          onSave={handleEditorSave}
+          onClose={() => setEditorImage(null)}
+        />
       </div>
     </AdminAuth>
   );

@@ -1,9 +1,20 @@
 import { forwardRef } from "react";
 import type { PosterPreset } from "@/lib/marketingPresets";
 import { densityScale } from "@/lib/marketingPresets";
+import { cropToTransform, DEFAULT_CROP, type CropState } from "@/lib/imageCropState";
 
 export type TemplateStyle = "clean" | "hype" | "minimal";
 export type TemplateFormat = "story" | "post" | "ad" | "portrait";
+
+/**
+ * Props passed by Marketing Studio so any hero/tile image becomes editable.
+ *  - cropMap: per-image crop state (`scale`, normalized offsets)
+ *  - onImageClick: open the image editor for that image URL
+ */
+export interface EditableImageContext {
+  cropMap?: Record<string, CropState>;
+  onImageClick?: (imageUrl: string) => void;
+}
 
 // Format poster prices: no decimal places, EC$ prefix.
 export function formatPosterPrice(amount?: string | number): string {
@@ -18,7 +29,7 @@ export interface VariantImage {
   label?: string;
 }
 
-export interface TemplateProps {
+export interface TemplateProps extends EditableImageContext {
   style?: TemplateStyle;
   format: TemplateFormat;
   productName: string;
@@ -58,7 +69,7 @@ export interface MultiProductItem {
   hint?: string;
 }
 
-export interface MultiTemplateProps {
+export interface MultiTemplateProps extends EditableImageContext {
   style?: TemplateStyle;
   format: TemplateFormat;
   headline: string;
@@ -416,6 +427,8 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
             showLabels={props.showLabels}
             preset={props.preset}
             gap={gridGap}
+            cropMap={props.cropMap}
+            onImageClick={props.onImageClick}
           />
         </div>
 
@@ -590,6 +603,8 @@ function ProductGrid({
   showLabels,
   preset,
   gap = 18,
+  cropMap,
+  onImageClick,
 }: {
   items: MultiProductItem[];
   theme: PosterTheme;
@@ -598,7 +613,7 @@ function ProductGrid({
   showLabels: boolean;
   preset?: PosterPreset;
   gap?: number;
-}) {
+} & EditableImageContext) {
   const tiles = items.slice(0, 4);
   const overflow = items.length - tiles.length;
   const count = tiles.length;
@@ -669,11 +684,26 @@ function ProductGrid({
                   src={item.imageUrl}
                   crossOrigin="anonymous"
                   alt=""
+                  data-export-hero="true"
+                  data-editable-hero={onImageClick ? "true" : undefined}
+                  onClick={
+                    onImageClick && item.imageUrl
+                      ? (e) => {
+                          e.stopPropagation();
+                          onImageClick(item.imageUrl as string);
+                        }
+                      : undefined
+                  }
                   style={{
                     width: "100%",
                     height: "100%",
                     objectFit: "cover",
                     display: "block",
+                    transform: cropToTransform(
+                      cropMap?.[item.imageUrl] ?? DEFAULT_CROP,
+                    ),
+                    transformOrigin: "center center",
+                    cursor: onImageClick ? "pointer" : undefined,
                   }}
                 />
               ) : (
@@ -994,6 +1024,8 @@ function PresetLayout(p: TemplateProps) {
               surface={surface}
               radius={radius}
               text={text}
+              cropMap={p.cropMap}
+              onImageClick={p.onImageClick}
             />
           </div>
         ) : (
@@ -1019,7 +1051,26 @@ function PresetLayout(p: TemplateProps) {
                 crossOrigin="anonymous"
                 alt=""
                 data-export-hero="true"
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                data-editable-hero={p.onImageClick ? "true" : undefined}
+                onClick={
+                  p.onImageClick
+                    ? (e) => {
+                        e.stopPropagation();
+                        p.onImageClick!(heroImage);
+                      }
+                    : undefined
+                }
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                  transform: cropToTransform(
+                    p.cropMap?.[heroImage] ?? DEFAULT_CROP,
+                  ),
+                  transformOrigin: "center center",
+                  cursor: p.onImageClick ? "pointer" : undefined,
+                }}
               />
             ) : (
               <div style={{ color: muted, fontSize: 22 }}>No image</div>
@@ -1247,13 +1298,15 @@ function PresetVariantGrid({
   surface,
   radius,
   text,
+  cropMap,
+  onImageClick,
 }: {
   images: VariantImage[];
   showLabels?: boolean;
   surface: string;
   radius: number;
   text: string;
-}) {
+} & EditableImageContext) {
   const tiles = images.slice(0, 4);
   const overflow = images.length - tiles.length;
   const count = tiles.length;
@@ -1296,7 +1349,24 @@ function PresetVariantGrid({
               crossOrigin="anonymous"
               alt=""
               data-export-hero="true"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              data-editable-hero={onImageClick ? "true" : undefined}
+              onClick={
+                onImageClick
+                  ? (e) => {
+                      e.stopPropagation();
+                      onImageClick(v.url);
+                    }
+                  : undefined
+              }
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+                transform: cropToTransform(cropMap?.[v.url] ?? DEFAULT_CROP),
+                transformOrigin: "center center",
+                cursor: onImageClick ? "pointer" : undefined,
+              }}
             />
             {showLabels && v.label && (
               <div
