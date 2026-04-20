@@ -232,7 +232,11 @@ function CleanLayout(p: TemplateProps) {
           marginRight: isAd ? "48px" : 0,
         }}
       >
-        {p.productImage ? (
+        {p.variantImages && p.variantImages.length > 1 ? (
+          <div style={{ width: "100%", height: "100%", padding: 16, boxSizing: "border-box" }}>
+            <VariantGrid images={p.variantImages} showLabels={p.showVariantLabels} />
+          </div>
+        ) : p.productImage ? (
           <img
             src={p.productImage}
             crossOrigin="anonymous"
