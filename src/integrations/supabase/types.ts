@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_alert_logs: {
+        Row: {
+          alert_type: string
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          recipient: string
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient: string
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient?: string
+          status?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
       admin_inventory: {
         Row: {
           id: string
