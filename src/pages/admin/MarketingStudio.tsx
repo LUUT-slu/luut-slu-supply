@@ -28,6 +28,7 @@ import {
   TemplateStyle,
 } from "@/components/marketing/templates";
 import { CopyPanel } from "@/components/marketing/CopyPanel";
+import { VariantSelector, VariantMode, VariantOption } from "@/components/marketing/VariantSelector";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
