@@ -1,16 +1,18 @@
 import { Link } from "react-router-dom";
 import { ShoppingBag, Shield, MapPin, Wallet } from "lucide-react";
 import { Button } from "./ui/button";
-import { ShopifyProduct, getOptimizedImageUrl, normalizeVendorName } from "@/lib/shopify";
+import { ShopifyProduct, getOptimizedImageUrl, getImageSrcSet, normalizeVendorName } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 
 interface ProductCardProps {
   product: ShopifyProduct;
+  /** Above-the-fold cards load eagerly with high fetch priority. */
+  priority?: boolean;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, priority = false }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
   const setOpen = useCartStore((state) => state.setOpen);
   const { trackEvent } = useAnalyticsTracker();
@@ -20,6 +22,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const price = node.priceRange.minVariantPrice;
   const rawImage = node.images.edges[0]?.node;
   const image = rawImage ? { ...rawImage, url: getOptimizedImageUrl(rawImage.url, 600) } : undefined;
+  const imageSrcSet = rawImage ? getImageSrcSet(rawImage.url, 600) : undefined;
   const vendor = normalizeVendorName(node.vendor || "Luut SLU");
   
   // Check if certified seller
@@ -65,11 +68,15 @@ export function ProductCard({ product }: ProductCardProps) {
         {image ? (
           <img
             src={image.url}
+            srcSet={imageSrcSet}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             alt={image.altText || node.title}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-            width={300}
-            height={300}
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
+            decoding="async"
+            width={600}
+            height={600}
           />
         ) : (
           <div className="flex h-full items-center justify-center">
