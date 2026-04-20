@@ -339,7 +339,25 @@ export default function MarketingStudio() {
             </CardContent>
           </Card>
 
-          <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)}>
+          {/* Variant selection */}
+          {variantOptions.length > 1 && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Select Variants</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <VariantSelector
+                  variants={variantOptions}
+                  mode={variantMode}
+                  onModeChange={setVariantMode}
+                  selectedIds={selectedVariantIds}
+                  onSelectionChange={setSelectedVariantIds}
+                  fallbackImageUrl={selectedProduct?.images?.[0]?.url}
+                />
+              </CardContent>
+            </Card>
+          )}
+
             <TabsList className="grid w-full grid-cols-5">
               {FORMATS.map((f) => (
                 <TabsTrigger key={f.key} value={f.key} className="text-xs">
