@@ -1,149 +1,106 @@
 
 
-## Customer Info — dedicated admin area
+## Performance & Speed Optimization Pass
 
-A new top-level admin section at **`/admin/customers`** with overview, profile detail, WhatsApp actions, signups, referrals, discounts, tags, and notes.
+A focused, high-impact pass on the biggest bottlenecks: hero LCP, product image weight, mobile rendering, and admin/Marketing Studio bundle bloat. No design or behavior changes.
 
-### Routes
-- `/admin/customers` — overview list (search + filters)
-- `/admin/customers/:userId` — full customer profile view with tabs
+### Diagnosed bottlenecks (highest impact first)
 
-Add a **Customer Info** card to the Admin Hub (`AdminHome.tsx`) with `Users` icon, slotted near Manage Sellers / Order Management.
+1. **Hero image is 1.7 MB** (`src/assets/storefront-hero.webp`) and forces `decoding="sync"` with `fetchPriority="high"` — blocks LCP on mobile.
+2. **Product images request a fixed width** (300/400/600px) regardless of device DPR or actual rendered size — phones with DPR 3 get blurry or oversized images depending on context.
+3. **No `srcSet`/`sizes`** on any `<img>` — browsers can't pick the right size; mobile downloads desktop-sized assets.
+4. **All card images use `loading="lazy"`** including the first row above the fold — delays first paint of the trending grid.
+5. **Supabase-hosted seller images are served raw** (no width transform) — full JPEG every time.
+6. **Marketing Studio (1269 LOC) eagerly imports `html-to-image`** at module top → big chunk pulled even when admin opens any other tab.
+7. **Vite has no `manualChunks`** — vendor code (radix, react-query, lucide, supabase) ships in one big chunk that blocks first paint.
+8. **`WhatPeopleAreBuyingSection` re-shuffles products on every render** (no stable seed) and triggers extra layout work.
+9. **`Header` makes 2 extra Supabase round-trips on every page load** to compute `portalLink` (admin role + seller profile).
+10. **Hero `<section>` uses `min-h-[90vh]`** with a big background image — large LCP candidate area; can be served as a `<picture>` with mobile-specific source.
 
-### Pages & components
+### Fixes — by priority
 
-**New files**
-- `src/pages/admin/AdminCustomers.tsx` — overview list
-- `src/pages/admin/AdminCustomerDetail.tsx` — single customer profile with tabs
-- `src/components/admin/customers/CustomerTable.tsx` — sortable, mobile-friendly list (cards on mobile, table on desktop)
-- `src/components/admin/customers/CustomerFilters.tsx` — search, signup status, tag, order count, discount, last contact filters
-- `src/components/admin/customers/WhatsAppActions.tsx` — quick-action buttons opening pre-filled `wa.me` links (Welcome, Restock alert, Follow-up, Promo, Custom)
-- `src/components/admin/customers/CustomerTagsEditor.tsx` — add/remove tags + product interest list
-- `src/components/admin/customers/CustomerNotesPanel.tsx` — admin-only timestamped notes
-- `src/components/admin/customers/CustomerDiscountsPanel.tsx` — view/grant/revoke discounts (uses `customer_discounts`)
-- `src/components/admin/customers/CustomerReferralsPanel.tsx` — referral code, list of referred users, reward status, "Share via WhatsApp" CTA
-- `src/components/admin/customers/CustomerOrdersPanel.tsx` — past orders with totals + link to order detail
-- `src/components/admin/customers/SignupsTab.tsx` — recent signups (last 30 days), source if available, quick "Welcome via WhatsApp"
-- `src/hooks/useAdminCustomers.ts` — data layer (list + detail + aggregates)
+#### P1 — Homepage / LCP
 
-**Edited**
-- `src/pages/AdminHome.tsx` — add the Customer Info card
-- `src/App.tsx` — register the two new routes under `RouteGuard requiredRole="admin"`
+- **Re-encode `storefront-hero.webp`** to a mobile (`-mobile.webp` ~640w, ~80 KB) and desktop (`~1600w`, ~250 KB) version. Keep PNG out of the bundle.
+- Use `<picture>` in `Index.tsx`:
+  ```tsx
+  <picture>
+    <source media="(max-width: 768px)" srcSet={heroMobile} />
+    <img src={heroDesktop} fetchPriority="high" decoding="async" ... />
+  </picture>
+  ```
+  Drop `decoding="sync"` (it blocks rendering).
+- **Preload** the chosen hero in `index.html` with `<link rel="preload" as="image" imagesrcset=... imagesizes=...>`.
 
-### Database changes (new migration)
+#### P2 — Product image delivery
 
-Three new tables to support tags, notes, referrals (none exist today).
+- **Upgrade `getOptimizedImageUrl`** to:
+  - Accept a `dpr` arg (default `window.devicePixelRatio`, capped at 2) and multiply width.
+  - Add `&crop=center` for Shopify so server crops square thumbs (lighter than client-side `object-cover` of larger image).
+  - Also handle `**brwnjlsdovqlkbtkhsye.supabase.co/storage/...**` URLs by appending Supabase Image Transformations: `?width=600&quality=75&resize=cover` (Storage supports render/image transforms). Falls back to original URL if not a recognized host.
+- **Add `srcSet` + `sizes`** to product card images:
+  ```tsx
+  <img
+    src={url(600)}
+    srcSet={`${url(300)} 300w, ${url(600)} 600w, ${url(900)} 900w`}
+    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+    loading={isAboveFold ? "eager" : "lazy"}
+    decoding="async"
+    fetchPriority={isAboveFold ? "high" : "auto"}
+  />
+  ```
+- **Above-fold heuristic**: pass `priority` prop to `UnifiedProductCard` / `ProductCard`. First section on the homepage and first 4 cards in any grid get `loading="eager"` + `fetchPriority="high"`. Everything else stays lazy.
+- **Mobile sizes**: keep the 112×112 mobile thumbnail at `url(224)` (2× DPR) instead of 300; that's a 30 % byte savings for the trending row.
 
-```sql
--- Customer tags / interests (multi-row per customer)
-create table public.customer_tags (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null,
-  tag text not null,
-  tag_type text not null default 'tag', -- 'tag' | 'interest'
-  created_at timestamptz not null default now(),
-  created_by uuid,
-  unique (user_id, tag, tag_type)
-);
-alter table public.customer_tags enable row level security;
-create policy "Admins manage customer tags" on public.customer_tags
-  for all using (has_role(auth.uid(),'admin'::app_role))
-  with check (has_role(auth.uid(),'admin'::app_role));
+#### P3 — Reduce JS work / bundle weight
 
--- Admin-only customer notes
-create table public.customer_notes (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null,
-  note text not null,
-  created_at timestamptz not null default now(),
-  created_by uuid not null
-);
-alter table public.customer_notes enable row level security;
-create policy "Admins manage customer notes" on public.customer_notes
-  for all using (has_role(auth.uid(),'admin'::app_role))
-  with check (has_role(auth.uid(),'admin'::app_role));
+- **Vite `build.rollupOptions.output.manualChunks`** split:
+  - `react-vendor` → react, react-dom, react-router-dom
+  - `radix` → all `@radix-ui/*`
+  - `query` → `@tanstack/react-query`, `@supabase/supabase-js`
+  - `icons` → `lucide-react`
+  Result: smaller initial chunk, better long-term caching when product code changes.
+- **Lazy-import `html-to-image`** inside `MarketingStudio.handleExport` (`const { toJpeg } = await import("html-to-image")`) — strips ~80 KB from the admin chunk until the user clicks Export.
+- **Stabilize the trending shuffle**: seed `Math.random` with the current date so the order is stable per session; eliminates re-renders changing image order during hydration.
+- **`Header` portal lookup**: combine the two queries into one RPC or run them in `Promise.all` and gate behind `requestIdleCallback` so they don't block first paint.
 
--- Referrals
-create table public.customer_referrals (
-  id uuid primary key default gen_random_uuid(),
-  referrer_user_id uuid not null,
-  referral_code text not null unique,
-  referred_user_id uuid,
-  referred_email text,
-  status text not null default 'pending', -- 'pending' | 'signed_up' | 'rewarded'
-  reward_granted boolean not null default false,
-  created_at timestamptz not null default now(),
-  rewarded_at timestamptz
-);
-alter table public.customer_referrals enable row level security;
-create policy "Admins manage referrals" on public.customer_referrals
-  for all using (has_role(auth.uid(),'admin'::app_role))
-  with check (has_role(auth.uid(),'admin'::app_role));
-create policy "Users view own referrals" on public.customer_referrals
-  for select using (auth.uid() = referrer_user_id);
+#### P4 — Caching / delivery
 
--- Track last admin contact + signup source on customer_profiles
-alter table public.customer_profiles
-  add column if not exists last_contacted_at timestamptz,
-  add column if not exists signup_source text;
-```
+- Add `Cache-Control: public, max-age=31536000, immutable` hint via `<link>` preconnect/preload only — actual headers are CDN-controlled but `crossorigin` + `preconnect` already exist; add `preconnect` for the Supabase storage origin so the first product image isn't delayed by TLS.
+- Keep React Query staleTime (already 5 min) — confirm it's applied to `useShopifyCollections` and `useSiteSettings`.
 
-### Customer Overview list (`/admin/customers`)
+#### P5 — Marketing Studio specifics
 
-Columns (desktop) / stacked card (mobile):
-- Name · Phone · Email · Signup status · Date added · Last activity (latest order or contact) · Total orders · Total spent
+- **Defer `html-to-image` import** (covered above).
+- **Lazy-mount template previews**: only render the currently selected `MarketingTemplate`/`MultiProductTemplate`, not all of them. Confirm this is already the case; if hidden ones still mount, wrap in `{activeFormat === f.key && <Template ... />}`.
+- **Throttle `useImagePrep`** AI calls with the existing cache (already done) — verify cache survives Tab switches by lifting the `Map` to module scope (already module-scoped).
 
-Data sources combined per row:
-- `customer_profiles` (base record)
-- `orders` aggregate: count + sum `total_price` grouped by `customer_user_id` (and email fallback)
-- `customer_tags` for tag chips
+### Files touched
 
-Filters bar:
-- Search (name / phone / email)
-- Has account / Guest only
-- Tag pills (multi-select)
-- Order count: 0 / 1+ / 5+
-- Has active discount
-- Last contacted: never / >30d / <7d
-- Product interest
+- `vite.config.ts` — add `build.rollupOptions.output.manualChunks`.
+- `index.html` — preload mobile vs desktop hero, add Supabase storage `preconnect` (already present — verify), drop blocking sync decoding.
+- `src/lib/shopify.ts` — extend `getOptimizedImageUrl` (Shopify + Supabase Storage, DPR-aware, srcSet helper `getImageSrcSet(url)`).
+- `src/assets/` — add `storefront-hero-mobile.webp` (640w) and `storefront-hero-desktop.webp` (1600w); remove unused `.png`.
+- `src/pages/Index.tsx` — `<picture>` hero, `<img decoding="async">`, mark first trending section's first 4 cards as priority.
+- `src/components/UnifiedProductCard.tsx` — accept optional `priority` prop, emit `srcSet`+`sizes`, mobile thumb 224w.
+- `src/components/ProductCard.tsx` — same `srcSet`/`sizes` + `priority` prop.
+- `src/components/HomeCategorySection.tsx`, `HomeNewArrivalsSection.tsx`, `HomeFeaturedSection.tsx`, `BestSellersSection.tsx`, `WhatPeopleAreBuyingSection.tsx` — pass `priority` to first 4 cards of the first enabled section only.
+- `src/components/Header.tsx` — `Promise.all` portal lookup + `requestIdleCallback` gate.
+- `src/pages/admin/MarketingStudio.tsx` — dynamic `import("html-to-image")` inside export handlers.
 
-### Customer Profile (`/admin/customers/:userId`)
+### Out of scope
 
-Header: avatar initial, name, phone, email, account status badge, signup date, last activity, **WhatsApp** + **Email** quick chips.
-
-Tabs:
-1. **Overview** — summary cards (orders, spend, last order, active discount count) + tag chips
-2. **Orders** — `CustomerOrdersPanel`
-3. **WhatsApp** — `WhatsAppActions` (Welcome, Restock alert with product picker, Follow-up, Promo, Custom). Each writes a row to `customer_notes` ("Sent restock alert for X") and updates `last_contacted_at`.
-4. **Referrals** — code, referred users, reward status, "Share code via WhatsApp"
-5. **Discounts** — list active rows from `customer_discounts`, grant new (form: type, amount, currency)
-6. **Tags & Interests** — editor
-7. **Notes** — timestamped admin notes
-
-### WhatsApp action templates
-
-Open `https://wa.me/{phone}?text={encoded}` in new tab. Templates:
-- Welcome — `Welcome to LUUT, {name}! Reply with any questions about your order.`
-- Restock — `Hey {name}, the {product} you were interested in is back in stock!`
-- Follow-up — `Hey {name}, following up on your last order. Everything good?`
-- Promo — `{name}, here's an exclusive code for you: {code}`
-
-### Mobile-friendly admin design
-
-- Overview: card layout `<md`, table `≥md`
-- Profile: tabs collapse to a horizontal scroll strip on mobile
-- All action buttons ≥44px tap target
-
-### Out of scope (kept for later)
-- Automated campaign messaging / scheduled sends
-- WhatsApp Business API integration (current flow uses `wa.me` deep links)
-- Public customer-facing referral signup flow (admin can manually create codes; redemption logic comes later)
+- Server-side rendering / SSR.
+- Switching off React Query.
+- Replacing the Shopify Storefront API or moving images to a third-party CDN (e.g. Cloudflare Images).
+- Refactoring the Marketing Studio architecture (only the bundle-import change).
 
 ### Verification
-- `/admin` shows Customer Info card → opens overview
-- Search/filter work across name, phone, email, tags
-- Click row → profile loads with all tabs populated from real data
-- WhatsApp button opens correct chat with pre-filled text
-- Adding tag/note/referral/discount persists and reflects in overview
-- Mobile (390px): list and profile both usable, no horizontal scroll
+
+- Lighthouse mobile: LCP < 2.5 s on `/` (currently likely > 4 s due to 1.7 MB hero).
+- Network tab on mobile viewport: hero image weight < 100 KB; first product images < 40 KB each.
+- Trending grid: first 4 product images marked `priority`, request fires immediately, not on scroll.
+- Build output: separate `react-vendor`, `radix`, `query`, `icons` chunks visible in `dist/assets`.
+- Marketing Studio: `html-to-image` chunk fetched only after clicking Export (verify in Network tab).
+- Header: only 1 batched call to Supabase on first load; runs after page idle.
 
