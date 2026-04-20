@@ -375,10 +375,46 @@ export default function MarketingStudio() {
     }
     setExporting(true);
     try {
+      // 1. Make sure every <img> in the export node is fully loaded + decoded.
+      await waitForDomImages(exportRef.current);
+
+      // 2. Collect every external image URL the export node references.
+      const urlSet = new Set<string>();
+      if (brandLogoUrl) urlSet.add(brandLogoUrl);
+      if (!isMulti) {
+        const heroUrl = singlePrep.preparedUrl || productPayload?.productImage;
+        if (heroUrl) urlSet.add(heroUrl);
+        for (const v of variantImages) if (v.url) urlSet.add(v.url);
+      } else if (multiTemplateProps) {
+        for (const p of multiTemplateProps.products) {
+          if (p.imageUrl) urlSet.add(p.imageUrl);
+        }
+      }
+      // Belt + braces: also pick up any other <img src> currently inside the node.
+      const liveImgs = exportRef.current.querySelectorAll("img");
+      liveImgs.forEach((img) => {
+        const src = img.getAttribute("src");
+        if (src) urlSet.add(src);
+      });
+
+      // 3. Pre-resolve all external images to data URLs so html-to-image
+      //    never re-fetches them (this is what was breaking on mobile).
+      let placeholders: Record<string, string> = {};
+      try {
+        placeholders = await prefetchImagesAsDataUrls(Array.from(urlSet));
+      } catch (e) {
+        console.error("Image prefetch failed:", e);
+        toast.error("Couldn't load product image — try again in a moment");
+        return;
+      }
+
+      // 4. Capture. cacheBust MUST stay false — it's the trigger for the
+      //    mobile CORS drop.
       const dataUrl = await toPng(exportRef.current, {
-        cacheBust: true,
+        cacheBust: false,
         pixelRatio: 2,
         skipFonts: false,
+        imagePlaceholders: placeholders,
       });
       const filename = buildPosterFilename();
       const file = await dataUrlToFile(dataUrl, filename);
