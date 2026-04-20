@@ -19,7 +19,7 @@ export interface VariantImage {
 }
 
 export interface TemplateProps {
-  style: TemplateStyle;
+  style?: TemplateStyle;
   format: TemplateFormat;
   productName: string;
   productImage?: string;
