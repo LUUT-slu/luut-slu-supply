@@ -440,8 +440,30 @@ export default function MarketingStudio() {
         return;
       }
 
-      // 7. Direct download — same flow on mobile and desktop.
       const filename = buildPosterFilename();
+
+      // 7. Mobile + Web Share API (files) → open native share/save sheet so
+      //    the user can pick Save Image / Photos / Files / etc.
+      if (isMobile && canShare) {
+        try {
+          const file = new File([blob], filename, { type: "image/jpeg" });
+          const nav = navigator as any;
+          if (nav.canShare?.({ files: [file] })) {
+            await nav.share({
+              files: [file],
+              title: filename,
+              text: "Luut SLU poster",
+            });
+            return; // OS sheet handled it
+          }
+        } catch (err: any) {
+          if (err?.name === "AbortError") return; // user cancelled
+          console.warn("Share failed, falling back to download", err);
+          // fall through to download
+        }
+      }
+
+      // 8. Desktop (or mobile w/o Web Share files) → direct download.
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
