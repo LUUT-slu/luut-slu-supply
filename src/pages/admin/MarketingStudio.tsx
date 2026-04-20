@@ -46,6 +46,8 @@ import {
   prefetchImagesAsDataUrls,
   waitForDomImages,
   useImagesReady,
+  loadImageElement,
+  isIOSSafari,
 } from "@/lib/exportImageCache";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
