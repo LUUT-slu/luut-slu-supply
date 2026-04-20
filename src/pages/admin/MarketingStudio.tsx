@@ -418,12 +418,8 @@ export default function MarketingStudio() {
     }
   };
 
-  // Default = original Hype poster style (no preset routing → uses legacy HypeLayout).
-  // As soon as the user changes preset OR tweaks any override, switch to the
-  // preset-driven layout so Style & Branding controls take effect.
-  const isDefaultStyle =
-    activePresetId === "hype" && Object.keys(presetOverrides).length === 0;
-
+  // All presets (including Hype default) route through the preset-driven
+  // PresetLayout so Style & Branding controls always take effect.
   const templateProps = productPayload
     ? {
         format: tab,
@@ -442,7 +438,7 @@ export default function MarketingStudio() {
         urgencyText,
         variantImages: variantMode === "multi" && variantImages.length > 1 ? variantImages : undefined,
         showVariantLabels,
-        preset: isDefaultStyle ? undefined : activePreset,
+        preset: activePreset,
       }
     : null;
 
