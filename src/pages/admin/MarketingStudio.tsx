@@ -343,7 +343,7 @@ export default function MarketingStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [multiPrepMode]);
 
-  const exportRef = useRef<HTMLDivElement>(null);
+  // exportRef declared above (used by hero-aspect measurement)
   const [exporting, setExporting] = useState(false);
   const isMobile = useIsMobile();
   const [canShare, setCanShare] = useState(false);
