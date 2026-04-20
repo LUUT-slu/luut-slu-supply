@@ -98,6 +98,21 @@ export default function SellOnLuut() {
 
       if (error) throw error;
 
+      // Fire-and-forget admin alert: new seller application
+      supabase.functions.invoke("send-admin-alert", {
+        body: {
+          type: "seller_application",
+          payload: {
+            name: formData.fullName,
+            business_name: formData.businessName,
+            whatsapp: formData.phone,
+            location: formData.location,
+            instagram_url: formData.instagram,
+            email: formData.email || null,
+          },
+        },
+      }).catch(() => {});
+
       toast.success("Application submitted! We'll review it shortly.");
       setOpen(false);
       setFormData({

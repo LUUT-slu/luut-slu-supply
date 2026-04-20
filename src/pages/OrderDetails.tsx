@@ -171,7 +171,21 @@ export default function OrderDetails() {
       if (!data?.success) throw new Error(data?.error || 'Failed to cancel order');
 
       setOrder({ ...order, status: 'cancelled', cancelled_at: new Date().toISOString() });
-      
+
+      // Fire-and-forget admin alert: order cancelled by customer
+      supabase.functions.invoke("send-admin-alert", {
+        body: {
+          type: "order_status_change",
+          payload: {
+            order_id: order.id,
+            order_number: order.order_number,
+            new_status: "CANCELLED",
+            customer_name: order.customer_name,
+            reason: "Cancelled by customer",
+          },
+        },
+      }).catch(() => {});
+
       toast.success("Order cancelled", {
         description: "Opening WhatsApp to notify the seller...",
       });

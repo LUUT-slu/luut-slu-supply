@@ -117,6 +117,20 @@ export default function SellerRegistration() {
         });
       }
 
+      // Fire-and-forget admin alert: new seller application
+      supabase.functions.invoke("send-admin-alert", {
+        body: {
+          type: "seller_application",
+          payload: {
+            name: formData.name.trim(),
+            business_name: formData.name.trim(),
+            whatsapp: formData.whatsapp.trim(),
+            location: formData.location.trim() || null,
+            instagram_url: formData.proofUrl.trim() || null,
+          },
+        },
+      }).catch(() => {});
+
       setIsSubmitted(true);
       toast.success("Application submitted!");
     } catch (error) {
