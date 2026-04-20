@@ -580,12 +580,16 @@ function ProductGrid({
   showPrice,
   showBadges,
   showLabels,
+  preset,
+  gap = 18,
 }: {
   items: MultiProductItem[];
   theme: PosterTheme;
   showPrice: boolean;
   showBadges: boolean;
   showLabels: boolean;
+  preset?: PosterPreset;
+  gap?: number;
 }) {
   const tiles = items.slice(0, 4);
   const overflow = items.length - tiles.length;
@@ -604,6 +608,13 @@ function ProductGrid({
     rows = "1fr 1fr";
   }
 
+  const tileRadius = preset?.layout.radius ?? 22;
+  const innerRadius = Math.max(8, tileRadius - 8);
+  const tileBg = preset?.palette.surface ?? "rgba(255,255,255,0.04)";
+  const titleColor = preset?.palette.text ?? "#ffffff";
+  const badgeShape = preset?.badge.shape ?? "pill";
+  const badgeFill = preset?.badge.fill ?? "glow";
+
   return (
     <div
       style={{
@@ -612,7 +623,7 @@ function ProductGrid({
         display: "grid",
         gridTemplateColumns: columns,
         gridTemplateRows: rows,
-        gap: 18,
+        gap,
       }}
     >
       {tiles.map((item, i) => {
@@ -623,10 +634,10 @@ function ProductGrid({
             style={{
               gridColumn: spanFull ? "1 / span 2" : "auto",
               position: "relative",
-              borderRadius: 22,
-              background: "rgba(255,255,255,0.04)",
+              borderRadius: tileRadius,
+              background: tileBg,
               border: "1px solid rgba(255,255,255,0.08)",
-              boxShadow: `0 0 22px ${theme.glowSoft}, 0 12px 28px rgba(0,0,0,0.55)`,
+              boxShadow: `0 0 22px ${theme.glowSoft}, 0 12px 28px rgba(0,0,0,0.45)`,
               padding: 14,
               display: "flex",
               flexDirection: "column",
@@ -640,7 +651,7 @@ function ProductGrid({
                 position: "relative",
                 flex: 1,
                 minHeight: 0,
-                borderRadius: 14,
+                borderRadius: innerRadius,
                 overflow: "hidden",
                 background: "#f3f3f3",
               }}
@@ -673,26 +684,14 @@ function ProductGrid({
                 </div>
               )}
 
-              {/* Badge top-left */}
+              {/* Badge top-left — preset-driven shape & fill */}
               {showBadges && item.badge && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 12,
-                    left: 12,
-                    background: theme.badge,
-                    color: "#ffffff",
-                    padding: "6px 14px",
-                    borderRadius: 999,
-                    fontSize: 16,
-                    fontWeight: 900,
-                    letterSpacing: 1.5,
-                    textTransform: "uppercase",
-                    boxShadow: `0 0 14px ${theme.glowSoft}`,
-                  }}
-                >
-                  {item.badge}
-                </div>
+                <PresetBadge
+                  text={item.badge}
+                  theme={theme}
+                  shape={badgeShape}
+                  fill={badgeFill}
+                />
               )}
 
               {/* Overflow chip top-right on last tile */}
@@ -721,7 +720,7 @@ function ProductGrid({
                 style={{
                   fontSize: 24,
                   fontWeight: 800,
-                  color: "#ffffff",
+                  color: titleColor,
                   letterSpacing: 0.5,
                   textTransform: "uppercase",
                   overflow: "hidden",
@@ -740,7 +739,7 @@ function ProductGrid({
                 style={{
                   alignSelf: "flex-start",
                   background: theme.glow,
-                  color: "#062012",
+                  color: contrastTextSafe(theme.glow),
                   padding: "8px 16px",
                   borderRadius: 10,
                   fontSize: 22,
@@ -755,6 +754,58 @@ function ProductGrid({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function contrastTextSafe(c: string): string {
+  if (!c.startsWith("#")) return "#0a0a0a";
+  return contrastText(c);
+}
+
+// Preset-aware tile badge.
+function PresetBadge({
+  text,
+  theme,
+  shape,
+  fill,
+}: {
+  text: string;
+  theme: PosterTheme;
+  shape: "pill" | "ribbon" | "chip";
+  fill: "glow" | "solid" | "outline";
+}) {
+  const isOutline = fill === "outline";
+  const radius = shape === "pill" ? 999 : shape === "chip" ? 6 : 4;
+  const padding =
+    shape === "ribbon" ? "6px 18px 6px 14px" : shape === "chip" ? "5px 10px" : "6px 14px";
+  const clip =
+    shape === "ribbon"
+      ? "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)"
+      : undefined;
+  const bg = isOutline ? "transparent" : theme.badge;
+  const border = isOutline ? `2px solid ${theme.glow}` : "none";
+  const color = isOutline ? theme.glow : "#ffffff";
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 12,
+        left: 12,
+        background: bg,
+        border,
+        color,
+        padding,
+        borderRadius: radius,
+        clipPath: clip,
+        fontSize: 16,
+        fontWeight: 900,
+        letterSpacing: 1.5,
+        textTransform: "uppercase",
+        boxShadow: fill === "glow" ? `0 0 14px ${theme.glowSoft}` : "none",
+      }}
+    >
+      {text}
     </div>
   );
 }
