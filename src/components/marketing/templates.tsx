@@ -3,6 +3,11 @@ import { forwardRef } from "react";
 export type TemplateStyle = "clean" | "hype" | "minimal";
 export type TemplateFormat = "story" | "post" | "ad" | "portrait";
 
+export interface VariantImage {
+  url: string;
+  label?: string;
+}
+
 export interface TemplateProps {
   style: TemplateStyle;
   format: TemplateFormat;
@@ -18,6 +23,8 @@ export interface TemplateProps {
   meetupText: string;
   ctaText: string;
   urgencyText?: string;
+  variantImages?: VariantImage[];
+  showVariantLabels?: boolean;
 }
 
 const SIZE: Record<TemplateFormat, { w: number; h: number }> = {
