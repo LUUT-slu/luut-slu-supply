@@ -1,4 +1,6 @@
 import { forwardRef } from "react";
+import type { PosterPreset } from "@/lib/marketingPresets";
+import { densityScale } from "@/lib/marketingPresets";
 
 export type TemplateStyle = "clean" | "hype" | "minimal";
 export type TemplateFormat = "story" | "post" | "ad" | "portrait";
@@ -25,6 +27,7 @@ export interface TemplateProps {
   urgencyText?: string;
   variantImages?: VariantImage[];
   showVariantLabels?: boolean;
+  preset?: PosterPreset;
 }
 
 const SIZE: Record<TemplateFormat, { w: number; h: number }> = {
@@ -61,6 +64,74 @@ export interface MultiTemplateProps {
   showPrice: boolean;
   showBadges: boolean;
   showLabels: boolean;
+  preset?: PosterPreset;
+}
+
+// Convert a PosterPreset palette/background into the legacy PosterTheme
+// shape used by ProductGrid + Ribbon, so the existing render code keeps
+// working unchanged.
+function presetToTheme(preset: PosterPreset): PosterTheme {
+  const { palette, background } = preset;
+  const accent = palette.accent;
+  const glow = palette.glow;
+  // Background renderers
+  let bgVignette = `radial-gradient(ellipse at center, ${shade(palette.bg, -2)} 0%, ${palette.bg} 55%, ${shade(palette.bg, -8)} 100%)`;
+  if (background.type === "dark") {
+    bgVignette = palette.bg;
+  } else if (background.type === "minimal") {
+    bgVignette = palette.bg;
+  } else if (background.type === "gradient") {
+    bgVignette = `linear-gradient(135deg, ${palette.bg} 0%, ${shade(palette.bg, -6)} 100%)`;
+  }
+  // Ribbon + CTA gradients derived from accent
+  const ribbon = `linear-gradient(180deg, ${accent} 0%, ${shade(accent, -15)} 60%, ${shade(accent, -35)} 100%)`;
+  const cta = ribbon;
+  return {
+    glow: accent,
+    glowSoft: glow,
+    ribbon,
+    ribbonText: contrastText(accent),
+    cta,
+    ctaText: contrastText(accent),
+    bgVignette,
+    divider: `linear-gradient(90deg,transparent 0%,${accent} 25%,${tint(accent, 60)} 50%,${accent} 75%,transparent 100%)`,
+    badge: `linear-gradient(180deg,${accent},${shade(accent, -25)})`,
+  };
+}
+
+// Lightweight color helpers (hex only — rgba passes through).
+function hexToRgb(hex: string): [number, number, number] | null {
+  let h = hex.trim().replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  if (h.length !== 6) return null;
+  const n = parseInt(h, 16);
+  if (isNaN(n)) return null;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbToHex(r: number, g: number, b: number): string {
+  return (
+    "#" +
+    [r, g, b]
+      .map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+function shade(color: string, percent: number): string {
+  const rgb = hexToRgb(color);
+  if (!rgb) return color;
+  const f = 1 + percent / 100;
+  return rgbToHex(rgb[0] * f, rgb[1] * f, rgb[2] * f);
+}
+function tint(color: string, amount: number): string {
+  const rgb = hexToRgb(color);
+  if (!rgb) return color;
+  return rgbToHex(rgb[0] + amount, rgb[1] + amount, rgb[2] + amount);
+}
+function contrastText(bg: string): string {
+  const rgb = hexToRgb(bg);
+  if (!rgb) return "#ffffff";
+  const yiq = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
+  return yiq >= 160 ? "#0a0a0a" : "#ffffff";
 }
 
 // Theme palette per poster intent. Picked from `urgencyText`/`headline` keywords
@@ -186,11 +257,13 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
     const { format } = props;
     const { w, h } = SIZE[format];
 
-    const theme = pickTheme(props.headline, props.urgencyText);
+    const theme = props.preset ? presetToTheme(props.preset) : pickTheme(props.headline, props.urgencyText);
+    const dscale = densityScale(props.preset?.layout.density ?? "normal");
     const isStory = format === "story";
     const isAd = format === "ad";
     const isPortrait = format === "portrait";
-    const padding = isStory || isPortrait ? "64px 52px" : isAd ? "40px" : "52px";
+    const basePad = isStory || isPortrait ? 56 : isAd ? 40 : 52;
+    const padding = `${Math.round(basePad * dscale.pad)}px`;
 
     // Split headline into two words to color the second one with the glow,
     // matching the reference (e.g. "BEST SELLERS" → "BEST" white, "SELLERS" green)
@@ -198,7 +271,17 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
     const firstWord = headlineParts[0] ?? "";
     const restWords = headlineParts.slice(1).join(" ");
 
-    const headlineSize = isStory ? 110 : isAd ? 64 : isPortrait ? 96 : 86;
+    const tScale = props.preset?.typography.scale ?? 1;
+    const headlineSize = Math.round((isStory ? 110 : isAd ? 64 : isPortrait ? 96 : 86) * tScale);
+    const headlineWeight = props.preset?.typography.headlineWeight ?? 900;
+    const headlineCase = props.preset?.typography.headlineCase ?? "upper";
+    const ctaShape = props.preset?.cta.shape ?? "pill";
+    const ctaFill = props.preset?.cta.fill ?? "glow";
+    const gridGap = Math.round((props.preset?.layout.gridGap ?? 18) * dscale.gap);
+    const textColor = props.preset?.palette.text ?? "#ffffff";
+    const mutedColor = props.preset?.palette.muted ?? "rgba(255,255,255,0.7)";
+
+    const showHalos = !props.preset || props.preset.background.type === "glow";
 
     return (
       <div
@@ -211,40 +294,44 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
           fontFamily:
             "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
           background: theme.bgVignette,
-          color: "#ffffff",
+          color: textColor,
           padding,
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
         }}
       >
-        {/* Top + bottom glowing halos */}
-        <div
-          style={{
-            position: "absolute",
-            top: -260,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "120%",
-            height: 520,
-            background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
-            filter: "blur(20px)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: -260,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "120%",
-            height: 520,
-            background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
-            filter: "blur(20px)",
-            pointerEvents: "none",
-          }}
-        />
+        {/* Top + bottom glowing halos (only on glow backgrounds) */}
+        {showHalos && (
+          <>
+            <div
+              style={{
+                position: "absolute",
+                top: -260,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "120%",
+                height: 520,
+                background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
+                filter: "blur(20px)",
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: -260,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "120%",
+                height: 520,
+                background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
+                filter: "blur(20px)",
+                pointerEvents: "none",
+              }}
+            />
+          </>
+        )}
 
         {/* Headline + glowing divider above */}
         <div style={{ position: "relative", zIndex: 2, textAlign: "center" }}>
@@ -260,12 +347,12 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
           <div
             style={{
               fontSize: headlineSize,
-              fontWeight: 900,
+              fontWeight: headlineWeight,
               lineHeight: 0.92,
               letterSpacing: "-0.02em",
-              textTransform: "uppercase",
-              color: "#ffffff",
-              textShadow: "0 4px 18px rgba(0,0,0,0.6)",
+              textTransform: headlineCase === "upper" ? "uppercase" : "none",
+              color: textColor,
+              textShadow: "0 4px 18px rgba(0,0,0,0.4)",
             }}
           >
             <span>{firstWord}</span>
@@ -274,7 +361,7 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
                 {" "}
                 <span
                   style={{
-                    background: `linear-gradient(180deg, ${theme.glow} 0%, ${theme.glow} 60%, rgba(255,255,255,0.85) 100%)`,
+                    background: `linear-gradient(180deg, ${theme.glow} 0%, ${theme.glow} 60%, ${textColor} 100%)`,
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     backgroundClip: "text",
@@ -291,7 +378,7 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
               style={{
                 marginTop: 12,
                 fontSize: isStory ? 24 : 20,
-                color: "rgba(255,255,255,0.7)",
+                color: mutedColor,
                 fontWeight: 600,
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
@@ -319,6 +406,8 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
             showPrice={props.showPrice}
             showBadges={props.showBadges}
             showLabels={props.showLabels}
+            preset={props.preset}
+            gap={gridGap}
           />
         </div>
 
@@ -342,17 +431,17 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
             position: "relative",
             zIndex: 2,
             textAlign: "center",
-            color: "rgba(255,255,255,0.85)",
+            color: mutedColor,
             fontSize: isAd ? 18 : 22,
             fontWeight: 600,
             marginBottom: 14,
           }}
         >
-          <span style={{ color: "#ff4d4d", marginRight: 6 }}>📍</span>
+          <span style={{ color: theme.glow, marginRight: 6 }}>📍</span>
           {props.meetupText}
         </div>
 
-        {/* CTA pill */}
+        {/* CTA — shape & fill driven by preset */}
         <div
           style={{
             position: "relative",
@@ -361,23 +450,13 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
             justifyContent: "center",
           }}
         >
-          <div
-            style={{
-              background: theme.cta,
-              color: theme.ctaText,
-              padding: isAd ? "14px 36px" : "20px 56px",
-              borderRadius: 16,
-              fontSize: isAd ? 22 : 30,
-              fontWeight: 900,
-              letterSpacing: 2,
-              textAlign: "center",
-              textTransform: "uppercase",
-              boxShadow: `0 0 32px ${theme.glowSoft}, inset 0 -4px 0 rgba(0,0,0,0.25)`,
-              minWidth: isAd ? 280 : 420,
-            }}
-          >
-            {props.ctaText}
-          </div>
+          <PresetCTA
+            text={props.ctaText}
+            theme={theme}
+            shape={ctaShape}
+            fill={ctaFill}
+            small={isAd}
+          />
         </div>
 
         {/* Brand line */}
@@ -405,7 +484,7 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
                 fontWeight: 700,
                 letterSpacing: 6,
                 textTransform: "uppercase",
-                color: "rgba(255,255,255,0.85)",
+                color: mutedColor,
               }}
             >
               {props.brandName}
@@ -416,6 +495,51 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
     );
   },
 );
+
+// CTA renderer that respects preset shape + fill.
+function PresetCTA({
+  text,
+  theme,
+  shape,
+  fill,
+  small,
+}: {
+  text: string;
+  theme: PosterTheme;
+  shape: "pill" | "block" | "outline";
+  fill: "glow" | "solid" | "outline";
+  small?: boolean;
+}) {
+  const radius = shape === "pill" ? 999 : shape === "block" ? 12 : 16;
+  const isOutline = fill === "outline" || shape === "outline";
+  const bg = isOutline ? "transparent" : theme.cta;
+  const border = isOutline ? `3px solid ${theme.glow}` : "none";
+  const color = isOutline ? theme.glow : theme.ctaText;
+  const shadow =
+    fill === "glow" && !isOutline
+      ? `0 0 32px ${theme.glowSoft}, inset 0 -4px 0 rgba(0,0,0,0.25)`
+      : "none";
+  return (
+    <div
+      style={{
+        background: bg,
+        border,
+        color,
+        padding: small ? "12px 32px" : "20px 56px",
+        borderRadius: radius,
+        fontSize: small ? 22 : 30,
+        fontWeight: 900,
+        letterSpacing: 2,
+        textAlign: "center",
+        textTransform: "uppercase",
+        boxShadow: shadow,
+        minWidth: small ? 280 : 420,
+      }}
+    >
+      {text}
+    </div>
+  );
+}
 
 function Ribbon({
   text,
@@ -456,12 +580,16 @@ function ProductGrid({
   showPrice,
   showBadges,
   showLabels,
+  preset,
+  gap = 18,
 }: {
   items: MultiProductItem[];
   theme: PosterTheme;
   showPrice: boolean;
   showBadges: boolean;
   showLabels: boolean;
+  preset?: PosterPreset;
+  gap?: number;
 }) {
   const tiles = items.slice(0, 4);
   const overflow = items.length - tiles.length;
@@ -480,6 +608,13 @@ function ProductGrid({
     rows = "1fr 1fr";
   }
 
+  const tileRadius = preset?.layout.radius ?? 22;
+  const innerRadius = Math.max(8, tileRadius - 8);
+  const tileBg = preset?.palette.surface ?? "rgba(255,255,255,0.04)";
+  const titleColor = preset?.palette.text ?? "#ffffff";
+  const badgeShape = preset?.badge.shape ?? "pill";
+  const badgeFill = preset?.badge.fill ?? "glow";
+
   return (
     <div
       style={{
@@ -488,7 +623,7 @@ function ProductGrid({
         display: "grid",
         gridTemplateColumns: columns,
         gridTemplateRows: rows,
-        gap: 18,
+        gap,
       }}
     >
       {tiles.map((item, i) => {
@@ -499,10 +634,10 @@ function ProductGrid({
             style={{
               gridColumn: spanFull ? "1 / span 2" : "auto",
               position: "relative",
-              borderRadius: 22,
-              background: "rgba(255,255,255,0.04)",
+              borderRadius: tileRadius,
+              background: tileBg,
               border: "1px solid rgba(255,255,255,0.08)",
-              boxShadow: `0 0 22px ${theme.glowSoft}, 0 12px 28px rgba(0,0,0,0.55)`,
+              boxShadow: `0 0 22px ${theme.glowSoft}, 0 12px 28px rgba(0,0,0,0.45)`,
               padding: 14,
               display: "flex",
               flexDirection: "column",
@@ -516,7 +651,7 @@ function ProductGrid({
                 position: "relative",
                 flex: 1,
                 minHeight: 0,
-                borderRadius: 14,
+                borderRadius: innerRadius,
                 overflow: "hidden",
                 background: "#f3f3f3",
               }}
@@ -549,26 +684,14 @@ function ProductGrid({
                 </div>
               )}
 
-              {/* Badge top-left */}
+              {/* Badge top-left — preset-driven shape & fill */}
               {showBadges && item.badge && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 12,
-                    left: 12,
-                    background: theme.badge,
-                    color: "#ffffff",
-                    padding: "6px 14px",
-                    borderRadius: 999,
-                    fontSize: 16,
-                    fontWeight: 900,
-                    letterSpacing: 1.5,
-                    textTransform: "uppercase",
-                    boxShadow: `0 0 14px ${theme.glowSoft}`,
-                  }}
-                >
-                  {item.badge}
-                </div>
+                <PresetBadge
+                  text={item.badge}
+                  theme={theme}
+                  shape={badgeShape}
+                  fill={badgeFill}
+                />
               )}
 
               {/* Overflow chip top-right on last tile */}
@@ -597,7 +720,7 @@ function ProductGrid({
                 style={{
                   fontSize: 24,
                   fontWeight: 800,
-                  color: "#ffffff",
+                  color: titleColor,
                   letterSpacing: 0.5,
                   textTransform: "uppercase",
                   overflow: "hidden",
@@ -616,7 +739,7 @@ function ProductGrid({
                 style={{
                   alignSelf: "flex-start",
                   background: theme.glow,
-                  color: "#062012",
+                  color: contrastTextSafe(theme.glow),
                   padding: "8px 16px",
                   borderRadius: 10,
                   fontSize: 22,
@@ -631,6 +754,58 @@ function ProductGrid({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function contrastTextSafe(c: string): string {
+  if (!c.startsWith("#")) return "#0a0a0a";
+  return contrastText(c);
+}
+
+// Preset-aware tile badge.
+function PresetBadge({
+  text,
+  theme,
+  shape,
+  fill,
+}: {
+  text: string;
+  theme: PosterTheme;
+  shape: "pill" | "ribbon" | "chip";
+  fill: "glow" | "solid" | "outline";
+}) {
+  const isOutline = fill === "outline";
+  const radius = shape === "pill" ? 999 : shape === "chip" ? 6 : 4;
+  const padding =
+    shape === "ribbon" ? "6px 18px 6px 14px" : shape === "chip" ? "5px 10px" : "6px 14px";
+  const clip =
+    shape === "ribbon"
+      ? "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)"
+      : undefined;
+  const bg = isOutline ? "transparent" : theme.badge;
+  const border = isOutline ? `2px solid ${theme.glow}` : "none";
+  const color = isOutline ? theme.glow : "#ffffff";
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 12,
+        left: 12,
+        background: bg,
+        border,
+        color,
+        padding,
+        borderRadius: radius,
+        clipPath: clip,
+        fontSize: 16,
+        fontWeight: 900,
+        letterSpacing: 1.5,
+        textTransform: "uppercase",
+        boxShadow: fill === "glow" ? `0 0 14px ${theme.glowSoft}` : "none",
+      }}
+    >
+      {text}
     </div>
   );
 }

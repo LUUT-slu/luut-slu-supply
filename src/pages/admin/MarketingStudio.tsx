@@ -39,6 +39,9 @@ import {
   MarketingProduct,
   getPosterTypeMeta,
 } from "@/lib/marketingPosterTypes";
+import { PresetPicker } from "@/components/marketing/PresetPicker";
+import { PresetOverridePanel, PresetOverrides } from "@/components/marketing/PresetOverridePanel";
+import { getPreset, mergePreset, getBuiltinPresets } from "@/lib/marketingPresets";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
@@ -128,6 +131,18 @@ export default function MarketingStudio() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<TemplateFormat>("story");
   const [style, setStyle] = useState<TemplateStyle>("hype");
+  const [activePresetId, setActivePresetId] = useState<string>("hype");
+  const [presetOverrides, setPresetOverrides] = useState<PresetOverrides>({});
+
+  const activePreset = useMemo(() => {
+    const base = getPreset(activePresetId) || getBuiltinPresets()[1];
+    return mergePreset(base, presetOverrides);
+  }, [activePresetId, presetOverrides]);
+
+  // Reset overrides when switching preset
+  useEffect(() => {
+    setPresetOverrides({});
+  }, [activePresetId]);
 
   // Editable session-level fields, seeded from defaults
   const [brandName, setBrandName] = useState(defaults.brandName);
@@ -332,6 +347,7 @@ export default function MarketingStudio() {
         urgencyText,
         variantImages: variantMode === "multi" && variantImages.length > 1 ? variantImages : undefined,
         showVariantLabels,
+        preset: activePreset,
       }
     : null;
 
