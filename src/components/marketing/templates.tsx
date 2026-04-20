@@ -685,6 +685,7 @@ function ProductGrid({
                   crossOrigin="anonymous"
                   alt=""
                   data-export-hero="true"
+                  data-export-src={item.imageUrl}
                   data-editable-hero={onImageClick ? "true" : undefined}
                   onClick={
                     onImageClick && item.imageUrl
@@ -1051,6 +1052,7 @@ function PresetLayout(p: TemplateProps) {
                 crossOrigin="anonymous"
                 alt=""
                 data-export-hero="true"
+                data-export-src={heroImage}
                 data-editable-hero={p.onImageClick ? "true" : undefined}
                 onClick={
                   p.onImageClick
@@ -1349,6 +1351,7 @@ function PresetVariantGrid({
               crossOrigin="anonymous"
               alt=""
               data-export-hero="true"
+              data-export-src={v.url}
               data-editable-hero={onImageClick ? "true" : undefined}
               onClick={
                 onImageClick
@@ -1500,6 +1503,7 @@ function VariantGrid({
               crossOrigin="anonymous"
               alt=""
               data-export-hero="true"
+              data-export-src={v.url}
               style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
             {showLabels && v.label && (
