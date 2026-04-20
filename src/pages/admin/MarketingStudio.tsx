@@ -159,6 +159,52 @@ export default function MarketingStudio() {
     }
   }, [products, selectedId]);
 
+  // Build variant options from selected product. De-dupe by image+label so
+  // products with size+color combos don't show 30 near-identical tiles.
+  const variantOptions = useMemo<VariantOption[]>(() => {
+    if (!selectedProduct) return [];
+    const fallback = selectedProduct.images?.[0]?.url;
+    const seen = new Set<string>();
+    const opts: VariantOption[] = [];
+    for (const v of selectedProduct.variants) {
+      if (v.title === "Default Title" || v.title === "Default") continue;
+      // Prefer Color option for label, otherwise the variant title
+      const colorOpt = v.selectedOptions.find(
+        (o) => o.name.toLowerCase() === "color" || o.name.toLowerCase() === "colour",
+      );
+      const label = colorOpt?.value || v.title;
+      const imageUrl = v.image?.url || fallback;
+      const key = `${label}::${imageUrl || ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      opts.push({
+        id: v.id,
+        label,
+        imageUrl,
+        available: v.availableForSale,
+      });
+    }
+    return opts;
+  }, [selectedProduct]);
+
+  // Reset variant selection when product changes
+  useEffect(() => {
+    if (variantOptions.length === 0) {
+      setSelectedVariantIds([]);
+      return;
+    }
+    setSelectedVariantIds([variantOptions[0].id]);
+    setVariantMode("single");
+  }, [selectedProduct?.id, variantOptions]);
+
+  // Compute variant images for the template
+  const variantImages = useMemo(() => {
+    const picked = selectedVariantIds
+      .map((id) => variantOptions.find((v) => v.id === id))
+      .filter((v): v is VariantOption => Boolean(v && v.imageUrl));
+    return picked.map((v) => ({ url: v.imageUrl as string, label: v.label }));
+  }, [selectedVariantIds, variantOptions]);
+
   const productPayload = useMemo(() => {
     if (!selectedProduct) return null;
     const stockBadge =
@@ -167,15 +213,20 @@ export default function MarketingStudio() {
         : selectedProduct.stockStatus === "low_stock"
           ? "Low Stock"
           : "Sold Out";
+    // In single mode, use the chosen variant image as the main visual
+    const singleVariantImage =
+      variantMode === "single" && variantImages.length === 1
+        ? variantImages[0].url
+        : undefined;
     return {
       name: selectedProduct.title,
-      productImage: selectedProduct.images?.[0]?.url,
+      productImage: singleVariantImage || selectedProduct.images?.[0]?.url,
       price: selectedProduct.price?.amount,
       description: selectedProduct.description?.slice(0, 160),
       category: selectedProduct.category || undefined,
       stockStatus: stockBadge,
     };
-  }, [selectedProduct]);
+  }, [selectedProduct, variantMode, variantImages]);
 
   const exportRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -219,6 +270,8 @@ export default function MarketingStudio() {
         meetupText,
         ctaText,
         urgencyText,
+        variantImages: variantMode === "multi" && variantImages.length > 1 ? variantImages : undefined,
+        showVariantLabels,
       }
     : null;
 
