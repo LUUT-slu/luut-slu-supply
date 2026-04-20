@@ -234,7 +234,7 @@ export default function MarketingStudio() {
           </Card>
 
           <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               {FORMATS.map((f) => (
                 <TabsTrigger key={f.key} value={f.key} className="text-xs">
                   {f.label}
@@ -271,11 +271,8 @@ export default function MarketingStudio() {
                             style={{
                               transform: `scale(${PREVIEW_SCALE[f.key]})`,
                               transformOrigin: "top center",
-                              width:
-                                f.key === "ad" ? 1200 * PREVIEW_SCALE[f.key] : 1080 * PREVIEW_SCALE[f.key],
-                              height:
-                                (f.key === "story" ? 1920 : f.key === "post" ? 1080 : 628) *
-                                PREVIEW_SCALE[f.key],
+                              width: PREVIEW_DIMS[f.key].w * PREVIEW_SCALE[f.key],
+                              height: PREVIEW_DIMS[f.key].h * PREVIEW_SCALE[f.key],
                             }}
                           >
                             <div
@@ -332,6 +329,24 @@ export default function MarketingStudio() {
                           className="mt-1"
                           value={brandName}
                           onChange={(e) => setBrandName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Brand Logo URL (optional)</Label>
+                        <Input
+                          className="mt-1"
+                          placeholder="https://..."
+                          value={brandLogoUrl}
+                          onChange={(e) => setBrandLogoUrl(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Short Tagline (optional)</Label>
+                        <Input
+                          className="mt-1"
+                          placeholder="e.g. Fresh drop · Just landed"
+                          value={tagline}
+                          onChange={(e) => setTagline(e.target.value)}
                         />
                       </div>
                       <div>
