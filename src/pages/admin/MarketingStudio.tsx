@@ -32,6 +32,8 @@ import { CopyPanel } from "@/components/marketing/CopyPanel";
 import { VariantSelector, VariantMode, VariantOption } from "@/components/marketing/VariantSelector";
 import { PosterTypeSelector } from "@/components/marketing/PosterTypeSelector";
 import { ProductSourceCard } from "@/components/marketing/ProductSourceCard";
+import { ImagePrepPanel } from "@/components/marketing/ImagePrepPanel";
+import { useImagePrep } from "@/hooks/useImagePrep";
 import {
   PosterType,
   MarketingProduct,
@@ -255,6 +257,24 @@ export default function MarketingStudio() {
     };
   }, [selectedProduct, variantMode, variantImages]);
 
+  // ---- AI-assisted image prep (single-product hero image) ----
+  const singlePrep = useImagePrep(productPayload?.productImage, tab);
+
+  // ---- AI-assisted image prep (multi-product, applied to all tiles) ----
+  const [multiPrepMode, setMultiPrepMode] = useState<
+    import("@/hooks/useImagePrep").PrepMode
+  >("original");
+  // Show prep preview against the first tile so admin sees what will apply.
+  const firstSourceImage = sourceProducts[0]?.imageUrl;
+  const multiPrepPreview = useImagePrep(firstSourceImage, tab);
+  // Keep the preview hook in sync with the global multi mode.
+  useEffect(() => {
+    if (multiPrepPreview.mode !== multiPrepMode) {
+      multiPrepPreview.setMode(multiPrepMode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [multiPrepMode]);
+
   const exportRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -299,7 +319,7 @@ export default function MarketingStudio() {
         format: tab,
         style,
         productName: productPayload.name,
-        productImage: productPayload.productImage,
+        productImage: singlePrep.preparedUrl || productPayload.productImage,
         price: productPayload.price ? String(productPayload.price) : undefined,
         showPrice,
         description: productPayload.description,
@@ -315,19 +335,71 @@ export default function MarketingStudio() {
       }
     : null;
 
+  // Apply the chosen multi-prep mode to every tile via a per-image
+  // useImagePrep call would be N hooks — instead we use a tiny inline
+  // canvas pass for canvas-only modes and skip AI modes for multi (cost).
+  const preparedTiles = useMemo(() => {
+    return sourceProducts.map((p) => ({
+      id: p.id,
+      title: p.title,
+      imageUrl: p.imageUrl, // placeholder; replaced async below via cache
+      price: p.price,
+      badge: p.badge,
+      hint: p.hint,
+    }));
+    // We intentionally exclude multiPrepMode here — tiles map is async.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceProducts]);
+
+  // Async tile preparation: when mode/format/source changes, run canvas ops
+  // for each tile and stash the results in local state.
+  const [tilePreparedMap, setTilePreparedMap] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!isMulti) return;
+    if (multiPrepMode === "original") {
+      setTilePreparedMap({});
+      return;
+    }
+    // AI modes are disabled for multi-product to avoid N gateway calls.
+    if (multiPrepMode === "remove-bg" || multiPrepMode === "expand") {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { autoFitProduct, smartReframe, enhanceImage } = await import(
+        "@/lib/imagePrep"
+      );
+      const next: Record<string, string> = {};
+      await Promise.all(
+        sourceProducts.map(async (p) => {
+          if (!p.imageUrl) return;
+          try {
+            let r: string;
+            if (multiPrepMode === "auto-fit") r = await autoFitProduct(p.imageUrl, tab);
+            else if (multiPrepMode === "reframe") r = await smartReframe(p.imageUrl, tab);
+            else r = await enhanceImage(p.imageUrl);
+            next[p.id] = r;
+          } catch (e) {
+            console.warn("Tile prep failed for", p.id, e);
+          }
+        }),
+      );
+      if (!cancelled) setTilePreparedMap(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isMulti, multiPrepMode, tab, sourceProducts]);
+
   const multiTemplateProps = isMulti
     ? {
         format: tab,
         style,
         headline: meta.headline,
         subhead: tagline || undefined,
-        products: sourceProducts.map((p) => ({
-          id: p.id,
-          title: p.title,
-          imageUrl: p.imageUrl,
-          price: p.price,
-          badge: p.badge,
-          hint: p.hint,
+        products: preparedTiles.map((p) => ({
+          ...p,
+          imageUrl: tilePreparedMap[p.id] || p.imageUrl,
         })),
         brandName,
         brandLogoUrl: brandLogoUrl || undefined,
@@ -450,6 +522,53 @@ export default function MarketingStudio() {
                   onSelectionChange={setSelectedVariantIds}
                   fallbackImageUrl={selectedProduct?.images?.[0]?.url}
                 />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Image prep — single product */}
+          {!isMulti && productPayload?.productImage && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Prepare image</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ImagePrepPanel
+                  sourceUrl={productPayload.productImage}
+                  preparedUrl={singlePrep.preparedUrl}
+                  mode={singlePrep.mode}
+                  onModeChange={singlePrep.setMode}
+                  isProcessing={singlePrep.isProcessing}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Image prep — multi-product (applied to every tile, canvas-only) */}
+          {isMulti && sourceProducts.length > 0 && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Prepare tile images</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ImagePrepPanel
+                  sourceUrl={firstSourceImage}
+                  preparedUrl={multiPrepPreview.preparedUrl}
+                  mode={multiPrepMode}
+                  onModeChange={(m) => {
+                    if (m === "remove-bg" || m === "expand") {
+                      toast.info(
+                        "AI background edits are available for single-product posters only — keeps generation fast and free of multi-tile credit usage.",
+                      );
+                      return;
+                    }
+                    setMultiPrepMode(m);
+                  }}
+                  isProcessing={multiPrepPreview.isProcessing}
+                />
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Applied to every product tile in this poster.
+                </p>
               </CardContent>
             </Card>
           )}
