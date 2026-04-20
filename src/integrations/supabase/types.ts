@@ -210,6 +210,30 @@ export type Database = {
           },
         ]
       }
+      customer_notes: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          note: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          note: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          note?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       customer_profiles: {
         Row: {
           created_at: string
@@ -217,9 +241,11 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          last_contacted_at: string | null
           meetup_notes: string | null
           phone: string | null
           preferred_location: string | null
+          signup_source: string | null
           updated_at: string
           user_id: string
         }
@@ -229,9 +255,11 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          last_contacted_at?: string | null
           meetup_notes?: string | null
           phone?: string | null
           preferred_location?: string | null
+          signup_source?: string | null
           updated_at?: string
           user_id: string
         }
@@ -241,10 +269,75 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          last_contacted_at?: string | null
           meetup_notes?: string | null
           phone?: string | null
           preferred_location?: string | null
+          signup_source?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      customer_referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referral_code: string
+          referred_email: string | null
+          referred_user_id: string | null
+          referrer_user_id: string
+          reward_granted: boolean
+          rewarded_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referral_code: string
+          referred_email?: string | null
+          referred_user_id?: string | null
+          referrer_user_id: string
+          reward_granted?: boolean
+          rewarded_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referral_code?: string
+          referred_email?: string | null
+          referred_user_id?: string | null
+          referrer_user_id?: string
+          reward_granted?: boolean
+          rewarded_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      customer_tags: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          tag: string
+          tag_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tag: string
+          tag_type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tag?: string
+          tag_type?: string
           user_id?: string
         }
         Relationships: []
