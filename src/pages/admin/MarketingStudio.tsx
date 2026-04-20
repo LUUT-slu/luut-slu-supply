@@ -654,6 +654,7 @@ export default function MarketingStudio() {
         variantImages: variantMode === "multi" && variantImages.length > 1 ? variantImages : undefined,
         showVariantLabels,
         preset: activePreset,
+        cropMap,
       }
     : null;
 
@@ -731,6 +732,7 @@ export default function MarketingStudio() {
         showBadges: showTileBadges,
         showLabels: showTileLabels,
         preset: activePreset,
+        cropMap,
       }
     : null;
 
