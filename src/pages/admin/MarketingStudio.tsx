@@ -30,9 +30,10 @@ import {
 import { CopyPanel } from "@/components/marketing/CopyPanel";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
-  { key: "story", label: "IG Story", size: "1080×1920" },
-  { key: "post", label: "Feed Post", size: "1080×1080" },
-  { key: "ad", label: "Ad Creative", size: "1200×628" },
+  { key: "story", label: "Story", size: "1080×1920" },
+  { key: "post", label: "Post", size: "1080×1080" },
+  { key: "ad", label: "Ad", size: "1200×628" },
+  { key: "portrait", label: "Portrait", size: "1080×1350" },
 ];
 
 const STYLES: { key: TemplateStyle; label: string }[] = [
@@ -45,6 +46,14 @@ const PREVIEW_SCALE: Record<TemplateFormat, number> = {
   story: 0.22,
   post: 0.32,
   ad: 0.32,
+  portrait: 0.28,
+};
+
+const PREVIEW_DIMS: Record<TemplateFormat, { w: number; h: number }> = {
+  story: { w: 1080, h: 1920 },
+  post: { w: 1080, h: 1080 },
+  ad: { w: 1200, h: 628 },
+  portrait: { w: 1080, h: 1350 },
 };
 
 export default function MarketingStudio() {
