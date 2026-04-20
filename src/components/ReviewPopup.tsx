@@ -78,6 +78,19 @@ export function ReviewPopup({ productHandle, productTitle }: ReviewPopupProps) {
       });
       if (error) throw error;
 
+      // Fire-and-forget admin alert: new review submitted
+      supabase.functions.invoke("send-admin-alert", {
+        body: {
+          type: "review_submitted",
+          payload: {
+            rating,
+            reviewer_name: name.trim() || null,
+            comment: comment.trim() || null,
+            product_title: productTitle || null,
+          },
+        },
+      }).catch(() => {});
+
       toast.success("Thank you! Your review has been submitted.");
       reset();
       setOpen(false);

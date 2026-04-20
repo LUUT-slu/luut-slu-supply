@@ -246,6 +246,14 @@ export default function Login() {
       supabase.functions.invoke("send-welcome-email", {
         body: { userId: null, email: signupEmail },
       }).catch(() => {});
+
+      // Fire-and-forget admin alert: new customer signup
+      supabase.functions.invoke("send-admin-alert", {
+        body: {
+          type: "customer_signup",
+          payload: { email: signupEmail, full_name: fullName || null },
+        },
+      }).catch(() => {});
     }
     
     setIsLoading(false);

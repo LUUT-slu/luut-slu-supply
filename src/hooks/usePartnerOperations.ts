@@ -123,6 +123,34 @@ export const usePartnerOperations = () => {
 
     const commissionEarned = result?.commission_earned as number | undefined;
     toast.success(`Order completed! Commission: EC$${commissionEarned?.toFixed(2) || '0'}`);
+
+    // Fire-and-forget low-stock check + admin alert
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: stockRows } = await supabase
+          .from('partner_stock')
+          .select('qty_on_hand, product:seller_products(name)')
+          .eq('partner_id', user.id);
+        const lows = (stockRows || []).filter((r: any) => (r.qty_on_hand ?? 0) <= 3);
+        for (const low of lows) {
+          await supabase.functions.invoke('send-admin-alert', {
+            body: {
+              type: 'low_stock',
+              payload: {
+                product_name: (low as any).product?.name || 'Unknown product',
+                qty_on_hand: (low as any).qty_on_hand,
+                partner_id: user.id,
+              },
+            },
+          }).catch(() => {});
+        }
+      } catch {
+        // never break completion
+      }
+    })();
+
     return true;
   };
 

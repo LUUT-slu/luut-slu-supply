@@ -233,6 +233,21 @@ export default function SellerProductForm() {
           .insert(productData);
 
         if (error) throw error;
+
+        // Fire-and-forget admin alert: new product submission
+        supabase.functions.invoke("send-admin-alert", {
+          body: {
+            type: "seller_product",
+            payload: {
+              product_name: productData.name,
+              seller_name: profile?.seller_name || null,
+              price: productData.price,
+              quantity: productData.quantity,
+              category: productData.category,
+            },
+          },
+        }).catch(() => {});
+
         toast.success("Product created!");
       }
 
