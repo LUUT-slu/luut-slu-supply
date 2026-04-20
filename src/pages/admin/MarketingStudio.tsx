@@ -489,6 +489,15 @@ export default function MarketingStudio() {
                         <Label className="text-xs">Show price</Label>
                         <Switch checked={showPrice} onCheckedChange={setShowPrice} />
                       </div>
+                      {variantMode === "multi" && selectedVariantIds.length > 1 && (
+                        <div className="flex items-center justify-between rounded-md border p-2">
+                          <Label className="text-xs">Show variant labels</Label>
+                          <Switch
+                            checked={showVariantLabels}
+                            onCheckedChange={setShowVariantLabels}
+                          />
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
