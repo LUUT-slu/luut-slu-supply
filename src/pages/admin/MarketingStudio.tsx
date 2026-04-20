@@ -526,6 +526,53 @@ export default function MarketingStudio() {
             </Card>
           )}
 
+          {/* Image prep — single product */}
+          {!isMulti && productPayload?.productImage && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Prepare image</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ImagePrepPanel
+                  sourceUrl={productPayload.productImage}
+                  preparedUrl={singlePrep.preparedUrl}
+                  mode={singlePrep.mode}
+                  onModeChange={singlePrep.setMode}
+                  isProcessing={singlePrep.isProcessing}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Image prep — multi-product (applied to every tile, canvas-only) */}
+          {isMulti && sourceProducts.length > 0 && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Prepare tile images</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ImagePrepPanel
+                  sourceUrl={firstSourceImage}
+                  preparedUrl={multiPrepPreview.preparedUrl}
+                  mode={multiPrepMode}
+                  onModeChange={(m) => {
+                    if (m === "remove-bg" || m === "expand") {
+                      toast.info(
+                        "AI background edits are available for single-product posters only — keeps generation fast and free of multi-tile credit usage.",
+                      );
+                      return;
+                    }
+                    setMultiPrepMode(m);
+                  }}
+                  isProcessing={multiPrepPreview.isProcessing}
+                />
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Applied to every product tile in this poster.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)}>
             <TabsList className="grid w-full grid-cols-5">
               {FORMATS.map((f) => (
