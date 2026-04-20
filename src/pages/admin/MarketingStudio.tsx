@@ -347,6 +347,7 @@ export default function MarketingStudio() {
         urgencyText,
         variantImages: variantMode === "multi" && variantImages.length > 1 ? variantImages : undefined,
         showVariantLabels,
+        preset: activePreset,
       }
     : null;
 
