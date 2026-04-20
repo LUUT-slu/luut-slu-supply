@@ -28,6 +28,7 @@ import {
   TemplateStyle,
 } from "@/components/marketing/templates";
 import { CopyPanel } from "@/components/marketing/CopyPanel";
+import { VariantSelector, VariantMode, VariantOption } from "@/components/marketing/VariantSelector";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
@@ -127,6 +128,11 @@ export default function MarketingStudio() {
   const [tagline, setTagline] = useState("");
   const [showPrice, setShowPrice] = useState(defaults.showPriceByDefault);
 
+  // Variant selection
+  const [variantMode, setVariantMode] = useState<VariantMode>("single");
+  const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([]);
+  const [showVariantLabels, setShowVariantLabels] = useState(true);
+
   useEffect(() => {
     setBrandName(defaults.brandName);
     setBrandLogoUrl(defaults.brandLogoUrl);
@@ -153,6 +159,52 @@ export default function MarketingStudio() {
     }
   }, [products, selectedId]);
 
+  // Build variant options from selected product. De-dupe by image+label so
+  // products with size+color combos don't show 30 near-identical tiles.
+  const variantOptions = useMemo<VariantOption[]>(() => {
+    if (!selectedProduct) return [];
+    const fallback = selectedProduct.images?.[0]?.url;
+    const seen = new Set<string>();
+    const opts: VariantOption[] = [];
+    for (const v of selectedProduct.variants) {
+      if (v.title === "Default Title" || v.title === "Default") continue;
+      // Prefer Color option for label, otherwise the variant title
+      const colorOpt = v.selectedOptions.find(
+        (o) => o.name.toLowerCase() === "color" || o.name.toLowerCase() === "colour",
+      );
+      const label = colorOpt?.value || v.title;
+      const imageUrl = v.image?.url || fallback;
+      const key = `${label}::${imageUrl || ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      opts.push({
+        id: v.id,
+        label,
+        imageUrl,
+        available: v.availableForSale,
+      });
+    }
+    return opts;
+  }, [selectedProduct]);
+
+  // Reset variant selection when product changes
+  useEffect(() => {
+    if (variantOptions.length === 0) {
+      setSelectedVariantIds([]);
+      return;
+    }
+    setSelectedVariantIds([variantOptions[0].id]);
+    setVariantMode("single");
+  }, [selectedProduct?.id, variantOptions]);
+
+  // Compute variant images for the template
+  const variantImages = useMemo(() => {
+    const picked = selectedVariantIds
+      .map((id) => variantOptions.find((v) => v.id === id))
+      .filter((v): v is VariantOption => Boolean(v && v.imageUrl));
+    return picked.map((v) => ({ url: v.imageUrl as string, label: v.label }));
+  }, [selectedVariantIds, variantOptions]);
+
   const productPayload = useMemo(() => {
     if (!selectedProduct) return null;
     const stockBadge =
@@ -161,15 +213,20 @@ export default function MarketingStudio() {
         : selectedProduct.stockStatus === "low_stock"
           ? "Low Stock"
           : "Sold Out";
+    // In single mode, use the chosen variant image as the main visual
+    const singleVariantImage =
+      variantMode === "single" && variantImages.length === 1
+        ? variantImages[0].url
+        : undefined;
     return {
       name: selectedProduct.title,
-      productImage: selectedProduct.images?.[0]?.url,
+      productImage: singleVariantImage || selectedProduct.images?.[0]?.url,
       price: selectedProduct.price?.amount,
       description: selectedProduct.description?.slice(0, 160),
       category: selectedProduct.category || undefined,
       stockStatus: stockBadge,
     };
-  }, [selectedProduct]);
+  }, [selectedProduct, variantMode, variantImages]);
 
   const exportRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -213,6 +270,8 @@ export default function MarketingStudio() {
         meetupText,
         ctaText,
         urgencyText,
+        variantImages: variantMode === "multi" && variantImages.length > 1 ? variantImages : undefined,
+        showVariantLabels,
       }
     : null;
 
@@ -279,6 +338,25 @@ export default function MarketingStudio() {
               )}
             </CardContent>
           </Card>
+
+          {/* Variant selection */}
+          {variantOptions.length > 1 && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Select Variants</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <VariantSelector
+                  variants={variantOptions}
+                  mode={variantMode}
+                  onModeChange={setVariantMode}
+                  selectedIds={selectedVariantIds}
+                  onSelectionChange={setSelectedVariantIds}
+                  fallbackImageUrl={selectedProduct?.images?.[0]?.url}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)}>
             <TabsList className="grid w-full grid-cols-5">
@@ -411,6 +489,15 @@ export default function MarketingStudio() {
                         <Label className="text-xs">Show price</Label>
                         <Switch checked={showPrice} onCheckedChange={setShowPrice} />
                       </div>
+                      {variantMode === "multi" && selectedVariantIds.length > 1 && (
+                        <div className="flex items-center justify-between rounded-md border p-2">
+                          <Label className="text-xs">Show variant labels</Label>
+                          <Switch
+                            checked={showVariantLabels}
+                            onCheckedChange={setShowVariantLabels}
+                          />
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
