@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Megaphone, Download, Loader2, Image as ImageIcon, Share2 } from "lucide-react";
+import { Megaphone, Download, Loader2, Image as ImageIcon, Share2, Undo2, Redo2, RotateCcw } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useHybridProducts } from "@/hooks/useHybridProducts";
@@ -327,18 +327,60 @@ export default function MarketingStudio() {
   const [canShare, setCanShare] = useState(false);
 
   // ---- Manual image editor (per-image crop / zoom / pan) ----
-  const [cropMap, setCropMap] = useState<Record<string, CropState>>({});
+  // Session-level history of cropMap snapshots so the user can undo/redo
+  // image edits across the whole poster (in addition to the per-image
+  // undo/redo inside the editor modal).
+  const [cropMap, setCropMapState] = useState<Record<string, CropState>>({});
+  const cropHistoryRef = useRef<Record<string, CropState>[]>([{}]);
+  const cropCursorRef = useRef(0);
+  const [cropHistoryVersion, setCropHistoryVersion] = useState(0);
   const [editorImage, setEditorImage] = useState<string | null>(null);
+
+  const pushCropHistory = (next: Record<string, CropState>) => {
+    // Drop any redo branch ahead of the cursor, then append.
+    cropHistoryRef.current = cropHistoryRef.current.slice(0, cropCursorRef.current + 1);
+    cropHistoryRef.current.push(next);
+    // Cap history at 50 entries to avoid unbounded memory.
+    if (cropHistoryRef.current.length > 50) {
+      cropHistoryRef.current.shift();
+    }
+    cropCursorRef.current = cropHistoryRef.current.length - 1;
+    setCropHistoryVersion((v) => v + 1);
+  };
+
   const handleImageClick = (url: string) => setEditorImage(url);
   const handleEditorSave = (next: CropState) => {
     if (!editorImage) return;
-    setCropMap((prev) => {
-      const out = { ...prev };
-      if (isDefaultCrop(next)) delete out[editorImage];
-      else out[editorImage] = next;
-      return out;
-    });
+    const updated = { ...cropMap };
+    if (isDefaultCrop(next)) delete updated[editorImage];
+    else updated[editorImage] = next;
+    setCropMapState(updated);
+    pushCropHistory(updated);
   };
+
+  const canUndoCrop = cropCursorRef.current > 0;
+  const canRedoCrop = cropCursorRef.current < cropHistoryRef.current.length - 1;
+  const hasAnyCrops = Object.keys(cropMap).length > 0;
+
+  const handleUndoCrop = () => {
+    if (cropCursorRef.current <= 0) return;
+    cropCursorRef.current -= 1;
+    setCropMapState(cropHistoryRef.current[cropCursorRef.current]);
+    setCropHistoryVersion((v) => v + 1);
+  };
+  const handleRedoCrop = () => {
+    if (cropCursorRef.current >= cropHistoryRef.current.length - 1) return;
+    cropCursorRef.current += 1;
+    setCropMapState(cropHistoryRef.current[cropCursorRef.current]);
+    setCropHistoryVersion((v) => v + 1);
+  };
+  const handleResetCrops = () => {
+    if (Object.keys(cropMap).length === 0) return;
+    setCropMapState({});
+    pushCropHistory({});
+  };
+  // Silence unused-var lint for cropHistoryVersion (used to force re-render).
+  void cropHistoryVersion;
 
   // Detect Web Share API (Level 2 — files) once at mount
   useEffect(() => {
@@ -960,12 +1002,56 @@ export default function MarketingStudio() {
                   {/* Preview */}
                   <Card>
                     <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <ImageIcon className="h-4 w-4" />
                           Preview
                         </CardTitle>
                         <span className="text-[10px] text-muted-foreground">{f.size}</span>
+                      </div>
+                      {/* Crop history toolbar — undo/redo/reset all manual image edits */}
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2 text-[11px]"
+                          onClick={handleUndoCrop}
+                          disabled={!canUndoCrop}
+                          title="Undo last image edit"
+                        >
+                          <Undo2 className="h-3.5 w-3.5" />
+                          Undo
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2 text-[11px]"
+                          onClick={handleRedoCrop}
+                          disabled={!canRedoCrop}
+                          title="Redo image edit"
+                        >
+                          <Redo2 className="h-3.5 w-3.5" />
+                          Redo
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                          onClick={handleResetCrops}
+                          disabled={!hasAnyCrops}
+                          title="Reset all image edits"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Reset
+                        </Button>
+                        {hasAnyCrops && (
+                          <span className="ml-auto text-[10px] text-muted-foreground">
+                            {Object.keys(cropMap).length} edit{Object.keys(cropMap).length === 1 ? "" : "s"}
+                          </span>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent>
