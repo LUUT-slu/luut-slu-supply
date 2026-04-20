@@ -360,7 +360,11 @@ function HypeLayout(p: TemplateProps) {
             marginBottom: isAd ? 0 : 32,
           }}
         >
-          {p.productImage ? (
+          {p.variantImages && p.variantImages.length > 1 ? (
+            <div style={{ width: "100%", height: "100%", padding: 14, boxSizing: "border-box" }}>
+              <VariantGrid images={p.variantImages} showLabels={p.showVariantLabels} dark />
+            </div>
+          ) : p.productImage ? (
             <img
               src={p.productImage}
               crossOrigin="anonymous"
