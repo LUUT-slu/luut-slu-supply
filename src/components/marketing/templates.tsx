@@ -822,31 +822,8 @@ function PresetBadge({
 
 export const MarketingTemplate = forwardRef<HTMLDivElement, TemplateProps>(
   function MarketingTemplate(props, ref) {
-    const { format, style, preset } = props;
+    const { format } = props;
     const { w, h } = SIZE[format];
-
-    // Preset takes precedence — all visual tokens come from the active preset.
-    // Fallback: legacy style-based layouts (back-compat for callers not yet on presets).
-    const usePreset = !!preset;
-    const legacyStyle: TemplateStyle = style ?? "hype";
-
-    return (
-      <div
-        ref={ref}
-        style={{
-          width: `${w}px`,
-          height: `${h}px`,
-          position: "relative",
-          overflow: "hidden",
-          fontFamily:
-            "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-        }}
-      >
-        {usePreset && <PresetLayout {...props} />}
-        {!usePreset && legacyStyle === "clean" && <CleanLayout {...props} />}
-        {!usePreset && legacyStyle === "hype" && <HypeLayout {...props} />}
-        {!usePreset && legacyStyle === "minimal" && <MinimalLayout {...props} />}
-      </div>
     );
   }
 );
