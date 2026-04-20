@@ -92,6 +92,40 @@ export async function waitForDomImages(root: HTMLElement | null): Promise<void> 
 }
 
 /**
+ * Loads a URL (typically a data: URL produced by prefetchImagesAsDataUrls)
+ * into a fully decoded HTMLImageElement, ready to draw onto a canvas.
+ */
+export async function loadImageElement(url: string): Promise<HTMLImageElement> {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.decoding = "async";
+  img.src = url;
+  if (img.complete && img.naturalWidth > 0) {
+    try { await img.decode(); } catch { /* best-effort */ }
+    return img;
+  }
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("Image failed to load: " + url.slice(0, 60)));
+  });
+  try { await img.decode(); } catch { /* best-effort */ }
+  return img;
+}
+
+/**
+ * Detects iOS Safari (including iPad on iOS 13+ which reports as Mac).
+ * Used to enable retry/validation logic for the foreignObject <img> bug.
+ */
+export function isIOSSafari(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) ||
+    (ua.includes("Mac") && "ontouchend" in document);
+  const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+  return isIOS && isSafari;
+}
+
+/**
  * Tracks whether all provided URLs are loadable (HEAD-equivalent via fetch).
  * Used to gate the export button so users can't trigger a broken capture.
  */
