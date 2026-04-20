@@ -1,128 +1,120 @@
 
 
-The user wants to expand Marketing Studio from "single product promo" → "multi-purpose content engine" with poster types, dynamic product sources, and reusable layouts. Need to keep current single-product flow intact and extend modularly.
+The user wants AI-assisted image prep as an enhancement layer on top of the existing template system. Priority is **Auto Fit + Smart Reframing** because cropping is the main issue.
 
-Let me check what data sources already exist:
-- Best sellers: `useBestSellers` hook + `weekly_best_sellers` view ✅
-- New arrivals: products sorted by created_at ✅
-- Low stock: `seller_products.quantity` ✅ + Shopify variant inventory
-- Promotions: `discount_codes` via `manage-discounts` edge function ✅
-- Restocked: `partner_stock_movements` (movement_type='stock_added') ✅
-- Featured: existing `FeaturedProductPicker` ✅
+Let me check what's already in place for image handling and AI.
+<lov-tool-use id="toolu_vrtx_01MTQuUNAtRvNsskaJpzyi1j" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/marketing/templates.tsx\", \"lines\": \"1-80\"}">
+</lov-tool-use>
 
-Templates already support `variantImages` grid (2/3/4 tiles) — I can repurpose this for multi-product layouts.
+<lov-tool-use id="toolu_vrtx_01D2axeCVcG8HGJ7ah42iRYF" name="code--search_files" integration-id="code" data="{\"query\": \"object-(cover|contain)\", \"include_patterns\": \"src/components/marketing/**\"}">
+</lov-tool-use>
 
-Scope strategy: Phase 1 (this build) = top 5 poster types + multi-product layout engine. Phase 2 hooks left in place.
+<lov-tool-use id="toolu_vrtx_01UwDU9pAG3VP4RoMZyjXKMh" name="code--list_dir" integration-id="code" data="{\"dir_path\": \"supabase/functions\"}">
+</lov-tool-use>
 
-## Marketing Studio → Content Engine
+<lov-tool-use id="toolu_vrtx_01VCfdxFKgvhsy5NydzgmAKy" name="code--search_files" integration-id="code" data="{\"query\": \"object-(cover|contain)\", \"include_patterns\": \"src/components/marketing/templates.tsx\"}">
+</lov-tool-use>
 
-Extend the current Studio with a **Poster Type** selector that drives a **Product Source** picker, then renders through a unified **Multi-Product Template** layer. Single-product promo flow stays exactly as today.
+<lov-tool-use id="toolu_vrtx_01XYnVDg2BF4BZv8yFpR7Be6" name="code--list_dir" integration-id="code" data="{\"dir_path\": \"supabase/functions\"}">
+</lov-tool-use>
+
+<lov-tool-use id="toolu_vrtx_01RuBgg71FEX1yVw9mjMjVL9" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/marketing/templates.tsx\", \"lines\": \"1-60\"}">
+</lov-tool-use>
+I have enough context. Let me present the plan.
+
+<lov-plan>
+
+## AI-Assisted Image Preparation in Marketing Studio
+
+Add an enhancement layer that **prepares product images** before they hit the existing template engine. Templates, layouts, and export pipeline stay exactly as-is — only the image URL flowing in changes.
 
 ### Architecture
 
 ```text
-[Poster Type] → [Product Source] → [Products[]] → [Layout Picker] → [Template] → [Preview + Export]
-     │                  │                              │
-     │                  │                              ├─ 1 item  → Spotlight (current)
-     │                  │                              ├─ 2 items → Side-by-side
-     │                  │                              ├─ 3 items → Hero + 2
-     │                  │                              └─ 4+      → 2x2 grid (+N badge)
-     │                  │
-     │                  ├─ Manual pick (current product picker)
-     │                  ├─ Best sellers (useBestSellers)
-     │                  ├─ New arrivals (date sort)
-     │                  ├─ Low stock (qty threshold)
-     │                  ├─ Restocked (partner_stock_movements)
-     │                  └─ Active discounts (manage-discounts)
-     │
-     ├─ Single Product Promo  (current — unchanged)
-     ├─ Best Sellers
-     ├─ New Arrivals
-     ├─ Restocked
-     ├─ Almost Gone / Low Stock
-     └─ Active Promotions / Discounts
+Product image ──▶ [Image Prep Panel] ──▶ Cached prepared URL ──▶ Existing templates
+                       │
+                       ├─ Keep Original          (no change, default)
+                       ├─ Auto Fit Product       (smart-frame, client-side)
+                       ├─ Smart Reframe          (format-aware crop, client-side)
+                       ├─ Remove Background      (AI — Gemini image edit)
+                       ├─ Expand to Fit          (AI — outpainting via Gemini image)
+                       └─ Enhance Image          (sharpen + contrast, client-side)
 ```
 
-### Phase 1 — Build now
+Each prepared image is cached by `(sourceUrl + mode + format)` so re-selecting a mode is instant and re-exports stay consistent.
 
-**1. New `PosterTypeSelector` component** (`src/components/marketing/PosterTypeSelector.tsx`)
-- Horizontal scrollable chip row at top of Studio
-- 6 chips: Single Promo · Best Sellers · New Arrivals · Restocked · Almost Gone · Promotions
-- Each chip has icon + label + short hint ("Top sellers this week")
-- Mobile-friendly tap targets
+### Phase 1 — Build now (priority)
 
-**2. New `ProductSourceCard` component** (`src/components/marketing/ProductSourceCard.tsx`)
-- Replaces the product picker when poster type ≠ "Single Promo"
-- Auto-loads products based on type using new `useMarketingProducts(posterType, options)` hook
-- Shows live list with checkboxes — user can refine the auto-selection
-- Optional "Limit" slider (1–6 products)
-- Type-specific badge auto-applied (NEW · BEST SELLER · ALMOST GONE · RESTOCKED · SALE)
+**1. New edge function** `supabase/functions/ai-image-prep/index.ts`
+- Accepts `{ imageUrl, mode: "remove-bg" | "expand", format }`
+- Calls Lovable AI gateway with `google/gemini-3.1-flash-image-preview` (Nano Banana 2 — fast + high quality, perfect for edits)
+- Mode prompts:
+  - `remove-bg` → "Remove the background completely. Keep the product 100% intact — same colors, same shape, same details, same branding. Output transparent background."
+  - `expand` → "Extend the image canvas to {targetAspect} aspect ratio. Fill the new edges with a clean, realistic continuation of the existing background. DO NOT alter, move, or change the product itself. Keep all product details exactly as-is."
+- Returns base64 data URL
+- Includes safety guard in system prompt: "Never change the product. Only modify framing/background."
+- Handles 429/402 errors and surfaces them clearly
 
-**3. New hook `useMarketingProducts`** (`src/hooks/useMarketingProducts.ts`)
-- `bestsellers` → reuses `useBestSellers`
-- `new-arrivals` → Shopify + local sorted by `created_at` desc
-- `low-stock` → `seller_products` where `quantity > 0 AND quantity <= 5` + Shopify variants with low inventory
-- `restocked` → `partner_stock_movements` where `movement_type='stock_added'` in last 14 days, joined to product
-- `promotions` → calls `manage-discounts` edge function for active codes + maps to discounted products via `applies_to`
-- All return same shape: `{ id, title, image, price, badge?, urgencyHint? }[]`
+**2. New utility** `src/lib/imagePrep.ts` — client-side ops (no AI cost)
+- `autoFitProduct(url, format)` — loads image to canvas, detects content bounds via alpha/edge sampling, re-centers with safe margins (10% padding), outputs canvas at target aspect ratio
+- `smartReframe(url, format)` — picks ideal crop window based on format aspect ratio while keeping the centered subject fully inside the frame (no edge clipping)
+- `enhanceImage(url)` — canvas-based unsharp mask + mild contrast/saturation boost (subtle, never destructive)
+- All return data URLs — preview matches export exactly
 
-**4. Multi-product templates** (extend `src/components/marketing/templates.tsx`)
-- New `MultiProductTemplate` component (sibling of `MarketingTemplate`)
-- Reuses existing `VariantGrid` logic for 1/2/3/4+ tiles — generalized to accept arbitrary products with name + price + badge per tile
-- Supports all 4 formats (Story · Post · Ad · Portrait) and 3 styles (Clean · Hype · Minimal)
-- Headline auto-builds from poster type:
-  - Best Sellers → "TOP PICKS THIS WEEK"
-  - New Arrivals → "JUST DROPPED"
-  - Restocked → "BACK IN STOCK"
-  - Almost Gone → "ALMOST GONE"
-  - Promotions → "ON SALE NOW" (+ shows discount %)
-- All editable via existing controls (Brand, CTA, Tagline, Urgency, Meetup) — defaults adapt to poster type
+**3. New hook** `src/hooks/useImagePrep.ts`
+- Manages mode state per source image
+- Caches results in a `Map<cacheKey, dataUrl>` (per Studio session)
+- Loading/error states for AI modes
+- Returns `{ preparedUrl, mode, setMode, isProcessing, error }`
 
-**5. Toggle controls** (extend MarketingStudio controls panel)
-- Add to existing branding card:
-  - "Show stock badge" (already exists)
-  - "Show type label" (NEW · SALE · RESTOCKED chip per tile)
-  - "Show per-tile prices"
-- Hide variant controls when poster type ≠ "Single Promo"
+**4. New component** `src/components/marketing/ImagePrepPanel.tsx`
+- Renders 6 toggle buttons (Original · Auto Fit · Reframe · Remove BG · Expand · Enhance) as a chip row
+- Shows small before/after thumbnails when a mode is active
+- Per-mode hint text ("AI processing — uses credits" badge on Remove BG and Expand)
+- Mobile-friendly tap targets, scrollable horizontally on small screens
+- Disabled state during processing with spinner
 
-**6. Wire into `MarketingStudio.tsx`**
-- New state: `posterType: PosterType`
-- When `posterType === 'single'` → render existing flow exactly as today (no regression)
-- Otherwise → render `ProductSourceCard` instead of single product picker, render `MultiProductTemplate` in preview + export node
-- Same `usePreviewScale` + export pipeline (no changes to download mechanics)
+**5. Studio integration** — `src/pages/admin/MarketingStudio.tsx`
+- Add `ImagePrepPanel` directly under product picker / variant selector
+- Single-product mode → prep applies to the chosen `productImage`
+- Multi-product mode → prep applies per-tile (each product card gets its own mini prep selector OR a "Apply to all tiles" global mode — pick global for simplicity in v1)
+- Variant mode → prep applies to selected variant image
+- Pass prepared URLs through existing `templateProps.productImage` / `variantImages[].url` / `MultiProductItem.imageUrl` — zero template changes
+- Both preview node and hidden export node consume the same prepared URLs → download matches preview
+
+### Phase 2 — Stubs only (not built)
+- Per-tile prep in multi-product mode (v1 uses one global mode)
+- Server-side caching of AI results in Supabase Storage (v1 uses in-memory session cache)
+- Background "blur instead of remove" option
+- Side-by-side comparison slider
 
 ### Files
 
 **New (4)**
-- `src/components/marketing/PosterTypeSelector.tsx`
-- `src/components/marketing/ProductSourceCard.tsx`
-- `src/components/marketing/MultiProductTemplate.tsx` (or extend `templates.tsx`)
-- `src/hooks/useMarketingProducts.ts`
+- `supabase/functions/ai-image-prep/index.ts`
+- `src/lib/imagePrep.ts`
+- `src/hooks/useImagePrep.ts`
+- `src/components/marketing/ImagePrepPanel.tsx`
 
 **Edited (1)**
-- `src/pages/admin/MarketingStudio.tsx` — type selector at top, conditional source/picker, conditional template
+- `src/pages/admin/MarketingStudio.tsx` — mount panel, wire prepared URLs into template props
 
-### Phase 2 — Stubs only (not built yet)
-
-Leave clear extension points but don't implement:
-- Top Picks, Most Ordered (variants of best sellers)
-- Bundle Offers, Limited Drops (need new admin config)
-- Featured / Editor's / Staff Picks (need admin "pick list" table)
-- Brand posters: Shop by Category, Why Shop With Us, How to Order (template-only, no product data)
-- Auto-generated weekly posters (cron + storage)
-- Seller-specific promo posters
+### Safety guarantees
+- AI prompts explicitly forbid altering product color, shape, branding
+- "Keep Original" is always default — no AI runs unless user opts in
+- AI-edited results shown in preview before export so admin can revert
+- Failures fall back to original image with toast
 
 ### Out of scope
-- New database tables (everything uses existing data)
-- Auto-generation / cron jobs
-- AI image generation (explicitly excluded)
-- Posting directly to social platforms
-- Carousel / multi-PNG export
+- Replacing or generating fake products
+- Editing the templates themselves
+- Auto-applying AI prep without user consent
+- Persisted prep history across sessions
 
 ### Result
-- Pick "Best Sellers" → top 4 weekly best sellers auto-populate → 2x2 grid Story renders → tap download
-- Pick "Almost Gone" → low-stock products auto-fill with red "ALMOST GONE" badges
-- Pick "Promotions" → discounted items render with sale price strike-through
-- All 4 formats × 3 styles work for every poster type
-- Single Promo flow unchanged — zero regression risk
+- Pick a tight product photo → tap **Auto Fit** → product re-centers with proper margins instantly (no AI cost)
+- Tap **Smart Reframe** when switching to Story format → product fills the 9:16 safely
+- Tap **Remove BG** → clean transparent product on the poster (one Gemini call, ~2s)
+- Tap **Expand to Fit** → AI extends background for tight crops (one Gemini call, ~3s)
+- All existing posters (single, variant, best sellers, low stock, promos) get cleaner product visibility with zero template regressions
 
