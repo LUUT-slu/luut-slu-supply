@@ -1298,13 +1298,15 @@ function PresetVariantGrid({
   surface,
   radius,
   text,
+  cropMap,
+  onImageClick,
 }: {
   images: VariantImage[];
   showLabels?: boolean;
   surface: string;
   radius: number;
   text: string;
-}) {
+} & EditableImageContext) {
   const tiles = images.slice(0, 4);
   const overflow = images.length - tiles.length;
   const count = tiles.length;
@@ -1347,7 +1349,24 @@ function PresetVariantGrid({
               crossOrigin="anonymous"
               alt=""
               data-export-hero="true"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              data-editable-hero={onImageClick ? "true" : undefined}
+              onClick={
+                onImageClick
+                  ? (e) => {
+                      e.stopPropagation();
+                      onImageClick(v.url);
+                    }
+                  : undefined
+              }
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+                transform: cropToTransform(cropMap?.[v.url] ?? DEFAULT_CROP),
+                transformOrigin: "center center",
+                cursor: onImageClick ? "pointer" : undefined,
+              }}
             />
             {showLabels && v.label && (
               <div
