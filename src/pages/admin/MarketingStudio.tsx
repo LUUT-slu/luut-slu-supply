@@ -136,10 +136,29 @@ export default function MarketingStudio() {
   const [tagline, setTagline] = useState("");
   const [showPrice, setShowPrice] = useState(defaults.showPriceByDefault);
 
-  // Variant selection
+  // Poster type (content engine)
+  const [posterType, setPosterType] = useState<PosterType>("single");
+  const [sourceSelectedIds, setSourceSelectedIds] = useState<string[]>([]);
+  const [sourceLimit, setSourceLimit] = useState(4);
+  const [sourceProducts, setSourceProducts] = useState<MarketingProduct[]>([]);
+  const [showTileBadges, setShowTileBadges] = useState(true);
+  const [showTileLabels, setShowTileLabels] = useState(true);
+
+  // Variant selection (single-promo only)
   const [variantMode, setVariantMode] = useState<VariantMode>("single");
   const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([]);
   const [showVariantLabels, setShowVariantLabels] = useState(true);
+
+  // Switch poster type → adapt urgency / CTA defaults so the new poster reads correctly
+  useEffect(() => {
+    const meta = getPosterTypeMeta(posterType);
+    if (posterType !== "single") {
+      setUrgencyText(meta.defaultUrgency);
+      if (meta.defaultCta) setCtaText(meta.defaultCta);
+    }
+    // reset source selection when changing type
+    setSourceSelectedIds([]);
+  }, [posterType]);
 
   useEffect(() => {
     setBrandName(defaults.brandName);
