@@ -955,7 +955,7 @@ export default function MarketingStudio() {
                             templateWidth={PREVIEW_DIMS[f.key].w}
                             templateHeight={PREVIEW_DIMS[f.key].h}
                           >
-                            <MultiProductTemplate {...multiTemplateProps} />
+                            <MultiProductTemplate {...multiTemplateProps} onImageClick={handleImageClick} />
                           </PreviewBox>
                         )
                       ) : !templateProps ? (
@@ -967,7 +967,7 @@ export default function MarketingStudio() {
                           templateWidth={PREVIEW_DIMS[f.key].w}
                           templateHeight={PREVIEW_DIMS[f.key].h}
                         >
-                          <MarketingTemplate {...templateProps} />
+                          <MarketingTemplate {...templateProps} onImageClick={handleImageClick} />
                         </PreviewBox>
                       )}
                       <Button
