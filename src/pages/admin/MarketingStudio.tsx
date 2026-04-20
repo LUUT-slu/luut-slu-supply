@@ -1002,12 +1002,56 @@ export default function MarketingStudio() {
                   {/* Preview */}
                   <Card>
                     <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <ImageIcon className="h-4 w-4" />
                           Preview
                         </CardTitle>
                         <span className="text-[10px] text-muted-foreground">{f.size}</span>
+                      </div>
+                      {/* Crop history toolbar — undo/redo/reset all manual image edits */}
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2 text-[11px]"
+                          onClick={handleUndoCrop}
+                          disabled={!canUndoCrop}
+                          title="Undo last image edit"
+                        >
+                          <Undo2 className="h-3.5 w-3.5" />
+                          Undo
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2 text-[11px]"
+                          onClick={handleRedoCrop}
+                          disabled={!canRedoCrop}
+                          title="Redo image edit"
+                        >
+                          <Redo2 className="h-3.5 w-3.5" />
+                          Redo
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                          onClick={handleResetCrops}
+                          disabled={!hasAnyCrops}
+                          title="Reset all image edits"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Reset
+                        </Button>
+                        {hasAnyCrops && (
+                          <span className="ml-auto text-[10px] text-muted-foreground">
+                            {Object.keys(cropMap).length} edit{Object.keys(cropMap).length === 1 ? "" : "s"}
+                          </span>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent>
