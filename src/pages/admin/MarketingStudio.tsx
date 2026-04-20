@@ -673,21 +673,20 @@ export default function MarketingStudio() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div>
-                        <Label className="text-xs">Style</Label>
-                        <div className="mt-1 grid grid-cols-3 gap-1.5">
-                          {STYLES.map((s) => (
-                            <Button
-                              key={s.key}
-                              size="sm"
-                              variant={style === s.key ? "default" : "outline"}
-                              className="text-xs"
-                              onClick={() => setStyle(s.key)}
-                            >
-                              {s.label}
-                            </Button>
-                          ))}
+                        <Label className="text-xs">Design Preset</Label>
+                        <div className="mt-1.5">
+                          <PresetPicker
+                            activeId={activePresetId}
+                            onChange={setActivePresetId}
+                          />
                         </div>
                       </div>
+                      <PresetOverridePanel
+                        preset={activePreset}
+                        overrides={presetOverrides}
+                        onChange={setPresetOverrides}
+                        onReset={() => setPresetOverrides({})}
+                      />
                       <div>
                         <Label className="text-xs">Brand Name</Label>
                         <Input
