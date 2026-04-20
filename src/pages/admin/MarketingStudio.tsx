@@ -27,7 +27,6 @@ import {
   MarketingTemplate,
   MultiProductTemplate,
   TemplateFormat,
-  TemplateStyle,
 } from "@/components/marketing/templates";
 import { CopyPanel } from "@/components/marketing/CopyPanel";
 import { VariantSelector, VariantMode, VariantOption } from "@/components/marketing/VariantSelector";
@@ -51,11 +50,6 @@ const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "portrait", label: "Portrait", size: "1080×1350" },
 ];
 
-const STYLES: { key: TemplateStyle; label: string }[] = [
-  { key: "clean", label: "Clean" },
-  { key: "hype", label: "Hype" },
-  { key: "minimal", label: "Minimal" },
-];
 
 const PREVIEW_DIMS: Record<TemplateFormat, { w: number; h: number }> = {
   story: { w: 1080, h: 1920 },
@@ -152,7 +146,7 @@ export default function MarketingStudio() {
   const [selectedId, setSelectedId] = useState<string>(initialId);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<TemplateFormat>("story");
-  const [style, setStyle] = useState<TemplateStyle>("hype");
+  
   const [activePresetId, setActivePresetId] = useState<string>("hype");
   const [presetOverrides, setPresetOverrides] = useState<PresetOverrides>({});
 
@@ -427,7 +421,6 @@ export default function MarketingStudio() {
   const templateProps = productPayload
     ? {
         format: tab,
-        style,
         productName: productPayload.name,
         productImage: singlePrep.preparedUrl || productPayload.productImage,
         price: productPayload.price ? String(productPayload.price) : undefined,
@@ -505,7 +498,6 @@ export default function MarketingStudio() {
   const multiTemplateProps = isMulti
     ? {
         format: tab,
-        style,
         headline: meta.headline,
         subhead: tagline || undefined,
         products: preparedTiles.map((p) => ({
