@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Megaphone, Download, Loader2, Image as ImageIcon, Share2 } from "lucide-react";
+import { Megaphone, Download, Loader2, Image as ImageIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useHybridProducts } from "@/hooks/useHybridProducts";
