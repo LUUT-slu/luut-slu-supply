@@ -29,7 +29,7 @@ export interface VariantImage {
   label?: string;
 }
 
-export interface TemplateProps {
+export interface TemplateProps extends EditableImageContext {
   style?: TemplateStyle;
   format: TemplateFormat;
   productName: string;
@@ -69,7 +69,7 @@ export interface MultiProductItem {
   hint?: string;
 }
 
-export interface MultiTemplateProps {
+export interface MultiTemplateProps extends EditableImageContext {
   style?: TemplateStyle;
   format: TemplateFormat;
   headline: string;
