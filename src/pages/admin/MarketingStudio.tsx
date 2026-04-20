@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Megaphone, Download, Loader2, Image as ImageIcon, Share2 } from "lucide-react";
+import { Megaphone, Download, Loader2, Image as ImageIcon, Share2, Undo2, Redo2, RotateCcw } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useHybridProducts } from "@/hooks/useHybridProducts";
@@ -327,18 +327,60 @@ export default function MarketingStudio() {
   const [canShare, setCanShare] = useState(false);
 
   // ---- Manual image editor (per-image crop / zoom / pan) ----
-  const [cropMap, setCropMap] = useState<Record<string, CropState>>({});
+  // Session-level history of cropMap snapshots so the user can undo/redo
+  // image edits across the whole poster (in addition to the per-image
+  // undo/redo inside the editor modal).
+  const [cropMap, setCropMapState] = useState<Record<string, CropState>>({});
+  const cropHistoryRef = useRef<Record<string, CropState>[]>([{}]);
+  const cropCursorRef = useRef(0);
+  const [cropHistoryVersion, setCropHistoryVersion] = useState(0);
   const [editorImage, setEditorImage] = useState<string | null>(null);
+
+  const pushCropHistory = (next: Record<string, CropState>) => {
+    // Drop any redo branch ahead of the cursor, then append.
+    cropHistoryRef.current = cropHistoryRef.current.slice(0, cropCursorRef.current + 1);
+    cropHistoryRef.current.push(next);
+    // Cap history at 50 entries to avoid unbounded memory.
+    if (cropHistoryRef.current.length > 50) {
+      cropHistoryRef.current.shift();
+    }
+    cropCursorRef.current = cropHistoryRef.current.length - 1;
+    setCropHistoryVersion((v) => v + 1);
+  };
+
   const handleImageClick = (url: string) => setEditorImage(url);
   const handleEditorSave = (next: CropState) => {
     if (!editorImage) return;
-    setCropMap((prev) => {
-      const out = { ...prev };
-      if (isDefaultCrop(next)) delete out[editorImage];
-      else out[editorImage] = next;
-      return out;
-    });
+    const updated = { ...cropMap };
+    if (isDefaultCrop(next)) delete updated[editorImage];
+    else updated[editorImage] = next;
+    setCropMapState(updated);
+    pushCropHistory(updated);
   };
+
+  const canUndoCrop = cropCursorRef.current > 0;
+  const canRedoCrop = cropCursorRef.current < cropHistoryRef.current.length - 1;
+  const hasAnyCrops = Object.keys(cropMap).length > 0;
+
+  const handleUndoCrop = () => {
+    if (cropCursorRef.current <= 0) return;
+    cropCursorRef.current -= 1;
+    setCropMapState(cropHistoryRef.current[cropCursorRef.current]);
+    setCropHistoryVersion((v) => v + 1);
+  };
+  const handleRedoCrop = () => {
+    if (cropCursorRef.current >= cropHistoryRef.current.length - 1) return;
+    cropCursorRef.current += 1;
+    setCropMapState(cropHistoryRef.current[cropCursorRef.current]);
+    setCropHistoryVersion((v) => v + 1);
+  };
+  const handleResetCrops = () => {
+    if (Object.keys(cropMap).length === 0) return;
+    setCropMapState({});
+    pushCropHistory({});
+  };
+  // Silence unused-var lint for cropHistoryVersion (used to force re-render).
+  void cropHistoryVersion;
 
   // Detect Web Share API (Level 2 — files) once at mount
   useEffect(() => {
