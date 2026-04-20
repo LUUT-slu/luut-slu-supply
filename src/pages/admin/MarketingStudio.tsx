@@ -818,19 +818,24 @@ export default function MarketingStudio() {
                         onClick={handleExport}
                         disabled={
                           exporting ||
+                          !imagesReady ||
                           (isMulti
                             ? !multiTemplateProps || multiTemplateProps.products.length === 0
                             : !templateProps)
                         }
                       >
-                        {exporting ? (
+                        {exporting || !imagesReady ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : isMobile && canShare ? (
                           <Share2 className="h-4 w-4" />
                         ) : (
                           <Download className="h-4 w-4" />
                         )}
-                        {isMobile && canShare ? "Save / Share" : "Download PNG"}
+                        {!imagesReady
+                          ? "Loading image…"
+                          : isMobile && canShare
+                            ? "Save / Share"
+                            : "Download PNG"}
                       </Button>
                     </CardContent>
                   </Card>
