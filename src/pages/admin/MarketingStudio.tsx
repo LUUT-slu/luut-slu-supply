@@ -326,6 +326,20 @@ export default function MarketingStudio() {
   const isMobile = useIsMobile();
   const [canShare, setCanShare] = useState(false);
 
+  // ---- Manual image editor (per-image crop / zoom / pan) ----
+  const [cropMap, setCropMap] = useState<Record<string, CropState>>({});
+  const [editorImage, setEditorImage] = useState<string | null>(null);
+  const handleImageClick = (url: string) => setEditorImage(url);
+  const handleEditorSave = (next: CropState) => {
+    if (!editorImage) return;
+    setCropMap((prev) => {
+      const out = { ...prev };
+      if (isDefaultCrop(next)) delete out[editorImage];
+      else out[editorImage] = next;
+      return out;
+    });
+  };
+
   // Detect Web Share API (Level 2 — files) once at mount
   useEffect(() => {
     try {
