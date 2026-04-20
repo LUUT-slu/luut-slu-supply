@@ -32,6 +32,8 @@ import { CopyPanel } from "@/components/marketing/CopyPanel";
 import { VariantSelector, VariantMode, VariantOption } from "@/components/marketing/VariantSelector";
 import { PosterTypeSelector } from "@/components/marketing/PosterTypeSelector";
 import { ProductSourceCard } from "@/components/marketing/ProductSourceCard";
+import { ImagePrepPanel } from "@/components/marketing/ImagePrepPanel";
+import { useImagePrep } from "@/hooks/useImagePrep";
 import {
   PosterType,
   MarketingProduct,
