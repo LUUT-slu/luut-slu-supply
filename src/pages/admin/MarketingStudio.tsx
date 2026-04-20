@@ -533,13 +533,17 @@ export default function MarketingStudio() {
     );
 
     // Snapshot bounding rects (relative to export node) BEFORE hiding,
-    // so layout positions are accurate.
+    // so layout positions are accurate. Track BOTH the current src (may be a
+    // swapped data: URL) and the ORIGINAL src (used for cropMap lookup).
     const nodeRect = node.getBoundingClientRect();
     const heroRects = heroEls.map((img) => {
       const r = img.getBoundingClientRect();
+      const currentSrc = img.getAttribute("src") || "";
+      const originalSrc = img.getAttribute("data-export-src") || currentSrc;
       return {
         el: img,
-        src: img.getAttribute("src") || "",
+        src: currentSrc,
+        originalSrc,
         x: r.left - nodeRect.left,
         y: r.top - nodeRect.top,
         w: r.width,
@@ -569,17 +573,21 @@ export default function MarketingStudio() {
           if (!ctx) throw new Error("Canvas 2D context unavailable");
 
           // Composite each hero image natively onto the canvas.
-          for (const hr of heroRects) {
-            const dataUrl = placeholders[hr.src] || hr.src;
+          // Track which tiles successfully drew so we can validate per-tile.
+          const drawnOk = new Set<number>();
+          for (let i = 0; i < heroRects.length; i++) {
+            const hr = heroRects[i];
+            const dataUrl =
+              placeholders[hr.originalSrc] || placeholders[hr.src] || hr.src;
             try {
               const img = await loadImageElement(dataUrl);
               const dx = hr.x * pixelRatio;
               const dy = hr.y * pixelRatio;
               const dw = hr.w * pixelRatio;
               const dh = hr.h * pixelRatio;
-              // Honor per-image crop (scale + normalized offset). Falls back
-              // to a centered "object-fit: cover" rect when no edits exist.
-              const crop = cropMap[hr.src] ?? DEFAULT_CROP;
+              // Honor per-image crop (scale + normalized offset) keyed by
+              // the ORIGINAL url. Falls back to centered "object-fit: cover".
+              const crop = cropMap[hr.originalSrc] ?? DEFAULT_CROP;
               const { sx, sy, sw, sh } = cropToSourceRect(
                 img.naturalWidth,
                 img.naturalHeight,
@@ -588,32 +596,46 @@ export default function MarketingStudio() {
                 crop,
               );
               ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+              drawnOk.add(i);
             } catch (err) {
-              console.warn("Hero composite failed for", hr.src, err);
+              console.warn("Hero composite failed for", hr.originalSrc, err);
             }
           }
 
-          // Validate hero region(s) are not blank: sample center pixel.
-          let allFilled = true;
-          for (const hr of heroRects) {
+          // Per-tile validation: sample center pixel of each hero rect.
+          // A tile that's fully transparent or pure black after compositing
+          // is treated as failed and forces a retry.
+          const failedTiles: number[] = [];
+          for (let i = 0; i < heroRects.length; i++) {
+            const hr = heroRects[i];
             if (hr.w < 4 || hr.h < 4) continue;
+            if (!drawnOk.has(i)) {
+              failedTiles.push(i);
+              continue;
+            }
             const cx = Math.floor((hr.x + hr.w / 2) * pixelRatio);
             const cy = Math.floor((hr.y + hr.h / 2) * pixelRatio);
             try {
               const px = ctx.getImageData(cx, cy, 1, 1).data;
-              // Treat fully transparent OR pure black with zero variance as
-              // "blank". Real product photos almost never hit (0,0,0,255).
-              const isBlank = px[3] === 0 || (px[0] === 0 && px[1] === 0 && px[2] === 0);
-              if (isBlank) { allFilled = false; break; }
+              const isBlank =
+                px[3] === 0 || (px[0] === 0 && px[1] === 0 && px[2] === 0);
+              if (isBlank) failedTiles.push(i);
             } catch {
               // getImageData can fail if canvas is tainted; skip check.
             }
           }
 
-          if (allFilled || attempt === 2) {
+          if (failedTiles.length === 0) {
             return canvas.toDataURL("image/jpeg", 0.95);
           }
-          // Blank → retry
+          if (attempt === 2) {
+            // Final attempt still has bad tiles → abort cleanly.
+            console.error(
+              "Hybrid capture: tiles still blank after 3 attempts",
+              failedTiles.map((i) => heroRects[i].originalSrc),
+            );
+            throw new Error("One or more product images failed to render");
+          }
           await new Promise((r) => setTimeout(r, 200));
         } catch (err) {
           lastError = err;
