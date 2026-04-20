@@ -15,6 +15,7 @@ import {
   Truck,
   BarChart3,
   MessageSquare,
+  Megaphone,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -181,6 +182,14 @@ export default function AdminHome() {
       href: "/admin/reviews",
       color: "text-teal-500",
       bgColor: "bg-teal-500/10",
+    },
+    {
+      title: "Marketing Studio",
+      description: "Create IG stories, posts, ads & captions from products",
+      icon: Megaphone,
+      href: "/admin/marketing-studio",
+      color: "text-fuchsia-500",
+      bgColor: "bg-fuchsia-500/10",
     },
     {
       title: "Seller Portal",
