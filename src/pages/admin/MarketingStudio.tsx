@@ -131,6 +131,18 @@ export default function MarketingStudio() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<TemplateFormat>("story");
   const [style, setStyle] = useState<TemplateStyle>("hype");
+  const [activePresetId, setActivePresetId] = useState<string>("hype");
+  const [presetOverrides, setPresetOverrides] = useState<PresetOverrides>({});
+
+  const activePreset = useMemo(() => {
+    const base = getPreset(activePresetId) || getBuiltinPresets()[1];
+    return mergePreset(base, presetOverrides);
+  }, [activePresetId, presetOverrides]);
+
+  // Reset overrides when switching preset
+  useEffect(() => {
+    setPresetOverrides({});
+  }, [activePresetId]);
 
   // Editable session-level fields, seeded from defaults
   const [brandName, setBrandName] = useState(defaults.brandName);
