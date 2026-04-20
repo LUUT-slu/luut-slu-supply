@@ -10,7 +10,8 @@ import { HomeCategorySection } from "@/components/HomeCategorySection";
 import { HomeFeaturedSection } from "@/components/HomeFeaturedSection";
 import { HomeNewArrivalsSection } from "@/components/HomeNewArrivalsSection";
 import { useSiteSettings, DEFAULT_HERO } from "@/hooks/useSiteSettings";
-import storefrontHero from "@/assets/storefront-hero.webp";
+import storefrontHeroDesktop from "@/assets/storefront-hero-desktop.webp";
+import storefrontHeroMobile from "@/assets/storefront-hero-mobile.webp";
 import { SignupDiscountPopup } from "@/components/SignupDiscountPopup";
 import { HomepageReviews } from "@/components/HomepageReviews";
 import { AIChatWidget } from "@/components/AIChatWidget";
@@ -31,7 +32,9 @@ export default function Index() {
   const { data: settings } = useSiteSettings();
   const layout = settings?.homepageLayout;
   const hero = layout?.hero || DEFAULT_HERO;
-  const heroImage = hero.imageUrl || storefrontHero;
+  const customHeroImage = hero.imageUrl;
+  const heroImageDesktop = customHeroImage || storefrontHeroDesktop;
+  const heroImageMobile = customHeroImage || storefrontHeroMobile;
   const sections = layout?.sections?.filter(s => s.enabled) || [];
 
   return (
@@ -42,16 +45,19 @@ export default function Index() {
         {/* Hero Section — driven by settings */}
         <section className="relative min-h-[90vh] flex flex-col justify-end overflow-hidden">
           <div className="absolute inset-0">
-            <img
-              src={heroImage}
-              alt="Luut SLU storefront"
-              className="w-full h-full object-cover opacity-70"
-              width={1920}
-              height={1080}
-              fetchPriority="high"
-              decoding="sync"
-              sizes="100vw"
-            />
+            <picture>
+              <source media="(max-width: 768px)" srcSet={heroImageMobile} />
+              <img
+                src={heroImageDesktop}
+                alt="Luut SLU storefront"
+                className="w-full h-full object-cover opacity-70"
+                width={1600}
+                height={1600}
+                fetchPriority="high"
+                decoding="async"
+                sizes="100vw"
+              />
+            </picture>
           </div>
           <div className="container relative z-10 px-4 pb-8 md:pb-12" style={{ background: 'linear-gradient(to top, hsl(0 0% 0% / 0.85) 0%, hsl(0 0% 0% / 0.4) 60%, transparent 100%)' }}>
             <div className="mx-auto max-w-3xl text-center">

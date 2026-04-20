@@ -388,16 +388,63 @@ export function normalizeVendorName(vendor: string): string {
   return vendor;
 }
 
-export function getOptimizedImageUrl(url: string, width: number): string {
+/**
+ * Optimizes an image URL by requesting a specific width.
+ * Supports:
+ *  - Shopify CDN (cdn.shopify.com): width + format=webp + crop=center
+ *  - Supabase Storage (*.supabase.co/storage/v1/object/public/...):
+ *    rewrites to /render/image/public/... with width + quality + resize=cover
+ *  - Other URLs: returned unchanged
+ *
+ * @param dpr device pixel ratio multiplier (default 1, capped at 2). Pass
+ *   `window.devicePixelRatio` to get sharper images on retina/mobile.
+ */
+export function getOptimizedImageUrl(url: string, width: number, dpr: number = 1): string {
   if (!url) return url;
-  // Only optimize Shopify CDN URLs
-  if (!url.includes('cdn.shopify.com')) return url;
-  try {
-    const imgUrl = new URL(url);
-    imgUrl.searchParams.set('width', String(width));
-    imgUrl.searchParams.set('format', 'webp');
-    return imgUrl.toString();
-  } catch {
-    return url;
+  const cappedDpr = Math.max(1, Math.min(2, dpr || 1));
+  const targetWidth = Math.round(width * cappedDpr);
+
+  // Shopify CDN
+  if (url.includes('cdn.shopify.com')) {
+    try {
+      const imgUrl = new URL(url);
+      imgUrl.searchParams.set('width', String(targetWidth));
+      imgUrl.searchParams.set('format', 'webp');
+      imgUrl.searchParams.set('crop', 'center');
+      return imgUrl.toString();
+    } catch {
+      return url;
+    }
   }
+
+  // Supabase Storage public objects → rewrite to image transform endpoint
+  if (url.includes('.supabase.co/storage/v1/object/public/')) {
+    try {
+      const transformed = url.replace(
+        '/storage/v1/object/public/',
+        '/storage/v1/render/image/public/',
+      );
+      const imgUrl = new URL(transformed);
+      imgUrl.searchParams.set('width', String(targetWidth));
+      imgUrl.searchParams.set('quality', '75');
+      imgUrl.searchParams.set('resize', 'cover');
+      return imgUrl.toString();
+    } catch {
+      return url;
+    }
+  }
+
+  return url;
+}
+
+/**
+ * Builds a srcSet string for responsive `<img srcset>`.
+ * Generates [w, w*1.5, w*2] entries when the host supports transforms.
+ */
+export function getImageSrcSet(url: string, baseWidth: number): string | undefined {
+  if (!url) return undefined;
+  const supports = url.includes('cdn.shopify.com') || url.includes('.supabase.co/storage/v1/object/public/');
+  if (!supports) return undefined;
+  const widths = [baseWidth, Math.round(baseWidth * 1.5), baseWidth * 2];
+  return widths.map((w) => `${getOptimizedImageUrl(url, w)} ${w}w`).join(', ');
 }

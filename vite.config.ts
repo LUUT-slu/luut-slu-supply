@@ -28,4 +28,21 @@ export default defineConfig(({ mode }) => ({
   optimizeDeps: {
     include: ["@tanstack/react-query"],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("react-router")) return "react-vendor";
+          if (id.includes("/react-dom/") || id.includes("/react/")) return "react-vendor";
+          if (id.includes("@radix-ui")) return "radix";
+          if (id.includes("@tanstack/react-query") || id.includes("@supabase/")) return "query";
+          if (id.includes("lucide-react")) return "icons";
+          if (id.includes("html-to-image")) return "html-to-image";
+          if (id.includes("recharts")) return "charts";
+          return undefined;
+        },
+      },
+    },
+  },
 }));
