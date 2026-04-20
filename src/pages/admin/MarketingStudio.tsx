@@ -422,7 +422,6 @@ export default function MarketingStudio() {
   const templateProps = productPayload
     ? {
         format: tab,
-        style,
         productName: productPayload.name,
         productImage: singlePrep.preparedUrl || productPayload.productImage,
         price: productPayload.price ? String(productPayload.price) : undefined,
