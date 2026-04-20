@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Megaphone, Download, Loader2, Image as ImageIcon } from "lucide-react";
+import { Megaphone, Download, Loader2, Image as ImageIcon, Share2 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { useSiteSettings, DEFAULT_MARKETING_STUDIO } from "@/hooks/useSiteSettings";
@@ -293,9 +294,57 @@ export default function MarketingStudio() {
 
   const exportRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
+  const isMobile = useIsMobile();
+  const [canShare, setCanShare] = useState(false);
+
+  // Detect Web Share API (Level 2 — files) once at mount
+  useEffect(() => {
+    try {
+      const probe = new File([new Blob(["x"], { type: "image/png" })], "probe.png", {
+        type: "image/png",
+      });
+      const ok =
+        typeof navigator !== "undefined" &&
+        typeof (navigator as any).canShare === "function" &&
+        (navigator as any).canShare({ files: [probe] });
+      setCanShare(Boolean(ok));
+    } catch {
+      setCanShare(false);
+    }
+  }, []);
 
   const isMulti = posterType !== "single";
   const meta = getPosterTypeMeta(posterType);
+
+  const slugify = (s: string) =>
+    s
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase()
+      .slice(0, 50) || "poster";
+
+  const buildPosterFilename = (): string => {
+    const today = new Date().toISOString().slice(0, 10);
+    let core: string;
+    if (!isMulti) {
+      const name = productPayload?.name || "product";
+      core = `product-${slugify(name)}`;
+    } else if (posterType === "bestsellers") {
+      core = `best-sellers-week-${today}`;
+    } else if (posterType === "promotions") {
+      core = `promo-${today}`;
+    } else {
+      const typeSlug = slugify(meta.label);
+      core = `${typeSlug}-${today}`;
+    }
+    return `luutslu-${core}-${tab}.png`;
+  };
+
+  const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File> => {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return new File([blob], filename, { type: "image/png" });
+  };
 
   const handleExport = async () => {
     if (!exportRef.current) return;
@@ -308,20 +357,44 @@ export default function MarketingStudio() {
     try {
       const dataUrl = await toPng(exportRef.current, {
         cacheBust: true,
-        pixelRatio: 1,
+        pixelRatio: 2,
         skipFonts: false,
       });
+      const filename = buildPosterFilename();
+      const file = await dataUrlToFile(dataUrl, filename);
+
+      // Mobile + share-files supported → native share sheet (Save to Photos)
+      if (isMobile && canShare && (navigator as any).canShare?.({ files: [file] })) {
+        try {
+          await (navigator as any).share({
+            files: [file],
+            title: filename,
+            text: "Luut SLU poster",
+          });
+          // OS sheet handles feedback — no toast
+          return;
+        } catch (err: any) {
+          if (err?.name === "AbortError") return; // user cancelled
+          // fall through to download fallback
+          console.warn("Share failed, falling back to download", err);
+        }
+      }
+
+      // Download fallback (desktop + mobile w/o share-files)
+      const blobUrl = URL.createObjectURL(file);
       const link = document.createElement("a");
-      const baseName = isMulti
-        ? meta.label.toLowerCase().replace(/\s+/g, "-")
-        : (productPayload?.name || "poster")
-            .replace(/[^a-z0-9]+/gi, "-")
-            .toLowerCase()
-            .slice(0, 40);
-      link.download = `${baseName}-${tab}-${style}.png`;
-      link.href = dataUrl;
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
       link.click();
-      toast.success("Image downloaded");
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+      if (isMobile) {
+        toast.success("Image ready — tap and hold the file to save to Photos");
+      } else {
+        toast.success("Saved to Downloads");
+      }
     } catch (e: any) {
       console.error(e);
       toast.error("Export failed — image may be cross-origin blocked");
@@ -658,10 +731,12 @@ export default function MarketingStudio() {
                       >
                         {exporting ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : isMobile && canShare ? (
+                          <Share2 className="h-4 w-4" />
                         ) : (
                           <Download className="h-4 w-4" />
                         )}
-                        Download PNG
+                        {isMobile && canShare ? "Save / Share" : "Download PNG"}
                       </Button>
                     </CardContent>
                   </Card>
