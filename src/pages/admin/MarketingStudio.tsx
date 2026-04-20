@@ -64,7 +64,7 @@ const PREVIEW_DIMS: Record<TemplateFormat, { w: number; h: number }> = {
   portrait: { w: 1080, h: 1350 },
 };
 
-function usePreviewScale(templateWidth: number) {
+function usePreviewScale(templateWidth: number, templateHeight: number, maxHeight: number) {
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.3);
 
@@ -73,13 +73,20 @@ function usePreviewScale(templateWidth: number) {
     if (!el) return;
     const update = () => {
       const w = el.clientWidth;
-      if (w > 0) setScale(Math.min(1, w / templateWidth));
+      if (w <= 0) return;
+      const scaleByWidth = w / templateWidth;
+      const scaleByHeight = maxHeight / templateHeight;
+      setScale(Math.min(1, scaleByWidth, scaleByHeight));
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
-    return () => ro.disconnect();
-  }, [templateWidth]);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [templateWidth, templateHeight, maxHeight]);
 
   return { ref, scale };
 }
@@ -93,7 +100,21 @@ function PreviewBox({
   templateHeight: number;
   children: React.ReactNode;
 }) {
-  const { ref, scale } = usePreviewScale(templateWidth);
+  // Cap preview height so tall Story posters don't blow past the viewport on mobile.
+  // Use ~55vh on small screens, ~70vh on larger.
+  const [maxH, setMaxH] = useState(500);
+  useEffect(() => {
+    const compute = () => {
+      const vh = window.innerHeight || 800;
+      const isSmall = window.innerWidth < 768;
+      setMaxH(Math.round(vh * (isSmall ? 0.55 : 0.7)));
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+
+  const { ref, scale } = usePreviewScale(templateWidth, templateHeight, maxH);
   return (
     <div ref={ref} className="mx-auto w-full max-w-[420px]">
       <div
@@ -667,16 +688,18 @@ export default function MarketingStudio() {
           )}
 
           <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)}>
-            <TabsList className="grid w-full grid-cols-5">
-              {FORMATS.map((f) => (
-                <TabsTrigger key={f.key} value={f.key} className="text-xs">
-                  {f.label}
+            <div className="-mx-1 overflow-x-auto px-1">
+              <TabsList className="grid w-full min-w-[480px] grid-cols-6">
+                {FORMATS.map((f) => (
+                  <TabsTrigger key={f.key} value={f.key} className="text-xs">
+                    {f.label}
+                  </TabsTrigger>
+                ))}
+                <TabsTrigger value="copy" className="text-xs">
+                  Copy
                 </TabsTrigger>
-              ))}
-              <TabsTrigger value="copy" className="text-xs">
-                Copy
-              </TabsTrigger>
-            </TabsList>
+              </TabsList>
+            </div>
 
             {/* Image tabs */}
             {FORMATS.map((f) => (
