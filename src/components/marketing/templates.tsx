@@ -97,6 +97,103 @@ function BrandMark({
   );
 }
 
+function VariantGrid({
+  images,
+  showLabels,
+  dark,
+}: {
+  images: VariantImage[];
+  showLabels?: boolean;
+  dark?: boolean;
+}) {
+  const tiles = images.slice(0, 4);
+  const overflow = images.length - tiles.length;
+  const count = tiles.length;
+
+  let columns = "1fr 1fr";
+  let rows = "1fr 1fr";
+  if (count === 2) {
+    columns = "1fr 1fr";
+    rows = "1fr";
+  }
+
+  const labelBg = dark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.9)";
+  const labelColor = dark ? "#fff" : "#0a0a0a";
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "grid",
+        gridTemplateColumns: columns,
+        gridTemplateRows: rows,
+        gap: 10,
+      }}
+    >
+      {tiles.map((v, i) => {
+        const spanFull = count === 3 && i === 0;
+        return (
+          <div
+            key={i}
+            style={{
+              gridColumn: spanFull ? "1 / span 2" : "auto",
+              position: "relative",
+              overflow: "hidden",
+              borderRadius: 18,
+              background: dark ? "rgba(255,255,255,0.06)" : "#f4f4f4",
+            }}
+          >
+            <img
+              src={v.url}
+              crossOrigin="anonymous"
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+            {showLabels && v.label && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  bottom: 12,
+                  background: labelBg,
+                  color: labelColor,
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  fontSize: 22,
+                  fontWeight: 700,
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                }}
+              >
+                {v.label}
+              </div>
+            )}
+            {overflow > 0 && i === tiles.length - 1 && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 12,
+                  top: 12,
+                  background: "#0a0a0a",
+                  color: "#fff",
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  fontSize: 22,
+                  fontWeight: 800,
+                }}
+              >
+                +{overflow}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function CleanLayout(p: TemplateProps) {
   const isStory = p.format === "story";
   const isAd = p.format === "ad";
