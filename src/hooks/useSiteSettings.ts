@@ -70,6 +70,47 @@ export const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayout = {
   hero: DEFAULT_HERO,
 };
 
+export type AdminAlertKey =
+  | "new_order"
+  | "seller_application"
+  | "customer_signup"
+  | "contact_form"
+  | "payment_issue"
+  | "seller_product"
+  | "low_stock"
+  | "review_submitted"
+  | "order_status_change"
+  | "general";
+
+export interface NotificationSettings {
+  adminEmail: string;
+  senderEmail: string; // optional override of RESEND_FROM_EMAIL (display only)
+  masterEnabled: boolean;
+  instantSend: boolean;
+  batchMode: boolean;
+  alerts: Record<AdminAlertKey, boolean>;
+}
+
+export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  adminEmail: "usual.suspect.118@gmail.com",
+  senderEmail: "",
+  masterEnabled: true,
+  instantSend: true,
+  batchMode: false,
+  alerts: {
+    new_order: true,
+    seller_application: true,
+    customer_signup: true,
+    contact_form: true,
+    payment_issue: true,
+    seller_product: true,
+    low_stock: true,
+    review_submitted: true,
+    order_status_change: true,
+    general: true,
+  },
+};
+
 export interface SiteSettings {
   popups: PopupSetting[];
   freezeCheckout: boolean;
@@ -77,6 +118,7 @@ export interface SiteSettings {
   checkoutReminder: CheckoutReminderSetting;
   colorVariantCards: ColorVariantCardsSetting;
   homepageLayout: HomepageLayout;
+  notifications: NotificationSettings;
 }
 
 async function fetchSiteSettings(): Promise<SiteSettings> {
@@ -125,6 +167,14 @@ async function fetchSiteSettings(): Promise<SiteSettings> {
       showOnlyInStock: true,
     },
     homepageLayout,
+    notifications: {
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      ...((settings.notifications as Partial<NotificationSettings>) || {}),
+      alerts: {
+        ...DEFAULT_NOTIFICATION_SETTINGS.alerts,
+        ...(((settings.notifications as any)?.alerts) || {}),
+      },
+    },
   };
 }
 

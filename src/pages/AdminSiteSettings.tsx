@@ -15,6 +15,7 @@ import { useSiteSettings, updateSiteSetting, CheckoutReminderSetting, ColorVaria
 import { PopupsSection } from "@/components/admin/PopupsSection";
 import { DiscountsSection } from "@/components/admin/DiscountsSection";
 import { HomepageEditor } from "@/components/admin/HomepageEditor";
+import { NotificationsSection } from "@/components/admin/NotificationsSection";
 import { toast } from "sonner";
 
 export default function AdminSiteSettings() {
@@ -86,6 +87,11 @@ export default function AdminSiteSettings() {
           <div className="space-y-8 max-w-2xl">
             {/* ========== HOMEPAGE LAYOUT ========== */}
             <HomepageEditor initialLayout={settings?.homepageLayout} />
+
+            <Separator />
+
+            {/* ========== NOTIFICATIONS & ALERTS ========== */}
+            <NotificationsSection initialSettings={settings?.notifications} />
 
             <Separator />
 
