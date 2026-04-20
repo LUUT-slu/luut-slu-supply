@@ -824,6 +824,19 @@ export const MarketingTemplate = forwardRef<HTMLDivElement, TemplateProps>(
   function MarketingTemplate(props, ref) {
     const { format } = props;
     const { w, h } = SIZE[format];
+    return (
+      <div
+        ref={ref}
+        style={{
+          width: w,
+          height: h,
+          position: "relative",
+          overflow: "hidden",
+          fontFamily: "Inter, system-ui, sans-serif",
+        }}
+      >
+        <PresetLayout {...props} />
+      </div>
     );
   }
 );
