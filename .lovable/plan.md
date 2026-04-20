@@ -1,49 +1,38 @@
 
-## Fix: Exported poster missing product image on mobile
 
-### Root cause
-`toPng(exportRef, { cacheBust: true })` appends a `?t=...` query param to every `<img src>` URL during capture. On mobile (especially iOS Safari), this triggers a fresh fetch of the Shopify CDN image **without** the cached CORS preflight response — the canvas then sees a tainted/incomplete image and silently drops it. Result: background, text, and CTA render fine, but the hero `<img>` (Shopify CDN) is missing from the saved PNG.
+## Why the product image disappears in the downloaded file
 
-The same issue affects: hero product image, brand logo URL, multi-product tile images, and variant images.
+This is a confirmed, well-documented **iOS Safari bug in `html-to-image`** ([issue #461](https://github.com/bubkoo/html-to-image/issues/461)). The library renders the poster by serializing the DOM into an SVG `<foreignObject>` and rasterizing it. iOS Safari **silently drops `<img>` tags inside `foreignObject`** on the first render pass — text, backgrounds, and CSS render fine, but the hero image comes out as the empty black box you see.
 
-### Fix strategy
-**Pre-resolve every external image to a data URL before `toPng()` runs**, so html-to-image never has to re-fetch anything. This guarantees preview = export, on mobile and desktop.
+The earlier prefetch-to-data-URL fix actually made this worse on iOS, because once the data URL is large (a 1024×1024 Shopify product photo base64-encoded is ~1.5 MB of inline payload), iOS Safari is even more likely to skip decoding it inside the foreignObject.
 
-### Changes
+The current pipeline (waitForDomImages → swap to data URL → toJpeg) is correct for desktop and Android. It just hits this Safari bug.
 
-**1. New helper: `src/lib/exportImageCache.ts`**
-- `prefetchImagesAsDataUrls(urls: string[])` — fetches each URL via `fetch()` (CORS-friendly, browser handles preflight once) and converts the blob to a base64 `data:` URL.
-- Returns a `Map<originalUrl, dataUrl>` to pass into `html-to-image` as `imagePlaceholders`, which is the supported way to substitute external `<img src>` values during capture without mutating the live DOM.
-- Skips URLs that are already `data:` or `blob:`.
-- Throws a clear error if any required image fails (so we can show a toast instead of saving a broken poster).
+### Fix: Two-layer hybrid capture (text via html-to-image, image via Canvas2D)
 
-**2. `src/pages/admin/MarketingStudio.tsx` — `handleExport`**
-- Before calling `toPng`:
-  1. Collect every external image URL referenced in the current export node:
-     - `productPayload.productImage` (single mode, after `singlePrep.preparedUrl`)
-     - `variantImages[].url` (single multi-variant mode)
-     - `multiTemplateProps.products[].imageUrl` (multi mode, after tile prep)
-     - `brandLogoUrl` if present
-  2. Wait for all `<img>` elements inside `exportRef.current` to be `complete` and call `decode()` on each — guarantees the browser has fully loaded them in the live DOM (preview ↔ export consistency).
-  3. Call `prefetchImagesAsDataUrls(urls)` → get `Map`.
-  4. Pass result to `toPng` via `imagePlaceholders` option.
-- **Disable `cacheBust`** (it's the trigger). With placeholders prefilled, cache-busting is unnecessary.
-- Increase `toPng` timeout (`fetchRequestInit` removed, set `imageTimeout` via wrapper).
-- If prefetch throws, show toast `"Couldn't load product image — try again in a moment"` and abort export — never save a broken poster.
+Render the poster as two passes and composite them:
 
-**3. Export button gating**
-- Disable the "Save / Share" / "Download PNG" button while the hero/tile images are still loading. Track readiness via a small `useImagesReady(urls)` hook that resolves only when every URL responds with a successful `HEAD`/`fetch`.
-- Button shows "Loading image…" state until ready.
+1. **Pass 1 — html-to-image** captures the poster with the hero `<img>` made invisible (`visibility: hidden`). This produces a clean text/background/CTA layer that html-to-image handles reliably on every browser.
+2. **Pass 2 — native Canvas2D** draws the prefetched hero image (already loaded as an `HTMLImageElement` from a data URL, so no CORS issue) into the exact rectangle the hero `<img>` occupies in the live DOM, using `getBoundingClientRect()` × pixelRatio.
+3. Encode the composited canvas as JPEG → existing share / download flow.
 
-**4. Files**
-- `src/lib/exportImageCache.ts` *(new)* — prefetch helper + `useImagesReady` hook
-- `src/pages/admin/MarketingStudio.tsx` — wire prefetch into `handleExport`, gate the button, drop `cacheBust`
+This bypasses the foreignObject `<img>` bug entirely because the hero image is never inside the foreignObject — it's drawn natively by the browser.
+
+### Safety net: retry + validation
+
+- If on iOS Safari, run a **3-attempt loop** with a 200 ms delay between attempts. After each attempt, check the captured canvas hero region for >5% non-background pixels; retry if blank.
+- Keep the existing >5KB blob size validation as a final guard.
+- If after retries the hero is still blank, show a clear toast: `"Couldn't render product image — please try again"` and **abort** instead of saving a broken file.
+
+### Files to change
+
+- `src/pages/admin/MarketingStudio.tsx` — replace `handleExport` capture step with the two-layer hybrid renderer for single-product mode. Multi-product tile mode keeps the existing path (multiple small tiles are less affected) but gets the same retry-on-iOS guard.
+- `src/lib/exportImageCache.ts` — add a small helper `loadImageElement(url)` that returns a fully-decoded `HTMLImageElement` for compositing, and `isIOSSafari()` for the retry guard.
 
 ### Verification
-- Desktop: download Single Promo, Multi Bestsellers, and Promotion posters → product image present.
-- Mobile (iOS Safari + Android Chrome):
-  - Preview shows hero image
-  - Tap Save / Share → native sheet opens with file
-  - Save to Photos → opened image contains product photo (matches preview)
-- Force a CORS failure (replace hero with a non-CORS URL) → toast appears, no broken file saved.
-- Multi-tile poster: every tile image present in saved PNG.
+
+- iOS Safari (your phone): Download JPEG → opened file contains the Nike Shox hero photo, not a black box.
+- Android Chrome: same.
+- Desktop Chrome / Safari: same.
+- Force-fail the prefetch (offline) → toast appears, no broken file is saved.
+
