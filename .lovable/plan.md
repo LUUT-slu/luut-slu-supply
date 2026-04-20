@@ -1,120 +1,96 @@
 
 
-The user wants AI-assisted image prep as an enhancement layer on top of the existing template system. Priority is **Auto Fit + Smart Reframing** because cropping is the main issue.
+Looking at the current Marketing Studio architecture: there's already a `style` toggle (Clean/Hype/Minimal) baked into `templates.tsx`, plus `pickTheme()` that auto-picks a glow palette from the headline. The user wants to formalize this into a **proper preset system** driven by reference images, with token extraction (not image cloning).
 
-Let me check what's already in place for image handling and AI.
-<lov-tool-use id="toolu_vrtx_01MTQuUNAtRvNsskaJpzyi1j" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/marketing/templates.tsx\", \"lines\": \"1-80\"}">
-</lov-tool-use>
+Key insight: this is NOT about AI generating posters from references. It's about extracting **design tokens** (palette, layout density, badge style, CTA shape) from a reference image once, saving them as a **named preset**, then having the existing template engine render any poster type with those tokens.
 
-<lov-tool-use id="toolu_vrtx_01D2axeCVcG8HGJ7ah42iRYF" name="code--search_files" integration-id="code" data="{\"query\": \"object-(cover|contain)\", \"include_patterns\": \"src/components/marketing/**\"}">
-</lov-tool-use>
+## Reference-Based Design Preset System
 
-<lov-tool-use id="toolu_vrtx_01UwDU9pAG3VP4RoMZyjXKMh" name="code--list_dir" integration-id="code" data="{\"dir_path\": \"supabase/functions\"}">
-</lov-tool-use>
-
-<lov-tool-use id="toolu_vrtx_01VCfdxFKgvhsy5NydzgmAKy" name="code--search_files" integration-id="code" data="{\"query\": \"object-(cover|contain)\", \"include_patterns\": \"src/components/marketing/templates.tsx\"}">
-</lov-tool-use>
-
-<lov-tool-use id="toolu_vrtx_01XYnVDg2BF4BZv8yFpR7Be6" name="code--list_dir" integration-id="code" data="{\"dir_path\": \"supabase/functions\"}">
-</lov-tool-use>
-
-<lov-tool-use id="toolu_vrtx_01RuBgg71FEX1yVw9mjMjVL9" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/marketing/templates.tsx\", \"lines\": \"1-60\"}">
-</lov-tool-use>
-I have enough context. Let me present the plan.
-
-<lov-plan>
-
-## AI-Assisted Image Preparation in Marketing Studio
-
-Add an enhancement layer that **prepares product images** before they hit the existing template engine. Templates, layouts, and export pipeline stay exactly as-is — only the image URL flowing in changes.
+Turn the existing 3-style toggle into a full preset library. Each preset is a JSON token bundle (palette + layout + typography + decoration). References become presets via one-time AI extraction; templates render predictably from tokens.
 
 ### Architecture
 
 ```text
-Product image ──▶ [Image Prep Panel] ──▶ Cached prepared URL ──▶ Existing templates
-                       │
-                       ├─ Keep Original          (no change, default)
-                       ├─ Auto Fit Product       (smart-frame, client-side)
-                       ├─ Smart Reframe          (format-aware crop, client-side)
-                       ├─ Remove Background      (AI — Gemini image edit)
-                       ├─ Expand to Fit          (AI — outpainting via Gemini image)
-                       └─ Enhance Image          (sharpen + contrast, client-side)
+[Reference image] ──▶ [AI Extract Tokens] ──▶ [PosterPreset JSON]
+                                                      │
+                                                      ▼
+[Built-in presets] ─────────────────────────▶ [Preset Library] ─▶ [Apply to template]
+   Clean · Hype · Minimal                              │
+   Sale · Urgency · Luxury · Grid Showcase             ▼
+                                              [Override panel]
+                                              colors · CTA · density
 ```
 
-Each prepared image is cached by `(sourceUrl + mode + format)` so re-selecting a mode is instant and re-exports stay consistent.
+### What gets built
 
-### Phase 1 — Build now (priority)
+**1. Preset schema** — `src/lib/marketingPresets.ts`
+- `PosterPreset` type: `{ id, name, palette: {bg, surface, accent, glow, text, muted}, layout: {density: "tight"|"normal"|"spaced", radius, gridGap}, typography: {headlineWeight, headlineCase, scale}, badge: {shape: "pill"|"ribbon"|"chip", style: "glow"|"solid"|"outline"}, cta: {shape, fill: "glow"|"solid"|"outline"}, background: {type: "dark"|"gradient"|"glow"|"minimal", noise: boolean} }`
+- 7 built-in presets: Clean, Hype, Minimal, Sale (red/yellow), Urgency (ember), Luxury (gold/black), Grid Showcase (neutral)
+- `getPreset(id)` + `mergePreset(preset, overrides)`
 
-**1. New edge function** `supabase/functions/ai-image-prep/index.ts`
-- Accepts `{ imageUrl, mode: "remove-bg" | "expand", format }`
-- Calls Lovable AI gateway with `google/gemini-3.1-flash-image-preview` (Nano Banana 2 — fast + high quality, perfect for edits)
-- Mode prompts:
-  - `remove-bg` → "Remove the background completely. Keep the product 100% intact — same colors, same shape, same details, same branding. Output transparent background."
-  - `expand` → "Extend the image canvas to {targetAspect} aspect ratio. Fill the new edges with a clean, realistic continuation of the existing background. DO NOT alter, move, or change the product itself. Keep all product details exactly as-is."
-- Returns base64 data URL
-- Includes safety guard in system prompt: "Never change the product. Only modify framing/background."
-- Handles 429/402 errors and surfaces them clearly
+**2. Preset extraction edge function** — `supabase/functions/marketing-extract-preset/index.ts`
+- Input: `{ imageDataUrl, presetName }`
+- Calls `google/gemini-2.5-flash` with vision + structured output (tool calling) to return a `PosterPreset` JSON matching the schema
+- System prompt: "Extract design tokens — palette hex codes, layout density, badge style, CTA shape, background type. Do NOT describe the image content. Do NOT include any product or text from the reference. Output structured tokens only."
+- Returns the new preset JSON for client-side save (no DB needed; presets stored in `localStorage` keyed `marketing.presets.custom`)
 
-**2. New utility** `src/lib/imagePrep.ts` — client-side ops (no AI cost)
-- `autoFitProduct(url, format)` — loads image to canvas, detects content bounds via alpha/edge sampling, re-centers with safe margins (10% padding), outputs canvas at target aspect ratio
-- `smartReframe(url, format)` — picks ideal crop window based on format aspect ratio while keeping the centered subject fully inside the frame (no edge clipping)
-- `enhanceImage(url)` — canvas-based unsharp mask + mild contrast/saturation boost (subtle, never destructive)
-- All return data URLs — preview matches export exactly
+**3. Preset Picker component** — `src/components/marketing/PresetPicker.tsx`
+- Horizontal chip row above format tabs
+- Shows built-in presets + saved custom presets with mini swatch (palette dots + accent stripe)
+- "+ Add from reference" button → opens upload dialog
+- Upload dialog: drop zone → progress → "Name your preset" → save to localStorage
+- Delete custom presets via long-press / X icon
 
-**3. New hook** `src/hooks/useImagePrep.ts`
-- Manages mode state per source image
-- Caches results in a `Map<cacheKey, dataUrl>` (per Studio session)
-- Loading/error states for AI modes
-- Returns `{ preparedUrl, mode, setMode, isProcessing, error }`
+**4. Template token wiring** — extend `src/components/marketing/templates.tsx`
+- Replace hardcoded `pickTheme()` colors and the `style` switch with token reads from active `PosterPreset`
+- `PosterTheme` becomes derived from `preset.palette` (keep existing field names for zero breakage)
+- Apply `preset.layout.density` → padding/gap multipliers
+- Apply `preset.badge` → swap badge component (pill vs ribbon vs chip)
+- Apply `preset.cta` → swap CTA shape/fill
+- Apply `preset.background` → background renderer (dark / gradient / glow / minimal)
+- Existing `style: "clean"|"hype"|"minimal"` becomes a fallback when no preset chosen → maps to built-in presets
 
-**4. New component** `src/components/marketing/ImagePrepPanel.tsx`
-- Renders 6 toggle buttons (Original · Auto Fit · Reframe · Remove BG · Expand · Enhance) as a chip row
-- Shows small before/after thumbnails when a mode is active
-- Per-mode hint text ("AI processing — uses credits" badge on Remove BG and Expand)
-- Mobile-friendly tap targets, scrollable horizontally on small screens
-- Disabled state during processing with spinner
+**5. Override panel** — extend existing branding card in `MarketingStudio.tsx`
+- New "Customize preset" collapsible:
+  - Color pickers: accent, glow (live updates, doesn't mutate saved preset)
+  - Density: Tight / Normal / Spaced toggle
+  - Badge shape: Pill / Ribbon / Chip
+  - CTA shape: Pill / Block / Outline
+- Reset to preset defaults button
 
-**5. Studio integration** — `src/pages/admin/MarketingStudio.tsx`
-- Add `ImagePrepPanel` directly under product picker / variant selector
-- Single-product mode → prep applies to the chosen `productImage`
-- Multi-product mode → prep applies per-tile (each product card gets its own mini prep selector OR a "Apply to all tiles" global mode — pick global for simplicity in v1)
-- Variant mode → prep applies to selected variant image
-- Pass prepared URLs through existing `templateProps.productImage` / `variantImages[].url` / `MultiProductItem.imageUrl` — zero template changes
-- Both preview node and hidden export node consume the same prepared URLs → download matches preview
-
-### Phase 2 — Stubs only (not built)
-- Per-tile prep in multi-product mode (v1 uses one global mode)
-- Server-side caching of AI results in Supabase Storage (v1 uses in-memory session cache)
-- Background "blur instead of remove" option
-- Side-by-side comparison slider
+**6. Studio integration** — `src/pages/admin/MarketingStudio.tsx`
+- New state: `activePresetId: string`, `presetOverrides: Partial<PosterPreset>`
+- Pass merged preset as a prop into both single-product and multi-product templates
+- Hide the old style chip row when preset system is active (or repurpose it as a quick-pick for built-ins)
+- Both preview node and export node consume the same merged preset → download matches preview
 
 ### Files
 
 **New (4)**
-- `supabase/functions/ai-image-prep/index.ts`
-- `src/lib/imagePrep.ts`
-- `src/hooks/useImagePrep.ts`
-- `src/components/marketing/ImagePrepPanel.tsx`
+- `src/lib/marketingPresets.ts` — schema + 7 built-ins + merge helpers
+- `src/components/marketing/PresetPicker.tsx` — chip row + upload dialog
+- `src/components/marketing/PresetOverridePanel.tsx` — color/density/shape controls
+- `supabase/functions/marketing-extract-preset/index.ts` — AI token extraction
 
-**Edited (1)**
-- `src/pages/admin/MarketingStudio.tsx` — mount panel, wire prepared URLs into template props
+**Edited (2)**
+- `src/components/marketing/templates.tsx` — token-driven theme + badge + CTA + background renderers
+- `src/pages/admin/MarketingStudio.tsx` — mount picker + override panel, pass preset down
 
-### Safety guarantees
-- AI prompts explicitly forbid altering product color, shape, branding
-- "Keep Original" is always default — no AI runs unless user opts in
-- AI-edited results shown in preview before export so admin can revert
-- Failures fall back to original image with toast
-
-### Out of scope
-- Replacing or generating fake products
-- Editing the templates themselves
-- Auto-applying AI prep without user consent
-- Persisted prep history across sessions
+### Safety / consistency
+- Tokens are bounded enums (density: 3 values, badge: 3 shapes, cta: 3 shapes) → predictable output, never random
+- AI extraction returns ONLY tokens, never image content → no copying
+- Built-in presets always available even if extraction fails
+- Custom presets stored locally per admin session (Phase 2 can sync to DB)
 
 ### Result
-- Pick a tight product photo → tap **Auto Fit** → product re-centers with proper margins instantly (no AI cost)
-- Tap **Smart Reframe** when switching to Story format → product fills the 9:16 safely
-- Tap **Remove BG** → clean transparent product on the poster (one Gemini call, ~2s)
-- Tap **Expand to Fit** → AI extends background for tight crops (one Gemini call, ~3s)
-- All existing posters (single, variant, best sellers, low stock, promos) get cleaner product visibility with zero template regressions
+- Pick "Sale" preset → red/yellow palette, ribbon badges, urgent CTA across all poster types
+- Upload screenshot of a poster I like → AI extracts palette + layout density + badge style → save as "My Drop Style" → reuse on Best Sellers, New Arrivals, Promotions
+- Tweak accent color via override → instant preview update, doesn't touch saved preset
+- All existing functionality (variants, image prep, multi-product, format tabs) preserved
+
+### Out of scope
+- Server-side preset storage (localStorage only in v1)
+- Preset sharing between admins
+- AI generating posters from references (token extraction only)
+- Animated/video presets
 
