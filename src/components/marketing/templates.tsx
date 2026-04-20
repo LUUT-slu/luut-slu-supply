@@ -649,7 +649,9 @@ function ProductGrid({
       }}
     >
       {tiles.map((item, i) => {
-        const spanFull = count === 3 && i === 0;
+        const spanFull = useSpanFull && i === 0;
+        // Add data-export-hero so the iOS hybrid renderer composites tiles
+        // natively, bypassing the foreignObject <img> bug.
         return (
           <div
             key={item.id}
@@ -667,7 +669,8 @@ function ProductGrid({
               overflow: "hidden",
             }}
           >
-            {/* Image area (rounded inner card) */}
+            {/* Image area (rounded inner card). object-fit: contain so the
+                product is fully visible — never stretched, never cropped. */}
             <div
               style={{
                 position: "relative",
@@ -683,10 +686,11 @@ function ProductGrid({
                   src={item.imageUrl}
                   crossOrigin="anonymous"
                   alt=""
+                  data-export-hero="true"
                   style={{
                     width: "100%",
                     height: "100%",
-                    objectFit: "cover",
+                    objectFit: "contain",
                     display: "block",
                   }}
                 />
