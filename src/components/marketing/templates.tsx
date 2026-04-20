@@ -841,9 +841,10 @@ export const MarketingTemplate = forwardRef<HTMLDivElement, TemplateProps>(
   }
 );
 
-// Preset-driven single-product layout. All colors/spacing/shapes come from
-// the active PosterPreset, so the Style & Branding panel is the single
-// source of truth for visual styling.
+// Preset-driven single-product layout matching the approved Hype poster:
+// top row (badge left + brand mark right), framed hero image, big left-aligned
+// headline, solid accent price chip, inline stock + meetup pills, full-width
+// CTA block. Preset tokens drive palette, density, badge/CTA shape & fill.
 function PresetLayout(p: TemplateProps) {
   const preset = p.preset!;
   const isStory = p.format === "story";
@@ -856,9 +857,9 @@ function PresetLayout(p: TemplateProps) {
   const headlineWeight = preset.typography.headlineWeight;
   const headlineCase = preset.typography.headlineCase;
 
-  const basePad = isStory || isPortrait ? 64 : isAd ? 40 : 56;
-  const padding = `${Math.round(basePad * dscale.pad)}px`;
-  const baseGap = isStory || isPortrait ? 28 : isAd ? 18 : 22;
+  const basePad = isStory || isPortrait ? 56 : isAd ? 36 : 48;
+  const pad = Math.round(basePad * dscale.pad);
+  const baseGap = isStory || isPortrait ? 24 : isAd ? 14 : 18;
   const gap = Math.round(baseGap * dscale.gap);
 
   const radius = preset.layout.radius;
@@ -868,20 +869,19 @@ function PresetLayout(p: TemplateProps) {
   const accent = preset.palette.accent;
 
   const headlineSize = Math.round(
-    (isStory ? 96 : isAd ? 56 : isPortrait ? 84 : 76) * tScale,
+    (isStory ? 110 : isAd ? 60 : isPortrait ? 96 : 86) * tScale,
   );
-  const taglineSize = isStory ? 28 : isAd ? 20 : 24;
-  const priceSize = isStory ? 72 : isAd ? 44 : 60;
+  const priceSize = Math.round((isStory ? 72 : isAd ? 40 : 60) * tScale);
+  const ctaFontSize = isStory ? 36 : isAd ? 22 : 30;
 
   const showHalos = preset.background.type === "glow";
-
   const variantImages = p.variantImages && p.variantImages.length > 1 ? p.variantImages : null;
   const heroImage = p.productImage;
 
-  // Headline = product name; split first word for accent highlight (matches multi-product feel).
-  const titleParts = p.productName.trim().split(/\s+/);
-  const firstWord = titleParts[0] ?? "";
-  const restWords = titleParts.slice(1).join(" ");
+  // Top badge text: prefer urgency, fall back to stock badge
+  const topBadgeText = p.urgencyText || p.stockBadge;
+  // Inline pills (stock + meetup) under price
+  const stockPillText = p.urgencyText && p.stockBadge ? p.stockBadge : null;
 
   return (
     <div
@@ -892,87 +892,98 @@ function PresetLayout(p: TemplateProps) {
         overflow: "hidden",
         background: theme.bgVignette,
         color: text,
-        padding,
+        padding: pad,
         boxSizing: "border-box",
         display: "flex",
-        flexDirection: isAd ? "row" : "column",
-        gap,
+        flexDirection: "column",
       }}
     >
-      {/* Halo glows for glow backgrounds */}
+      {/* Corner halos: orange-ish top-right + accent bottom-left feel */}
       {showHalos && (
         <>
           <div
             style={{
               position: "absolute",
-              top: -240,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: "120%",
-              height: 480,
-              background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
-              filter: "blur(20px)",
+              top: -220,
+              right: -180,
+              width: 620,
+              height: 520,
+              background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 65%)`,
+              filter: "blur(30px)",
               pointerEvents: "none",
             }}
           />
           <div
             style={{
               position: "absolute",
-              bottom: -240,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: "120%",
-              height: 480,
-              background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
-              filter: "blur(20px)",
+              bottom: -220,
+              left: -180,
+              width: 620,
+              height: 520,
+              background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 65%)`,
+              filter: "blur(30px)",
               pointerEvents: "none",
             }}
           />
         </>
       )}
 
-      {/* Brand mark top-right */}
-      <div
-        style={{
-          position: "absolute",
-          top: Math.round(padding ? 32 : 24),
-          right: 32,
-          zIndex: 3,
-        }}
-      >
-        {p.brandLogoUrl ? (
-          <img
-            src={p.brandLogoUrl}
-            crossOrigin="anonymous"
-            alt=""
-            style={{ height: isAd ? 32 : 44, width: "auto", objectFit: "contain", display: "block" }}
-          />
-        ) : (
-          <div
-            style={{
-              fontSize: isAd ? 14 : 18,
-              fontWeight: 700,
-              letterSpacing: 4,
-              textTransform: "uppercase",
-              color: muted,
-            }}
-          >
-            {p.brandName}
-          </div>
-        )}
-      </div>
-
-      {/* Hero image (or variant grid) */}
+      {/* Top row: badge (left) + brand mark (right) */}
       <div
         style={{
           position: "relative",
           zIndex: 2,
-          flex: isAd ? "0 0 45%" : 1,
-          minHeight: 0,
           display: "flex",
           alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: gap,
+          minHeight: 56,
+        }}
+      >
+        <div>
+          {topBadgeText && (
+            <PresetInlineBadge
+              text={topBadgeText}
+              theme={theme}
+              shape={preset.badge.shape}
+              fill={preset.badge.fill}
+            />
+          )}
+        </div>
+        <div>
+          {p.brandLogoUrl ? (
+            <img
+              src={p.brandLogoUrl}
+              crossOrigin="anonymous"
+              alt=""
+              style={{ height: isAd ? 28 : 40, width: "auto", objectFit: "contain", display: "block" }}
+            />
+          ) : (
+            <div
+              style={{
+                fontSize: isAd ? 18 : 24,
+                fontWeight: 600,
+                letterSpacing: 1,
+                color: muted,
+              }}
+            >
+              {p.brandName}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Hero image (or variant grid) — flexes to fill available space */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          alignItems: "stretch",
           justifyContent: "center",
-          marginTop: isAd ? 0 : (isStory || isPortrait ? 80 : 60),
+          marginBottom: gap,
         }}
       >
         {variantImages ? (
@@ -997,7 +1008,9 @@ function PresetLayout(p: TemplateProps) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: showHalos ? `0 0 32px ${theme.glowSoft}` : "0 12px 28px rgba(0,0,0,0.35)",
+              boxShadow: showHalos
+                ? `0 0 32px ${theme.glowSoft}, 0 12px 28px rgba(0,0,0,0.35)`
+                : "0 12px 28px rgba(0,0,0,0.35)",
             }}
           >
             {heroImage ? (
@@ -1014,114 +1027,169 @@ function PresetLayout(p: TemplateProps) {
         )}
       </div>
 
-      {/* Right (ad) or bottom column: copy + CTA */}
+      {/* Headline — left-aligned, no accent split */}
       <div
         style={{
           position: "relative",
           zIndex: 2,
-          flex: isAd ? 1 : "0 0 auto",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: isAd ? "flex-start" : "center",
-          textAlign: isAd ? "left" : "center",
-          gap: Math.round(gap * 0.8),
+          fontSize: headlineSize,
+          fontWeight: headlineWeight,
+          lineHeight: 0.95,
+          letterSpacing: "-0.025em",
+          textTransform: headlineCase === "upper" ? "uppercase" : "none",
+          color: text,
+          marginBottom: Math.round(gap * 0.7),
         }}
       >
-        {/* Stock / urgency badge */}
-        {(p.stockBadge || p.urgencyText) && (
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <PresetInlineBadge
-              text={p.urgencyText || p.stockBadge!}
-              theme={theme}
-              shape={preset.badge.shape}
-              fill={preset.badge.fill}
-            />
-          </div>
-        )}
+        {p.productName}
+      </div>
 
-        {/* Headline */}
+      {/* Tagline (optional) */}
+      {p.tagline && (
         <div
           style={{
-            fontSize: headlineSize,
-            fontWeight: headlineWeight,
-            lineHeight: 0.95,
-            letterSpacing: "-0.02em",
-            textTransform: headlineCase === "upper" ? "uppercase" : "none",
-            color: text,
+            position: "relative",
+            zIndex: 2,
+            fontSize: isStory ? 28 : isAd ? 18 : 22,
+            color: muted,
+            fontWeight: 600,
+            marginBottom: Math.round(gap * 0.7),
           }}
         >
-          <span>{firstWord}</span>
-          {restWords && (
-            <>
-              {" "}
-              <span
-                style={{
-                  background: `linear-gradient(180deg, ${accent} 0%, ${accent} 60%, ${text} 100%)`,
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  filter: showHalos ? `drop-shadow(0 0 18px ${theme.glowSoft})` : "none",
-                }}
-              >
-                {restWords}
-              </span>
-            </>
-          )}
+          {p.tagline}
         </div>
+      )}
 
-        {/* Tagline */}
-        {p.tagline && (
-          <div
-            style={{
-              fontSize: taglineSize,
-              color: muted,
-              fontWeight: 600,
-              letterSpacing: 0.5,
-              maxWidth: 720,
-            }}
-          >
-            {p.tagline}
-          </div>
-        )}
-
-        {/* Price */}
-        {p.showPrice && p.price && (
-          <div
-            style={{
-              fontSize: priceSize,
-              fontWeight: 900,
-              color: accent,
-              letterSpacing: -1,
-              filter: showHalos ? `drop-shadow(0 0 18px ${theme.glowSoft})` : "none",
-            }}
-          >
-            {formatPosterPrice(p.price)}
-          </div>
-        )}
-
-        {/* CTA */}
-        <div style={{ marginTop: 6 }}>
-          <PresetCTA
-            text={p.ctaText}
-            theme={theme}
-            shape={preset.cta.shape}
-            fill={preset.cta.fill}
-            small={isAd}
-          />
-        </div>
-
-        {/* Meetup line */}
+      {/* Price — solid accent chip with contrast text */}
+      {p.showPrice && p.price && (
         <div
           style={{
-            color: muted,
+            position: "relative",
+            zIndex: 2,
+            alignSelf: "flex-start",
+            background: accent,
+            color: contrastTextSafe(accent),
+            padding: isStory ? "16px 28px" : isAd ? "10px 18px" : "14px 22px",
+            borderRadius: Math.max(8, radius - 12),
+            fontSize: priceSize,
+            fontWeight: 900,
+            letterSpacing: -1,
+            lineHeight: 1,
+            boxShadow: showHalos ? `0 0 28px ${theme.glowSoft}` : "none",
+            marginBottom: Math.round(gap * 0.7),
+          }}
+        >
+          {formatPosterPrice(p.price)}
+        </div>
+      )}
+
+      {/* Inline pills row: stock + meetup */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 12,
+          marginBottom: gap,
+        }}
+      >
+        {stockPillText && (
+          <div
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: text,
+              padding: isAd ? "8px 16px" : "10px 20px",
+              borderRadius: 999,
+              fontSize: isAd ? 16 : 20,
+              fontWeight: 600,
+            }}
+          >
+            {stockPillText}
+          </div>
+        )}
+        <div
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            color: text,
+            padding: isAd ? "8px 16px" : "10px 20px",
+            borderRadius: 999,
             fontSize: isAd ? 16 : 20,
             fontWeight: 600,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          <span style={{ color: accent, marginRight: 6 }}>📍</span>
+          <span>📍</span>
           {p.meetupText}
         </div>
       </div>
+
+      {/* Full-width CTA block */}
+      <div style={{ position: "relative", zIndex: 2 }}>
+        <FullWidthCTA
+          text={p.ctaText}
+          theme={theme}
+          shape={preset.cta.shape}
+          fill={preset.cta.fill}
+          fontSize={ctaFontSize}
+          padY={isStory ? 32 : isAd ? 18 : 26}
+          radius={Math.max(12, radius - 8)}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Full-width CTA used by single-product PresetLayout. Honors preset shape & fill.
+function FullWidthCTA({
+  text,
+  theme,
+  shape,
+  fill,
+  fontSize,
+  padY,
+  radius,
+}: {
+  text: string;
+  theme: PosterTheme;
+  shape: "pill" | "block" | "outline";
+  fill: "glow" | "solid" | "outline";
+  fontSize: number;
+  padY: number;
+  radius: number;
+}) {
+  const isOutline = fill === "outline" || shape === "outline";
+  const r = shape === "pill" ? 999 : shape === "block" ? radius : radius;
+  const bg = isOutline ? "transparent" : theme.cta;
+  const border = isOutline ? `3px solid ${theme.glow}` : "none";
+  const color = isOutline ? theme.glow : theme.ctaText;
+  const shadow =
+    fill === "glow" && !isOutline
+      ? `0 0 32px ${theme.glowSoft}, inset 0 -4px 0 rgba(0,0,0,0.2)`
+      : "none";
+  return (
+    <div
+      style={{
+        width: "100%",
+        background: bg,
+        border,
+        color,
+        padding: `${padY}px 24px`,
+        borderRadius: r,
+        fontSize,
+        fontWeight: 900,
+        letterSpacing: 3,
+        textAlign: "center",
+        textTransform: "uppercase",
+        boxShadow: shadow,
+        boxSizing: "border-box",
+      }}
+    >
+      {text}
     </div>
   );
 }
