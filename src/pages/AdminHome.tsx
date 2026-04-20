@@ -129,6 +129,14 @@ export default function AdminHome() {
       ],
     },
     {
+      title: "Customer Info",
+      description: "Customers, signups, WhatsApp, referrals & discounts",
+      icon: Users,
+      href: "/admin/customers",
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-500/10",
+    },
+    {
       title: "Order Management",
       description: "Browse and manage all orders",
       icon: ClipboardList,

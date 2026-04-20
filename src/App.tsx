@@ -79,6 +79,8 @@ const AdminAnalytics = lazyRetry(() => import("./pages/admin/AdminAnalytics"));
 const AdminReviews = lazyRetry(() => import("./pages/admin/AdminReviews"));
 const MarketingStudio = lazyRetry(() => import("./pages/admin/MarketingStudio"));
 const PromotionsManager = lazyRetry(() => import("./pages/admin/PromotionsManager"));
+const AdminCustomers = lazyRetry(() => import("./pages/admin/AdminCustomers"));
+const AdminCustomerDetail = lazyRetry(() => import("./pages/admin/AdminCustomerDetail"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -262,6 +264,16 @@ const App = () => (
             <Route path="/admin/promotions" element={
               <RouteGuard requiredRole="admin">
                 <PromotionsManager />
+              </RouteGuard>
+            } />
+            <Route path="/admin/customers" element={
+              <RouteGuard requiredRole="admin">
+                <AdminCustomers />
+              </RouteGuard>
+            } />
+            <Route path="/admin/customers/:userId" element={
+              <RouteGuard requiredRole="admin">
+                <AdminCustomerDetail />
               </RouteGuard>
             } />
             <Route path="/admin-orders" element={
