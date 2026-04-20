@@ -111,6 +111,24 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   },
 };
 
+export interface MarketingStudioSettings {
+  brandName: string;
+  brandLogoUrl: string;
+  defaultCta: string;
+  meetupLocations: string;
+  urgencyText: string;
+  showPriceByDefault: boolean;
+}
+
+export const DEFAULT_MARKETING_STUDIO: MarketingStudioSettings = {
+  brandName: "Luut SLU",
+  brandLogoUrl: "",
+  defaultCta: "DM to Cop",
+  meetupLocations: "Castries · Gros Islet · Vieux Fort",
+  urgencyText: "Limited drop",
+  showPriceByDefault: true,
+};
+
 export interface SiteSettings {
   popups: PopupSetting[];
   freezeCheckout: boolean;
@@ -119,6 +137,7 @@ export interface SiteSettings {
   colorVariantCards: ColorVariantCardsSetting;
   homepageLayout: HomepageLayout;
   notifications: NotificationSettings;
+  marketingStudio: MarketingStudioSettings;
 }
 
 async function fetchSiteSettings(): Promise<SiteSettings> {
@@ -174,6 +193,10 @@ async function fetchSiteSettings(): Promise<SiteSettings> {
         ...DEFAULT_NOTIFICATION_SETTINGS.alerts,
         ...(((settings.notifications as any)?.alerts) || {}),
       },
+    },
+    marketingStudio: {
+      ...DEFAULT_MARKETING_STUDIO,
+      ...((settings.marketing_studio as Partial<MarketingStudioSettings>) || {}),
     },
   };
 }
