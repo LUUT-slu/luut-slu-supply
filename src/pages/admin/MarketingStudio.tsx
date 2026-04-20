@@ -689,7 +689,7 @@ export default function MarketingStudio() {
 
           <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)}>
             <div className="-mx-1 overflow-x-auto px-1">
-              <TabsList className="grid w-full min-w-[420px] grid-cols-5">
+              <TabsList className="grid w-full min-w-[480px] grid-cols-6">
                 {FORMATS.map((f) => (
                   <TabsTrigger key={f.key} value={f.key} className="text-xs">
                     {f.label}
