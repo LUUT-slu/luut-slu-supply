@@ -42,6 +42,11 @@ import {
 import { PresetPicker } from "@/components/marketing/PresetPicker";
 import { PresetOverridePanel, PresetOverrides } from "@/components/marketing/PresetOverridePanel";
 import { getPreset, mergePreset, getBuiltinPresets } from "@/lib/marketingPresets";
+import {
+  prefetchImagesAsDataUrls,
+  waitForDomImages,
+  useImagesReady,
+} from "@/lib/exportImageCache";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
