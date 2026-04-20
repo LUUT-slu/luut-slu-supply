@@ -296,8 +296,37 @@ export default function MarketingStudio() {
     };
   }, [selectedProduct, variantMode, variantImages]);
 
+  // Measure the live hero container's aspect so the framing pipeline can
+  // produce an image that matches it exactly (preview = export, no further
+  // crop/stretch when rendered with object-fit: contain).
+  const exportRef = useRef<HTMLDivElement>(null);
+  const [heroAspect, setHeroAspect] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const root = exportRef.current;
+    if (!root) return;
+    const measure = () => {
+      const el = root.querySelector<HTMLElement>("#hero-region");
+      if (!el) {
+        setHeroAspect(undefined);
+        return;
+      }
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        setHeroAspect(r.width / r.height);
+      }
+    };
+    // Defer one frame so the layout settles after format/preset changes.
+    const id = requestAnimationFrame(measure);
+    const ro = new ResizeObserver(measure);
+    ro.observe(root);
+    return () => {
+      cancelAnimationFrame(id);
+      ro.disconnect();
+    };
+  }, [tab, activePresetId, presetOverrides]);
+
   // ---- AI-assisted image prep (single-product hero image) ----
-  const singlePrep = useImagePrep(productPayload?.productImage, tab);
+  const singlePrep = useImagePrep(productPayload?.productImage, tab, heroAspect);
 
   // ---- AI-assisted image prep (multi-product, applied to all tiles) ----
   const [multiPrepMode, setMultiPrepMode] = useState<
@@ -314,7 +343,7 @@ export default function MarketingStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [multiPrepMode]);
 
-  const exportRef = useRef<HTMLDivElement>(null);
+  // exportRef declared above (used by hero-aspect measurement)
   const [exporting, setExporting] = useState(false);
   const isMobile = useIsMobile();
   const [canShare, setCanShare] = useState(false);

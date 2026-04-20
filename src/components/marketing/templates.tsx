@@ -415,6 +415,7 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
             showBadges={props.showBadges}
             showLabels={props.showLabels}
             preset={props.preset}
+            format={props.format}
             gap={gridGap}
           />
         </div>
@@ -589,6 +590,7 @@ function ProductGrid({
   showBadges,
   showLabels,
   preset,
+  format,
   gap = 18,
 }: {
   items: MultiProductItem[];
@@ -597,14 +599,20 @@ function ProductGrid({
   showBadges: boolean;
   showLabels: boolean;
   preset?: PosterPreset;
+  format: TemplateFormat;
   gap?: number;
 }) {
   const tiles = items.slice(0, 4);
   const overflow = items.length - tiles.length;
   const count = tiles.length;
 
+  // Story/portrait formats can't afford a 2-row grid for 3 tiles — it doubles
+  // the hero block height and unbalances the layout. Use a single 3-col row
+  // there. For post/ad we keep 2x2 with the first tile spanning two columns.
+  const isTallFormat = format === "story" || format === "portrait";
   let columns = "1fr 1fr";
   let rows = "1fr 1fr";
+  let useSpanFull = false;
   if (count === 1) {
     columns = "1fr";
     rows = "1fr";
@@ -612,8 +620,14 @@ function ProductGrid({
     columns = "1fr 1fr";
     rows = "1fr";
   } else if (count === 3) {
-    columns = "1fr 1fr";
-    rows = "1fr 1fr";
+    if (isTallFormat) {
+      columns = "1fr 1fr 1fr";
+      rows = "1fr";
+    } else {
+      columns = "1fr 1fr";
+      rows = "1fr 1fr";
+      useSpanFull = true;
+    }
   }
 
   const tileRadius = preset?.layout.radius ?? 22;
@@ -635,7 +649,9 @@ function ProductGrid({
       }}
     >
       {tiles.map((item, i) => {
-        const spanFull = count === 3 && i === 0;
+        const spanFull = useSpanFull && i === 0;
+        // Add data-export-hero so the iOS hybrid renderer composites tiles
+        // natively, bypassing the foreignObject <img> bug.
         return (
           <div
             key={item.id}
@@ -653,7 +669,8 @@ function ProductGrid({
               overflow: "hidden",
             }}
           >
-            {/* Image area (rounded inner card) */}
+            {/* Image area (rounded inner card). object-fit: contain so the
+                product is fully visible — never stretched, never cropped. */}
             <div
               style={{
                 position: "relative",
@@ -669,10 +686,11 @@ function ProductGrid({
                   src={item.imageUrl}
                   crossOrigin="anonymous"
                   alt=""
+                  data-export-hero="true"
                   style={{
                     width: "100%",
                     height: "100%",
-                    objectFit: "cover",
+                    objectFit: "contain",
                     display: "block",
                   }}
                 />
@@ -973,13 +991,17 @@ function PresetLayout(p: TemplateProps) {
         </div>
       </div>
 
-      {/* Hero image (or variant grid) — flexes to fill available space */}
+      {/* Hero image (or variant grid). In Story format we cap the hero at
+          56% of the poster height so headline / price / pills / CTA always
+          have guaranteed space below. Other formats keep flex:1. */}
       <div
+        id="hero-region"
         style={{
           position: "relative",
           zIndex: 2,
           flex: 1,
           minHeight: 0,
+          maxHeight: isStory ? "56%" : undefined,
           display: "flex",
           alignItems: "stretch",
           justifyContent: "center",
@@ -994,6 +1016,7 @@ function PresetLayout(p: TemplateProps) {
               surface={surface}
               radius={radius}
               text={text}
+              format={p.format}
             />
           </div>
         ) : (
@@ -1014,12 +1037,15 @@ function PresetLayout(p: TemplateProps) {
             }}
           >
             {heroImage ? (
+              // object-fit: contain — the framing pipeline has already
+              // cropped/padded the image to this container's aspect, so
+              // contain renders pixel-perfect with no further crop or stretch.
               <img
                 src={heroImage}
                 crossOrigin="anonymous"
                 alt=""
                 data-export-hero="true"
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
               />
             ) : (
               <div style={{ color: muted, fontSize: 22 }}>No image</div>
@@ -1247,22 +1273,40 @@ function PresetVariantGrid({
   surface,
   radius,
   text,
+  format,
 }: {
   images: VariantImage[];
   showLabels?: boolean;
   surface: string;
   radius: number;
   text: string;
+  format: TemplateFormat;
 }) {
   const tiles = images.slice(0, 4);
   const overflow = images.length - tiles.length;
   const count = tiles.length;
 
+  // Story/portrait can't take a 2-row grid for 3 tiles — it doubles the
+  // hero block height and squeezes everything else. Use a single 3-col row.
+  const isTallFormat = format === "story" || format === "portrait";
   let columns = "1fr 1fr";
   let rows = "1fr 1fr";
-  if (count === 2) {
+  let useSpanFull = false;
+  if (count === 1) {
+    columns = "1fr";
+    rows = "1fr";
+  } else if (count === 2) {
     columns = "1fr 1fr";
     rows = "1fr";
+  } else if (count === 3) {
+    if (isTallFormat) {
+      columns = "1fr 1fr 1fr";
+      rows = "1fr";
+    } else {
+      columns = "1fr 1fr";
+      rows = "1fr 1fr";
+      useSpanFull = true;
+    }
   }
 
   return (
@@ -1278,7 +1322,7 @@ function PresetVariantGrid({
       }}
     >
       {tiles.map((v, i) => {
-        const spanFull = count === 3 && i === 0;
+        const spanFull = useSpanFull && i === 0;
         return (
           <div
             key={i}
@@ -1296,7 +1340,7 @@ function PresetVariantGrid({
               crossOrigin="anonymous"
               alt=""
               data-export-hero="true"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
             />
             {showLabels && v.label && (
               <div
