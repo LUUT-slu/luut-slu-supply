@@ -69,6 +69,40 @@ function usePreviewScale(templateWidth: number) {
   return { ref, scale };
 }
 
+function PreviewBox({
+  templateWidth,
+  templateHeight,
+  children,
+}: {
+  templateWidth: number;
+  templateHeight: number;
+  children: React.ReactNode;
+}) {
+  const { ref, scale } = usePreviewScale(templateWidth);
+  return (
+    <div ref={ref} className="mx-auto w-full max-w-[420px]">
+      <div
+        className="mx-auto"
+        style={{
+          width: templateWidth * scale,
+          height: templateHeight * scale,
+        }}
+      >
+        <div
+          style={{
+            width: templateWidth,
+            height: templateHeight,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MarketingStudio() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
