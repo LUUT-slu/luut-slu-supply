@@ -391,14 +391,14 @@ export default function MarketingStudio() {
           if (p.imageUrl) urlSet.add(p.imageUrl);
         }
       }
-      const liveImgs = exportRef.current.querySelectorAll("img");
+      const liveImgs = Array.from(exportRef.current.querySelectorAll("img"));
       liveImgs.forEach((img) => {
         const src = img.getAttribute("src");
         if (src) urlSet.add(src);
       });
 
       // 3. Pre-resolve all external images to data URLs so html-to-image
-      //    never re-fetches them (this is what was breaking on mobile).
+      //    never re-fetches them (fixes mobile CORS re-fetch).
       let placeholders: Record<string, string> = {};
       try {
         placeholders = await prefetchImagesAsDataUrls(Array.from(urlSet));
@@ -421,16 +421,27 @@ export default function MarketingStudio() {
       });
       await waitForDomImages(exportRef.current);
 
-      // 5. Capture as JPEG (high quality, smaller file, gallery-friendly).
+      // 5. Capture. iOS Safari has a known html-to-image bug where <img>
+      //    tags inside the serialized SVG <foreignObject> are silently
+      //    dropped during rasterization. We use a hybrid renderer that:
+      //      - captures layout via toCanvas with hero <img>s hidden
+      //      - composites hero images natively via Canvas2D drawImage
+      //    On non-iOS Safari we keep the fast single-pass toJpeg path.
+      const useHybrid = isIOSSafari();
+
       let dataUrl: string;
       try {
-        dataUrl = await toJpeg(exportRef.current, {
-          cacheBust: false,
-          pixelRatio: 2,
-          skipFonts: false,
-          quality: 0.95,
-          backgroundColor: "#000000",
-        });
+        if (useHybrid) {
+          dataUrl = await captureHybrid(exportRef.current, placeholders);
+        } else {
+          dataUrl = await toJpeg(exportRef.current, {
+            cacheBust: false,
+            pixelRatio: 2,
+            skipFonts: false,
+            quality: 0.95,
+            backgroundColor: "#000000",
+          });
+        }
       } finally {
         swapped.forEach(({ el, original }) => el.setAttribute("src", original));
       }
@@ -438,14 +449,13 @@ export default function MarketingStudio() {
       // 6. Validate: a broken capture is usually < 5KB.
       const blob = await dataUrlToBlob(dataUrl);
       if (blob.size < 5_000) {
-        toast.error("Export looks incomplete — please try again");
+        toast.error("Couldn't render product image — please try again");
         return;
       }
 
       const filename = buildPosterFilename();
 
-      // 7. Mobile + Web Share API (files) → open native share/save sheet so
-      //    the user can pick Save Image / Photos / Files / etc.
+      // 7. Mobile + Web Share API (files) → open native share/save sheet.
       if (isMobile && canShare) {
         try {
           const file = new File([blob], filename, { type: "image/jpeg" });
@@ -456,12 +466,11 @@ export default function MarketingStudio() {
               title: filename,
               text: "Luut SLU poster",
             });
-            return; // OS sheet handled it
+            return;
           }
         } catch (err: any) {
-          if (err?.name === "AbortError") return; // user cancelled
+          if (err?.name === "AbortError") return;
           console.warn("Share failed, falling back to download", err);
-          // fall through to download
         }
       }
 
@@ -484,6 +493,124 @@ export default function MarketingStudio() {
       setExporting(false);
     }
   };
+
+  /**
+   * Hybrid renderer for iOS Safari:
+   *  Pass 1 — toCanvas with every [data-export-hero] <img> hidden via
+   *           html-to-image's `filter` option (still occupies layout space
+   *           because we use inline visibility:hidden via a temporary class).
+   *  Pass 2 — native ctx.drawImage of the prefetched hero into the
+   *           bounding rect of the original <img>.
+   * Retries up to 3 times with a 200ms delay if the hero region is blank.
+   */
+  const captureHybrid = async (
+    node: HTMLElement,
+    placeholders: Record<string, string>,
+  ): Promise<string> => {
+    const heroEls = Array.from(
+      node.querySelectorAll<HTMLImageElement>("img[data-export-hero='true']"),
+    );
+
+    // Snapshot bounding rects (relative to export node) BEFORE hiding,
+    // so layout positions are accurate.
+    const nodeRect = node.getBoundingClientRect();
+    const heroRects = heroEls.map((img) => {
+      const r = img.getBoundingClientRect();
+      return {
+        el: img,
+        src: img.getAttribute("src") || "",
+        x: r.left - nodeRect.left,
+        y: r.top - nodeRect.top,
+        w: r.width,
+        h: r.height,
+      };
+    });
+
+    // Hide hero <img>s for the html-to-image pass (keep layout).
+    const prevVisibility = heroEls.map((img) => img.style.visibility);
+    heroEls.forEach((img) => {
+      img.style.visibility = "hidden";
+    });
+
+    let lastError: unknown = null;
+
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const pixelRatio = 2;
+          const canvas = await toCanvas(node, {
+            cacheBust: false,
+            pixelRatio,
+            skipFonts: false,
+            backgroundColor: "#000000",
+          });
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("Canvas 2D context unavailable");
+
+          // Composite each hero image natively onto the canvas.
+          for (const hr of heroRects) {
+            const dataUrl = placeholders[hr.src] || hr.src;
+            try {
+              const img = await loadImageElement(dataUrl);
+              // object-fit: cover — fill the box, preserve aspect ratio.
+              const dx = hr.x * pixelRatio;
+              const dy = hr.y * pixelRatio;
+              const dw = hr.w * pixelRatio;
+              const dh = hr.h * pixelRatio;
+              const srcRatio = img.naturalWidth / img.naturalHeight;
+              const dstRatio = dw / dh;
+              let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+              if (srcRatio > dstRatio) {
+                // source wider — crop sides
+                sw = img.naturalHeight * dstRatio;
+                sx = (img.naturalWidth - sw) / 2;
+              } else {
+                // source taller — crop top/bottom
+                sh = img.naturalWidth / dstRatio;
+                sy = (img.naturalHeight - sh) / 2;
+              }
+              ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+            } catch (err) {
+              console.warn("Hero composite failed for", hr.src, err);
+            }
+          }
+
+          // Validate hero region(s) are not blank: sample center pixel.
+          let allFilled = true;
+          for (const hr of heroRects) {
+            if (hr.w < 4 || hr.h < 4) continue;
+            const cx = Math.floor((hr.x + hr.w / 2) * pixelRatio);
+            const cy = Math.floor((hr.y + hr.h / 2) * pixelRatio);
+            try {
+              const px = ctx.getImageData(cx, cy, 1, 1).data;
+              // Treat fully transparent OR pure black with zero variance as
+              // "blank". Real product photos almost never hit (0,0,0,255).
+              const isBlank = px[3] === 0 || (px[0] === 0 && px[1] === 0 && px[2] === 0);
+              if (isBlank) { allFilled = false; break; }
+            } catch {
+              // getImageData can fail if canvas is tainted; skip check.
+            }
+          }
+
+          if (allFilled || attempt === 2) {
+            return canvas.toDataURL("image/jpeg", 0.95);
+          }
+          // Blank → retry
+          await new Promise((r) => setTimeout(r, 200));
+        } catch (err) {
+          lastError = err;
+          if (attempt === 2) throw err;
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      }
+      throw lastError ?? new Error("Hybrid capture failed");
+    } finally {
+      heroEls.forEach((img, i) => {
+        img.style.visibility = prevVisibility[i] || "";
+      });
+    }
+  };
+
 
   // All presets (including Hype default) route through the preset-driven
   // PresetLayout so Style & Branding controls always take effect.
