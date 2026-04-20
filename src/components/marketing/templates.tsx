@@ -415,6 +415,7 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
             showBadges={props.showBadges}
             showLabels={props.showLabels}
             preset={props.preset}
+            format={props.format}
             gap={gridGap}
           />
         </div>
@@ -589,6 +590,7 @@ function ProductGrid({
   showBadges,
   showLabels,
   preset,
+  format,
   gap = 18,
 }: {
   items: MultiProductItem[];
@@ -597,6 +599,7 @@ function ProductGrid({
   showBadges: boolean;
   showLabels: boolean;
   preset?: PosterPreset;
+  format: TemplateFormat;
   gap?: number;
 }) {
   const tiles = items.slice(0, 4);
