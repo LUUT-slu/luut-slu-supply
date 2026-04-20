@@ -51,11 +51,6 @@ const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "portrait", label: "Portrait", size: "1080×1350" },
 ];
 
-const STYLES: { key: TemplateStyle; label: string }[] = [
-  { key: "clean", label: "Clean" },
-  { key: "hype", label: "Hype" },
-  { key: "minimal", label: "Minimal" },
-];
 
 const PREVIEW_DIMS: Record<TemplateFormat, { w: number; h: number }> = {
   story: { w: 1080, h: 1920 },
