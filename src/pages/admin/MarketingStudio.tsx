@@ -30,9 +30,10 @@ import {
 import { CopyPanel } from "@/components/marketing/CopyPanel";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
-  { key: "story", label: "IG Story", size: "1080×1920" },
-  { key: "post", label: "Feed Post", size: "1080×1080" },
-  { key: "ad", label: "Ad Creative", size: "1200×628" },
+  { key: "story", label: "Story", size: "1080×1920" },
+  { key: "post", label: "Post", size: "1080×1080" },
+  { key: "ad", label: "Ad", size: "1200×628" },
+  { key: "portrait", label: "Portrait", size: "1080×1350" },
 ];
 
 const STYLES: { key: TemplateStyle; label: string }[] = [
@@ -45,6 +46,14 @@ const PREVIEW_SCALE: Record<TemplateFormat, number> = {
   story: 0.22,
   post: 0.32,
   ad: 0.32,
+  portrait: 0.28,
+};
+
+const PREVIEW_DIMS: Record<TemplateFormat, { w: number; h: number }> = {
+  story: { w: 1080, h: 1920 },
+  post: { w: 1080, h: 1080 },
+  ad: { w: 1200, h: 628 },
+  portrait: { w: 1080, h: 1350 },
 };
 
 export default function MarketingStudio() {
@@ -64,18 +73,21 @@ export default function MarketingStudio() {
 
   // Editable session-level fields, seeded from defaults
   const [brandName, setBrandName] = useState(defaults.brandName);
+  const [brandLogoUrl, setBrandLogoUrl] = useState(defaults.brandLogoUrl);
   const [meetupText, setMeetupText] = useState(defaults.meetupLocations);
   const [ctaText, setCtaText] = useState(defaults.defaultCta);
   const [urgencyText, setUrgencyText] = useState(defaults.urgencyText);
+  const [tagline, setTagline] = useState("");
   const [showPrice, setShowPrice] = useState(defaults.showPriceByDefault);
 
   useEffect(() => {
     setBrandName(defaults.brandName);
+    setBrandLogoUrl(defaults.brandLogoUrl);
     setMeetupText(defaults.meetupLocations);
     setCtaText(defaults.defaultCta);
     setUrgencyText(defaults.urgencyText);
     setShowPrice(defaults.showPriceByDefault);
-  }, [defaults.brandName, defaults.meetupLocations, defaults.defaultCta, defaults.urgencyText, defaults.showPriceByDefault]);
+  }, [defaults.brandName, defaults.brandLogoUrl, defaults.meetupLocations, defaults.defaultCta, defaults.urgencyText, defaults.showPriceByDefault]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -147,8 +159,10 @@ export default function MarketingStudio() {
         price: productPayload.price ? String(productPayload.price) : undefined,
         showPrice,
         description: productPayload.description,
+        tagline: tagline || undefined,
         stockBadge: productPayload.stockStatus,
         brandName,
+        brandLogoUrl: brandLogoUrl || undefined,
         meetupText,
         ctaText,
         urgencyText,
@@ -220,7 +234,7 @@ export default function MarketingStudio() {
           </Card>
 
           <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               {FORMATS.map((f) => (
                 <TabsTrigger key={f.key} value={f.key} className="text-xs">
                   {f.label}
@@ -257,11 +271,8 @@ export default function MarketingStudio() {
                             style={{
                               transform: `scale(${PREVIEW_SCALE[f.key]})`,
                               transformOrigin: "top center",
-                              width:
-                                f.key === "ad" ? 1200 * PREVIEW_SCALE[f.key] : 1080 * PREVIEW_SCALE[f.key],
-                              height:
-                                (f.key === "story" ? 1920 : f.key === "post" ? 1080 : 628) *
-                                PREVIEW_SCALE[f.key],
+                              width: PREVIEW_DIMS[f.key].w * PREVIEW_SCALE[f.key],
+                              height: PREVIEW_DIMS[f.key].h * PREVIEW_SCALE[f.key],
                             }}
                           >
                             <div
@@ -318,6 +329,24 @@ export default function MarketingStudio() {
                           className="mt-1"
                           value={brandName}
                           onChange={(e) => setBrandName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Brand Logo URL (optional)</Label>
+                        <Input
+                          className="mt-1"
+                          placeholder="https://..."
+                          value={brandLogoUrl}
+                          onChange={(e) => setBrandLogoUrl(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Short Tagline (optional)</Label>
+                        <Input
+                          className="mt-1"
+                          placeholder="e.g. Fresh drop · Just landed"
+                          value={tagline}
+                          onChange={(e) => setTagline(e.target.value)}
                         />
                       </div>
                       <div>

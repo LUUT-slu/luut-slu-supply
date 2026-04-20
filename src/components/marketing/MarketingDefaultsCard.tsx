@@ -60,6 +60,18 @@ export function MarketingDefaultsCard() {
         <div>
           <Label className="text-xs">Default CTA</Label>
           <Input className="mt-1" value={m.defaultCta} onChange={(e) => setM({ ...m, defaultCta: e.target.value })} />
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            Examples: "DM to order", "Available now", "Cop in DM", "Link in bio"
+          </p>
+        </div>
+        <div>
+          <Label className="text-xs">Brand Logo URL</Label>
+          <Input
+            className="mt-1"
+            placeholder="https://... (square PNG works best)"
+            value={m.brandLogoUrl}
+            onChange={(e) => setM({ ...m, brandLogoUrl: e.target.value })}
+          />
         </div>
         <div>
           <Label className="text-xs">Meetup Locations</Label>

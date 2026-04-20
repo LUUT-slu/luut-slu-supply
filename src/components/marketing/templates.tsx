@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 
 export type TemplateStyle = "clean" | "hype" | "minimal";
-export type TemplateFormat = "story" | "post" | "ad";
+export type TemplateFormat = "story" | "post" | "ad" | "portrait";
 
 export interface TemplateProps {
   style: TemplateStyle;
@@ -11,25 +11,23 @@ export interface TemplateProps {
   price?: string;
   showPrice: boolean;
   description?: string;
+  tagline?: string;
   stockBadge?: string;
   brandName: string;
+  brandLogoUrl?: string;
   meetupText: string;
   ctaText: string;
   urgencyText?: string;
 }
 
-const DIMENSIONS: Record<TemplateFormat, { w: number; h: number }> = {
-  story: { w: 1080, height: 1920 } as any, // satisfy TS
-  post: { w: 1080, height: 1080 } as any,
-  ad: { w: 1200, height: 628 } as any,
-};
-
-// Re-declare cleanly to avoid TS issue above
 const SIZE: Record<TemplateFormat, { w: number; h: number }> = {
   story: { w: 1080, h: 1920 },
   post: { w: 1080, h: 1080 },
   ad: { w: 1200, h: 628 },
+  portrait: { w: 1080, h: 1350 },
 };
+
+export const TEMPLATE_SIZE = SIZE;
 
 export const MarketingTemplate = forwardRef<HTMLDivElement, TemplateProps>(
   function MarketingTemplate(props, ref) {
@@ -56,9 +54,46 @@ export const MarketingTemplate = forwardRef<HTMLDivElement, TemplateProps>(
   }
 );
 
+function BrandMark({
+  brandName,
+  brandLogoUrl,
+  dark,
+  size = 80,
+}: {
+  brandName: string;
+  brandLogoUrl?: string;
+  dark?: boolean;
+  size?: number;
+}) {
+  if (brandLogoUrl) {
+    return (
+      <img
+        src={brandLogoUrl}
+        crossOrigin="anonymous"
+        alt=""
+        style={{ height: size, width: "auto", objectFit: "contain", display: "block" }}
+      />
+    );
+  }
+  return (
+    <div
+      style={{
+        fontSize: 22,
+        fontWeight: 700,
+        letterSpacing: 4,
+        textTransform: "uppercase",
+        color: dark ? "rgba(255,255,255,0.85)" : "#666",
+      }}
+    >
+      {brandName}
+    </div>
+  );
+}
+
 function CleanLayout(p: TemplateProps) {
   const isStory = p.format === "story";
   const isAd = p.format === "ad";
+  const isPortrait = p.format === "portrait";
   return (
     <div
       style={{
@@ -68,10 +103,17 @@ function CleanLayout(p: TemplateProps) {
         color: "#0a0a0a",
         display: "flex",
         flexDirection: isAd ? "row" : "column",
-        padding: isStory ? "80px 60px" : "60px",
+        padding: isStory || isPortrait ? "80px 60px" : "60px",
         boxSizing: "border-box",
+        position: "relative",
       }}
     >
+      {/* Logo top-right */}
+      {p.brandLogoUrl && (
+        <div style={{ position: "absolute", top: 32, right: 32, zIndex: 5 }}>
+          <BrandMark brandName={p.brandName} brandLogoUrl={p.brandLogoUrl} size={isAd ? 56 : 72} />
+        </div>
+      )}
       <div
         style={{
           flex: 1,
@@ -103,12 +145,19 @@ function CleanLayout(p: TemplateProps) {
         )}
       </div>
       <div style={{ flex: isAd ? 1 : "0 0 auto", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        <div style={{ fontSize: isStory ? 28 : 22, color: "#666", letterSpacing: 4, textTransform: "uppercase", marginBottom: 16 }}>
-          {p.brandName}
-        </div>
+        {!p.brandLogoUrl && (
+          <div style={{ fontSize: isStory ? 28 : 22, color: "#666", letterSpacing: 4, textTransform: "uppercase", marginBottom: 16 }}>
+            {p.brandName}
+          </div>
+        )}
+        {p.tagline && (
+          <div style={{ fontSize: isStory ? 30 : 24, color: "#ff3d00", fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>
+            {p.tagline}
+          </div>
+        )}
         <div
           style={{
-            fontSize: isStory ? 78 : isAd ? 56 : 64,
+            fontSize: isStory ? 78 : isAd ? 56 : isPortrait ? 70 : 64,
             fontWeight: 800,
             lineHeight: 1.05,
             letterSpacing: "-0.02em",
@@ -137,6 +186,7 @@ function CleanLayout(p: TemplateProps) {
 function HypeLayout(p: TemplateProps) {
   const isStory = p.format === "story";
   const isAd = p.format === "ad";
+  const isPortrait = p.format === "portrait";
   return (
     <div
       style={{
@@ -147,7 +197,7 @@ function HypeLayout(p: TemplateProps) {
         position: "relative",
         display: "flex",
         flexDirection: isAd ? "row" : "column",
-        padding: isStory ? "70px 60px" : "50px",
+        padding: isStory || isPortrait ? "70px 60px" : "50px",
         boxSizing: "border-box",
       }}
     >
@@ -180,11 +230,11 @@ function HypeLayout(p: TemplateProps) {
       />
 
       <div style={{ position: "relative", zIndex: 2, width: "100%", height: "100%", display: "flex", flexDirection: isAd ? "row" : "column" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: isAd ? 0 : 32, position: isAd ? "absolute" : "relative", top: isAd ? 0 : undefined, left: isAd ? 0 : undefined, right: isAd ? 0 : undefined, zIndex: 3 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: isAd ? 0 : 32, position: isAd ? "absolute" : "relative", top: isAd ? 0 : undefined, left: isAd ? 0 : undefined, right: isAd ? 0 : undefined, zIndex: 3 }}>
           <div style={{ background: "#ff3d00", color: "#fff", padding: "10px 22px", borderRadius: 999, fontSize: 22, fontWeight: 800, letterSpacing: 2 }}>
             {p.urgencyText || "NEW IN"}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: 4, opacity: 0.7 }}>{p.brandName}</div>
+          <BrandMark brandName={p.brandName} brandLogoUrl={p.brandLogoUrl} dark size={isAd ? 48 : 64} />
         </div>
 
         <div
@@ -213,9 +263,14 @@ function HypeLayout(p: TemplateProps) {
         </div>
 
         <div style={{ flex: isAd ? 1 : "0 0 auto", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+          {p.tagline && (
+            <div style={{ fontSize: isStory ? 32 : 26, color: "#39ff14", fontWeight: 800, textTransform: "uppercase", letterSpacing: 3, marginBottom: 12 }}>
+              {p.tagline}
+            </div>
+          )}
           <div
             style={{
-              fontSize: isStory ? 96 : isAd ? 60 : 76,
+              fontSize: isStory ? 96 : isAd ? 60 : isPortrait ? 84 : 76,
               fontWeight: 900,
               lineHeight: 0.95,
               letterSpacing: "-0.03em",
@@ -252,6 +307,7 @@ function HypeLayout(p: TemplateProps) {
 function MinimalLayout(p: TemplateProps) {
   const isStory = p.format === "story";
   const isAd = p.format === "ad";
+  const isPortrait = p.format === "portrait";
   return (
     <div
       style={{
@@ -263,13 +319,20 @@ function MinimalLayout(p: TemplateProps) {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: isStory ? "100px 80px" : "60px",
+        padding: isStory || isPortrait ? "100px 80px" : "60px",
         boxSizing: "border-box",
         textAlign: "center",
+        position: "relative",
       }}
     >
-      <div style={{ fontSize: 22, letterSpacing: 8, textTransform: "uppercase", color: "#7a6a52", marginBottom: 40 }}>
-        {p.brandName}
+      <div style={{ marginBottom: 40 }}>
+        {p.brandLogoUrl ? (
+          <BrandMark brandName={p.brandName} brandLogoUrl={p.brandLogoUrl} size={isAd ? 56 : 80} />
+        ) : (
+          <div style={{ fontSize: 22, letterSpacing: 8, textTransform: "uppercase", color: "#7a6a52" }}>
+            {p.brandName}
+          </div>
+        )}
       </div>
       <div
         style={{
@@ -294,7 +357,12 @@ function MinimalLayout(p: TemplateProps) {
           />
         ) : null}
       </div>
-      <div style={{ fontSize: isStory ? 64 : isAd ? 44 : 52, fontWeight: 700, marginBottom: 16, letterSpacing: "-0.01em" }}>
+      {p.tagline && (
+        <div style={{ fontSize: isStory ? 26 : 22, color: "#7a6a52", letterSpacing: 4, textTransform: "uppercase", marginBottom: 12 }}>
+          {p.tagline}
+        </div>
+      )}
+      <div style={{ fontSize: isStory ? 64 : isAd ? 44 : isPortrait ? 58 : 52, fontWeight: 700, marginBottom: 16, letterSpacing: "-0.01em" }}>
         {p.productName}
       </div>
       {p.showPrice && p.price && (
