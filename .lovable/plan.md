@@ -1,23 +1,49 @@
 
-The user is looking at the current preview (Hype preset, PresetLayout) and saying it doesn't match the original poster style they wanted to keep. The previous "nike-shox-nz-post-hype.png" they uploaded was the ORIGINAL HypeLayout (the legacy one we just deleted). The current PresetLayout renders differently — different typography, spacing, badge placement, CTA shape, etc.
+## Fix: Exported poster missing product image on mobile
 
-So they want the OLD legacy `HypeLayout` look back as the default, not the new `PresetLayout`. The previous turn deleted those legacy layouts entirely. We need to restore the original Hype look.
+### Root cause
+`toPng(exportRef, { cacheBust: true })` appends a `?t=...` query param to every `<img src>` URL during capture. On mobile (especially iOS Safari), this triggers a fresh fetch of the Shopify CDN image **without** the cached CORS preflight response — the canvas then sees a tainted/incomplete image and silently drops it. Result: background, text, and CTA render fine, but the hero `<img>` (Shopify CDN) is missing from the saved PNG.
 
-Let me check what the legacy HypeLayout looked like vs current PresetLayout.
+The same issue affects: hero product image, brand logo URL, multi-product tile images, and variant images.
 
-### Plan
+### Fix strategy
+**Pre-resolve every external image to a data URL before `toPng()` runs**, so html-to-image never has to re-fetch anything. This guarantees preview = export, on mobile and desktop.
 
-Restore the original Hype poster look as the default single-product style, while keeping all presets functional through the unified pipeline.
+### Changes
 
-**Approach: Make `PresetLayout` (with Hype tokens) visually match the original `HypeLayout`.**
+**1. New helper: `src/lib/exportImageCache.ts`**
+- `prefetchImagesAsDataUrls(urls: string[])` — fetches each URL via `fetch()` (CORS-friendly, browser handles preflight once) and converts the blob to a base64 `data:` URL.
+- Returns a `Map<originalUrl, dataUrl>` to pass into `html-to-image` as `imagePlaceholders`, which is the supported way to substitute external `<img src>` values during capture without mutating the live DOM.
+- Skips URLs that are already `data:` or `blob:`.
+- Throws a clear error if any required image fails (so we can show a toast instead of saving a broken poster).
 
-Rather than reintroducing the deleted legacy code branch, update `PresetLayout` so that when rendered with the Hype preset it produces the exact original look the user approved earlier (dark gradient bg, "LUUT SLU" mark top-right, framed product image, green "LIMITED DROP" pill above title, large white "NIKE SHOX NZ" headline with green accent on second word, bold green "EC$300" price, green pill "DM TO BUY" CTA, meetup line at bottom). Other presets (Clean, Minimal) keep their token-driven variations.
+**2. `src/pages/admin/MarketingStudio.tsx` — `handleExport`**
+- Before calling `toPng`:
+  1. Collect every external image URL referenced in the current export node:
+     - `productPayload.productImage` (single mode, after `singlePrep.preparedUrl`)
+     - `variantImages[].url` (single multi-variant mode)
+     - `multiTemplateProps.products[].imageUrl` (multi mode, after tile prep)
+     - `brandLogoUrl` if present
+  2. Wait for all `<img>` elements inside `exportRef.current` to be `complete` and call `decode()` on each — guarantees the browser has fully loaded them in the live DOM (preview ↔ export consistency).
+  3. Call `prefetchImagesAsDataUrls(urls)` → get `Map`.
+  4. Pass result to `toPng` via `imagePlaceholders` option.
+- **Disable `cacheBust`** (it's the trigger). With placeholders prefilled, cache-busting is unnecessary.
+- Increase `toPng` timeout (`fetchRequestInit` removed, set `imageTimeout` via wrapper).
+- If prefetch throws, show toast `"Couldn't load product image — try again in a moment"` and abort export — never save a broken poster.
 
-### Files
-- `src/components/marketing/PresetLayout.tsx` — refine the layout rendering to match the original Hype poster: image framing, badge styling above title, headline split with accent on second word, price weight, CTA pill sizing, meetup line, "LUUT SLU" wordmark position.
-- `src/lib/marketingPresets.ts` — verify Hype preset tokens (accent #39ff7a, glow, density, badge "pill", CTA "pill") produce the desired result; tweak spacing tokens if needed.
+**3. Export button gating**
+- Disable the "Save / Share" / "Download PNG" button while the hero/tile images are still loading. Track readiness via a small `useImagesReady(urls)` hook that resolves only when every URL responds with a successful `HEAD`/`fetch`.
+- Button shows "Loading image…" state until ready.
+
+**4. Files**
+- `src/lib/exportImageCache.ts` *(new)* — prefetch helper + `useImagesReady` hook
+- `src/pages/admin/MarketingStudio.tsx` — wire prefetch into `handleExport`, gate the button, drop `cacheBust`
 
 ### Verification
-- Default load shows the exact same poster as the previously approved screenshot (dark bg, green accent, "LIMITED DROP" pill, big white headline, green price, green "DM TO BUY" pill).
-- Switching to Clean / Minimal presets still changes palette + density.
-- Style & Branding overrides (accent, density, badge shape, CTA shape) still work.
+- Desktop: download Single Promo, Multi Bestsellers, and Promotion posters → product image present.
+- Mobile (iOS Safari + Android Chrome):
+  - Preview shows hero image
+  - Tap Save / Share → native sheet opens with file
+  - Save to Photos → opened image contains product photo (matches preview)
+- Force a CORS failure (replace hero with a non-CORS URL) → toast appears, no broken file saved.
+- Multi-tile poster: every tile image present in saved PNG.
