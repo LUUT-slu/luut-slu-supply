@@ -160,6 +160,7 @@ export default function MarketingStudio() {
   const [sourceProducts, setSourceProducts] = useState<MarketingProduct[]>([]);
   const [showTileBadges, setShowTileBadges] = useState(true);
   const [showTileLabels, setShowTileLabels] = useState(true);
+  const [promoCampaignId, setPromoCampaignId] = useState<string | undefined>(undefined);
 
   // Variant selection (single-promo only)
   const [variantMode, setVariantMode] = useState<VariantMode>("single");
@@ -518,6 +519,8 @@ export default function MarketingStudio() {
                   limit={sourceLimit}
                   onLimitChange={setSourceLimit}
                   onProductsResolved={setSourceProducts}
+                  campaignId={promoCampaignId}
+                  onCampaignChange={setPromoCampaignId}
                 />
               </CardContent>
             </Card>
