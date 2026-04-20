@@ -42,19 +42,66 @@ const STYLES: { key: TemplateStyle; label: string }[] = [
   { key: "minimal", label: "Minimal" },
 ];
 
-const PREVIEW_SCALE: Record<TemplateFormat, number> = {
-  story: 0.22,
-  post: 0.32,
-  ad: 0.32,
-  portrait: 0.28,
-};
-
 const PREVIEW_DIMS: Record<TemplateFormat, { w: number; h: number }> = {
   story: { w: 1080, h: 1920 },
   post: { w: 1080, h: 1080 },
   ad: { w: 1200, h: 628 },
   portrait: { w: 1080, h: 1350 },
 };
+
+function usePreviewScale(templateWidth: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.3);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth;
+      if (w > 0) setScale(Math.min(1, w / templateWidth));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [templateWidth]);
+
+  return { ref, scale };
+}
+
+function PreviewBox({
+  templateWidth,
+  templateHeight,
+  children,
+}: {
+  templateWidth: number;
+  templateHeight: number;
+  children: React.ReactNode;
+}) {
+  const { ref, scale } = usePreviewScale(templateWidth);
+  return (
+    <div ref={ref} className="mx-auto w-full max-w-[420px]">
+      <div
+        className="mx-auto"
+        style={{
+          width: templateWidth * scale,
+          height: templateHeight * scale,
+        }}
+      >
+        <div
+          style={{
+            width: templateWidth,
+            height: templateHeight,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MarketingStudio() {
   const navigate = useNavigate();
@@ -266,25 +313,12 @@ export default function MarketingStudio() {
                           Pick a product to preview
                         </div>
                       ) : (
-                        <div className="flex justify-center overflow-hidden">
-                          <div
-                            style={{
-                              transform: `scale(${PREVIEW_SCALE[f.key]})`,
-                              transformOrigin: "top center",
-                              width: PREVIEW_DIMS[f.key].w * PREVIEW_SCALE[f.key],
-                              height: PREVIEW_DIMS[f.key].h * PREVIEW_SCALE[f.key],
-                            }}
-                          >
-                            <div
-                              style={{
-                                transform: `scale(${1 / 1})`,
-                                transformOrigin: "top left",
-                              }}
-                            >
-                              <MarketingTemplate {...templateProps} />
-                            </div>
-                          </div>
-                        </div>
+                        <PreviewBox
+                          templateWidth={PREVIEW_DIMS[f.key].w}
+                          templateHeight={PREVIEW_DIMS[f.key].h}
+                        >
+                          <MarketingTemplate {...templateProps} />
+                        </PreviewBox>
                       )}
                       <Button
                         className="mt-4 w-full gap-2"
