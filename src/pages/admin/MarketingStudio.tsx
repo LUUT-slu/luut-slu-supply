@@ -73,18 +73,21 @@ export default function MarketingStudio() {
 
   // Editable session-level fields, seeded from defaults
   const [brandName, setBrandName] = useState(defaults.brandName);
+  const [brandLogoUrl, setBrandLogoUrl] = useState(defaults.brandLogoUrl);
   const [meetupText, setMeetupText] = useState(defaults.meetupLocations);
   const [ctaText, setCtaText] = useState(defaults.defaultCta);
   const [urgencyText, setUrgencyText] = useState(defaults.urgencyText);
+  const [tagline, setTagline] = useState("");
   const [showPrice, setShowPrice] = useState(defaults.showPriceByDefault);
 
   useEffect(() => {
     setBrandName(defaults.brandName);
+    setBrandLogoUrl(defaults.brandLogoUrl);
     setMeetupText(defaults.meetupLocations);
     setCtaText(defaults.defaultCta);
     setUrgencyText(defaults.urgencyText);
     setShowPrice(defaults.showPriceByDefault);
-  }, [defaults.brandName, defaults.meetupLocations, defaults.defaultCta, defaults.urgencyText, defaults.showPriceByDefault]);
+  }, [defaults.brandName, defaults.brandLogoUrl, defaults.meetupLocations, defaults.defaultCta, defaults.urgencyText, defaults.showPriceByDefault]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -156,8 +159,10 @@ export default function MarketingStudio() {
         price: productPayload.price ? String(productPayload.price) : undefined,
         showPrice,
         description: productPayload.description,
+        tagline: tagline || undefined,
         stockBadge: productPayload.stockStatus,
         brandName,
+        brandLogoUrl: brandLogoUrl || undefined,
         meetupText,
         ctaText,
         urgencyText,
