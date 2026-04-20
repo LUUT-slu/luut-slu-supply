@@ -281,6 +281,8 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
     const textColor = props.preset?.palette.text ?? "#ffffff";
     const mutedColor = props.preset?.palette.muted ?? "rgba(255,255,255,0.7)";
 
+    const showHalos = !props.preset || props.preset.background.type === "glow";
+
     return (
       <div
         ref={ref}
@@ -292,40 +294,44 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
           fontFamily:
             "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
           background: theme.bgVignette,
-          color: "#ffffff",
+          color: textColor,
           padding,
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
         }}
       >
-        {/* Top + bottom glowing halos */}
-        <div
-          style={{
-            position: "absolute",
-            top: -260,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "120%",
-            height: 520,
-            background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
-            filter: "blur(20px)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: -260,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "120%",
-            height: 520,
-            background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
-            filter: "blur(20px)",
-            pointerEvents: "none",
-          }}
-        />
+        {/* Top + bottom glowing halos (only on glow backgrounds) */}
+        {showHalos && (
+          <>
+            <div
+              style={{
+                position: "absolute",
+                top: -260,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "120%",
+                height: 520,
+                background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
+                filter: "blur(20px)",
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: -260,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "120%",
+                height: 520,
+                background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
+                filter: "blur(20px)",
+                pointerEvents: "none",
+              }}
+            />
+          </>
+        )}
 
         {/* Headline + glowing divider above */}
         <div style={{ position: "relative", zIndex: 2, textAlign: "center" }}>
@@ -341,12 +347,12 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
           <div
             style={{
               fontSize: headlineSize,
-              fontWeight: 900,
+              fontWeight: headlineWeight,
               lineHeight: 0.92,
               letterSpacing: "-0.02em",
-              textTransform: "uppercase",
-              color: "#ffffff",
-              textShadow: "0 4px 18px rgba(0,0,0,0.6)",
+              textTransform: headlineCase === "upper" ? "uppercase" : "none",
+              color: textColor,
+              textShadow: "0 4px 18px rgba(0,0,0,0.4)",
             }}
           >
             <span>{firstWord}</span>
@@ -355,7 +361,7 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
                 {" "}
                 <span
                   style={{
-                    background: `linear-gradient(180deg, ${theme.glow} 0%, ${theme.glow} 60%, rgba(255,255,255,0.85) 100%)`,
+                    background: `linear-gradient(180deg, ${theme.glow} 0%, ${theme.glow} 60%, ${textColor} 100%)`,
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     backgroundClip: "text",
@@ -372,7 +378,7 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
               style={{
                 marginTop: 12,
                 fontSize: isStory ? 24 : 20,
-                color: "rgba(255,255,255,0.7)",
+                color: mutedColor,
                 fontWeight: 600,
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
@@ -400,6 +406,8 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
             showPrice={props.showPrice}
             showBadges={props.showBadges}
             showLabels={props.showLabels}
+            preset={props.preset}
+            gap={gridGap}
           />
         </div>
 
@@ -423,17 +431,17 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
             position: "relative",
             zIndex: 2,
             textAlign: "center",
-            color: "rgba(255,255,255,0.85)",
+            color: mutedColor,
             fontSize: isAd ? 18 : 22,
             fontWeight: 600,
             marginBottom: 14,
           }}
         >
-          <span style={{ color: "#ff4d4d", marginRight: 6 }}>📍</span>
+          <span style={{ color: theme.glow, marginRight: 6 }}>📍</span>
           {props.meetupText}
         </div>
 
-        {/* CTA pill */}
+        {/* CTA — shape & fill driven by preset */}
         <div
           style={{
             position: "relative",
@@ -442,23 +450,13 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
             justifyContent: "center",
           }}
         >
-          <div
-            style={{
-              background: theme.cta,
-              color: theme.ctaText,
-              padding: isAd ? "14px 36px" : "20px 56px",
-              borderRadius: 16,
-              fontSize: isAd ? 22 : 30,
-              fontWeight: 900,
-              letterSpacing: 2,
-              textAlign: "center",
-              textTransform: "uppercase",
-              boxShadow: `0 0 32px ${theme.glowSoft}, inset 0 -4px 0 rgba(0,0,0,0.25)`,
-              minWidth: isAd ? 280 : 420,
-            }}
-          >
-            {props.ctaText}
-          </div>
+          <PresetCTA
+            text={props.ctaText}
+            theme={theme}
+            shape={ctaShape}
+            fill={ctaFill}
+            small={isAd}
+          />
         </div>
 
         {/* Brand line */}
@@ -486,7 +484,7 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
                 fontWeight: 700,
                 letterSpacing: 6,
                 textTransform: "uppercase",
-                color: "rgba(255,255,255,0.85)",
+                color: mutedColor,
               }}
             >
               {props.brandName}
@@ -497,6 +495,51 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
     );
   },
 );
+
+// CTA renderer that respects preset shape + fill.
+function PresetCTA({
+  text,
+  theme,
+  shape,
+  fill,
+  small,
+}: {
+  text: string;
+  theme: PosterTheme;
+  shape: "pill" | "block" | "outline";
+  fill: "glow" | "solid" | "outline";
+  small?: boolean;
+}) {
+  const radius = shape === "pill" ? 999 : shape === "block" ? 12 : 16;
+  const isOutline = fill === "outline" || shape === "outline";
+  const bg = isOutline ? "transparent" : theme.cta;
+  const border = isOutline ? `3px solid ${theme.glow}` : "none";
+  const color = isOutline ? theme.glow : theme.ctaText;
+  const shadow =
+    fill === "glow" && !isOutline
+      ? `0 0 32px ${theme.glowSoft}, inset 0 -4px 0 rgba(0,0,0,0.25)`
+      : "none";
+  return (
+    <div
+      style={{
+        background: bg,
+        border,
+        color,
+        padding: small ? "12px 32px" : "20px 56px",
+        borderRadius: radius,
+        fontSize: small ? 22 : 30,
+        fontWeight: 900,
+        letterSpacing: 2,
+        textAlign: "center",
+        textTransform: "uppercase",
+        boxShadow: shadow,
+        minWidth: small ? 280 : 420,
+      }}
+    >
+      {text}
+    </div>
+  );
+}
 
 function Ribbon({
   text,
