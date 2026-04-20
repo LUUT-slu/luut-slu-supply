@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { toPng } from "html-to-image";
+import { toJpeg } from "html-to-image";
 import { Header } from "@/components/Header";
 import { AdminAuth } from "@/components/AdminAuth";
 import { BackButton } from "@/components/BackButton";
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Megaphone, Download, Loader2, Image as ImageIcon, Share2 } from "lucide-react";
+import { Megaphone, Download, Loader2, Image as ImageIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useHybridProducts } from "@/hooks/useHybridProducts";
@@ -357,13 +357,12 @@ export default function MarketingStudio() {
       const typeSlug = slugify(meta.label);
       core = `${typeSlug}-${today}`;
     }
-    return `luutslu-${core}-${tab}.png`;
+    return `luutslu-${core}-${tab}.jpeg`;
   };
 
-  const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File> => {
+  const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
     const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    return new File([blob], filename, { type: "image/png" });
+    return await res.blob();
   };
 
   const handleExport = async () => {
@@ -390,7 +389,6 @@ export default function MarketingStudio() {
           if (p.imageUrl) urlSet.add(p.imageUrl);
         }
       }
-      // Belt + braces: also pick up any other <img src> currently inside the node.
       const liveImgs = exportRef.current.querySelectorAll("img");
       liveImgs.forEach((img) => {
         const src = img.getAttribute("src");
@@ -408,9 +406,7 @@ export default function MarketingStudio() {
         return;
       }
 
-      // 4. Swap every <img src> in the export node to its data URL so
-      //    html-to-image never re-fetches anything during capture
-      //    (this is what was breaking on mobile).
+      // 4. Swap every <img src> in the export node to its data URL.
       const swapped: { el: HTMLImageElement; original: string }[] = [];
       liveImgs.forEach((img) => {
         const src = img.getAttribute("src");
@@ -421,58 +417,45 @@ export default function MarketingStudio() {
           img.setAttribute("src", replacement);
         }
       });
-      // Wait for the swapped images to decode before capturing.
       await waitForDomImages(exportRef.current);
 
+      // 5. Capture as JPEG (high quality, smaller file, gallery-friendly).
       let dataUrl: string;
       try {
-        dataUrl = await toPng(exportRef.current, {
+        dataUrl = await toJpeg(exportRef.current, {
           cacheBust: false,
           pixelRatio: 2,
           skipFonts: false,
+          quality: 0.95,
+          backgroundColor: "#000000",
         });
       } finally {
-        // Restore original src so the live preview keeps its CDN URLs.
         swapped.forEach(({ el, original }) => el.setAttribute("src", original));
       }
-      const filename = buildPosterFilename();
-      const file = await dataUrlToFile(dataUrl, filename);
 
-      // Mobile + share-files supported → native share sheet (Save to Photos)
-      if (isMobile && canShare && (navigator as any).canShare?.({ files: [file] })) {
-        try {
-          await (navigator as any).share({
-            files: [file],
-            title: filename,
-            text: "Luut SLU poster",
-          });
-          // OS sheet handles feedback — no toast
-          return;
-        } catch (err: any) {
-          if (err?.name === "AbortError") return; // user cancelled
-          // fall through to download fallback
-          console.warn("Share failed, falling back to download", err);
-        }
+      // 6. Validate: a broken capture is usually < 5KB.
+      const blob = await dataUrlToBlob(dataUrl);
+      if (blob.size < 5_000) {
+        toast.error("Export looks incomplete — please try again");
+        return;
       }
 
-      // Download fallback (desktop + mobile w/o share-files)
-      const blobUrl = URL.createObjectURL(file);
+      // 7. Direct download — same flow on mobile and desktop.
+      const filename = buildPosterFilename();
+      const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
       link.download = filename;
+      link.rel = "noopener";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
 
-      if (isMobile) {
-        toast.success("Image ready — tap and hold the file to save to Photos");
-      } else {
-        toast.success("Saved to Downloads");
-      }
+      toast.success("Poster downloaded");
     } catch (e: any) {
       console.error(e);
-      toast.error("Export failed — image may be cross-origin blocked");
+      toast.error("Export failed — please try again");
     } finally {
       setExporting(false);
     }
@@ -826,16 +809,14 @@ export default function MarketingStudio() {
                       >
                         {exporting || !imagesReady ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : isMobile && canShare ? (
-                          <Share2 className="h-4 w-4" />
                         ) : (
                           <Download className="h-4 w-4" />
                         )}
                         {!imagesReady
                           ? "Loading image…"
-                          : isMobile && canShare
-                            ? "Save / Share"
-                            : "Download PNG"}
+                          : exporting
+                            ? "Preparing…"
+                            : "Download JPEG"}
                       </Button>
                     </CardContent>
                   </Card>
