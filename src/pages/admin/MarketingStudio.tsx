@@ -426,6 +426,7 @@ export default function MarketingStudio() {
         showPrice,
         showBadges: showTileBadges,
         showLabels: showTileLabels,
+        preset: activePreset,
       }
     : null;
 
