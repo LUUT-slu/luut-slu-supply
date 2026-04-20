@@ -279,25 +279,12 @@ export default function MarketingStudio() {
                           Pick a product to preview
                         </div>
                       ) : (
-                        <div className="flex justify-center overflow-hidden">
-                          <div
-                            style={{
-                              transform: `scale(${PREVIEW_SCALE[f.key]})`,
-                              transformOrigin: "top center",
-                              width: PREVIEW_DIMS[f.key].w * PREVIEW_SCALE[f.key],
-                              height: PREVIEW_DIMS[f.key].h * PREVIEW_SCALE[f.key],
-                            }}
-                          >
-                            <div
-                              style={{
-                                transform: `scale(${1 / 1})`,
-                                transformOrigin: "top left",
-                              }}
-                            >
-                              <MarketingTemplate {...templateProps} />
-                            </div>
-                          </div>
-                        </div>
+                        <PreviewBox
+                          templateWidth={PREVIEW_DIMS[f.key].w}
+                          templateHeight={PREVIEW_DIMS[f.key].h}
+                        >
+                          <MarketingTemplate {...templateProps} />
+                        </PreviewBox>
                       )}
                       <Button
                         className="mt-4 w-full gap-2"
