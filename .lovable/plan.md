@@ -1,103 +1,55 @@
 
 
-## Marketing Studio - Plan
+The user is confirming the existing approach — Marketing Studio already uses template-based image generation with real product images via `html-to-image`. No AI image generation is in place. So this is mostly a confirmation + small refinements.
 
-### Goal
-Add an admin "Marketing Studio" that turns existing product listings (Shopify + local) into ready-to-export IG Stories, posts, ad creatives, and copy — without leaving the site.
+Let me check what's currently rendered vs what they want:
 
-### Where it lives
-- **New route:** `/admin/marketing-studio` (admin-only, behind `RouteGuard`)
-- **Hub link:** Add "Marketing Studio" card to `AdminHub.tsx`
-- **Per-product entry:** Add a "Promote" button on each product row in `AdminProductsPage.tsx` that opens Marketing Studio with that product preselected (`?productId=...`)
+Current state (`templates.tsx` + `MarketingStudio.tsx`):
+- ✅ Uses real product image as main visual
+- ✅ Overlays product name, price, description, brand, CTA
+- ✅ 3 styles: Clean, Hype, Minimal
+- ✅ 3 formats: Story (1080x1920), Post (1080x1080), Ad (1200x628)
+- ✅ html-to-image PNG export
+- ✅ No AI image generation
 
-### Page Layout (mobile-first)
-```text
-┌─────────────────────────────────┐
-│  Marketing Studio               │
-│  [Search/Pick a product ▾]      │
-├─────────────────────────────────┤
-│  Tabs:  Story | Post | Ad | Copy│
-│                                 │
-│  Left: live preview canvas      │
-│  Right (or below on mobile):    │
-│    - Style picker (3 templates) │
-│    - Branding controls          │
-│    - Generated text + Copy btns │
-│    - Download PNG button        │
-└─────────────────────────────────┘
-```
+What's missing from spec:
+- "Short tagline" field — currently uses `description`. Add explicit `tagline` input separate from description.
+- CTA examples like "DM to order", "Available now" — already configurable but defaults could match.
+- Logo overlay — `brandLogoUrl` exists in settings but templates don't render it. Add small logo mark to each template.
+- Ad format described as "portrait" in spec, but currently 1200x628 landscape. Clarify: keep 1200x628 (standard FB/IG ad) OR add a portrait 1080x1350 ad format.
 
-### Features
+## Plan: Confirm & Polish Marketing Studio Templates
 
-**1. Product picker**
-Reuses the existing hybrid catalog (`useHybridProducts` + `seller_products`). One searchable dropdown — image, name, price, stock pulled directly from the listing. No re-entry.
+The Marketing Studio already does exactly what's asked — template-based, real product images, no AI image generation. Only small additions needed.
 
-**2. Story / Post / Ad image generator (client-side)**
-Renders an HTML/CSS template into a real canvas using **`html-to-image`** (lightweight, no native deps), then downloads as PNG.
-- Story: 1080×1920 (9:16)
-- Post: 1080×1080 (1:1)
-- Ad: 1200×628 (1.91:1)
+### Changes
 
-Three reusable visual styles per format:
-- **Clean** — white bg, big product image, minimal type
-- **Hype/Drop** — black bg, neon accents, "DROP / NEW IN" tag, urgency text
-- **Minimal Spotlight** — soft gradient bg, centered product, tiny price chip
+**1. Add Tagline field** (`MarketingStudio.tsx` + `templates.tsx`)
+- New input "Short tagline" (separate from description)
+- Renders as a small accent line above/below product name in all 3 styles
+- Defaults to empty (optional)
 
-Each template pulls: image, name, price (toggleable), short description, stock badge, meetup chip, brand text.
+**2. Render brand logo when set** (`templates.tsx`)
+- If `brandLogoUrl` from site settings is set, show it as a small mark (top-right on Story/Post, top-left on Ad) at ~80px height with `crossOrigin="anonymous"`
+- Falls back to text-only brand name when no logo
 
-**3. AI copy generators (one new edge function: `ai-marketing-copy`)**
-Single function with a `type` field that returns structured JSON via tool-calling. Types:
-- `ad_copy` → `{ headline, primary_text, short_description, cta }`
-- `instagram_caption` → `{ caption, hashtags[] }`
-- `whatsapp_promo` → `{ text }`
-- `facebook_marketplace` → `{ description }`
+**3. Add portrait Ad format** (`templates.tsx` + `MarketingStudio.tsx`)
+- Keep existing 1200×628 landscape ad
+- Add new format option "Portrait Ad" at 1080×1350 (IG feed-friendly ad ratio)
+- Format tabs become: Story · Post · Ad · Portrait
 
-Uses `google/gemini-3-flash-preview` via the Lovable AI Gateway. Local context (Saint Lucia, Pay on Meetup, brand voice) baked into the system prompt. Each output has a "Copy" button (clipboard).
+**4. Update default CTA suggestions** (`MarketingDefaultsCard.tsx`)
+- Helper text under CTA field listing examples: "DM to order", "Available now", "Cop in DM", "Link in bio"
+- No behavior change — just guidance
 
-**4. Admin-controlled defaults (Site Settings → Marketing Studio)**
-Stored in the existing `site_settings` table under `marketing_studio` key:
-```ts
-{
-  brandName: "Luut SLU",
-  brandLogoUrl: "",
-  defaultCta: "DM to Cop",
-  meetupLocations: "Castries · Gros Islet · Vieux Fort",
-  urgencyText: "Limited drop",
-  showPriceByDefault: true
-}
-```
-Editable in a small new "Marketing Defaults" card in `AdminSiteSettings.tsx`. Defaults load into Marketing Studio but every field stays editable per session.
+### Files Edited
+- `src/components/marketing/templates.tsx` — add tagline + logo + portrait format
+- `src/pages/admin/MarketingStudio.tsx` — tagline input, portrait tab option
+- `src/components/marketing/MarketingDefaultsCard.tsx` — CTA helper text
 
-### Files
-
-**New**
-- `src/pages/admin/MarketingStudio.tsx` — main page
-- `src/components/marketing/ProductPicker.tsx`
-- `src/components/marketing/StoryTemplate.tsx` (renders all 3 styles, switched by prop)
-- `src/components/marketing/PostTemplate.tsx`
-- `src/components/marketing/AdTemplate.tsx`
-- `src/components/marketing/CopyPanel.tsx` (AI generators + copy buttons)
-- `src/components/marketing/MarketingDefaultsCard.tsx` (for Site Settings)
-- `supabase/functions/ai-marketing-copy/index.ts`
-
-**Edited**
-- `src/App.tsx` — register `/admin/marketing-studio`
-- `src/pages/AdminHub.tsx` — add "Marketing Studio" tile
-- `src/pages/AdminProductsPage.tsx` — add "Promote" action per product row
-- `src/pages/AdminSiteSettings.tsx` — mount `MarketingDefaultsCard`
-- `src/hooks/useSiteSettings.ts` — add `marketingStudio` settings type
-- `package.json` — add `html-to-image`
-
-### Technical notes
-- **No DB migration needed** — uses existing `site_settings` row pattern.
-- **Image export**: `html-to-image` works against a hidden but rendered DOM node sized to exact target dimensions; CSS `transform: scale()` shows a smaller preview without affecting export resolution.
-- **CORS for product images**: Shopify CDN images need `crossOrigin="anonymous"` on `<img>` tags so canvas export doesn't taint. Already standard practice.
-- **Mobile preview**: Templates render in a `transform: scale(0.3)` wrapper on small screens so the 1080×1920 story still fits the viewport.
-- **Failure isolation**: AI failures show inline error toast — image export still works without copy, copy still works without export.
-
-### Out of scope (explicit)
-- Direct posting to Instagram/Facebook (requires Meta Graph API + business accounts — separate feature)
-- Video story export
-- Multi-product carousels
-- Scheduled posts
+### Out of scope
+- AI image generation (explicitly excluded)
+- Background removal
+- Custom uploaded backgrounds
+- Logo upload UI (logo URL field already exists in settings)
 
