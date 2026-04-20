@@ -1295,6 +1295,7 @@ function PresetVariantGrid({
               src={v.url}
               crossOrigin="anonymous"
               alt=""
+              data-export-hero="true"
               style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
             {showLabels && v.label && (
