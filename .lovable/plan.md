@@ -1,41 +1,50 @@
 
 
-## Fix Marketing Studio Preview Cropping
+## Variant-Aware Marketing Studio
 
-### Root Cause
-- `PREVIEW_SCALE` is a fixed number per format — doesn't adapt to available container width
-- Preview wrapper has `overflow-hidden`, hiding anything that exceeds calculated bounds
-- On mobile (390px viewport, ~340px card content), even a "small" scale can clip; on desktop the scale is too small and wastes space
-- Nested transform wrappers add complexity but don't solve responsiveness
+Add a "Select Variants" panel between the product picker and the format tabs. The poster preview reacts in real time to single/multi selection.
 
-### Fix
-Replace fixed-scale logic with a **ResizeObserver-driven dynamic scale** so the preview always fits its container exactly, on every breakpoint, while preserving the true output aspect ratio.
+### What gets built
 
-### Changes (single file: `src/pages/admin/MarketingStudio.tsx`)
+**1. Variant Selector component** — `src/components/marketing/VariantSelector.tsx`
+- Reads `selectedProduct.variants[]` (already on `UnifiedProduct`)
+- Mode toggle: **Single Variant** / **Multi-Variant**
+- Renders each variant as a tappable card: square thumbnail (variant `image.url` → fallback to `images[0].url`) + variant label (built from `selectedOptions` like "Black" / "Black · M" — falls back to `title`)
+- Single mode → radio behavior, one selection
+- Multi mode → toggle behavior, checkmark + ring on selected
+- Hidden entirely when product has only 1 default variant (e.g. local seller products) — falls back to current single-image flow
+- Mobile-friendly grid: `grid-cols-3 sm:grid-cols-4 md:grid-cols-5` with tap-friendly squares
 
-1. **Remove** the fixed `PREVIEW_SCALE` constant
-2. **Add** a `usePreviewScale` hook (or inline logic) that:
-   - Measures the preview container's width via `ResizeObserver`
-   - Calculates `scale = containerWidth / templateWidth`
-   - Caps scale at `1` (never upscale beyond native size)
-   - Recomputes on resize / format change
-3. **Restructure** the preview wrapper:
-   - Outer container: `w-full`, no fixed height, no `overflow-hidden`
-   - Inner sized box: `width = templateWidth * scale`, `height = templateHeight * scale` — this defines the aspect ratio container
-   - Template: rendered at native size with `transform: scale(N); transform-origin: top left`
-   - `mx-auto` on the inner box for centering
-4. **Cap max preview width** with `max-w-[420px]` on desktop so the controls panel stays readable, but still scales down freely on mobile
-5. **Remove** the redundant nested `transform: scale(1/1)` wrapper (no-op)
+**2. Multi-variant template support** — extend `src/components/marketing/templates.tsx`
+- New optional prop `variantImages?: { url: string; label?: string }[]` on `MarketingTemplate`
+- When `variantImages.length > 1`, the main image area renders a smart grid instead of a single image:
+  - 2 → side-by-side (1×2 or 2×1 depending on format orientation)
+  - 3 → 1 large + 2 small OR 3 stacked depending on format
+  - 4+ → 2×2 grid (caps at 4 to keep clean; more shows "+N")
+- Optional small variant labels rendered under each tile (toggleable)
+- Single image path unchanged when `variantImages.length <= 1` — zero visual regression
+- Works across all 4 formats (Story, Post, Ad, Portrait) and all 3 styles (Clean, Hype, Minimal)
 
-### Result
-- Story (9:16), Post (1:1), Ad (1.91:1), Portrait (4:5) all render fully within their card on **mobile (390px)**, **tablet (768px)**, and **desktop (1024px+)**
-- Aspect ratio always preserved
-- Image always centered
-- Nothing clipped at any breakpoint
-- Downloaded PNG unchanged (export node renders at native 1080×1920 etc.)
+**3. MarketingStudio wiring** — `src/pages/admin/MarketingStudio.tsx`
+- New state: `variantMode: "single" | "multi"`, `selectedVariantIds: string[]`, `showVariantLabels: boolean`
+- Reset selection when product changes; default to first available variant
+- Compute `variantImages` from selected variants → pass to `MarketingTemplate`
+- In single mode the chosen variant's image overrides `productImage`
+- Add a small "Show variant labels" switch in the Style & Branding card (multi mode only)
+- Both preview node and hidden export node use the same `templateProps` → downloaded PNG matches preview exactly
+
+### Files
+
+**New**
+- `src/components/marketing/VariantSelector.tsx`
+
+**Edited**
+- `src/components/marketing/templates.tsx` — add `variantImages` prop + grid renderer in image area for all 3 layouts
+- `src/pages/admin/MarketingStudio.tsx` — selector state, variant section UI, pass props to template
 
 ### Out of scope
-- Template internals (templates.tsx) — no changes needed
-- Export resolution / quality — unaffected
-- Copy tab — unaffected
+- Editing variant images / re-uploading
+- Per-variant pricing display (still uses product price)
+- Carousel export (one PNG with combined layout, not a multi-image zip)
+- Dragging to reorder variants in the poster
 
