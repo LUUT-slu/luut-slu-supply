@@ -1273,22 +1273,40 @@ function PresetVariantGrid({
   surface,
   radius,
   text,
+  format,
 }: {
   images: VariantImage[];
   showLabels?: boolean;
   surface: string;
   radius: number;
   text: string;
+  format: TemplateFormat;
 }) {
   const tiles = images.slice(0, 4);
   const overflow = images.length - tiles.length;
   const count = tiles.length;
 
+  // Story/portrait can't take a 2-row grid for 3 tiles — it doubles the
+  // hero block height and squeezes everything else. Use a single 3-col row.
+  const isTallFormat = format === "story" || format === "portrait";
   let columns = "1fr 1fr";
   let rows = "1fr 1fr";
-  if (count === 2) {
+  let useSpanFull = false;
+  if (count === 1) {
+    columns = "1fr";
+    rows = "1fr";
+  } else if (count === 2) {
     columns = "1fr 1fr";
     rows = "1fr";
+  } else if (count === 3) {
+    if (isTallFormat) {
+      columns = "1fr 1fr 1fr";
+      rows = "1fr";
+    } else {
+      columns = "1fr 1fr";
+      rows = "1fr 1fr";
+      useSpanFull = true;
+    }
   }
 
   return (
@@ -1304,7 +1322,7 @@ function PresetVariantGrid({
       }}
     >
       {tiles.map((v, i) => {
-        const spanFull = count === 3 && i === 0;
+        const spanFull = useSpanFull && i === 0;
         return (
           <div
             key={i}
@@ -1322,7 +1340,7 @@ function PresetVariantGrid({
               crossOrigin="anonymous"
               alt=""
               data-export-hero="true"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
             />
             {showLabels && v.label && (
               <div
