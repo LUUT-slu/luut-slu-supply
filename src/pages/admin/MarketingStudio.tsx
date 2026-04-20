@@ -509,7 +509,12 @@ export default function MarketingStudio() {
       toast.success("Poster downloaded");
     } catch (e: any) {
       console.error(e);
-      toast.error("Export failed — please try again");
+      const msg = String(e?.message || "");
+      if (msg.includes("failed to render")) {
+        toast.error("Couldn't render one of the product images — please try again");
+      } else {
+        toast.error("Export failed — please try again");
+      }
     } finally {
       setExporting(false);
     }
