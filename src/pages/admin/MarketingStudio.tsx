@@ -24,11 +24,19 @@ import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { useSiteSettings, DEFAULT_MARKETING_STUDIO } from "@/hooks/useSiteSettings";
 import {
   MarketingTemplate,
+  MultiProductTemplate,
   TemplateFormat,
   TemplateStyle,
 } from "@/components/marketing/templates";
 import { CopyPanel } from "@/components/marketing/CopyPanel";
 import { VariantSelector, VariantMode, VariantOption } from "@/components/marketing/VariantSelector";
+import { PosterTypeSelector } from "@/components/marketing/PosterTypeSelector";
+import { ProductSourceCard } from "@/components/marketing/ProductSourceCard";
+import {
+  PosterType,
+  MarketingProduct,
+  getPosterTypeMeta,
+} from "@/lib/marketingPosterTypes";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
