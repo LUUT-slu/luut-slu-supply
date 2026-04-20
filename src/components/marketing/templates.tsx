@@ -427,6 +427,8 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
             showLabels={props.showLabels}
             preset={props.preset}
             gap={gridGap}
+            cropMap={props.cropMap}
+            onImageClick={props.onImageClick}
           />
         </div>
 
@@ -601,6 +603,8 @@ function ProductGrid({
   showLabels,
   preset,
   gap = 18,
+  cropMap,
+  onImageClick,
 }: {
   items: MultiProductItem[];
   theme: PosterTheme;
@@ -609,7 +613,7 @@ function ProductGrid({
   showLabels: boolean;
   preset?: PosterPreset;
   gap?: number;
-}) {
+} & EditableImageContext) {
   const tiles = items.slice(0, 4);
   const overflow = items.length - tiles.length;
   const count = tiles.length;
