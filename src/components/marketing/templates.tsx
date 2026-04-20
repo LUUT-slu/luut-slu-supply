@@ -59,7 +59,7 @@ export interface MultiProductItem {
 }
 
 export interface MultiTemplateProps {
-  style: TemplateStyle;
+  style?: TemplateStyle;
   format: TemplateFormat;
   headline: string;
   subhead?: string;
