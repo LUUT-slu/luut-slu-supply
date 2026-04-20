@@ -358,54 +358,85 @@ export default function MarketingStudio() {
             </div>
           </div>
 
-          {/* Product picker */}
+          {/* Poster Type chips */}
           <Card className="mb-4">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Pick a product</CardTitle>
+              <CardTitle className="text-sm">Poster Type</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Input
-                placeholder="Search products..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <Select value={selectedId} onValueChange={setSelectedId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={loading ? "Loading..." : "Select a product"} />
-                </SelectTrigger>
-                <SelectContent className="max-h-[60vh]">
-                  {filtered.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.title} — EC${p.price?.amount}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedProduct && (
-                <div className="flex items-center gap-3 rounded-md border p-2">
-                  {selectedProduct.images?.[0]?.url && (
-                    <img
-                      src={selectedProduct.images[0].url}
-                      alt=""
-                      className="h-12 w-12 rounded object-cover"
-                    />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{selectedProduct.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      EC${selectedProduct.price?.amount} ·{" "}
-                      <Badge variant="outline" className="text-[10px]">
-                        {selectedProduct.stockStatus.replace("_", " ")}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <CardContent>
+              <PosterTypeSelector value={posterType} onChange={setPosterType} />
             </CardContent>
           </Card>
 
-          {/* Variant selection */}
-          {variantOptions.length > 1 && (
+          {/* Single-product picker (only for Single Promo) */}
+          {!isMulti && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Pick a product</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Input
+                  placeholder="Search products..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <Select value={selectedId} onValueChange={setSelectedId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={loading ? "Loading..." : "Select a product"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[60vh]">
+                    {filtered.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.title} — EC${p.price?.amount}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedProduct && (
+                  <div className="flex items-center gap-3 rounded-md border p-2">
+                    {selectedProduct.images?.[0]?.url && (
+                      <img
+                        src={selectedProduct.images[0].url}
+                        alt=""
+                        className="h-12 w-12 rounded object-cover"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{selectedProduct.title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        EC${selectedProduct.price?.amount} ·{" "}
+                        <Badge variant="outline" className="text-[10px]">
+                          {selectedProduct.stockStatus.replace("_", " ")}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Multi-product source (everything except Single Promo) */}
+          {isMulti && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Products in poster</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProductSourceCard
+                  posterType={posterType}
+                  selectedIds={sourceSelectedIds}
+                  onSelectionChange={setSourceSelectedIds}
+                  limit={sourceLimit}
+                  onLimitChange={setSourceLimit}
+                  onProductsResolved={setSourceProducts}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Variant selection — only relevant for single product */}
+          {!isMulti && variantOptions.length > 1 && (
             <Card className="mb-4">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Select Variants</CardTitle>
@@ -451,7 +482,20 @@ export default function MarketingStudio() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      {!templateProps ? (
+                      {isMulti ? (
+                        !multiTemplateProps || multiTemplateProps.products.length === 0 ? (
+                          <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+                            Select products to preview
+                          </div>
+                        ) : (
+                          <PreviewBox
+                            templateWidth={PREVIEW_DIMS[f.key].w}
+                            templateHeight={PREVIEW_DIMS[f.key].h}
+                          >
+                            <MultiProductTemplate {...multiTemplateProps} />
+                          </PreviewBox>
+                        )
+                      ) : !templateProps ? (
                         <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
                           Pick a product to preview
                         </div>
@@ -466,7 +510,12 @@ export default function MarketingStudio() {
                       <Button
                         className="mt-4 w-full gap-2"
                         onClick={handleExport}
-                        disabled={!templateProps || exporting}
+                        disabled={
+                          exporting ||
+                          (isMulti
+                            ? !multiTemplateProps || multiTemplateProps.products.length === 0
+                            : !templateProps)
+                        }
                       >
                         {exporting ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -554,7 +603,19 @@ export default function MarketingStudio() {
                         <Label className="text-xs">Show price</Label>
                         <Switch checked={showPrice} onCheckedChange={setShowPrice} />
                       </div>
-                      {variantMode === "multi" && selectedVariantIds.length > 1 && (
+                      {isMulti && (
+                        <>
+                          <div className="flex items-center justify-between rounded-md border p-2">
+                            <Label className="text-xs">Show tile badges</Label>
+                            <Switch checked={showTileBadges} onCheckedChange={setShowTileBadges} />
+                          </div>
+                          <div className="flex items-center justify-between rounded-md border p-2">
+                            <Label className="text-xs">Show product names</Label>
+                            <Switch checked={showTileLabels} onCheckedChange={setShowTileLabels} />
+                          </div>
+                        </>
+                      )}
+                      {!isMulti && variantMode === "multi" && selectedVariantIds.length > 1 && (
                         <div className="flex items-center justify-between rounded-md border p-2">
                           <Label className="text-xs">Show variant labels</Label>
                           <Switch
@@ -602,9 +663,13 @@ export default function MarketingStudio() {
             }}
             aria-hidden
           >
-            {templateProps && tab !== ("copy" as any) && (
+            {tab !== ("copy" as any) && (
               <div ref={exportRef}>
-                <MarketingTemplate {...templateProps} />
+                {isMulti && multiTemplateProps && multiTemplateProps.products.length > 0 ? (
+                  <MultiProductTemplate {...multiTemplateProps} />
+                ) : !isMulti && templateProps ? (
+                  <MarketingTemplate {...templateProps} />
+                ) : null}
               </div>
             )}
           </div>
