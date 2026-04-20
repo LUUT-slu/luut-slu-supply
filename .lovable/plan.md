@@ -1,75 +1,34 @@
 
 
-## Manual Image Editor for Marketing Studio
+## Apply iOS hybrid hero capture to all poster types
 
-A Canva-style crop/zoom editor with undo/redo and per-image persistence.
+### Current state
+The hybrid Canvas2D capture (which fixes the iOS Safari `<foreignObject><img>` bug) only runs reliably for templates whose hero images carry `data-export-hero="true"`. Multi-product / variant tiles in some templates don't have the marker, so on iOS Safari those tiles export as black boxes.
 
-### UX flow
-1. User taps any product image in the poster preview → modal opens
-2. Image displayed inside fixed crop frame matching current format (9:16 / 1:1 / 4:5)
-3. Drag to pan, pinch/scroll/slider to zoom
-4. Toolbar: Undo · Redo · Reset · Save
-5. Live mini-preview at bottom shows poster with edit applied
-6. Save → modal closes → poster updates instantly
+### What I'll do
 
-### Architecture
+1. **Audit `src/components/marketing/templates.tsx`** and add `data-export-hero="true"` + `data-export-src={imageUrl}` to every product `<img>` across:
+   - Single Promo (Story / Post / Portrait / Ad)
+   - Multi Bestsellers tiles
+   - New Arrivals tiles
+   - Promotion / sale poster hero
+   - Any variant-strip thumbnails that should appear in export
 
-**New files**
-- `src/components/marketing/ImageEditorModal.tsx` — the editor (drag, zoom, undo/redo, safe-area overlay)
-- `src/hooks/useImageEditHistory.ts` — undo/redo stack (capped at 50 entries)
-- `src/lib/imageCropState.ts` — types + helpers for crop state `{ scale, offsetX, offsetY }` (offsets in normalized 0-1 coords so they survive frame-size changes)
+2. **Generalize the hero collection step in `handleExport`** (`src/pages/admin/MarketingStudio.tsx`):
+   - Query `[data-export-hero="true"]` (already does this) — confirm it picks up every tile
+   - For each, capture `getBoundingClientRect()` + resolved `object-fit` + crop state, then composite onto the canvas with `cropToSourceRect`
+   - Run the same iOS retry/validation loop (3 attempts, pixel-sample check) per tile, not just the first hero
 
-**Modified files**
-- `src/pages/admin/MarketingStudio.tsx` — store `Map<imageUrl, CropState>`, pass into templates, open modal on image click
-- `src/components/marketing/templates.tsx` — apply `transform: scale() translate()` to hero `<img>` based on crop state, mark editable images with `data-editable-hero`, attach onClick handler
+3. **Apply crop-state transform** during native compositing for every tile (multi-product posters currently only honor crop on the primary hero).
 
-### Crop state model
-```ts
-type CropState = {
-  scale: number;        // 1.0 = fit, up to 4.0
-  offsetX: number;      // -1 to 1 (normalized)
-  offsetY: number;      // -1 to 1 (normalized)
-};
-```
-Stored per `imageUrl` in `Map`. Survives variant switches and is keyed independently per image, so multi-product posters keep individual edits.
+4. **Validation guard**: if any tile fails the pixel-sample check after 3 retries → abort with toast `"Couldn't render one of the product images — please try again"`. No partial / broken file saved.
 
-### Editor controls
-- **Drag**: pointer events (works for mouse + touch). Bounds-clamped so image can't leave the frame.
-- **Zoom**: 
-  - Slider (0.5×–4×) always visible
-  - Wheel zoom on desktop
-  - Two-finger pinch on touch
-- **Buttons**: Undo (←), Redo (→), Reset (↻), Cancel, Save
-- **Keyboard**: Cmd/Ctrl+Z undo, Cmd/Ctrl+Shift+Z redo, Esc cancel
+### Files
+- `src/components/marketing/templates.tsx` — add export markers to every product `<img>`
+- `src/pages/admin/MarketingStudio.tsx` — loop hybrid composite over all hero rects, per-tile retry guard
 
-### Undo/redo
-- Push new state on drag-end and zoom-end (debounced, not on every pixel)
-- Stack capped at 50 steps
-- Reset clears stack and returns to `{ scale: 1, offsetX: 0, offsetY: 0 }`
-
-### Safe-area overlay
-Dashed rectangles inside the crop frame marking:
-- Top 20% (where badge/headline sits)
-- Bottom 25% (where price + CTA sit)
-Toggle button to hide.
-
-### Live preview sync
-The poster preview's hero `<img>` uses the same `transform: scale(s) translate(x%, y%)` as the editor. Updating the crop state in MarketingStudio re-renders the template instantly.
-
-### Export integrity
-The hybrid Canvas2D renderer in `handleExport` already draws hero images natively. Update its math to apply the same scale + translate transform when computing source rectangle (`sx, sy, sw, sh`) so the exported JPEG matches the preview exactly. No quality loss because we sample from the original full-resolution image.
-
-### Multi-product support
-Multi-tile templates already render multiple `<img>` elements; each gets its own click handler keyed by `imageUrl`. The crop state Map handles them transparently.
-
-### Mobile optimizations
-- `touch-action: none` on draggable surface
-- Pointer events (unified mouse + touch)
-- `requestAnimationFrame` throttling on drag updates
-- No layout thrashing — only `transform` changes
-
-### Out of scope (can be added later)
-- Rotation
-- Filters/brightness
-- Cropping the image itself (we only reframe; original pixels untouched)
+### Verification
+- iOS Safari: export Story, Post, Portrait, Ad, Multi Bestsellers, New Arrivals, Promotion → every product photo present.
+- Android Chrome + Desktop: unchanged, still pixel-perfect.
+- Manual crop edits applied to tile #2 of a multi-product poster appear in the exported JPEG.
 
