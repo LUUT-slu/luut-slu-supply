@@ -506,6 +506,7 @@ export default function MarketingStudio() {
         if (useHybrid) {
           dataUrl = await captureHybrid(exportRef.current, placeholders);
         } else {
+          const { toJpeg } = await loadHtmlToImage();
           dataUrl = await toJpeg(exportRef.current, {
             cacheBust: false,
             pixelRatio: 2,
@@ -619,6 +620,7 @@ export default function MarketingStudio() {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const pixelRatio = 2;
+          const { toCanvas } = await loadHtmlToImage();
           const canvas = await toCanvas(node, {
             cacheBust: false,
             pixelRatio,
