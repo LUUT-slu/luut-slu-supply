@@ -49,6 +49,13 @@ import {
   loadImageElement,
   isIOSSafari,
 } from "@/lib/exportImageCache";
+import { ImageEditorModal } from "@/components/marketing/ImageEditorModal";
+import {
+  CropState,
+  DEFAULT_CROP,
+  cropToSourceRect,
+  isDefaultCrop,
+} from "@/lib/imageCropState";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
