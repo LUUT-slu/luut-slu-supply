@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import type { PosterPreset } from "@/lib/marketingPresets";
-import { densityScale } from "@/lib/marketingPresets";
+import { densityScale, getBuiltinPresets } from "@/lib/marketingPresets";
 
 export type TemplateStyle = "clean" | "hype" | "minimal";
 export type TemplateFormat = "story" | "post" | "ad" | "portrait";
