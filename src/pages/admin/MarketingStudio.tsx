@@ -128,6 +128,11 @@ export default function MarketingStudio() {
   const [tagline, setTagline] = useState("");
   const [showPrice, setShowPrice] = useState(defaults.showPriceByDefault);
 
+  // Variant selection
+  const [variantMode, setVariantMode] = useState<VariantMode>("single");
+  const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([]);
+  const [showVariantLabels, setShowVariantLabels] = useState(true);
+
   useEffect(() => {
     setBrandName(defaults.brandName);
     setBrandLogoUrl(defaults.brandLogoUrl);
