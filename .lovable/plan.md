@@ -1,96 +1,125 @@
 
 
-Looking at the current Marketing Studio architecture: there's already a `style` toggle (Clean/Hype/Minimal) baked into `templates.tsx`, plus `pickTheme()` that auto-picks a glow palette from the headline. The user wants to formalize this into a **proper preset system** driven by reference images, with token extraction (not image cloning).
+The user has 3 problems:
+1. **Poster types broken** — most return empty because data sources don't exist (no `weekly_best_sellers` view, no `partner_stock_movements` for restock, no real promo data)
+2. **Need a Promotions Manager** — full manual campaign system feeding the Promotions poster
+3. **Price format** — strip decimals everywhere in posters
 
-Key insight: this is NOT about AI generating posters from references. It's about extracting **design tokens** (palette, layout density, badge style, CTA shape) from a reference image once, saving them as a **named preset**, then having the existing template engine render any poster type with those tokens.
+Let me check what data actually exists.
+<lov-tool-use id="toolu_vrtx_01ER8qKFTX8GqoQ8McS9i31f" name="code--exec" integration-id="code" data="{\"command\": \"psql -c \\\"SELECT COUNT(*) FROM seller_products WHERE status='active';\\\" -c \\\"SELECT COUNT(*) FROM product_sales;\\\" -c \\\"SELECT COUNT(*) FROM partner_stock_movements WHERE movement_type='stock_added';\\\" -c \\\"SELECT table_name FROM information_schema.views WHERE table_schema='public';\\\"\", \"user_facing_description\": \"Checking what marketing data sources actually exist in the database\"}">
+</lov-tool-use>
 
-## Reference-Based Design Preset System
+<lov-tool-use id="toolu_vrtx_01SBiuh82McDULv7rBpZ2iS7" name="code--view" integration-id="code" data="{\"file_path\": \"src/hooks/useMarketingProducts.ts\"}">
+</lov-tool-use>
 
-Turn the existing 3-style toggle into a full preset library. Each preset is a JSON token bundle (palette + layout + typography + decoration). References become presets via one-time AI extraction; templates render predictably from tokens.
+<lov-tool-use id="toolu_vrtx_01LzVx6igA29WdbAyuUPQVgb" name="code--exec" integration-id="code" data="{\"command\": \"psql -c \\\"SELECT table_name FROM information_schema.views WHERE table_schema='public';\\\" -c \\\"SELECT COUNT(*) FROM seller_products WHERE status='active';\\\" -c \\\"SELECT COUNT(*) FROM product_sales;\\\" -c \\\"SELECT COUNT(*) FROM partner_stock_movements;\\\"\", \"user_facing_description\": \"Checking marketing data sources\"}">
+</lov-tool-use>
 
-### Architecture
+<lov-tool-use id="toolu_vrtx_012Mxx1ygf94EYmghcWdbEbk" name="code--view" integration-id="code" data="{\"file_path\": \"src/hooks/useMarketingProducts.ts\"}">
+</lov-tool-use>
 
-```text
-[Reference image] ──▶ [AI Extract Tokens] ──▶ [PosterPreset JSON]
-                                                      │
-                                                      ▼
-[Built-in presets] ─────────────────────────▶ [Preset Library] ─▶ [Apply to template]
-   Clean · Hype · Minimal                              │
-   Sale · Urgency · Luxury · Grid Showcase             ▼
-                                              [Override panel]
-                                              colors · CTA · density
-```
+<lov-tool-use id="toolu_vrtx_01EUDvV1ZHfursQBH6AWTxE6" name="code--view" integration-id="code" data="{\"file_path\": \"src/hooks/useBestSellers.ts\"}">
+</lov-tool-use>
 
-### What gets built
+<lov-tool-use id="toolu_vrtx_01SfqLa4B4VmfxUbj4SgqLY1" name="code--exec" integration-id="code" data="{\"command\": \"psql -c \\\"\\\\d+ weekly_best_sellers\\\" -c \\\"SELECT * FROM weekly_best_sellers LIMIT 3;\\\"\", \"user_facing_description\": \"Inspecting the best sellers view\"}">
+</lov-tool-use>
 
-**1. Preset schema** — `src/lib/marketingPresets.ts`
-- `PosterPreset` type: `{ id, name, palette: {bg, surface, accent, glow, text, muted}, layout: {density: "tight"|"normal"|"spaced", radius, gridGap}, typography: {headlineWeight, headlineCase, scale}, badge: {shape: "pill"|"ribbon"|"chip", style: "glow"|"solid"|"outline"}, cta: {shape, fill: "glow"|"solid"|"outline"}, background: {type: "dark"|"gradient"|"glow"|"minimal", noise: boolean} }`
-- 7 built-in presets: Clean, Hype, Minimal, Sale (red/yellow), Urgency (ember), Luxury (gold/black), Grid Showcase (neutral)
-- `getPreset(id)` + `mergePreset(preset, overrides)`
+<lov-tool-use id="toolu_vrtx_01SfoozwQ9uuPKZfp8DSPtyK" name="code--view" integration-id="code" data="{\"file_path\": \"src/lib/products.ts\", \"lines\": \"1-80\"}">
+</lov-tool-use>
+I have enough. Now let me check ProductSourceCard, MarketingStudio promotions wiring, and the templates price formatting briefly.
+<lov-tool-use id="toolu_vrtx_01PysNPeCAmR2kH8RJgV1q3G" name="code--search_files" integration-id="code" data="{\"query\": \"price\\\\.toFixed|\\\\.toFixed\\\\(2|formatPrice|\\\\$\\\\{.*price\", \"include_patterns\": \"src/components/marketing/**,src/pages/admin/MarketingStudio.tsx\"}">
+</lov-tool-use>
 
-**2. Preset extraction edge function** — `supabase/functions/marketing-extract-preset/index.ts`
-- Input: `{ imageDataUrl, presetName }`
-- Calls `google/gemini-2.5-flash` with vision + structured output (tool calling) to return a `PosterPreset` JSON matching the schema
-- System prompt: "Extract design tokens — palette hex codes, layout density, badge style, CTA shape, background type. Do NOT describe the image content. Do NOT include any product or text from the reference. Output structured tokens only."
-- Returns the new preset JSON for client-side save (no DB needed; presets stored in `localStorage` keyed `marketing.presets.custom`)
+<lov-tool-use id="toolu_vrtx_015cGKExLfs7NBEYYja87rEW" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/marketing/ProductSourceCard.tsx\", \"lines\": \"1-60\"}">
+</lov-tool-use>
+I have all I need. Key findings:
+- Best Sellers view is empty (no `product_sales` rows this week → 0 results)
+- New Arrivals only loads local non-Shopify (`shopify_product_id IS NULL`) — too restrictive
+- Restocked depends on `partner_stock_movements` (only 3 rows total, none recent)
+- Promotions falls back to "any in-stock product" — works but not curated
+- No Promotions Manager exists
 
-**3. Preset Picker component** — `src/components/marketing/PresetPicker.tsx`
-- Horizontal chip row above format tabs
-- Shows built-in presets + saved custom presets with mini swatch (palette dots + accent stripe)
-- "+ Add from reference" button → opens upload dialog
-- Upload dialog: drop zone → progress → "Name your preset" → save to localStorage
-- Delete custom presets via long-press / X icon
+<lov-plan>
 
-**4. Template token wiring** — extend `src/components/marketing/templates.tsx`
-- Replace hardcoded `pickTheme()` colors and the `style` switch with token reads from active `PosterPreset`
-- `PosterTheme` becomes derived from `preset.palette` (keep existing field names for zero breakage)
-- Apply `preset.layout.density` → padding/gap multipliers
-- Apply `preset.badge` → swap badge component (pill vs ribbon vs chip)
-- Apply `preset.cta` → swap CTA shape/fill
-- Apply `preset.background` → background renderer (dark / gradient / glow / minimal)
-- Existing `style: "clean"|"hype"|"minimal"` becomes a fallback when no preset chosen → maps to built-in presets
+## Fix Poster Data Loading + Add Promotions Manager
 
-**5. Override panel** — extend existing branding card in `MarketingStudio.tsx`
-- New "Customize preset" collapsible:
-  - Color pickers: accent, glow (live updates, doesn't mutate saved preset)
-  - Density: Tight / Normal / Spaced toggle
-  - Badge shape: Pill / Ribbon / Chip
-  - CTA shape: Pill / Block / Outline
-- Reset to preset defaults button
+Two coordinated changes: (1) rewrite the data hook so every poster type returns usable products with proper fallbacks, and (2) add a real Promotions Manager that feeds the Promotions poster type.
 
-**6. Studio integration** — `src/pages/admin/MarketingStudio.tsx`
-- New state: `activePresetId: string`, `presetOverrides: Partial<PosterPreset>`
-- Pass merged preset as a prop into both single-product and multi-product templates
-- Hide the old style chip row when preset system is active (or repurpose it as a quick-pick for built-ins)
-- Both preview node and export node consume the same merged preset → download matches preview
+### Part 1 — Fix data loading (`useMarketingProducts`)
+
+Universal product pool: a single `fetchAllProducts()` helper merges Shopify hybrid catalog + local `seller_products` into a unified `MarketingProduct[]`. Every type derives from this pool except Best Sellers.
+
+Per-type logic:
+- **Best Sellers** — query `weekly_best_sellers`. If empty (no sales this week), fall back to **all-time** top sellers via `product_sales` aggregate. If still empty, return empty + show "No sales recorded yet" hint (this type stays accurate, no fake data).
+- **New Arrivals** — universal pool sorted by `created_at` desc (or Shopify position for shopify items). No `shopify_product_id IS NULL` filter.
+- **Restocked** — primary: `partner_stock_movements` last 30 days (was 14). Fallback: products with `updated_at` newer than `created_at` in last 30 days. Final fallback: newest products with badge "Back in Stock".
+- **Almost Gone** — primary: `seller_products.quantity` between 1-5 + Shopify `low_stock`. Fallback: bottom 10 by quantity (any > 0).
+- **Promotions** — pulls from active `promotion_campaigns` (new table). If no active campaign, fallback to all in-stock products tagged "On Sale".
+- **Single** — full universal pool (no restriction).
+
+All queries cached 2 min via React Query; Best Sellers cached 5 min.
+
+### Part 2 — Promotions Manager
+
+**New table** `promotion_campaigns`:
+- `id`, `name`, `promo_label` (Sale/Discount/Bundle/etc), `description`, `start_date`, `end_date`, `is_active`, `status` (draft/scheduled/active/expired — derived in client from dates+is_active)
+- `discount_type` (`percent` | `fixed` | `override` | `none`)
+- `discount_value` (numeric)
+- `product_refs` jsonb — array of `{id, source: 'shopify'|'local', title, image, price}` snapshot for stable poster rendering
+- `visibility` jsonb — `{posters, productPages, homepage, collections}` toggles
+- `created_by`, `created_at`, `updated_at`
+- RLS: admin-only ALL; public SELECT for active+visible (so storefront can read later)
+
+**New page** `/admin/promotions` (`src/pages/admin/PromotionsManager.tsx`)
+- 4 tabs: **Active · Scheduled · Expired · Drafts** (filtered by date+is_active)
+- Cards list: name, label badge, dates, discount summary, product count, edit/delete
+- "+ New Promotion" button → editor dialog
+
+**Editor dialog** (`src/components/admin/PromotionEditor.tsx`)
+- Fields: name, promo label dropdown, description, start/end dates, active toggle
+- Discount section: type radio (Percent / Fixed / Override price / None) + value input
+- Visibility toggles (4 switches)
+- **Product picker**: search/select from hybrid catalog + local products, drag-reorder selected list, remove buttons
+- Save = upserts row; deletes are soft via `is_active=false` if linked to live posters
+
+**Marketing Studio integration**
+- When poster type = Promotions, ProductSourceCard shows a **Campaign dropdown** ("Select promotion campaign") above the product grid
+- Selecting a campaign loads its `product_refs` directly (no auto-detect)
+- "Manage Promotions" link opens `/admin/promotions` in new tab
+
+**Admin nav**
+- Add "Promotions" link in admin sidebar/hub
+
+### Part 3 — Price formatting (no decimals)
+
+Replace `EC${item.price}` / `EC${p.price}` in `templates.tsx` with helper `formatPosterPrice(amount)` → `EC$${Math.round(Number(amount))}` (4 spots in templates, 2 spots in MarketingStudio dropdown). Also apply to product picker labels.
 
 ### Files
 
-**New (4)**
-- `src/lib/marketingPresets.ts` — schema + 7 built-ins + merge helpers
-- `src/components/marketing/PresetPicker.tsx` — chip row + upload dialog
-- `src/components/marketing/PresetOverridePanel.tsx` — color/density/shape controls
-- `supabase/functions/marketing-extract-preset/index.ts` — AI token extraction
+**New (3)**
+- `src/pages/admin/PromotionsManager.tsx`
+- `src/components/admin/PromotionEditor.tsx`
+- `src/hooks/usePromotionCampaigns.ts`
 
-**Edited (2)**
-- `src/components/marketing/templates.tsx` — token-driven theme + badge + CTA + background renderers
-- `src/pages/admin/MarketingStudio.tsx` — mount picker + override panel, pass preset down
+**Edited (4)**
+- `src/hooks/useMarketingProducts.ts` — universal pool + fallbacks for every type
+- `src/components/marketing/ProductSourceCard.tsx` — campaign dropdown when type=promotions
+- `src/components/marketing/templates.tsx` — `formatPosterPrice` helper, hide price for Best Sellers tiles
+- `src/pages/admin/MarketingStudio.tsx` — wire campaign selection, route admin nav, price formatting
 
-### Safety / consistency
-- Tokens are bounded enums (density: 3 values, badge: 3 shapes, cta: 3 shapes) → predictable output, never random
-- AI extraction returns ONLY tokens, never image content → no copying
-- Built-in presets always available even if extraction fails
-- Custom presets stored locally per admin session (Phase 2 can sync to DB)
+**Migration**
+- Create `promotion_campaigns` table + RLS policies + index on `(is_active, start_date, end_date)`
 
-### Result
-- Pick "Sale" preset → red/yellow palette, ribbon badges, urgent CTA across all poster types
-- Upload screenshot of a poster I like → AI extracts palette + layout density + badge style → save as "My Drop Style" → reuse on Best Sellers, New Arrivals, Promotions
-- Tweak accent color via override → instant preview update, doesn't touch saved preset
-- All existing functionality (variants, image prep, multi-product, format tabs) preserved
+### Best Sellers special handling
+- Hide price column entirely on Best Sellers poster type (templates check `posterType === 'bestsellers'` → `showPrice=false` and inject `hint = "{n} sold"` on each tile)
+- Show product image + name + qty sold only
+
+### Manual override (already supported)
+- ProductSourceCard already lets admin tap tiles to toggle selection — keep this behavior. Empty-state UI gets a "Browse all products" button that opens the universal product picker fallback.
 
 ### Out of scope
-- Server-side preset storage (localStorage only in v1)
-- Preset sharing between admins
-- AI generating posters from references (token extraction only)
-- Animated/video presets
+- Auto-applying promotion discount to checkout (that lives in existing discount system)
+- Storefront promo pages (visibility toggles stored but not yet rendered on customer-facing pages)
+- Bundle pricing logic
+- Promotion analytics
 
