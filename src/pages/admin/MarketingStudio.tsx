@@ -358,6 +358,7 @@ export default function MarketingStudio() {
             </Card>
           )}
 
+          <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)}>
             <TabsList className="grid w-full grid-cols-5">
               {FORMATS.map((f) => (
                 <TabsTrigger key={f.key} value={f.key} className="text-xs">
