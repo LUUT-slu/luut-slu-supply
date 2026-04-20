@@ -704,7 +704,7 @@ export default function MarketingStudio() {
             {/* Image tabs */}
             {FORMATS.map((f) => (
               <TabsContent key={f.key} value={f.key} className="mt-4">
-                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_320px] [&>*]:min-w-0">
                   {/* Preview */}
                   <Card>
                     <CardHeader className="pb-2">
