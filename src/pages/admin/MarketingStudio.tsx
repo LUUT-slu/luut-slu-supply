@@ -39,6 +39,9 @@ import {
   MarketingProduct,
   getPosterTypeMeta,
 } from "@/lib/marketingPosterTypes";
+import { PresetPicker } from "@/components/marketing/PresetPicker";
+import { PresetOverridePanel, PresetOverrides } from "@/components/marketing/PresetOverridePanel";
+import { getPreset, mergePreset, getBuiltinPresets } from "@/lib/marketingPresets";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
