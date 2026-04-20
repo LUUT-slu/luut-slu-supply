@@ -42,19 +42,32 @@ const STYLES: { key: TemplateStyle; label: string }[] = [
   { key: "minimal", label: "Minimal" },
 ];
 
-const PREVIEW_SCALE: Record<TemplateFormat, number> = {
-  story: 0.22,
-  post: 0.32,
-  ad: 0.32,
-  portrait: 0.28,
-};
-
 const PREVIEW_DIMS: Record<TemplateFormat, { w: number; h: number }> = {
   story: { w: 1080, h: 1920 },
   post: { w: 1080, h: 1080 },
   ad: { w: 1200, h: 628 },
   portrait: { w: 1080, h: 1350 },
 };
+
+function usePreviewScale(templateWidth: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.3);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth;
+      if (w > 0) setScale(Math.min(1, w / templateWidth));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [templateWidth]);
+
+  return { ref, scale };
+}
 
 export default function MarketingStudio() {
   const navigate = useNavigate();
