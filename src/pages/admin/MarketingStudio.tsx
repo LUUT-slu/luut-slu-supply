@@ -357,7 +357,7 @@ export default function MarketingStudio() {
       const typeSlug = slugify(meta.label);
       core = `${typeSlug}-${today}`;
     }
-    return `luutslu-${core}-${tab}.png`;
+    return `luutslu-${core}-${tab}.jpeg`;
   };
 
   const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File> => {
