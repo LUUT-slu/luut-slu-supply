@@ -822,8 +822,13 @@ function PresetBadge({
 
 export const MarketingTemplate = forwardRef<HTMLDivElement, TemplateProps>(
   function MarketingTemplate(props, ref) {
-    const { format, style } = props;
+    const { format, style, preset } = props;
     const { w, h } = SIZE[format];
+
+    // Preset takes precedence — all visual tokens come from the active preset.
+    // Fallback: legacy style-based layouts (back-compat for callers not yet on presets).
+    const usePreset = !!preset;
+    const legacyStyle: TemplateStyle = style ?? "hype";
 
     return (
       <div
@@ -837,13 +842,444 @@ export const MarketingTemplate = forwardRef<HTMLDivElement, TemplateProps>(
             "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
         }}
       >
-        {style === "clean" && <CleanLayout {...props} />}
-        {style === "hype" && <HypeLayout {...props} />}
-        {style === "minimal" && <MinimalLayout {...props} />}
+        {usePreset && <PresetLayout {...props} />}
+        {!usePreset && legacyStyle === "clean" && <CleanLayout {...props} />}
+        {!usePreset && legacyStyle === "hype" && <HypeLayout {...props} />}
+        {!usePreset && legacyStyle === "minimal" && <MinimalLayout {...props} />}
       </div>
     );
   }
 );
+
+// Preset-driven single-product layout. All colors/spacing/shapes come from
+// the active PosterPreset, so the Style & Branding panel is the single
+// source of truth for visual styling.
+function PresetLayout(p: TemplateProps) {
+  const preset = p.preset!;
+  const isStory = p.format === "story";
+  const isAd = p.format === "ad";
+  const isPortrait = p.format === "portrait";
+
+  const theme = presetToTheme(preset);
+  const dscale = densityScale(preset.layout.density);
+  const tScale = preset.typography.scale;
+  const headlineWeight = preset.typography.headlineWeight;
+  const headlineCase = preset.typography.headlineCase;
+
+  const basePad = isStory || isPortrait ? 64 : isAd ? 40 : 56;
+  const padding = `${Math.round(basePad * dscale.pad)}px`;
+  const baseGap = isStory || isPortrait ? 28 : isAd ? 18 : 22;
+  const gap = Math.round(baseGap * dscale.gap);
+
+  const radius = preset.layout.radius;
+  const surface = preset.palette.surface;
+  const text = preset.palette.text;
+  const muted = preset.palette.muted;
+  const accent = preset.palette.accent;
+
+  const headlineSize = Math.round(
+    (isStory ? 96 : isAd ? 56 : isPortrait ? 84 : 76) * tScale,
+  );
+  const taglineSize = isStory ? 28 : isAd ? 20 : 24;
+  const priceSize = isStory ? 72 : isAd ? 44 : 60;
+
+  const showHalos = preset.background.type === "glow";
+
+  const variantImages = p.variantImages && p.variantImages.length > 1 ? p.variantImages : null;
+  const heroImage = p.productImage;
+
+  // Headline = product name; split first word for accent highlight (matches multi-product feel).
+  const titleParts = p.productName.trim().split(/\s+/);
+  const firstWord = titleParts[0] ?? "";
+  const restWords = titleParts.slice(1).join(" ");
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "relative",
+        overflow: "hidden",
+        background: theme.bgVignette,
+        color: text,
+        padding,
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: isAd ? "row" : "column",
+        gap,
+      }}
+    >
+      {/* Halo glows for glow backgrounds */}
+      {showHalos && (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              top: -240,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "120%",
+              height: 480,
+              background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
+              filter: "blur(20px)",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              bottom: -240,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "120%",
+              height: 480,
+              background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
+              filter: "blur(20px)",
+              pointerEvents: "none",
+            }}
+          />
+        </>
+      )}
+
+      {/* Brand mark top-right */}
+      <div
+        style={{
+          position: "absolute",
+          top: Math.round(padding ? 32 : 24),
+          right: 32,
+          zIndex: 3,
+        }}
+      >
+        {p.brandLogoUrl ? (
+          <img
+            src={p.brandLogoUrl}
+            crossOrigin="anonymous"
+            alt=""
+            style={{ height: isAd ? 32 : 44, width: "auto", objectFit: "contain", display: "block" }}
+          />
+        ) : (
+          <div
+            style={{
+              fontSize: isAd ? 14 : 18,
+              fontWeight: 700,
+              letterSpacing: 4,
+              textTransform: "uppercase",
+              color: muted,
+            }}
+          >
+            {p.brandName}
+          </div>
+        )}
+      </div>
+
+      {/* Hero image (or variant grid) */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          flex: isAd ? "0 0 45%" : 1,
+          minHeight: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: isAd ? 0 : (isStory || isPortrait ? 80 : 60),
+        }}
+      >
+        {variantImages ? (
+          <div style={{ width: "100%", height: "100%" }}>
+            <PresetVariantGrid
+              images={variantImages}
+              showLabels={p.showVariantLabels}
+              surface={surface}
+              radius={radius}
+              text={text}
+            />
+          </div>
+        ) : (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              borderRadius: radius,
+              overflow: "hidden",
+              background: surface,
+              border: "1px solid rgba(255,255,255,0.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: showHalos ? `0 0 32px ${theme.glowSoft}` : "0 12px 28px rgba(0,0,0,0.35)",
+            }}
+          >
+            {heroImage ? (
+              <img
+                src={heroImage}
+                crossOrigin="anonymous"
+                alt=""
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            ) : (
+              <div style={{ color: muted, fontSize: 22 }}>No image</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Right (ad) or bottom column: copy + CTA */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          flex: isAd ? 1 : "0 0 auto",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: isAd ? "flex-start" : "center",
+          textAlign: isAd ? "left" : "center",
+          gap: Math.round(gap * 0.8),
+        }}
+      >
+        {/* Stock / urgency badge */}
+        {(p.stockBadge || p.urgencyText) && (
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <PresetInlineBadge
+              text={p.urgencyText || p.stockBadge!}
+              theme={theme}
+              shape={preset.badge.shape}
+              fill={preset.badge.fill}
+            />
+          </div>
+        )}
+
+        {/* Headline */}
+        <div
+          style={{
+            fontSize: headlineSize,
+            fontWeight: headlineWeight,
+            lineHeight: 0.95,
+            letterSpacing: "-0.02em",
+            textTransform: headlineCase === "upper" ? "uppercase" : "none",
+            color: text,
+          }}
+        >
+          <span>{firstWord}</span>
+          {restWords && (
+            <>
+              {" "}
+              <span
+                style={{
+                  background: `linear-gradient(180deg, ${accent} 0%, ${accent} 60%, ${text} 100%)`,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  filter: showHalos ? `drop-shadow(0 0 18px ${theme.glowSoft})` : "none",
+                }}
+              >
+                {restWords}
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Tagline */}
+        {p.tagline && (
+          <div
+            style={{
+              fontSize: taglineSize,
+              color: muted,
+              fontWeight: 600,
+              letterSpacing: 0.5,
+              maxWidth: 720,
+            }}
+          >
+            {p.tagline}
+          </div>
+        )}
+
+        {/* Price */}
+        {p.showPrice && p.price && (
+          <div
+            style={{
+              fontSize: priceSize,
+              fontWeight: 900,
+              color: accent,
+              letterSpacing: -1,
+              filter: showHalos ? `drop-shadow(0 0 18px ${theme.glowSoft})` : "none",
+            }}
+          >
+            {formatPosterPrice(p.price)}
+          </div>
+        )}
+
+        {/* CTA */}
+        <div style={{ marginTop: 6 }}>
+          <PresetCTA
+            text={p.ctaText}
+            theme={theme}
+            shape={preset.cta.shape}
+            fill={preset.cta.fill}
+            small={isAd}
+          />
+        </div>
+
+        {/* Meetup line */}
+        <div
+          style={{
+            color: muted,
+            fontSize: isAd ? 16 : 20,
+            fontWeight: 600,
+          }}
+        >
+          <span style={{ color: accent, marginRight: 6 }}>📍</span>
+          {p.meetupText}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Inline (non-absolute) badge variant for the single-product layout.
+function PresetInlineBadge({
+  text,
+  theme,
+  shape,
+  fill,
+}: {
+  text: string;
+  theme: PosterTheme;
+  shape: "pill" | "ribbon" | "chip";
+  fill: "glow" | "solid" | "outline";
+}) {
+  const isOutline = fill === "outline";
+  const radius = shape === "pill" ? 999 : shape === "chip" ? 6 : 4;
+  const padding =
+    shape === "ribbon" ? "8px 22px 8px 16px" : shape === "chip" ? "6px 12px" : "8px 18px";
+  const clip =
+    shape === "ribbon"
+      ? "polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%)"
+      : undefined;
+  const bg = isOutline ? "transparent" : theme.badge;
+  const border = isOutline ? `2px solid ${theme.glow}` : "none";
+  const color = isOutline ? theme.glow : "#ffffff";
+  return (
+    <div
+      style={{
+        display: "inline-block",
+        background: bg,
+        border,
+        color,
+        padding,
+        borderRadius: radius,
+        clipPath: clip,
+        fontSize: 18,
+        fontWeight: 900,
+        letterSpacing: 1.5,
+        textTransform: "uppercase",
+        boxShadow: fill === "glow" ? `0 0 14px ${theme.glowSoft}` : "none",
+      }}
+    >
+      {text}
+    </div>
+  );
+}
+
+// Preset-styled variant grid for the single-product layout.
+function PresetVariantGrid({
+  images,
+  showLabels,
+  surface,
+  radius,
+  text,
+}: {
+  images: VariantImage[];
+  showLabels?: boolean;
+  surface: string;
+  radius: number;
+  text: string;
+}) {
+  const tiles = images.slice(0, 4);
+  const overflow = images.length - tiles.length;
+  const count = tiles.length;
+
+  let columns = "1fr 1fr";
+  let rows = "1fr 1fr";
+  if (count === 2) {
+    columns = "1fr 1fr";
+    rows = "1fr";
+  }
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        display: "grid",
+        gridTemplateColumns: columns,
+        gridTemplateRows: rows,
+        gap: 10,
+      }}
+    >
+      {tiles.map((v, i) => {
+        const spanFull = count === 3 && i === 0;
+        return (
+          <div
+            key={i}
+            style={{
+              gridColumn: spanFull ? "1 / span 2" : "auto",
+              position: "relative",
+              overflow: "hidden",
+              borderRadius: radius,
+              background: surface,
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <img
+              src={v.url}
+              crossOrigin="anonymous"
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+            {showLabels && v.label && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  bottom: 12,
+                  background: "rgba(0,0,0,0.6)",
+                  color: text,
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                }}
+              >
+                {v.label}
+              </div>
+            )}
+            {overflow > 0 && i === tiles.length - 1 && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 12,
+                  top: 12,
+                  background: "#0a0a0a",
+                  color: "#fff",
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  fontSize: 18,
+                  fontWeight: 800,
+                }}
+              >
+                +{overflow}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function BrandMark({
   brandName,
