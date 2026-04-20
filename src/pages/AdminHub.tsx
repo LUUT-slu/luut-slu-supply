@@ -19,6 +19,7 @@ import {
   Home,
   Wifi,
   BarChart3,
+  Megaphone,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -169,6 +170,15 @@ export default function AdminHub() {
       stat: "View insights",
       color: "text-cyan-500",
       bgColor: "bg-cyan-500/10",
+    },
+    {
+      title: "Marketing Studio",
+      description: "Create IG stories, posts, ads & captions from products",
+      icon: Megaphone,
+      href: "/admin/marketing-studio",
+      stat: "Promote",
+      color: "text-fuchsia-500",
+      bgColor: "bg-fuchsia-500/10",
     },
   ];
 

@@ -37,6 +37,7 @@ import {
   RefreshCw, 
   LogOut,
   ChevronRight,
+  Megaphone,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -361,14 +362,26 @@ export default function AdminProductsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            size="sm" 
-                            className="gap-1 h-7 px-2"
-                            onClick={() => openAllocateDialog(product)}
-                          >
-                            <Plus className="h-3 w-3" />
-                            Allocate
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1 h-7 px-2"
+                              onClick={() => navigate(`/admin/marketing-studio?productId=${product.id}`)}
+                              title="Promote this product"
+                            >
+                              <Megaphone className="h-3 w-3" />
+                              <span className="hidden sm:inline">Promote</span>
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              className="gap-1 h-7 px-2"
+                              onClick={() => openAllocateDialog(product)}
+                            >
+                              <Plus className="h-3 w-3" />
+                              Allocate
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
