@@ -1,4 +1,6 @@
 import { forwardRef } from "react";
+import type { PosterPreset } from "@/lib/marketingPresets";
+import { densityScale } from "@/lib/marketingPresets";
 
 export type TemplateStyle = "clean" | "hype" | "minimal";
 export type TemplateFormat = "story" | "post" | "ad" | "portrait";
@@ -25,6 +27,7 @@ export interface TemplateProps {
   urgencyText?: string;
   variantImages?: VariantImage[];
   showVariantLabels?: boolean;
+  preset?: PosterPreset;
 }
 
 const SIZE: Record<TemplateFormat, { w: number; h: number }> = {
@@ -61,6 +64,74 @@ export interface MultiTemplateProps {
   showPrice: boolean;
   showBadges: boolean;
   showLabels: boolean;
+  preset?: PosterPreset;
+}
+
+// Convert a PosterPreset palette/background into the legacy PosterTheme
+// shape used by ProductGrid + Ribbon, so the existing render code keeps
+// working unchanged.
+function presetToTheme(preset: PosterPreset): PosterTheme {
+  const { palette, background } = preset;
+  const accent = palette.accent;
+  const glow = palette.glow;
+  // Background renderers
+  let bgVignette = `radial-gradient(ellipse at center, ${shade(palette.bg, -2)} 0%, ${palette.bg} 55%, ${shade(palette.bg, -8)} 100%)`;
+  if (background.type === "dark") {
+    bgVignette = palette.bg;
+  } else if (background.type === "minimal") {
+    bgVignette = palette.bg;
+  } else if (background.type === "gradient") {
+    bgVignette = `linear-gradient(135deg, ${palette.bg} 0%, ${shade(palette.bg, -6)} 100%)`;
+  }
+  // Ribbon + CTA gradients derived from accent
+  const ribbon = `linear-gradient(180deg, ${accent} 0%, ${shade(accent, -15)} 60%, ${shade(accent, -35)} 100%)`;
+  const cta = ribbon;
+  return {
+    glow: accent,
+    glowSoft: glow,
+    ribbon,
+    ribbonText: contrastText(accent),
+    cta,
+    ctaText: contrastText(accent),
+    bgVignette,
+    divider: `linear-gradient(90deg,transparent 0%,${accent} 25%,${tint(accent, 60)} 50%,${accent} 75%,transparent 100%)`,
+    badge: `linear-gradient(180deg,${accent},${shade(accent, -25)})`,
+  };
+}
+
+// Lightweight color helpers (hex only — rgba passes through).
+function hexToRgb(hex: string): [number, number, number] | null {
+  let h = hex.trim().replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  if (h.length !== 6) return null;
+  const n = parseInt(h, 16);
+  if (isNaN(n)) return null;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbToHex(r: number, g: number, b: number): string {
+  return (
+    "#" +
+    [r, g, b]
+      .map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+function shade(color: string, percent: number): string {
+  const rgb = hexToRgb(color);
+  if (!rgb) return color;
+  const f = 1 + percent / 100;
+  return rgbToHex(rgb[0] * f, rgb[1] * f, rgb[2] * f);
+}
+function tint(color: string, amount: number): string {
+  const rgb = hexToRgb(color);
+  if (!rgb) return color;
+  return rgbToHex(rgb[0] + amount, rgb[1] + amount, rgb[2] + amount);
+}
+function contrastText(bg: string): string {
+  const rgb = hexToRgb(bg);
+  if (!rgb) return "#ffffff";
+  const yiq = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
+  return yiq >= 160 ? "#0a0a0a" : "#ffffff";
 }
 
 // Theme palette per poster intent. Picked from `urgencyText`/`headline` keywords
