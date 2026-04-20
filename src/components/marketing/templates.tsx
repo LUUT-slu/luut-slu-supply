@@ -603,8 +603,13 @@ function ProductGrid({
   const overflow = items.length - tiles.length;
   const count = tiles.length;
 
+  // Story/portrait formats can't afford a 2-row grid for 3 tiles — it doubles
+  // the hero block height and unbalances the layout. Use a single 3-col row
+  // there. For post/ad we keep 2x2 with the first tile spanning two columns.
+  const isTallFormat = format === "story" || format === "portrait";
   let columns = "1fr 1fr";
   let rows = "1fr 1fr";
+  let useSpanFull = false;
   if (count === 1) {
     columns = "1fr";
     rows = "1fr";
@@ -612,8 +617,14 @@ function ProductGrid({
     columns = "1fr 1fr";
     rows = "1fr";
   } else if (count === 3) {
-    columns = "1fr 1fr";
-    rows = "1fr 1fr";
+    if (isTallFormat) {
+      columns = "1fr 1fr 1fr";
+      rows = "1fr";
+    } else {
+      columns = "1fr 1fr";
+      rows = "1fr 1fr";
+      useSpanFull = true;
+    }
   }
 
   const tileRadius = preset?.layout.radius ?? 22;
