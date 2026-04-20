@@ -684,11 +684,26 @@ function ProductGrid({
                   src={item.imageUrl}
                   crossOrigin="anonymous"
                   alt=""
+                  data-export-hero="true"
+                  data-editable-hero={onImageClick ? "true" : undefined}
+                  onClick={
+                    onImageClick && item.imageUrl
+                      ? (e) => {
+                          e.stopPropagation();
+                          onImageClick(item.imageUrl as string);
+                        }
+                      : undefined
+                  }
                   style={{
                     width: "100%",
                     height: "100%",
                     objectFit: "cover",
                     display: "block",
+                    transform: cropToTransform(
+                      cropMap?.[item.imageUrl] ?? DEFAULT_CROP,
+                    ),
+                    transformOrigin: "center center",
+                    cursor: onImageClick ? "pointer" : undefined,
                   }}
                 />
               ) : (
