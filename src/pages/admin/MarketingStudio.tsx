@@ -408,14 +408,33 @@ export default function MarketingStudio() {
         return;
       }
 
-      // 4. Capture. cacheBust MUST stay false — it's the trigger for the
-      //    mobile CORS drop.
-      const dataUrl = await toPng(exportRef.current, {
-        cacheBust: false,
-        pixelRatio: 2,
-        skipFonts: false,
-        imagePlaceholders: placeholders,
+      // 4. Swap every <img src> in the export node to its data URL so
+      //    html-to-image never re-fetches anything during capture
+      //    (this is what was breaking on mobile).
+      const swapped: { el: HTMLImageElement; original: string }[] = [];
+      liveImgs.forEach((img) => {
+        const src = img.getAttribute("src");
+        if (!src) return;
+        const replacement = placeholders[src];
+        if (replacement && replacement !== src) {
+          swapped.push({ el: img, original: src });
+          img.setAttribute("src", replacement);
+        }
       });
+      // Wait for the swapped images to decode before capturing.
+      await waitForDomImages(exportRef.current);
+
+      let dataUrl: string;
+      try {
+        dataUrl = await toPng(exportRef.current, {
+          cacheBust: false,
+          pixelRatio: 2,
+          skipFonts: false,
+        });
+      } finally {
+        // Restore original src so the live preview keeps its CDN URLs.
+        swapped.forEach(({ el, original }) => el.setAttribute("src", original));
+      }
       const filename = buildPosterFilename();
       const file = await dataUrlToFile(dataUrl, filename);
 
