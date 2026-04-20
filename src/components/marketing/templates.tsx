@@ -5,6 +5,14 @@ import { densityScale } from "@/lib/marketingPresets";
 export type TemplateStyle = "clean" | "hype" | "minimal";
 export type TemplateFormat = "story" | "post" | "ad" | "portrait";
 
+// Format poster prices: no decimal places, EC$ prefix.
+export function formatPosterPrice(amount?: string | number): string {
+  if (amount === undefined || amount === null || amount === "") return "";
+  const n = Number(amount);
+  if (Number.isNaN(n)) return "";
+  return `EC$${Math.round(n)}`;
+}
+
 export interface VariantImage {
   url: string;
   label?: string;
@@ -748,7 +756,7 @@ function ProductGrid({
                   boxShadow: `0 0 18px ${theme.glowSoft}`,
                 }}
               >
-                EC${item.price}
+                {formatPosterPrice(item.price)}
               </div>
             )}
           </div>
@@ -1052,7 +1060,7 @@ function CleanLayout(p: TemplateProps) {
         </div>
         {p.showPrice && p.price && (
           <div style={{ fontSize: isStory ? 64 : 52, fontWeight: 700, color: "#0a0a0a", marginBottom: 20 }}>
-            EC${p.price}
+            {formatPosterPrice(p.price)}
           </div>
         )}
         {p.description && (
@@ -1181,7 +1189,7 @@ function HypeLayout(p: TemplateProps) {
                 alignSelf: "flex-start",
               }}
             >
-              EC${p.price}
+              {formatPosterPrice(p.price)}
             </div>
           )}
           <Chips {...p} dark />
@@ -1259,7 +1267,7 @@ function MinimalLayout(p: TemplateProps) {
       </div>
       {p.showPrice && p.price && (
         <div style={{ display: "inline-block", border: "2px solid #1a1a1a", padding: "8px 22px", borderRadius: 999, fontSize: isStory ? 32 : 26, fontWeight: 600, marginBottom: 24 }}>
-          EC${p.price}
+          {formatPosterPrice(p.price)}
         </div>
       )}
       <div style={{ fontSize: 22, color: "#5a4a36", maxWidth: "80%" }}>{p.meetupText}</div>

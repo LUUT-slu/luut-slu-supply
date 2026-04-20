@@ -160,6 +160,7 @@ export default function MarketingStudio() {
   const [sourceProducts, setSourceProducts] = useState<MarketingProduct[]>([]);
   const [showTileBadges, setShowTileBadges] = useState(true);
   const [showTileLabels, setShowTileLabels] = useState(true);
+  const [promoCampaignId, setPromoCampaignId] = useState<string | undefined>(undefined);
 
   // Variant selection (single-promo only)
   const [variantMode, setVariantMode] = useState<VariantMode>("single");
@@ -475,7 +476,7 @@ export default function MarketingStudio() {
                   <SelectContent className="max-h-[60vh]">
                     {filtered.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.title} — EC${p.price?.amount}
+                        {p.title}{p.price?.amount ? ` — EC$${Math.round(Number(p.price.amount))}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -492,7 +493,7 @@ export default function MarketingStudio() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">{selectedProduct.title}</div>
                       <div className="text-xs text-muted-foreground">
-                        EC${selectedProduct.price?.amount} ·{" "}
+                        EC${Math.round(Number(selectedProduct.price?.amount ?? 0))} ·{" "}
                         <Badge variant="outline" className="text-[10px]">
                           {selectedProduct.stockStatus.replace("_", " ")}
                         </Badge>
@@ -518,6 +519,8 @@ export default function MarketingStudio() {
                   limit={sourceLimit}
                   onLimitChange={setSourceLimit}
                   onProductsResolved={setSourceProducts}
+                  campaignId={promoCampaignId}
+                  onCampaignChange={setPromoCampaignId}
                 />
               </CardContent>
             </Card>

@@ -20,6 +20,7 @@ import {
   Wifi,
   BarChart3,
   Megaphone,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -179,6 +180,15 @@ export default function AdminHub() {
       stat: "Promote",
       color: "text-fuchsia-500",
       bgColor: "bg-fuchsia-500/10",
+    },
+    {
+      title: "Promotions Manager",
+      description: "Create and manage discount campaigns and promo posters",
+      icon: Tag,
+      href: "/admin/promotions",
+      stat: "Manage",
+      color: "text-rose-500",
+      bgColor: "bg-rose-500/10",
     },
   ];
 

@@ -732,6 +732,57 @@ export type Database = {
         }
         Relationships: []
       }
+      promotion_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          discount_type: string
+          discount_value: number
+          end_date: string | null
+          id: string
+          is_active: boolean
+          name: string
+          product_refs: Json
+          promo_label: string
+          start_date: string | null
+          updated_at: string
+          visibility: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          product_refs?: Json
+          promo_label?: string
+          start_date?: string | null
+          updated_at?: string
+          visibility?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          product_refs?: Json
+          promo_label?: string
+          start_date?: string | null
+          updated_at?: string
+          visibility?: Json
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           comment: string | null

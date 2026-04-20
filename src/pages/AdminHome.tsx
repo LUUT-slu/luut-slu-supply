@@ -16,6 +16,7 @@ import {
   BarChart3,
   MessageSquare,
   Megaphone,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -190,6 +191,14 @@ export default function AdminHome() {
       href: "/admin/marketing-studio",
       color: "text-fuchsia-500",
       bgColor: "bg-fuchsia-500/10",
+    },
+    {
+      title: "Promotions Manager",
+      description: "Create discount campaigns and feed the Promotions poster",
+      icon: Tag,
+      href: "/admin/promotions",
+      color: "text-rose-500",
+      bgColor: "bg-rose-500/10",
     },
     {
       title: "Seller Portal",

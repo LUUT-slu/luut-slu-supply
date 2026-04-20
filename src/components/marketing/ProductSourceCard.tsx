@@ -1,11 +1,13 @@
 import { useEffect, useMemo } from "react";
-import { Loader2, RefreshCcw } from "lucide-react";
+import { Loader2, RefreshCcw, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useMarketingProducts } from "@/hooks/useMarketingProducts";
+import { usePromotionCampaigns, deriveStatus } from "@/hooks/usePromotionCampaigns";
 import { MarketingProduct, PosterType, getPosterTypeMeta } from "@/lib/marketingPosterTypes";
 
 interface Props {
@@ -15,7 +17,12 @@ interface Props {
   limit: number;
   onLimitChange: (n: number) => void;
   onProductsResolved: (products: MarketingProduct[]) => void;
+  campaignId?: string;
+  onCampaignChange?: (id: string | undefined) => void;
 }
+
+const fmtMoney = (v?: string) =>
+  v === undefined || v === null || v === "" ? "" : `EC$${Math.round(Number(v))}`;
 
 export function ProductSourceCard({
   posterType,
@@ -24,14 +31,23 @@ export function ProductSourceCard({
   limit,
   onLimitChange,
   onProductsResolved,
+  campaignId,
+  onCampaignChange,
 }: Props) {
   const meta = getPosterTypeMeta(posterType);
-  const { data: products = [], isLoading, refetch, isFetching } = useMarketingProducts(
-    posterType,
-    { limit: 12 },
+  const isPromotions = posterType === "promotions";
+
+  const { data: campaigns = [] } = usePromotionCampaigns();
+  const activeCampaigns = useMemo(
+    () => campaigns.filter((c) => deriveStatus(c) === "active" || deriveStatus(c) === "scheduled"),
+    [campaigns],
   );
 
-  // Push the resolved (selected) product list to parent for the template
+  const { data: products = [], isLoading, refetch, isFetching } = useMarketingProducts(
+    posterType,
+    { limit: 12, campaignId: isPromotions ? campaignId : undefined },
+  );
+
   const selected = useMemo(
     () => products.filter((p) => selectedIds.includes(p.id)).slice(0, limit),
     [products, selectedIds, limit],
@@ -41,13 +57,11 @@ export function ProductSourceCard({
     onProductsResolved(selected);
   }, [selected, onProductsResolved]);
 
-  // Auto-select top N whenever the source list or limit changes
   useEffect(() => {
     if (products.length === 0) {
       onSelectionChange([]);
       return;
     }
-    // Only auto-pick when current selection is empty OR all current selections fell out
     const stillValid = selectedIds.filter((id) => products.some((p) => p.id === id));
     if (stillValid.length === 0) {
       onSelectionChange(products.slice(0, limit).map((p) => p.id));
@@ -60,7 +74,6 @@ export function ProductSourceCard({
       onSelectionChange(selectedIds.filter((x) => x !== id));
     } else {
       if (selectedIds.length >= limit) {
-        // replace oldest
         onSelectionChange([...selectedIds.slice(1), id]);
       } else {
         onSelectionChange([...selectedIds, id]);
@@ -91,6 +104,44 @@ export function ProductSourceCard({
         </Button>
       </div>
 
+      {/* Promotions: campaign selector */}
+      {isPromotions && onCampaignChange && (
+        <div className="space-y-1.5 rounded-md border bg-muted/30 p-2.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium">Promotion campaign</Label>
+            <a
+              href="/admin/promotions"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[10px] text-primary hover:underline"
+            >
+              Manage <ExternalLink className="h-2.5 w-2.5" />
+            </a>
+          </div>
+          <Select
+            value={campaignId ?? "auto"}
+            onValueChange={(v) => onCampaignChange(v === "auto" ? undefined : v)}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Auto (all active)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">Auto — all active promotions</SelectItem>
+              {activeCampaigns.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name} · {c.product_refs.length} item{c.product_refs.length === 1 ? "" : "s"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {activeCampaigns.length === 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              No active campaigns yet. Create one in Promotions Manager.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <Label className="text-xs whitespace-nowrap">Items: {limit}</Label>
         <Slider
@@ -109,7 +160,9 @@ export function ProductSourceCard({
         </div>
       ) : products.length === 0 ? (
         <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
-          No products found for this poster type yet. Try another type or check back later.
+          {posterType === "bestsellers"
+            ? "No sales recorded yet. Best sellers will appear here once orders complete."
+            : "No products found. Try another type or add products to your catalog."}
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -153,6 +206,11 @@ export function ProductSourceCard({
                   )}
                 </div>
                 <div className="truncate px-1.5 py-1 text-[11px] font-medium">{p.title}</div>
+                {p.price && posterType !== "bestsellers" && (
+                  <div className="px-1.5 pb-1 text-[10px] text-muted-foreground">
+                    {fmtMoney(p.price)}
+                  </div>
+                )}
               </button>
             );
           })}
@@ -160,7 +218,8 @@ export function ProductSourceCard({
       )}
 
       <p className="text-[11px] text-muted-foreground">
-        {selectedIds.length} selected · poster auto-arranges {selectedIds.length === 1 ? "spotlight" : `${selectedIds.length}-tile layout`}.
+        {selectedIds.length} selected · poster auto-arranges{" "}
+        {selectedIds.length === 1 ? "spotlight" : `${selectedIds.length}-tile layout`}.
       </p>
     </div>
   );
