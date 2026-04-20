@@ -809,16 +809,14 @@ export default function MarketingStudio() {
                       >
                         {exporting || !imagesReady ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : isMobile && canShare ? (
-                          <Share2 className="h-4 w-4" />
                         ) : (
                           <Download className="h-4 w-4" />
                         )}
                         {!imagesReady
                           ? "Loading image…"
-                          : isMobile && canShare
-                            ? "Save / Share"
-                            : "Download PNG"}
+                          : exporting
+                            ? "Preparing…"
+                            : "Download JPEG"}
                       </Button>
                     </CardContent>
                   </Card>
