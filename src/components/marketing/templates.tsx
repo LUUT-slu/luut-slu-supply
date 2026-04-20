@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import type { PosterPreset } from "@/lib/marketingPresets";
-import { densityScale } from "@/lib/marketingPresets";
+import { densityScale, getBuiltinPresets } from "@/lib/marketingPresets";
 
 export type TemplateStyle = "clean" | "hype" | "minimal";
 export type TemplateFormat = "story" | "post" | "ad" | "portrait";
@@ -864,7 +864,9 @@ export const MarketingTemplate = forwardRef<HTMLDivElement, TemplateProps>(
 // headline, solid accent price chip, inline stock + meetup pills, full-width
 // CTA block. Preset tokens drive palette, density, badge/CTA shape & fill.
 function PresetLayout(p: TemplateProps) {
-  const preset = p.preset!;
+  // Fall back to the default built-in preset so the template never crashes
+  // when `preset` is briefly undefined during a parent re-render.
+  const preset = p.preset ?? getBuiltinPresets()[1];
   const isStory = p.format === "story";
   const isAd = p.format === "ad";
   const isPortrait = p.format === "portrait";
