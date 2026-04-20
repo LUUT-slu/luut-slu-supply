@@ -42,6 +42,11 @@ import {
 import { PresetPicker } from "@/components/marketing/PresetPicker";
 import { PresetOverridePanel, PresetOverrides } from "@/components/marketing/PresetOverridePanel";
 import { getPreset, mergePreset, getBuiltinPresets } from "@/lib/marketingPresets";
+import {
+  prefetchImagesAsDataUrls,
+  waitForDomImages,
+  useImagesReady,
+} from "@/lib/exportImageCache";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
@@ -370,11 +375,66 @@ export default function MarketingStudio() {
     }
     setExporting(true);
     try {
-      const dataUrl = await toPng(exportRef.current, {
-        cacheBust: true,
-        pixelRatio: 2,
-        skipFonts: false,
+      // 1. Make sure every <img> in the export node is fully loaded + decoded.
+      await waitForDomImages(exportRef.current);
+
+      // 2. Collect every external image URL the export node references.
+      const urlSet = new Set<string>();
+      if (brandLogoUrl) urlSet.add(brandLogoUrl);
+      if (!isMulti) {
+        const heroUrl = singlePrep.preparedUrl || productPayload?.productImage;
+        if (heroUrl) urlSet.add(heroUrl);
+        for (const v of variantImages) if (v.url) urlSet.add(v.url);
+      } else if (multiTemplateProps) {
+        for (const p of multiTemplateProps.products) {
+          if (p.imageUrl) urlSet.add(p.imageUrl);
+        }
+      }
+      // Belt + braces: also pick up any other <img src> currently inside the node.
+      const liveImgs = exportRef.current.querySelectorAll("img");
+      liveImgs.forEach((img) => {
+        const src = img.getAttribute("src");
+        if (src) urlSet.add(src);
       });
+
+      // 3. Pre-resolve all external images to data URLs so html-to-image
+      //    never re-fetches them (this is what was breaking on mobile).
+      let placeholders: Record<string, string> = {};
+      try {
+        placeholders = await prefetchImagesAsDataUrls(Array.from(urlSet));
+      } catch (e) {
+        console.error("Image prefetch failed:", e);
+        toast.error("Couldn't load product image — try again in a moment");
+        return;
+      }
+
+      // 4. Swap every <img src> in the export node to its data URL so
+      //    html-to-image never re-fetches anything during capture
+      //    (this is what was breaking on mobile).
+      const swapped: { el: HTMLImageElement; original: string }[] = [];
+      liveImgs.forEach((img) => {
+        const src = img.getAttribute("src");
+        if (!src) return;
+        const replacement = placeholders[src];
+        if (replacement && replacement !== src) {
+          swapped.push({ el: img, original: src });
+          img.setAttribute("src", replacement);
+        }
+      });
+      // Wait for the swapped images to decode before capturing.
+      await waitForDomImages(exportRef.current);
+
+      let dataUrl: string;
+      try {
+        dataUrl = await toPng(exportRef.current, {
+          cacheBust: false,
+          pixelRatio: 2,
+          skipFonts: false,
+        });
+      } finally {
+        // Restore original src so the live preview keeps its CDN URLs.
+        swapped.forEach(({ el, original }) => el.setAttribute("src", original));
+      }
       const filename = buildPosterFilename();
       const file = await dataUrlToFile(dataUrl, filename);
 
@@ -518,6 +578,22 @@ export default function MarketingStudio() {
         preset: activePreset,
       }
     : null;
+
+  // Gate export until every external image referenced by the current poster
+  // is reachable. Prevents mobile users from triggering a half-loaded capture.
+  const exportImageUrls = useMemo(() => {
+    const out: string[] = [];
+    if (brandLogoUrl) out.push(brandLogoUrl);
+    if (!isMulti) {
+      const hero = singlePrep.preparedUrl || productPayload?.productImage;
+      if (hero) out.push(hero);
+      for (const v of variantImages) if (v.url) out.push(v.url);
+    } else if (multiTemplateProps) {
+      for (const p of multiTemplateProps.products) if (p.imageUrl) out.push(p.imageUrl);
+    }
+    return out;
+  }, [brandLogoUrl, isMulti, singlePrep.preparedUrl, productPayload?.productImage, variantImages, multiTemplateProps]);
+  const imagesReady = useImagesReady(exportImageUrls);
 
   return (
     <AdminAuth>
@@ -742,19 +818,24 @@ export default function MarketingStudio() {
                         onClick={handleExport}
                         disabled={
                           exporting ||
+                          !imagesReady ||
                           (isMulti
                             ? !multiTemplateProps || multiTemplateProps.products.length === 0
                             : !templateProps)
                         }
                       >
-                        {exporting ? (
+                        {exporting || !imagesReady ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : isMobile && canShare ? (
                           <Share2 className="h-4 w-4" />
                         ) : (
                           <Download className="h-4 w-4" />
                         )}
-                        {isMobile && canShare ? "Save / Share" : "Download PNG"}
+                        {!imagesReady
+                          ? "Loading image…"
+                          : isMobile && canShare
+                            ? "Save / Share"
+                            : "Download PNG"}
                       </Button>
                     </CardContent>
                   </Card>
