@@ -682,10 +682,9 @@ export default function MarketingStudio() {
                         </div>
                       </div>
                       <PresetOverridePanel
-                        preset={activePreset}
+                        basePreset={activePreset}
                         overrides={presetOverrides}
                         onChange={setPresetOverrides}
-                        onReset={() => setPresetOverrides({})}
                       />
                       <div>
                         <Label className="text-xs">Brand Name</Label>
