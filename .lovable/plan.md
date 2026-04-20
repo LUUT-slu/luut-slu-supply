@@ -1,38 +1,75 @@
 
 
-## Why the product image disappears in the downloaded file
+## Manual Image Editor for Marketing Studio
 
-This is a confirmed, well-documented **iOS Safari bug in `html-to-image`** ([issue #461](https://github.com/bubkoo/html-to-image/issues/461)). The library renders the poster by serializing the DOM into an SVG `<foreignObject>` and rasterizing it. iOS Safari **silently drops `<img>` tags inside `foreignObject`** on the first render pass — text, backgrounds, and CSS render fine, but the hero image comes out as the empty black box you see.
+A Canva-style crop/zoom editor with undo/redo and per-image persistence.
 
-The earlier prefetch-to-data-URL fix actually made this worse on iOS, because once the data URL is large (a 1024×1024 Shopify product photo base64-encoded is ~1.5 MB of inline payload), iOS Safari is even more likely to skip decoding it inside the foreignObject.
+### UX flow
+1. User taps any product image in the poster preview → modal opens
+2. Image displayed inside fixed crop frame matching current format (9:16 / 1:1 / 4:5)
+3. Drag to pan, pinch/scroll/slider to zoom
+4. Toolbar: Undo · Redo · Reset · Save
+5. Live mini-preview at bottom shows poster with edit applied
+6. Save → modal closes → poster updates instantly
 
-The current pipeline (waitForDomImages → swap to data URL → toJpeg) is correct for desktop and Android. It just hits this Safari bug.
+### Architecture
 
-### Fix: Two-layer hybrid capture (text via html-to-image, image via Canvas2D)
+**New files**
+- `src/components/marketing/ImageEditorModal.tsx` — the editor (drag, zoom, undo/redo, safe-area overlay)
+- `src/hooks/useImageEditHistory.ts` — undo/redo stack (capped at 50 entries)
+- `src/lib/imageCropState.ts` — types + helpers for crop state `{ scale, offsetX, offsetY }` (offsets in normalized 0-1 coords so they survive frame-size changes)
 
-Render the poster as two passes and composite them:
+**Modified files**
+- `src/pages/admin/MarketingStudio.tsx` — store `Map<imageUrl, CropState>`, pass into templates, open modal on image click
+- `src/components/marketing/templates.tsx` — apply `transform: scale() translate()` to hero `<img>` based on crop state, mark editable images with `data-editable-hero`, attach onClick handler
 
-1. **Pass 1 — html-to-image** captures the poster with the hero `<img>` made invisible (`visibility: hidden`). This produces a clean text/background/CTA layer that html-to-image handles reliably on every browser.
-2. **Pass 2 — native Canvas2D** draws the prefetched hero image (already loaded as an `HTMLImageElement` from a data URL, so no CORS issue) into the exact rectangle the hero `<img>` occupies in the live DOM, using `getBoundingClientRect()` × pixelRatio.
-3. Encode the composited canvas as JPEG → existing share / download flow.
+### Crop state model
+```ts
+type CropState = {
+  scale: number;        // 1.0 = fit, up to 4.0
+  offsetX: number;      // -1 to 1 (normalized)
+  offsetY: number;      // -1 to 1 (normalized)
+};
+```
+Stored per `imageUrl` in `Map`. Survives variant switches and is keyed independently per image, so multi-product posters keep individual edits.
 
-This bypasses the foreignObject `<img>` bug entirely because the hero image is never inside the foreignObject — it's drawn natively by the browser.
+### Editor controls
+- **Drag**: pointer events (works for mouse + touch). Bounds-clamped so image can't leave the frame.
+- **Zoom**: 
+  - Slider (0.5×–4×) always visible
+  - Wheel zoom on desktop
+  - Two-finger pinch on touch
+- **Buttons**: Undo (←), Redo (→), Reset (↻), Cancel, Save
+- **Keyboard**: Cmd/Ctrl+Z undo, Cmd/Ctrl+Shift+Z redo, Esc cancel
 
-### Safety net: retry + validation
+### Undo/redo
+- Push new state on drag-end and zoom-end (debounced, not on every pixel)
+- Stack capped at 50 steps
+- Reset clears stack and returns to `{ scale: 1, offsetX: 0, offsetY: 0 }`
 
-- If on iOS Safari, run a **3-attempt loop** with a 200 ms delay between attempts. After each attempt, check the captured canvas hero region for >5% non-background pixels; retry if blank.
-- Keep the existing >5KB blob size validation as a final guard.
-- If after retries the hero is still blank, show a clear toast: `"Couldn't render product image — please try again"` and **abort** instead of saving a broken file.
+### Safe-area overlay
+Dashed rectangles inside the crop frame marking:
+- Top 20% (where badge/headline sits)
+- Bottom 25% (where price + CTA sit)
+Toggle button to hide.
 
-### Files to change
+### Live preview sync
+The poster preview's hero `<img>` uses the same `transform: scale(s) translate(x%, y%)` as the editor. Updating the crop state in MarketingStudio re-renders the template instantly.
 
-- `src/pages/admin/MarketingStudio.tsx` — replace `handleExport` capture step with the two-layer hybrid renderer for single-product mode. Multi-product tile mode keeps the existing path (multiple small tiles are less affected) but gets the same retry-on-iOS guard.
-- `src/lib/exportImageCache.ts` — add a small helper `loadImageElement(url)` that returns a fully-decoded `HTMLImageElement` for compositing, and `isIOSSafari()` for the retry guard.
+### Export integrity
+The hybrid Canvas2D renderer in `handleExport` already draws hero images natively. Update its math to apply the same scale + translate transform when computing source rectangle (`sx, sy, sw, sh`) so the exported JPEG matches the preview exactly. No quality loss because we sample from the original full-resolution image.
 
-### Verification
+### Multi-product support
+Multi-tile templates already render multiple `<img>` elements; each gets its own click handler keyed by `imageUrl`. The crop state Map handles them transparently.
 
-- iOS Safari (your phone): Download JPEG → opened file contains the Nike Shox hero photo, not a black box.
-- Android Chrome: same.
-- Desktop Chrome / Safari: same.
-- Force-fail the prefetch (offline) → toast appears, no broken file is saved.
+### Mobile optimizations
+- `touch-action: none` on draggable surface
+- Pointer events (unified mouse + touch)
+- `requestAnimationFrame` throttling on drag updates
+- No layout thrashing — only `transform` changes
+
+### Out of scope (can be added later)
+- Rotation
+- Filters/brightness
+- Cropping the image itself (we only reframe; original pixels untouched)
 
