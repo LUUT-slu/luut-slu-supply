@@ -16,6 +16,7 @@ import { PopupsSection } from "@/components/admin/PopupsSection";
 import { DiscountsSection } from "@/components/admin/DiscountsSection";
 import { HomepageEditor } from "@/components/admin/HomepageEditor";
 import { NotificationsSection } from "@/components/admin/NotificationsSection";
+import { MarketingDefaultsCard } from "@/components/marketing/MarketingDefaultsCard";
 import { toast } from "sonner";
 
 export default function AdminSiteSettings() {
@@ -92,6 +93,11 @@ export default function AdminSiteSettings() {
 
             {/* ========== NOTIFICATIONS & ALERTS ========== */}
             <NotificationsSection initialSettings={settings?.notifications} />
+
+            <Separator />
+
+            {/* ========== MARKETING STUDIO DEFAULTS ========== */}
+            <MarketingDefaultsCard />
 
             <Separator />
 
