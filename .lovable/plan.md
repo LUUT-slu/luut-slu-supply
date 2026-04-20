@@ -1,31 +1,23 @@
 
-The user wants the new `PresetLayout` (the preset-driven single-product poster) to be used for ALL presets, including the default Hype preset. Remove the legacy fallback that was added in the previous turn so that every preset — including default — renders through `PresetLayout`.
+The user is looking at the current preview (Hype preset, PresetLayout) and saying it doesn't match the original poster style they wanted to keep. The previous "nike-shox-nz-post-hype.png" they uploaded was the ORIGINAL HypeLayout (the legacy one we just deleted). The current PresetLayout renders differently — different typography, spacing, badge placement, CTA shape, etc.
 
-### Root state
-Currently in `src/pages/admin/MarketingStudio.tsx`:
-```ts
-const isDefaultStyle = activePresetId === "hype" && Object.keys(presetOverrides).length === 0;
-preset: isDefaultStyle ? undefined : activePreset,
-```
-This makes the default Hype preset fall back to the old hardcoded `HypeLayout`. The user wants to drop that fallback so the new preset-driven layout is always used.
+So they want the OLD legacy `HypeLayout` look back as the default, not the new `PresetLayout`. The previous turn deleted those legacy layouts entirely. We need to restore the original Hype look.
 
-### Fix
+Let me check what the legacy HypeLayout looked like vs current PresetLayout.
 
-**1. `src/pages/admin/MarketingStudio.tsx`**
-- Remove the `isDefaultStyle` check.
-- Always pass `preset: activePreset` to `templateProps`.
-- Result: every preset (including Hype default) routes through `PresetLayout`.
+### Plan
 
-**2. `src/components/marketing/templates.tsx`** (cleanup)
-- Remove the now-unused legacy `CleanLayout`, `HypeLayout`, `MinimalLayout` branches inside `MarketingTemplate` (the `!usePreset` fallback path).
-- Keep the `style` prop in the type for back-compat but stop branching on it.
-- `MarketingTemplate` always renders `PresetLayout`.
+Restore the original Hype poster look as the default single-product style, while keeping all presets functional through the unified pipeline.
+
+**Approach: Make `PresetLayout` (with Hype tokens) visually match the original `HypeLayout`.**
+
+Rather than reintroducing the deleted legacy code branch, update `PresetLayout` so that when rendered with the Hype preset it produces the exact original look the user approved earlier (dark gradient bg, "LUUT SLU" mark top-right, framed product image, green "LIMITED DROP" pill above title, large white "NIKE SHOX NZ" headline with green accent on second word, bold green "EC$300" price, green pill "DM TO BUY" CTA, meetup line at bottom). Other presets (Clean, Minimal) keep their token-driven variations.
 
 ### Files
-- `src/pages/admin/MarketingStudio.tsx` — drop `isDefaultStyle`, always pass `activePreset`
-- `src/components/marketing/templates.tsx` — remove legacy layout fallback branches; always use `PresetLayout`
+- `src/components/marketing/PresetLayout.tsx` — refine the layout rendering to match the original Hype poster: image framing, badge styling above title, headline split with accent on second word, price weight, CTA pill sizing, meetup line, "LUUT SLU" wordmark position.
+- `src/lib/marketingPresets.ts` — verify Hype preset tokens (accent #39ff7a, glow, density, badge "pill", CTA "pill") produce the desired result; tweak spacing tokens if needed.
 
 ### Verification
-- Open Single Promo with default Hype preset → renders through new `PresetLayout` (preset-driven)
-- Switch to Clean / Sale / Luxury → all use the same unified layout, only tokens change
-- Style & Branding controls (accent, density, badge, CTA shape) work uniformly across every preset
+- Default load shows the exact same poster as the previously approved screenshot (dark bg, green accent, "LIMITED DROP" pill, big white headline, green price, green "DM TO BUY" pill).
+- Switching to Clean / Minimal presets still changes palette + density.
+- Style & Branding overrides (accent, density, badge shape, CTA shape) still work.
