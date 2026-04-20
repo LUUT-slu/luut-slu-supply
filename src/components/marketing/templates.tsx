@@ -63,25 +63,142 @@ export interface MultiTemplateProps {
   showLabels: boolean;
 }
 
+// Theme palette per poster intent. Picked from `urgencyText`/`headline` keywords
+// so the reference's "green glow" / "red glow" aesthetic auto-applies.
+interface PosterTheme {
+  glow: string; // primary accent (price chips, headline highlight, glow color)
+  glowSoft: string; // halo
+  ribbon: string; // CTA ribbon background gradient
+  ribbonText: string;
+  cta: string; // CTA button gradient
+  ctaText: string;
+  bgVignette: string; // radial vignette behind tiles
+  divider: string; // horizontal glowing divider under headline
+  badge: string; // per-tile badge gradient
+}
+
+function pickTheme(headline: string, urgency?: string): PosterTheme {
+  const probe = `${headline} ${urgency ?? ""}`.toUpperCase();
+
+  // Almost gone / low-stock / urgency → red-orange ember
+  if (/ALMOST|GONE|LIMITED|LOW|HURRY|LAST/.test(probe)) {
+    return {
+      glow: "#ff7a18",
+      glowSoft: "rgba(255,90,20,0.55)",
+      ribbon: "linear-gradient(180deg,#ffd166 0%,#f5a300 55%,#c97400 100%)",
+      ribbonText: "#1a0a00",
+      cta: "linear-gradient(180deg,#ff8a3d 0%,#ff5b14 60%,#c93b00 100%)",
+      ctaText: "#ffffff",
+      bgVignette:
+        "radial-gradient(ellipse at center,#3a1408 0%,#160604 55%,#070302 100%)",
+      divider:
+        "linear-gradient(90deg,transparent 0%,#ff8a3d 25%,#ffd28a 50%,#ff8a3d 75%,transparent 100%)",
+      badge: "linear-gradient(180deg,#ff8a3d,#d83f00)",
+    };
+  }
+
+  // Best sellers / top picks / most ordered → green neon
+  if (/BEST|TOP|MOST|PICKS|HOT|TRENDING/.test(probe)) {
+    return {
+      glow: "#39ff7a",
+      glowSoft: "rgba(57,255,122,0.55)",
+      ribbon: "linear-gradient(180deg,#39ff7a 0%,#19c45a 60%,#0d8a3e 100%)",
+      ribbonText: "#03190b",
+      cta: "linear-gradient(180deg,#27e068 0%,#0fa84a 60%,#0a7a36 100%)",
+      ctaText: "#ffffff",
+      bgVignette:
+        "radial-gradient(ellipse at center,#06140c 0%,#040806 55%,#020302 100%)",
+      divider:
+        "linear-gradient(90deg,transparent 0%,#39ff7a 25%,#cfffd8 50%,#39ff7a 75%,transparent 100%)",
+      badge: "linear-gradient(180deg,#39ff7a,#0fa84a)",
+    };
+  }
+
+  // New / drop / arrivals → cyan-electric
+  if (/NEW|DROP|ARRIVAL|FRESH|JUST/.test(probe)) {
+    return {
+      glow: "#22d3ff",
+      glowSoft: "rgba(34,211,255,0.55)",
+      ribbon: "linear-gradient(180deg,#7df3ff 0%,#22d3ff 55%,#0090b8 100%)",
+      ribbonText: "#04161c",
+      cta: "linear-gradient(180deg,#39e0ff 0%,#0aa6d6 60%,#066f90 100%)",
+      ctaText: "#ffffff",
+      bgVignette:
+        "radial-gradient(ellipse at center,#06181f 0%,#040a0f 55%,#020405 100%)",
+      divider:
+        "linear-gradient(90deg,transparent 0%,#22d3ff 25%,#cdf6ff 50%,#22d3ff 75%,transparent 100%)",
+      badge: "linear-gradient(180deg,#39e0ff,#0aa6d6)",
+    };
+  }
+
+  // Sale / promo / discount → magenta-gold
+  if (/SALE|PROMO|DISCOUNT|OFF|DEAL/.test(probe)) {
+    return {
+      glow: "#ffcf3a",
+      glowSoft: "rgba(255,90,140,0.5)",
+      ribbon: "linear-gradient(180deg,#ffe48a 0%,#ffcf3a 55%,#c98a00 100%)",
+      ribbonText: "#1a0a00",
+      cta: "linear-gradient(180deg,#ff5fa0 0%,#d63076 60%,#8a1a4d 100%)",
+      ctaText: "#ffffff",
+      bgVignette:
+        "radial-gradient(ellipse at center,#1a0a14 0%,#0a0508 55%,#040203 100%)",
+      divider:
+        "linear-gradient(90deg,transparent 0%,#ffcf3a 25%,#fff2c2 50%,#ffcf3a 75%,transparent 100%)",
+      badge: "linear-gradient(180deg,#ff5fa0,#d63076)",
+    };
+  }
+
+  // Restocked / back in stock → violet
+  if (/RESTOCK|BACK|STOCK/.test(probe)) {
+    return {
+      glow: "#a78bfa",
+      glowSoft: "rgba(167,139,250,0.55)",
+      ribbon: "linear-gradient(180deg,#c4b5fd 0%,#8b5cf6 55%,#5b21b6 100%)",
+      ribbonText: "#0e0623",
+      cta: "linear-gradient(180deg,#a78bfa 0%,#7c3aed 60%,#4c1d95 100%)",
+      ctaText: "#ffffff",
+      bgVignette:
+        "radial-gradient(ellipse at center,#120a22 0%,#070414 55%,#030108 100%)",
+      divider:
+        "linear-gradient(90deg,transparent 0%,#a78bfa 25%,#e9e2ff 50%,#a78bfa 75%,transparent 100%)",
+      badge: "linear-gradient(180deg,#a78bfa,#7c3aed)",
+    };
+  }
+
+  // Default → neutral neon green (matches BEST SELLERS reference)
+  return {
+    glow: "#39ff7a",
+    glowSoft: "rgba(57,255,122,0.45)",
+    ribbon: "linear-gradient(180deg,#39ff7a 0%,#19c45a 60%,#0d8a3e 100%)",
+    ribbonText: "#03190b",
+    cta: "linear-gradient(180deg,#27e068 0%,#0fa84a 60%,#0a7a36 100%)",
+    ctaText: "#ffffff",
+    bgVignette:
+      "radial-gradient(ellipse at center,#0a0f0c 0%,#050706 55%,#020303 100%)",
+    divider:
+      "linear-gradient(90deg,transparent 0%,#39ff7a 25%,#cfffd8 50%,#39ff7a 75%,transparent 100%)",
+    badge: "linear-gradient(180deg,#39ff7a,#0fa84a)",
+  };
+}
+
 export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProps>(
   function MultiProductTemplate(props, ref) {
     const { format } = props;
     const { w, h } = SIZE[format];
-    const dark = props.style === "hype";
-    const cream = props.style === "minimal";
 
-    const bg = dark
-      ? "#0a0a0a"
-      : cream
-        ? "linear-gradient(135deg, #f6f1ea 0%, #e8dcc8 100%)"
-        : "#ffffff";
-    const fg = dark ? "#ffffff" : "#0a0a0a";
-    const accent = dark ? "#39ff14" : cream ? "#7a6a52" : "#ff3d00";
-
+    const theme = pickTheme(props.headline, props.urgencyText);
     const isStory = format === "story";
     const isAd = format === "ad";
     const isPortrait = format === "portrait";
-    const padding = isStory || isPortrait ? "70px 56px" : isAd ? "44px" : "56px";
+    const padding = isStory || isPortrait ? "64px 52px" : isAd ? "40px" : "52px";
+
+    // Split headline into two words to color the second one with the glow,
+    // matching the reference (e.g. "BEST SELLERS" → "BEST" white, "SELLERS" green)
+    const headlineParts = props.headline.trim().split(/\s+/);
+    const firstWord = headlineParts[0] ?? "";
+    const restWords = headlineParts.slice(1).join(" ");
+
+    const headlineSize = isStory ? 110 : isAd ? 64 : isPortrait ? 96 : 86;
 
     return (
       <div
@@ -93,170 +210,255 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
           overflow: "hidden",
           fontFamily:
             "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-          background: bg,
-          color: fg,
+          background: theme.bgVignette,
+          color: "#ffffff",
           padding,
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
         }}
       >
-        {dark && (
-          <>
-            <div
-              style={{
-                position: "absolute",
-                top: -180,
-                right: -180,
-                width: 520,
-                height: 520,
-                borderRadius: "50%",
-                background: "radial-gradient(circle, rgba(255,87,34,0.5), transparent 70%)",
-                filter: "blur(20px)",
-                pointerEvents: "none",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: -150,
-                left: -150,
-                width: 460,
-                height: 460,
-                borderRadius: "50%",
-                background: "radial-gradient(circle, rgba(57,255,20,0.32), transparent 70%)",
-                filter: "blur(20px)",
-                pointerEvents: "none",
-              }}
-            />
-          </>
-        )}
-
-        {/* Header */}
+        {/* Top + bottom glowing halos */}
         <div
           style={{
-            position: "relative",
-            zIndex: 2,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 24,
+            position: "absolute",
+            top: -260,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "120%",
+            height: 520,
+            background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
+            filter: "blur(20px)",
+            pointerEvents: "none",
           }}
-        >
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: -260,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "120%",
+            height: 520,
+            background: `radial-gradient(ellipse at center, ${theme.glowSoft} 0%, transparent 60%)`,
+            filter: "blur(20px)",
+            pointerEvents: "none",
+          }}
+        />
+
+        {/* Headline + glowing divider above */}
+        <div style={{ position: "relative", zIndex: 2, textAlign: "center" }}>
           <div
             style={{
-              background: accent,
-              color: dark ? "#0a0a0a" : "#ffffff",
-              padding: "10px 20px",
+              height: 6,
               borderRadius: 999,
-              fontSize: isAd ? 18 : 22,
-              fontWeight: 800,
-              letterSpacing: 2,
-              textTransform: "uppercase",
+              background: theme.divider,
+              filter: `drop-shadow(0 0 18px ${theme.glow})`,
+              marginBottom: isStory ? 26 : 18,
             }}
-          >
-            {props.urgencyText || "FEATURED"}
-          </div>
-          <BrandMark
-            brandName={props.brandName}
-            brandLogoUrl={props.brandLogoUrl}
-            dark={dark}
-            size={isAd ? 44 : 64}
           />
-        </div>
-
-        {/* Headline */}
-        <div
-          style={{
-            position: "relative",
-            zIndex: 2,
-            fontSize: isStory ? 92 : isAd ? 56 : isPortrait ? 80 : 72,
-            fontWeight: 900,
-            lineHeight: 0.95,
-            letterSpacing: "-0.03em",
-            textTransform: "uppercase",
-            marginBottom: props.subhead ? 8 : 24,
-          }}
-        >
-          {props.headline}
-        </div>
-        {props.subhead && (
           <div
             style={{
-              position: "relative",
-              zIndex: 2,
-              fontSize: isStory ? 26 : 22,
-              color: dark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.55)",
-              marginBottom: 24,
+              fontSize: headlineSize,
+              fontWeight: 900,
+              lineHeight: 0.92,
+              letterSpacing: "-0.02em",
+              textTransform: "uppercase",
+              color: "#ffffff",
+              textShadow: "0 4px 18px rgba(0,0,0,0.6)",
             }}
           >
-            {props.subhead}
+            <span>{firstWord}</span>
+            {restWords && (
+              <>
+                {" "}
+                <span
+                  style={{
+                    background: `linear-gradient(180deg, ${theme.glow} 0%, ${theme.glow} 60%, rgba(255,255,255,0.85) 100%)`,
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                    filter: `drop-shadow(0 0 18px ${theme.glowSoft})`,
+                  }}
+                >
+                  {restWords}
+                </span>
+              </>
+            )}
           </div>
-        )}
+          {props.subhead && (
+            <div
+              style={{
+                marginTop: 12,
+                fontSize: isStory ? 24 : 20,
+                color: "rgba(255,255,255,0.7)",
+                fontWeight: 600,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+              }}
+            >
+              {props.subhead}
+            </div>
+          )}
+        </div>
 
         {/* Product grid */}
-        <div style={{ position: "relative", zIndex: 2, flex: 1, minHeight: 0 }}>
+        <div
+          style={{
+            position: "relative",
+            zIndex: 2,
+            flex: 1,
+            minHeight: 0,
+            marginTop: isStory ? 36 : 24,
+            marginBottom: isStory ? 28 : 20,
+          }}
+        >
           <ProductGrid
             items={props.products}
-            dark={dark}
+            theme={theme}
             showPrice={props.showPrice}
             showBadges={props.showBadges}
             showLabels={props.showLabels}
           />
         </div>
 
-        {/* Footer CTA */}
+        {/* Optional ribbon (urgency) */}
+        {props.urgencyText && (
+          <div
+            style={{
+              position: "relative",
+              zIndex: 2,
+              alignSelf: "center",
+              marginBottom: 16,
+            }}
+          >
+            <Ribbon text={props.urgencyText} theme={theme} small={isAd} />
+          </div>
+        )}
+
+        {/* Meetup line */}
         <div
           style={{
             position: "relative",
             zIndex: 2,
-            marginTop: 24,
+            textAlign: "center",
+            color: "rgba(255,255,255,0.85)",
+            fontSize: isAd ? 18 : 22,
+            fontWeight: 600,
+            marginBottom: 14,
+          }}
+        >
+          <span style={{ color: "#ff4d4d", marginRight: 6 }}>📍</span>
+          {props.meetupText}
+        </div>
+
+        {/* CTA pill */}
+        <div
+          style={{
+            position: "relative",
+            zIndex: 2,
             display: "flex",
-            flexDirection: isAd ? "row" : "column",
-            gap: 12,
-            alignItems: isAd ? "center" : "stretch",
-            justifyContent: isAd ? "space-between" : "flex-start",
+            justifyContent: "center",
           }}
         >
           <div
             style={{
-              fontSize: isAd ? 20 : 24,
-              color: dark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.6)",
-              fontWeight: 600,
-            }}
-          >
-            📍 {props.meetupText}
-          </div>
-          <div
-            style={{
-              background: dark ? "#ffffff" : "#0a0a0a",
-              color: dark ? "#0a0a0a" : "#ffffff",
-              padding: "18px 28px",
-              borderRadius: 14,
-              fontSize: isAd ? 22 : 28,
-              fontWeight: 800,
+              background: theme.cta,
+              color: theme.ctaText,
+              padding: isAd ? "14px 36px" : "20px 56px",
+              borderRadius: 16,
+              fontSize: isAd ? 22 : 30,
+              fontWeight: 900,
               letterSpacing: 2,
               textAlign: "center",
               textTransform: "uppercase",
+              boxShadow: `0 0 32px ${theme.glowSoft}, inset 0 -4px 0 rgba(0,0,0,0.25)`,
+              minWidth: isAd ? 280 : 420,
             }}
           >
             {props.ctaText}
           </div>
+        </div>
+
+        {/* Brand line */}
+        <div
+          style={{
+            position: "relative",
+            zIndex: 2,
+            marginTop: 18,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          {props.brandLogoUrl ? (
+            <img
+              src={props.brandLogoUrl}
+              crossOrigin="anonymous"
+              alt=""
+              style={{ height: isAd ? 28 : 38, width: "auto", objectFit: "contain" }}
+            />
+          ) : (
+            <div
+              style={{
+                fontSize: isAd ? 16 : 20,
+                fontWeight: 700,
+                letterSpacing: 6,
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.85)",
+              }}
+            >
+              {props.brandName}
+            </div>
+          )}
         </div>
       </div>
     );
   },
 );
 
+function Ribbon({
+  text,
+  theme,
+  small,
+}: {
+  text: string;
+  theme: PosterTheme;
+  small?: boolean;
+}) {
+  const padY = small ? 10 : 14;
+  const padX = small ? 28 : 44;
+  const notch = small ? 16 : 22;
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <div
+        style={{
+          background: theme.ribbon,
+          color: theme.ribbonText,
+          padding: `${padY}px ${padX + notch}px`,
+          fontSize: small ? 20 : 28,
+          fontWeight: 900,
+          letterSpacing: 2,
+          textTransform: "uppercase",
+          clipPath: `polygon(${notch}px 0, calc(100% - ${notch}px) 0, 100% 50%, calc(100% - ${notch}px) 100%, ${notch}px 100%, 0 50%)`,
+          boxShadow: `0 0 28px ${theme.glowSoft}`,
+        }}
+      >
+        {text}
+      </div>
+    </div>
+  );
+}
+
 function ProductGrid({
   items,
-  dark,
+  theme,
   showPrice,
   showBadges,
   showLabels,
 }: {
   items: MultiProductItem[];
-  dark: boolean;
+  theme: PosterTheme;
   showPrice: boolean;
   showBadges: boolean;
   showLabels: boolean;
@@ -278,10 +480,6 @@ function ProductGrid({
     rows = "1fr 1fr";
   }
 
-  const tileBg = dark ? "rgba(255,255,255,0.06)" : "#f4f4f4";
-  const labelBg = dark ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.92)";
-  const labelFg = dark ? "#ffffff" : "#0a0a0a";
-
   return (
     <div
       style={{
@@ -290,7 +488,7 @@ function ProductGrid({
         display: "grid",
         gridTemplateColumns: columns,
         gridTemplateRows: rows,
-        gap: 12,
+        gap: 18,
       }}
     >
       {tiles.map((item, i) => {
@@ -301,123 +499,133 @@ function ProductGrid({
             style={{
               gridColumn: spanFull ? "1 / span 2" : "auto",
               position: "relative",
+              borderRadius: 22,
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: `0 0 22px ${theme.glowSoft}, 0 12px 28px rgba(0,0,0,0.55)`,
+              padding: 14,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
               overflow: "hidden",
-              borderRadius: 18,
-              background: tileBg,
             }}
           >
-            {item.imageUrl ? (
-              <img
-                src={item.imageUrl}
-                crossOrigin="anonymous"
-                alt=""
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: dark ? "rgba(255,255,255,0.4)" : "#999",
-                  fontSize: 22,
-                }}
-              >
-                No image
-              </div>
-            )}
+            {/* Image area (rounded inner card) */}
+            <div
+              style={{
+                position: "relative",
+                flex: 1,
+                minHeight: 0,
+                borderRadius: 14,
+                overflow: "hidden",
+                background: "#f3f3f3",
+              }}
+            >
+              {item.imageUrl ? (
+                <img
+                  src={item.imageUrl}
+                  crossOrigin="anonymous"
+                  alt=""
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#999",
+                    fontSize: 22,
+                  }}
+                >
+                  No image
+                </div>
+              )}
 
-            {/* Badge top-left */}
-            {showBadges && item.badge && (
+              {/* Badge top-left */}
+              {showBadges && item.badge && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 12,
+                    left: 12,
+                    background: theme.badge,
+                    color: "#ffffff",
+                    padding: "6px 14px",
+                    borderRadius: 999,
+                    fontSize: 16,
+                    fontWeight: 900,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    boxShadow: `0 0 14px ${theme.glowSoft}`,
+                  }}
+                >
+                  {item.badge}
+                </div>
+              )}
+
+              {/* Overflow chip top-right on last tile */}
+              {overflow > 0 && i === tiles.length - 1 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 12,
+                    right: 12,
+                    background: "#0a0a0a",
+                    color: "#ffffff",
+                    padding: "6px 14px",
+                    borderRadius: 999,
+                    fontSize: 18,
+                    fontWeight: 900,
+                  }}
+                >
+                  +{overflow}
+                </div>
+              )}
+            </div>
+
+            {/* Title */}
+            {showLabels && item.title && (
               <div
                 style={{
-                  position: "absolute",
-                  top: 12,
-                  left: 12,
-                  background: "#ff3d00",
-                  color: "#ffffff",
-                  padding: "6px 14px",
-                  borderRadius: 999,
-                  fontSize: 18,
+                  fontSize: 24,
                   fontWeight: 800,
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                }}
-              >
-                {item.badge}
-              </div>
-            )}
-
-            {/* Overflow chip top-right on last tile */}
-            {overflow > 0 && i === tiles.length - 1 && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 12,
-                  right: 12,
-                  background: "#0a0a0a",
                   color: "#ffffff",
-                  padding: "6px 14px",
-                  borderRadius: 999,
-                  fontSize: 20,
-                  fontWeight: 900,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  lineHeight: 1.1,
                 }}
               >
-                +{overflow}
+                {item.title}
               </div>
             )}
 
-            {/* Bottom label: name + price */}
-            {(showLabels || showPrice) && (item.title || item.price) && (
+            {/* Price chip */}
+            {showPrice && item.price && (
               <div
                 style={{
-                  position: "absolute",
-                  left: 12,
-                  right: 12,
-                  bottom: 12,
-                  background: labelBg,
-                  color: labelFg,
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
+                  alignSelf: "flex-start",
+                  background: theme.glow,
+                  color: "#062012",
+                  padding: "8px 16px",
+                  borderRadius: 10,
+                  fontSize: 22,
+                  fontWeight: 900,
+                  letterSpacing: 0.5,
+                  boxShadow: `0 0 18px ${theme.glowSoft}`,
                 }}
               >
-                {showLabels && (
-                  <div
-                    style={{
-                      fontSize: 20,
-                      fontWeight: 700,
-                      lineHeight: 1.1,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      flex: 1,
-                    }}
-                  >
-                    {item.title}
-                  </div>
-                )}
-                {showPrice && item.price && (
-                  <div
-                    style={{
-                      fontSize: 20,
-                      fontWeight: 800,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    EC${item.price}
-                  </div>
-                )}
+                EC${item.price}
               </div>
             )}
           </div>
