@@ -824,7 +824,7 @@ function PresetBadge({
       : undefined;
   const bg = isOutline ? "transparent" : theme.badge;
   const border = isOutline ? `2px solid ${theme.glow}` : "none";
-  const color = isOutline ? theme.glow : "#ffffff";
+  const color = isOutline ? theme.glow : contrastTextSafe(theme.badge);
   return (
     <div
       style={{
