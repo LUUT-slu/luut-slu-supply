@@ -634,7 +634,8 @@ function ProductGrid({
   const tileRadius = preset?.layout.radius ?? 22;
   const innerRadius = Math.max(8, tileRadius - 8);
   const tileBg = preset?.palette.surface ?? "rgba(255,255,255,0.04)";
-  const titleColor = preset?.palette.text ?? "#ffffff";
+  // Title sits on tileBg (surface) — pick a color that contrasts with the tile, not the page bg
+  const titleColor = contrastTextSafe(tileBg);
   const badgeShape = preset?.badge.shape ?? "pill";
   const badgeFill = preset?.badge.fill ?? "glow";
 
@@ -798,8 +799,17 @@ function ProductGrid({
 }
 
 function contrastTextSafe(c: string): string {
-  if (!c.startsWith("#")) return "#0a0a0a";
-  return contrastText(c);
+  // Extract first hex color from gradients/rgba strings; fallback to white
+  if (c.startsWith("#")) return contrastText(c);
+  const hexMatch = c.match(/#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}/);
+  if (hexMatch) return contrastText(hexMatch[0]);
+  const rgbMatch = c.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (rgbMatch) {
+    const [, r, g, b] = rgbMatch;
+    const yiq = (+r * 299 + +g * 587 + +b * 114) / 1000;
+    return yiq >= 160 ? "#0a0a0a" : "#ffffff";
+  }
+  return "#ffffff";
 }
 
 // Preset-aware tile badge.
@@ -824,7 +834,7 @@ function PresetBadge({
       : undefined;
   const bg = isOutline ? "transparent" : theme.badge;
   const border = isOutline ? `2px solid ${theme.glow}` : "none";
-  const color = isOutline ? theme.glow : "#ffffff";
+  const color = isOutline ? theme.glow : contrastTextSafe(theme.badge);
   return (
     <div
       style={{
