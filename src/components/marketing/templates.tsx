@@ -634,7 +634,8 @@ function ProductGrid({
   const tileRadius = preset?.layout.radius ?? 22;
   const innerRadius = Math.max(8, tileRadius - 8);
   const tileBg = preset?.palette.surface ?? "rgba(255,255,255,0.04)";
-  const titleColor = preset?.palette.text ?? "#ffffff";
+  // Title sits on tileBg (surface) — pick a color that contrasts with the tile, not the page bg
+  const titleColor = contrastTextSafe(tileBg);
   const badgeShape = preset?.badge.shape ?? "pill";
   const badgeFill = preset?.badge.fill ?? "glow";
 
