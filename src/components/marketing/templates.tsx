@@ -798,8 +798,17 @@ function ProductGrid({
 }
 
 function contrastTextSafe(c: string): string {
-  if (!c.startsWith("#")) return "#0a0a0a";
-  return contrastText(c);
+  // Extract first hex color from gradients/rgba strings; fallback to white
+  if (c.startsWith("#")) return contrastText(c);
+  const hexMatch = c.match(/#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}/);
+  if (hexMatch) return contrastText(hexMatch[0]);
+  const rgbMatch = c.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (rgbMatch) {
+    const [, r, g, b] = rgbMatch;
+    const yiq = (+r * 299 + +g * 587 + +b * 114) / 1000;
+    return yiq >= 160 ? "#0a0a0a" : "#ffffff";
+  }
+  return "#ffffff";
 }
 
 // Preset-aware tile badge.
