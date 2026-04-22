@@ -37,7 +37,6 @@ const PRESET_TOOL = {
             muted: { type: "string", description: "Muted/secondary text hex color" },
           },
           required: ["bg", "surface", "accent", "glow", "text", "muted"],
-          additionalProperties: false,
         },
         layout: {
           type: "object",
@@ -47,17 +46,19 @@ const PRESET_TOOL = {
             gridGap: { type: "number", description: "Grid gap in pixels (0-40)" },
           },
           required: ["density", "radius", "gridGap"],
-          additionalProperties: false,
         },
         typography: {
           type: "object",
           properties: {
-            headlineWeight: { type: "number", enum: [700, 800, 900] },
+            headlineWeight: {
+              type: "string",
+              enum: ["700", "800", "900"],
+              description: "Headline font weight as a string: 700, 800, or 900",
+            },
             headlineCase: { type: "string", enum: ["upper", "title"] },
             scale: { type: "number", description: "Headline scale 0.85..1.15" },
           },
           required: ["headlineWeight", "headlineCase", "scale"],
-          additionalProperties: false,
         },
         badge: {
           type: "object",
@@ -66,7 +67,6 @@ const PRESET_TOOL = {
             fill: { type: "string", enum: ["glow", "solid", "outline"] },
           },
           required: ["shape", "fill"],
-          additionalProperties: false,
         },
         cta: {
           type: "object",
@@ -75,7 +75,6 @@ const PRESET_TOOL = {
             fill: { type: "string", enum: ["glow", "solid", "outline"] },
           },
           required: ["shape", "fill"],
-          additionalProperties: false,
         },
         background: {
           type: "object",
@@ -84,11 +83,9 @@ const PRESET_TOOL = {
             noise: { type: "boolean" },
           },
           required: ["type", "noise"],
-          additionalProperties: false,
         },
       },
       required: ["palette", "layout", "typography", "badge", "cta", "background"],
-      additionalProperties: false,
     },
   },
 };
