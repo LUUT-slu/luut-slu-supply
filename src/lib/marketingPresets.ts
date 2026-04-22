@@ -286,7 +286,10 @@ export function validateExtractedPreset(raw: unknown, name: string): PosterPrese
       gridGap: typeof layout.gridGap === "number" ? Math.max(0, Math.min(40, layout.gridGap)) : 18,
     },
     typography: {
-      headlineWeight: [700, 800, 900].includes(typo.headlineWeight) ? typo.headlineWeight : 900,
+      headlineWeight: (() => {
+        const w = typeof typo.headlineWeight === "string" ? parseInt(typo.headlineWeight, 10) : typo.headlineWeight;
+        return [700, 800, 900].includes(w) ? w : 900;
+      })(),
       headlineCase: typo.headlineCase === "title" ? "title" : "upper",
       scale: typeof typo.scale === "number" ? Math.max(0.85, Math.min(1.15, typo.scale)) : 1,
     },
