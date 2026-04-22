@@ -33,10 +33,18 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return undefined;
-          if (id.includes("react-router")) return "react-vendor";
-          if (id.includes("/react-dom/") || id.includes("/react/")) return "react-vendor";
+          // Keep React + its ecosystem in ONE chunk to avoid runtime init order issues
+          if (
+            id.includes("/react/") ||
+            id.includes("/react-dom/") ||
+            id.includes("/react-router") ||
+            id.includes("/scheduler/") ||
+            id.includes("/@tanstack/react-query") ||
+            id.includes("/@supabase/")
+          ) {
+            return "react-vendor";
+          }
           if (id.includes("@radix-ui")) return "radix";
-          if (id.includes("@tanstack/react-query") || id.includes("@supabase/")) return "query";
           if (id.includes("lucide-react")) return "icons";
           if (id.includes("html-to-image")) return "html-to-image";
           if (id.includes("recharts")) return "charts";
