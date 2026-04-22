@@ -380,11 +380,8 @@ export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProp
                 {" "}
                 <span
                   style={{
-                    background: `linear-gradient(180deg, ${theme.glow} 0%, ${theme.glow} 60%, ${textColor} 100%)`,
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                    filter: `drop-shadow(0 0 18px ${theme.glowSoft})`,
+                    color: textColor,
+                    textShadow: `0 0 24px ${theme.glow}, 0 4px 18px rgba(0,0,0,0.4)`,
                   }}
                 >
                   {restWords}
