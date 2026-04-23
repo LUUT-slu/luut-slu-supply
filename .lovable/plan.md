@@ -1,112 +1,66 @@
 
-# Fix the live production bootstrap failure
 
-## Confirmed production-only root cause
+# Sort sold-out items last across all homepage product sections
 
-The live site is no longer failing because of a missing script tag.
+## Goal
+On the homepage, every product section/category must show **in-stock items first**, then **sold-out items last**. Sold-out items stay visible (no hiding, no badge changes) — only their order changes.
 
-What the production checks confirmed on `https://luut-slu-supply.lovable.app/`:
+## Current behavior
+- `fetchHybridProducts` already sorts by stock status (`in_stock → low_stock → out_of_stock`), but several homepage sections then **re-slice or re-shuffle** the list, which can let sold-out items jump ahead:
+  - `HomeNewArrivalsSection` slices the first N from a list that may have been variant-split (splitting can append color variants in any order, mixing sold-out among in-stock).
+  - `HomeCategorySection` does the same after `splitByVisualOptions`.
+  - `HybridProductGrid` (used on category pages, also reachable from homepage) also does not re-sort after splitting.
+  - `HomeFeaturedSection` keeps original `productIds` order (admin order) — sold-out can appear in the middle.
+  - `WhatPeopleAreBuyingSection` filters to in-stock only when any exist, dropping sold-out instead of moving them to the end.
+- `BestSellersSection` is driven by sales data and does not need stock reordering (no stock field exposed) — leave as is.
 
-- The live HTML now includes the built entry script:
-  - `/assets/index-D7C-PLAO.js`
-- The main production assets all return `200`:
-  - `index-D7C-PLAO.js`
-  - `react-vendor-DdwU5BHh.js`
-  - `radix-6PHzDgb5.js`
-  - `index-Co_o2SY6.css`
-- The live document is serving a current deployment:
-  - `x-deployment-id: 8608796b-e720-4810-8895-c8deba2cfd15`
-- There are no failed chunk or asset requests during bootstrap.
-- The recharts/charts fix is already live:
-  - the live entry no longer references a separate `charts` chunk.
+## Plan
 
-The exact bootstrap failure is now this runtime crash in production console:
+### 1. Add a shared stable stock-priority sort helper
+Create `src/lib/stockSort.ts` with one small utility:
 
-```text
-TypeError: Cannot read properties of undefined (reading 'forwardRef')
-at https://luut-slu-supply.lovable.app/assets/radix-6PHzDgb5.js
-```
+- `sortByStockStatus<T extends { stockStatus: StockStatus }>(items: T[]): T[]`
+  - Stable sort.
+  - Order: `in_stock` (0) → `low_stock` (1) → `out_of_stock` (2).
+  - Preserves existing relative order within each group (so "newest first", featured admin order, category order, etc. are all kept inside their stock bucket).
 
-## Exact cause
+This guarantees consistent sold-out-last behavior wherever it is applied.
 
-This is a production chunk-splitting bug in `vite.config.ts`, not a homepage/data issue.
+### 2. Apply the helper in every homepage product section
 
-Current `manualChunks` still forces `@radix-ui` into its own `radix` chunk:
+Update each of these to run `sortByStockStatus` as the **final** step before `slice(limit)` / render, so it runs after variant splitting and any other transforms:
 
-```ts
-if (id.includes("@radix-ui")) return "radix";
-```
+- `src/components/HomeNewArrivalsSection.tsx`
+  - Sort after `splitByVisualOptions` and before `.slice(0, limit)`.
+- `src/components/HomeCategorySection.tsx`
+  - Same pattern: sort after split, before slice.
+- `src/components/HomeFeaturedSection.tsx`
+  - Sort the mapped products before render. Within in-stock, keep the admin-defined `productIds` order; sold-out featured items move to the end of the row.
+- `src/components/WhatPeopleAreBuyingSection.tsx`
+  - Stop dropping sold-out when in-stock exists.
+  - Build the daily-shuffled pool from the full list, then sort by stock so sold-out items go to the end of the displayed strip.
+- `src/components/HybridProductGrid.tsx`
+  - Sort after variant splitting and the existing `hideSoldOut` filter (so when `hideSoldOut` is off, sold-out items render last). This keeps category pages reachable from the homepage consistent.
 
-But the live built files show a circular dependency between the two startup chunks:
+### 3. Leave alone
+- `BestSellersSection` — sales-driven, no stock data on the source rows.
+- `HomepageReviews`, hero, trust, how-it-works, CTA — not product lists.
+- Cart, checkout, product detail — out of scope.
+- Sold-out badges, opacity styling, "Sold Out" labels — unchanged.
 
-```text
-radix-6PHzDgb5.js -> imports React from react-vendor-DdwU5BHh.js
-react-vendor-DdwU5BHh.js -> imports helpers from radix-6PHzDgb5.js
-```
-
-That circular init order means `radix` executes before the React export it needs is ready, so `forwardRef` is undefined and the app crashes before React mounts.
-
-## The recent change causing this outage
-
-The current `manualChunks` strategy in `vite.config.ts` is the cause.
-
-The earlier recharts fix removed the old `charts` TDZ failure, but leaving `@radix-ui` split into a separate `radix` chunk created a new production-only bootstrap cycle between `radix` and `react-vendor`.
-
-## What to change
-
-### 1. Fix chunking in `vite.config.ts`
-Make startup dependencies load in one direction only.
-
-Implementation:
-- remove the dedicated `radix` chunk rule:
-  - `if (id.includes("@radix-ui")) return "radix";`
-- bundle `@radix-ui` with `react-vendor`, or simplify `manualChunks` further so Vite handles it safely
-- keep the recharts protection, but avoid any split where `react-vendor` and UI primitives import each other across chunks
-
-Preferred safe change:
-- move `@radix-ui` into `react-vendor`
-
-## 2. Rebuild and republish a fresh production build
-Goal:
-- generate new hashed assets
-- replace deployment `8608796b-e720-4810-8895-c8deba2cfd15`
-- ensure live HTML points to the new asset set
-
-This is not primarily a cache invalidation issue:
-- the live HTML already has `cache-control: no-cache, must-revalidate, max-age=0`
-
-So the correct fix is a fresh publish after the chunking fix, not just waiting for cache expiry.
-
-## 3. Add minimal boot diagnostics
-In `src/main.tsx` and/or startup error handling:
-- log a clear boot marker when React starts
-- log uncaught chunk/bootstrap errors once in production
-- keep the timeout fallback, but make it diagnostic rather than the first clue
-
-This makes future publish regressions immediately identifiable on the live domain.
-
-## 4. Verify on the live domain after publish
-Production verification should confirm all of the following on `https://luut-slu-supply.lovable.app/`:
-
-1. Document response contains the built asset tags.
-2. New deployment id is present in response headers.
-3. Main JS entry returns `200`.
-4. No bootstrap console error from `radix-*.js`.
-5. No circular `react-vendor` <-> `radix` startup crash remains.
-6. Homepage renders actual content instead of the loading shell.
-
-## 5. Rollback rule if needed
-If the first corrected publish still fails on the live domain:
-- immediately restore the last known-good History version
-- then reapply only the chunking fix and republish again
+## Verification after implementation
+On `/` for each rendered section, confirm:
+1. All in-stock cards render first.
+2. All sold-out cards render after.
+3. No sold-out item appears between two in-stock items in the same row.
+4. Sold-out badges still display.
+5. Within in-stock items, existing order (newest/featured/category/daily-shuffle) is preserved.
 
 ## Files to change
-- `vite.config.ts`
-- optionally `src/main.tsx` for production boot diagnostics
+- add: `src/lib/stockSort.ts`
+- edit: `src/components/HomeNewArrivalsSection.tsx`
+- edit: `src/components/HomeCategorySection.tsx`
+- edit: `src/components/HomeFeaturedSection.tsx`
+- edit: `src/components/WhatPeopleAreBuyingSection.tsx`
+- edit: `src/components/HybridProductGrid.tsx`
 
-## Expected outcome
-- live production boots React normally
-- homepage opens on the published domain
-- no missing chunks
-- no `forwardRef` bootstrap crash
-- recharts fix remains in place without reintroducing the old charts error
