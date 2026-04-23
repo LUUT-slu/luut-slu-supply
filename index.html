@@ -48,5 +48,27 @@
       <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Safety net: if the app hasn't booted within 15s, show a reload prompt
+      // instead of an endless spinner. React boot replaces #root, so this
+      // check naturally no-ops on healthy loads.
+      (function () {
+        setTimeout(function () {
+          var root = document.getElementById('root');
+          if (!root) return;
+          // If the inline loader is still the only child, the bundle never ran
+          if (root.querySelector('div[style*="animation:spin"]')) {
+            root.innerHTML =
+              '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:Inter,system-ui,sans-serif;color:#333;background:#fff;padding:24px;">' +
+                '<div style="text-align:center;max-width:360px;">' +
+                  '<div style="font-size:18px;font-weight:600;margin-bottom:8px;">Taking longer than expected</div>' +
+                  '<div style="font-size:14px;color:#666;margin-bottom:20px;">The app didn\'t finish loading. This usually clears with a refresh.</div>' +
+                  '<button onclick="location.reload()" style="background:#000;color:#fff;border:0;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:500;cursor:pointer;">Reload page</button>' +
+                '</div>' +
+              '</div>';
+          }
+        }, 15000);
+      })();
+    </script>
   </body>
 </html>
