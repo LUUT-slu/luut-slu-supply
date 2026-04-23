@@ -34,20 +34,25 @@ export default defineConfig(({ mode }) => ({
         manualChunks(id) {
           if (!id.includes("node_modules")) return undefined;
           // Keep React + its ecosystem in ONE chunk to avoid runtime init order issues
+          // IMPORTANT: recharts must live in the same chunk as react to avoid
+          // "Cannot access 'P' before initialization" TDZ errors caused by
+          // cross-chunk circular imports between recharts <-> react-vendor.
           if (
             id.includes("/react/") ||
             id.includes("/react-dom/") ||
             id.includes("/react-router") ||
             id.includes("/scheduler/") ||
             id.includes("/@tanstack/react-query") ||
-            id.includes("/@supabase/")
+            id.includes("/@supabase/") ||
+            id.includes("/recharts") ||
+            id.includes("/d3-") ||
+            id.includes("/victory-vendor")
           ) {
             return "react-vendor";
           }
           if (id.includes("@radix-ui")) return "radix";
           if (id.includes("lucide-react")) return "icons";
           if (id.includes("html-to-image")) return "html-to-image";
-          if (id.includes("recharts")) return "charts";
           return undefined;
         },
       },
