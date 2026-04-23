@@ -5,7 +5,9 @@ import { ChatButton } from "@/components/ChatButton";
 import { BackButton } from "@/components/BackButton";
 import { ReviewPopup } from "@/components/ReviewPopup";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
+import { BestSellerCard } from "@/components/BestSellerCard";
 import { useBestSellersUnified } from "@/hooks/useBestSellersUnified";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { Package, Star } from "lucide-react";
 
@@ -19,7 +21,8 @@ interface Review {
 }
 
 export default function BestSellers() {
-  const { products: bestSellers, isLoading: loading, source } = useBestSellersUnified(24);
+  const { entries: bestSellerEntries, isLoading: loading, source } = useBestSellersUnified(24);
+  const isMobile = useIsMobile();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const loggedRef = useRef(false);
@@ -70,16 +73,28 @@ export default function BestSellers() {
               <div className="flex items-center justify-center py-12">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
               </div>
-            ) : bestSellers.length === 0 ? (
+            ) : bestSellerEntries.length === 0 ? (
               <div className="text-center py-12">
                 <Package className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                 <p className="text-muted-foreground">
                   No best sellers data yet. Check back after more sales!
                 </p>
               </div>
+            ) : isMobile ? (
+              <div className="grid grid-cols-2 gap-3">
+                {bestSellerEntries.map(({ product, totalSold }, index) => (
+                  <BestSellerCard
+                    key={product.id}
+                    product={product}
+                    rank={index + 1}
+                    totalSold={totalSold}
+                    priority={index < 4}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {bestSellers.map((product, index) => (
+                {bestSellerEntries.map(({ product }, index) => (
                   <div key={product.id} className="relative">
                     {index < 3 && (
                       <div className="pointer-events-none absolute -top-2 -right-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground shadow-md">
