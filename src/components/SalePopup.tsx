@@ -61,16 +61,33 @@ export function SalePopup() {
   useEffect(() => {
     if (!settings?.popups) return;
 
-    const timer = setTimeout(() => {
+    // Wait until the browser is idle (or fall back to a 1.5s timeout)
+    // so popup logic never runs during the initial paint.
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
       const popup = settings.popups.find((p) => shouldShowPopup(p, location.pathname));
       if (popup) {
         setActivePopup(popup);
         setOpen(true);
         markPopupSeen(popup);
       }
-    }, 1200);
+    };
 
-    return () => clearTimeout(timer);
+    const ric: typeof window.requestIdleCallback | undefined =
+      typeof window !== "undefined" ? window.requestIdleCallback : undefined;
+    const handle = ric
+      ? ric(run, { timeout: 2500 })
+      : window.setTimeout(run, 1500);
+
+    return () => {
+      cancelled = true;
+      if (ric && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(handle as number);
+      } else {
+        window.clearTimeout(handle as number);
+      }
+    };
   }, [settings?.popups, location.pathname]);
 
   if (!activePopup || !open) return null;
