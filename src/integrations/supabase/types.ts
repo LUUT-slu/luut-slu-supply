@@ -480,6 +480,13 @@ export type Database = {
             foreignKeyName: "order_items_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
+            referencedRelation: "public_seller_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
             referencedRelation: "seller_profiles"
             referencedColumns: ["id"]
           },
@@ -1038,6 +1045,13 @@ export type Database = {
             foreignKeyName: "seller_products_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
+            referencedRelation: "public_seller_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
             referencedRelation: "seller_profiles"
             referencedColumns: ["id"]
           },
@@ -1198,6 +1212,51 @@ export type Database = {
       }
     }
     Views: {
+      public_seller_profiles: {
+        Row: {
+          categories: string[] | null
+          created_at: string | null
+          facebook_url: string | null
+          id: string | null
+          instagram_url: string | null
+          is_approved: boolean | null
+          is_primary_seller: boolean | null
+          location: string | null
+          logo_url: string | null
+          seller_id: string | null
+          seller_name: string | null
+          shop_description: string | null
+        }
+        Insert: {
+          categories?: string[] | null
+          created_at?: string | null
+          facebook_url?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          is_approved?: boolean | null
+          is_primary_seller?: boolean | null
+          location?: string | null
+          logo_url?: string | null
+          seller_id?: string | null
+          seller_name?: string | null
+          shop_description?: string | null
+        }
+        Update: {
+          categories?: string[] | null
+          created_at?: string | null
+          facebook_url?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          is_approved?: boolean | null
+          is_primary_seller?: boolean | null
+          location?: string | null
+          logo_url?: string | null
+          seller_id?: string | null
+          seller_name?: string | null
+          shop_description?: string | null
+        }
+        Relationships: []
+      }
       weekly_best_sellers: {
         Row: {
           currency_code: string | null
@@ -1261,6 +1320,55 @@ export type Database = {
           p_partner_id: string
         }
         Returns: Json
+      }
+      rpc_get_order_by_token: {
+        Args: { p_order_id: string; p_token: string }
+        Returns: {
+          accepted_at: string | null
+          assigned_at: string | null
+          assigned_partner_id: string | null
+          cancelled_at: string | null
+          completed_at: string | null
+          created_at: string
+          currency_code: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string | null
+          customer_user_id: string | null
+          id: string
+          last_edited_at: string | null
+          last_edited_by: string | null
+          line_items: Json
+          location: string
+          no_sale_at: string | null
+          note: string | null
+          order_number: number
+          order_status: string | null
+          order_token: string | null
+          partner_commission: number | null
+          partner_commission_status: string | null
+          pickup_time: string | null
+          pickup_time_window: string | null
+          preferred_date: string
+          seller_notes: string | null
+          settlement_status: string | null
+          status: string
+          total_price: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      rpc_get_seller_contact: {
+        Args: { p_seller_name: string }
+        Returns: {
+          phone: string
+          whatsapp: string
+        }[]
       }
       rpc_mark_completed: {
         Args: { p_gross_collected?: number; p_order_id: string }
