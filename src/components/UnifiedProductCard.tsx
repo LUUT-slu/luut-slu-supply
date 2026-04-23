@@ -319,7 +319,14 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
 
       {/* Content */}
       <div className="flex flex-1 flex-col p-3">
-        <p className="mb-1 text-xs text-muted-foreground">{product.vendor}</p>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground truncate">{product.vendor}</p>
+          {typeof soldCount === 'number' && soldCount > 0 && (
+            <span className="text-[11px] font-medium text-primary whitespace-nowrap">
+              {formatSold(soldCount)}
+            </span>
+          )}
+        </div>
         <h3 className="mb-1 line-clamp-2 font-body text-sm font-medium leading-tight">
           {displayTitle}
         </h3>
