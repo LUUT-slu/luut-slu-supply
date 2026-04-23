@@ -2,6 +2,7 @@ import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { UnifiedProductCard } from "./UnifiedProductCard";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
+import { sortByStockStatus } from "@/lib/stockSort";
 import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -38,7 +39,8 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
       list = list.filter(p => p.stockStatus !== 'out_of_stock');
     }
 
-    return list as VariantListingProduct[];
+    // Always push sold-out items to the end (stable) so they never appear between in-stock items.
+    return sortByStockStatus(list as VariantListingProduct[]);
   }, [products, siteSettings?.hideSoldOut, siteSettings?.colorVariantCards]);
 
   if (loading) {

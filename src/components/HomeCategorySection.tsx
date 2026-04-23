@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
+import { sortByStockStatus } from "@/lib/stockSort";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
 import { useMemo } from "react";
 
@@ -25,8 +26,9 @@ export function HomeCategorySection({ slug, label, limit = 4 }: HomeCategorySect
     if (siteSettings?.hideSoldOut) {
       list = list.filter(p => p.stockStatus !== 'out_of_stock');
     }
-    // Slice to the configured limit
-    return (list as VariantListingProduct[]).slice(0, limit);
+    // Push sold-out items to the end (stable), then slice to the configured limit
+    const sorted = sortByStockStatus(list as VariantListingProduct[]);
+    return sorted.slice(0, limit);
   }, [products, siteSettings?.hideSoldOut, siteSettings?.colorVariantCards, limit]);
 
   // Hide entire section if loading or empty

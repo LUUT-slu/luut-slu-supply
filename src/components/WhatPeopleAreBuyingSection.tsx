@@ -128,12 +128,9 @@ export function WhatPeopleAreBuyingSection() {
 
   // Stable daily-seeded shuffle: prevents reorder thrash on re-renders
   // and keeps a consistent above-the-fold image order across the session.
+  // Sold-out products stay visible but are pushed to the end of the strip.
   const displayProducts = useMemo(() => {
     if (products.length === 0) return [];
-    const inStock = products.filter(p =>
-      p.node.variants.edges.some(v => v.node.availableForSale)
-    );
-    const pool = inStock.length > 0 ? inStock : products;
     // Seed = day-of-year so order is deterministic per day per visitor.
     const today = new Date();
     let seed = today.getFullYear() * 1000 + today.getMonth() * 31 + today.getDate();
@@ -141,8 +138,15 @@ export function WhatPeopleAreBuyingSection() {
       seed = (seed * 9301 + 49297) % 233280;
       return seed / 233280;
     };
-    const shuffled = [...pool].sort(() => rand() - 0.5);
-    return shuffled.slice(0, 6);
+    const shuffled = [...products].sort(() => rand() - 0.5);
+    // Stable partition: in-stock first (preserving shuffled order), sold-out last.
+    const inStock = shuffled.filter(p =>
+      p.node.variants.edges.some(v => v.node.availableForSale)
+    );
+    const soldOut = shuffled.filter(p =>
+      !p.node.variants.edges.some(v => v.node.availableForSale)
+    );
+    return [...inStock, ...soldOut].slice(0, 6);
   }, [products]);
 
   if (loading) {
