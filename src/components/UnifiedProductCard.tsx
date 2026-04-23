@@ -44,7 +44,7 @@ function StockBadge({ status }: { status: UnifiedProduct['stockStatus'] }) {
   return null;
 }
 
-export function UnifiedProductCard({ product, priority = false }: UnifiedProductCardProps) {
+export function UnifiedProductCard({ product, priority = false, soldCount }: UnifiedProductCardProps) {
   const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
   const isMobile = useIsMobile();
