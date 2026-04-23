@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
+import { sortByStockStatus } from "@/lib/stockSort";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
 import { useMemo } from "react";
 
@@ -25,8 +26,9 @@ export function HomeNewArrivalsSection({ label, limit = 4 }: HomeNewArrivalsSect
     if (siteSettings?.hideSoldOut) {
       list = list.filter(p => p.stockStatus !== 'out_of_stock');
     }
-    // No reliable sort key, just take first N as "newest" from the API response
-    return (list as VariantListingProduct[]).slice(0, limit);
+    // Push sold-out items to the end (stable), then take first N as "newest"
+    const sorted = sortByStockStatus(list as VariantListingProduct[]);
+    return sorted.slice(0, limit);
   }, [products, siteSettings?.hideSoldOut, siteSettings?.colorVariantCards, limit]);
 
   if (loading || displayProducts.length === 0) return null;

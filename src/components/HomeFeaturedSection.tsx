@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
 import { UnifiedProduct } from "@/lib/products";
+import { sortByStockStatus } from "@/lib/stockSort";
 
 interface HomeFeaturedSectionProps {
   label: string;
@@ -43,7 +44,11 @@ export function HomeFeaturedSection({ label, productIds, limit = 4 }: HomeFeatur
         }],
       }));
 
-      setProducts(mapped);
+      // Preserve admin-defined order from productIds, then push sold-out to end (stable).
+      const ordered = productIds
+        .map((id) => mapped.find((m) => m.id === id))
+        .filter((p): p is UnifiedProduct => Boolean(p));
+      setProducts(sortByStockStatus(ordered));
       setLoading(false);
     })();
   }, [productIds, limit]);
