@@ -133,6 +133,8 @@ export function AIChatWidget() {
     }
   };
 
+  if (!mounted) return null;
+
   if (!open) {
     return (
       <button
