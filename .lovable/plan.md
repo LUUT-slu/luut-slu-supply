@@ -1,67 +1,111 @@
 
+# Restore homepage startup and harden production boot
 
-# Why the published site is stuck on the loader
+## Exact root cause
 
-## Root cause — confirmed
+The live published site is not failing inside the homepage component. It is serving a broken HTML shell that never boots React:
 
-This is **not** a code bug. The published deployment at `luut-slu-supply.lovable.app` is serving a broken HTML shell with no JavaScript bundle.
+- `fetch_website` for `https://luut-slu-supply.lovable.app` returns only the inline loader markup.
+- The published HTML is missing the normal `<head>` and, most importantly, the app entry `<script type="module" src="...">`.
+- Because the JavaScript bundle never loads, none of the app code runs:
+  - `src/main.tsx` never executes
+  - `src/App.tsx` never mounts
+  - `src/pages/Index.tsx` never renders
+  - no Shopify, auth, or site-settings request can be the primary blocker on the live site
 
-Here is the **entire** HTML being served by your published site right now:
+The recent timeout UI added in `index.html` did not cause the outage; it only made the broken deploy visible instead of showing an endless spinner.
 
-```html
-<!DOCTYPE html><html lang="en">
-  <body>
-    <div id="root">
-      <div style="...spinner..."><div>Loading…</div></div>
-    </div>
-  </body>
-</html>
-```
+## What I will implement
 
-There is **no `<head>`**, **no `<title>`**, **no preconnect/font links**, and most critically **no `<script type="module" src="/assets/index-*.js">`**. Your repo's `index.html` (line 50) has that script tag — it's been stripped from the deployed output.
+### 1. Fix the publish/deploy path first
+Goal: make the published HTML always include the built JS entry so React can start.
 
-That's why the spinner runs forever:
-1. Browser loads the HTML
-2. Sees the inline static `<div>Loading…</div>` placeholder
-3. Has no JS to download → React never boots → nothing ever replaces the placeholder
-4. Endless spinner
+- Inspect the frontend build/publish setup around:
+  - `index.html`
+  - `vite.config.ts`
+- Remove any deploy-fragile assumptions and keep the entrypoint minimal and standard.
+- Republish after the frontend patch so the live deployment gets a clean build artifact.
 
-## Confirmation that source code is fine
+### 2. Harden app startup so homepage renders even when integrations are slow
+Even though the live outage is a broken deploy, production can still be slower than preview because several non-critical integrations mount immediately. I will reduce startup pressure so the homepage renders faster after the deployment is fixed.
 
-- The **preview** (`id-preview--…lovable.app`) loads correctly.
-- Network logs from your active preview session show every API call returning 200: Shopify collections, `site_settings`, `reviews`, `seller_profiles`, `user_roles` — all healthy.
-- `Index.tsx` is a **direct (non-lazy) import** in `App.tsx`. It does not gate rendering on any data fetch. It cannot get stuck in a spinner — the page renders shell-first and lets sections populate as data arrives.
-- The `<PageLoader />` Suspense fallback is only used by lazy-loaded routes. The homepage doesn't use it.
+Targeted changes:
+- `src/App.tsx`
+  - keep homepage route eager
+  - move non-essential global UI behind safe/deferred mounting where possible
+- `src/components/Header.tsx`
+  - stop homepage header from eagerly depending on Shopify collections/auth-derived portal checks for first paint
+  - use fallback nav immediately, then hydrate enhanced data after paint with timeout protection
+- `src/components/SalePopup.tsx`
+- `src/components/SignupDiscountPopup.tsx`
+- `src/components/AIChatWidget.tsx`
+  - ensure these never influence initial route render
+  - defer their async work until after first paint / idle time
+- `src/hooks/useSiteSettings.ts`
+  - make storefront settings fetch resilient with safe defaults and timeout/error fallback
+  - avoid aggressive refetch behavior on initial home render
+- `src/hooks/useShopifyCollections.ts`
+- `src/lib/shopify.ts`
+  - add request timeout / abort handling so Shopify cannot hang indefinitely
+  - fail closed to empty data, never block render
 
-So none of the things you asked me to check are actually broken:
-1. Homepage component renders unconditionally — ✅
-2. No loading state on Index — ✅
-3. No useEffect loop on Index — ✅
-4. Shopify fetch is non-blocking — ✅ (verified via live network logs)
-5. Auth check is in `Header` only and doesn't gate render — ✅
-6. No analytics/WhatsApp blocking init — ✅
-7. Routes/providers fine — preview proves it — ✅
-8. **Published build mismatch / broken deploy — this is the cause** — ❌
+### 3. Remove hidden startup blockers from homepage-adjacent sections
+These components already render mostly non-blocking, but I will harden them so failures stay isolated:
 
-## What caused it
+- `src/components/WhatPeopleAreBuyingSection.tsx`
+- `src/components/HomeCategorySection.tsx`
+- `src/components/HomeNewArrivalsSection.tsx`
+- `src/components/HomeFeaturedSection.tsx`
+- `src/components/HomepageReviews.tsx`
 
-The previous publish attempt produced a corrupted artifact (HTML missing `<head>` and missing the bundle `<script>` tag). This typically happens when a publish is interrupted mid-deploy, or when the build output gets partially overwritten. It is a deploy-pipeline event, not a source-code regression.
+Changes:
+- guarantee all async paths resolve to `[]` / defaults on timeout or error
+- add concise error logging for production diagnosis
+- ensure no section can keep the route visually stuck
 
-## Fix
+### 4. Improve stale asset / chunk mismatch resilience
+Goal: protect users when HTML and JS versions drift during publish rollout.
 
-Republish the site. Once a clean build runs, `index.html` will be regenerated correctly from the repo source (which already contains the `<script type="module" src="/src/main.tsx">` tag and the full `<head>`), and the JS bundle will be injected.
+- Review startup handling in:
+  - `src/main.tsx`
+  - `src/App.tsx` (`lazyRetry`)
+  - `index.html`
+- Extend the current recovery pattern so version mismatch errors surface clearly and recover safely.
+- Keep the timeout fallback, but make it diagnostic instead of being the only behavior.
 
-No code changes are needed or appropriate. Editing source code cannot fix a corrupted deployed artifact — only redeploying can.
+## Why this plan matches the codebase
 
-### Optional safety net (if you want one)
+Current code inspection shows the homepage itself is not gated by a blocking loader:
 
-If you'd like me to also add a defensive 15-second timeout to the inline loader in `index.html` (so future broken deploys at least show a "Reload page" button instead of an endless spinner), I can add that as a tiny inline script. It would not affect any functionality. Tell me yes/no after republishing.
+- `src/pages/Index.tsx` renders immediately with defaults.
+- `useSiteSettings()` already falls back to `DEFAULT_HERO` / default layout when data is absent.
+- Homepage sections mostly render independently and return `null` on missing data.
+- The heavier startup pressure is in shared layout components like `Header`, `SalePopup`, and auth/session checks.
 
-## Action
+So the implementation should focus on:
+1. fixing the broken published artifact
+2. reducing global startup work
+3. adding timeouts/fallbacks around Shopify and auth-adjacent reads
 
-<lov-actions>
-<lov-open-publish>Republish the site</lov-open-publish>
-</lov-actions>
+## Likely file changes
 
-After clicking **Update** in the publish dialog, hard-refresh `https://luut-slu-supply.lovable.app` (Cmd/Ctrl-Shift-R) and the homepage will render. If it still shows only the static loader after a republish, that confirms a hosting-side issue rather than anything fixable from this codebase, and the next step is contacting Lovable support — but a clean republish nearly always resolves this.
+- `index.html`
+- `vite.config.ts`
+- `src/main.tsx`
+- `src/App.tsx`
+- `src/hooks/useSiteSettings.ts`
+- `src/hooks/useShopifyCollections.ts`
+- `src/lib/shopify.ts`
+- `src/components/Header.tsx`
+- `src/components/SalePopup.tsx`
+- `src/components/SignupDiscountPopup.tsx`
+- `src/components/AIChatWidget.tsx`
+- possibly small defensive edits in homepage section components listed above
 
+## Verification after implementation
+
+1. Published HTML contains full `<head>` and JS entry script again.
+2. Live homepage shows real content before non-critical integrations finish.
+3. If Shopify/auth/settings are slow or fail, homepage still renders with defaults/fallback sections.
+4. Console logging identifies which integration timed out without crashing boot.
+5. A fresh publish loads without the timeout screen, and stale asset mismatches recover cleanly.
