@@ -1,6 +1,7 @@
 import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { UnifiedProductCard } from "./UnifiedProductCard";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useProductSalesCounts, lookupSoldCount } from "@/hooks/useProductSalesCounts";
 import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
 import { sortByStockStatus } from "@/lib/stockSort";
 import { Loader2 } from "lucide-react";
@@ -24,6 +25,7 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
     limit
   });
   const { data: siteSettings } = useSiteSettings();
+  const { data: soldLookup } = useProductSalesCounts();
 
   const displayProducts = useMemo(() => {
     let list = products;
@@ -76,7 +78,11 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
       {title && <h2 className="font-display text-2xl md:text-3xl">{title}</h2>}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 rounded-sm">
         {displayProducts.map((product) => (
-          <UnifiedProductCard key={product.id} product={product} />
+          <UnifiedProductCard
+            key={product.id}
+            product={product}
+            soldCount={lookupSoldCount(soldLookup, { handle: product.handle, id: product.id })}
+          />
         ))}
       </div>
     </div>

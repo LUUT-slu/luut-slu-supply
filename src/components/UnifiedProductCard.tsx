@@ -13,6 +13,13 @@ interface UnifiedProductCardProps {
   product: UnifiedProduct | VariantListingProduct;
   /** Marks this card as above-the-fold so the image loads eagerly with high priority. */
   priority?: boolean;
+  /** Optional sold-count to display on the card (e.g. "12 sold"). */
+  soldCount?: number;
+}
+
+function formatSold(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k sold`;
+  return `${n} sold`;
 }
 
 function isVariantListing(p: UnifiedProduct | VariantListingProduct): p is VariantListingProduct {
@@ -37,7 +44,7 @@ function StockBadge({ status }: { status: UnifiedProduct['stockStatus'] }) {
   return null;
 }
 
-export function UnifiedProductCard({ product, priority = false }: UnifiedProductCardProps) {
+export function UnifiedProductCard({ product, priority = false, soldCount }: UnifiedProductCardProps) {
   const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
   const isMobile = useIsMobile();
@@ -198,7 +205,14 @@ export function UnifiedProductCard({ product, priority = false }: UnifiedProduct
         {/* Details */}
         <div className="flex flex-1 flex-col justify-between min-w-0 py-0.5">
           <div>
-            <p className="text-[10px] text-muted-foreground truncate">{product.vendor}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] text-muted-foreground truncate">{product.vendor}</p>
+              {typeof soldCount === 'number' && soldCount > 0 && (
+                <span className="text-[10px] font-medium text-primary whitespace-nowrap">
+                  {formatSold(soldCount)}
+                </span>
+              )}
+            </div>
             <h3 className="font-body text-sm font-medium leading-tight line-clamp-2 mt-0.5">
               {displayTitle}
             </h3>
@@ -305,7 +319,14 @@ export function UnifiedProductCard({ product, priority = false }: UnifiedProduct
 
       {/* Content */}
       <div className="flex flex-1 flex-col p-3">
-        <p className="mb-1 text-xs text-muted-foreground">{product.vendor}</p>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground truncate">{product.vendor}</p>
+          {typeof soldCount === 'number' && soldCount > 0 && (
+            <span className="text-[11px] font-medium text-primary whitespace-nowrap">
+              {formatSold(soldCount)}
+            </span>
+          )}
+        </div>
         <h3 className="mb-1 line-clamp-2 font-body text-sm font-medium leading-tight">
           {displayTitle}
         </h3>
