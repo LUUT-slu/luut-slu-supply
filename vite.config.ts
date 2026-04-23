@@ -37,6 +37,11 @@ export default defineConfig(({ mode }) => ({
           // IMPORTANT: recharts must live in the same chunk as react to avoid
           // "Cannot access 'P' before initialization" TDZ errors caused by
           // cross-chunk circular imports between recharts <-> react-vendor.
+          // Bundle React, its ecosystem, recharts, AND @radix-ui all into one
+          // chunk. Splitting @radix-ui into its own chunk causes a production
+          // circular import with react-vendor, which leaves React's exports
+          // (e.g. forwardRef) undefined when radix evaluates first and crashes
+          // bootstrap with: "Cannot read properties of undefined (reading 'forwardRef')".
           if (
             id.includes("/react/") ||
             id.includes("/react-dom/") ||
@@ -44,13 +49,13 @@ export default defineConfig(({ mode }) => ({
             id.includes("/scheduler/") ||
             id.includes("/@tanstack/react-query") ||
             id.includes("/@supabase/") ||
+            id.includes("/@radix-ui/") ||
             id.includes("/recharts") ||
             id.includes("/d3-") ||
             id.includes("/victory-vendor")
           ) {
             return "react-vendor";
           }
-          if (id.includes("@radix-ui")) return "radix";
           if (id.includes("lucide-react")) return "icons";
           if (id.includes("html-to-image")) return "html-to-image";
           return undefined;
