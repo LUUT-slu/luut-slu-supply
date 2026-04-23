@@ -8,7 +8,7 @@ export type BestSellersSource = 'shopify' | 'local' | 'none';
 
 export interface BestSellerEntry {
   product: UnifiedProduct;
-  /** Units sold, when available (only present for the local Supabase source). */
+  /** Units sold, when available from local sales tracking. */
   totalSold?: number;
 }
 
@@ -59,26 +59,45 @@ function localToUnified(row: BestSellerProduct): UnifiedProduct {
 /**
  * Unified best sellers hook.
  *
- * Primary: Shopify Storefront API `sortKey: BEST_SELLING` (real-time, store-wide
- * sales-performance ranking from Shopify itself). No `total_sold` is exposed by
- * Shopify Storefront API — only the rank order.
- * Fallback: Supabase `weekly_best_sellers` view, which does include `total_sold`.
+ * Primary ranking: Shopify Storefront API `sortKey: BEST_SELLING` (real-time,
+ * store-wide sales-performance ranking from Shopify itself).
+ *
+ * Sold counts: merged in from the local Supabase `weekly_best_sellers` view
+ * (which tracks units sold via `product_sales`). Shopify's Storefront API
+ * does not expose unit counts, so any product without a local sales record
+ * simply has no `totalSold` value (UI shows the rank instead).
+ *
+ * Fallback: if Shopify returns empty/errors, fall back to the local view so
+ * the section still renders.
  */
 export function useBestSellersUnified(limit: number = 12): UseBestSellersUnifiedResult {
   const shopifyQuery = useShopifyBestSellers(limit);
   const shopifyProducts = shopifyQuery.data ?? [];
-  const shopifyEmpty = !shopifyQuery.isLoading && shopifyProducts.length === 0;
 
-  // Only relevant when Shopify finished and returned nothing
+  // Always fetch local sales so we can attach sold counts to Shopify rankings
   const localQuery = useBestSellers();
-  const localEnabled = shopifyEmpty;
+  const localRows = localQuery.data ?? [];
 
   return useMemo<UseBestSellersUnifiedResult>(() => {
+    // Build a sold-count lookup from the local view, keyed by both handle and id
+    const soldByHandle = new Map<string, number>();
+    const soldById = new Map<string, number>();
+    for (const row of localRows) {
+      if (row.product_handle) soldByHandle.set(row.product_handle, row.total_sold ?? 0);
+      if (row.product_id) soldById.set(row.product_id, row.total_sold ?? 0);
+    }
+
     if (shopifyProducts.length > 0) {
       const products = shopifyProducts.slice(0, limit);
+      const entries: BestSellerEntry[] = products.map((product) => {
+        const sold =
+          soldByHandle.get(product.handle) ??
+          soldById.get(product.id);
+        return { product, totalSold: sold };
+      });
       return {
         products,
-        entries: products.map((product) => ({ product })),
+        entries,
         isLoading: false,
         source: 'shopify',
       };
@@ -88,19 +107,16 @@ export function useBestSellersUnified(limit: number = 12): UseBestSellersUnified
       return { products: [], entries: [], isLoading: true, source: 'none' };
     }
 
-    if (localEnabled && localQuery.isLoading) {
+    if (localQuery.isLoading) {
       return { products: [], entries: [], isLoading: true, source: 'none' };
     }
 
-    const localRows = localQuery.data ?? [];
     if (localRows.length > 0) {
       const sliced = localRows.slice(0, limit);
-      // Pair each row with its mapped UnifiedProduct so we keep total_sold
       const paired = sliced.map((row) => ({
         product: localToUnified(row),
         totalSold: row.total_sold ?? undefined,
       }));
-      // Stable sort by stock status without losing the totalSold pairing
       const sortedProducts = sortByStockStatus(paired.map((p) => p.product));
       const byId = new Map(paired.map((p) => [p.product.id, p.totalSold]));
       const entries: BestSellerEntry[] = sortedProducts.map((product) => ({
@@ -116,5 +132,5 @@ export function useBestSellersUnified(limit: number = 12): UseBestSellersUnified
     }
 
     return { products: [], entries: [], isLoading: false, source: 'none' };
-  }, [shopifyProducts, shopifyQuery.isLoading, localEnabled, localQuery.isLoading, localQuery.data, limit]);
+  }, [shopifyProducts, shopifyQuery.isLoading, localRows, localQuery.isLoading, limit]);
 }
