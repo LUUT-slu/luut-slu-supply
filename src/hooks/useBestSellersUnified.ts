@@ -6,8 +6,17 @@ import { sortByStockStatus } from '@/lib/stockSort';
 
 export type BestSellersSource = 'shopify' | 'local' | 'none';
 
+export interface BestSellerEntry {
+  product: UnifiedProduct;
+  /** Units sold, when available (only present for the local Supabase source). */
+  totalSold?: number;
+}
+
 export interface UseBestSellersUnifiedResult {
+  /** Backwards-compatible: just the product objects. */
   products: UnifiedProduct[];
+  /** Same list with optional sold counts attached, in rank order. */
+  entries: BestSellerEntry[];
   isLoading: boolean;
   source: BestSellersSource;
 }
@@ -51,42 +60,61 @@ function localToUnified(row: BestSellerProduct): UnifiedProduct {
  * Unified best sellers hook.
  *
  * Primary: Shopify Storefront API `sortKey: BEST_SELLING` (real-time, store-wide
- * sales-performance ranking from Shopify itself).
- * Fallback: Supabase `weekly_best_sellers` view (local sales tracking) if
- * Shopify returns empty/errors so the section never disappears unexpectedly.
+ * sales-performance ranking from Shopify itself). No `total_sold` is exposed by
+ * Shopify Storefront API — only the rank order.
+ * Fallback: Supabase `weekly_best_sellers` view, which does include `total_sold`.
  */
 export function useBestSellersUnified(limit: number = 12): UseBestSellersUnifiedResult {
   const shopifyQuery = useShopifyBestSellers(limit);
   const shopifyProducts = shopifyQuery.data ?? [];
   const shopifyEmpty = !shopifyQuery.isLoading && shopifyProducts.length === 0;
 
-  // Only run the local fallback when Shopify finished and returned nothing
+  // Only relevant when Shopify finished and returned nothing
   const localQuery = useBestSellers();
   const localEnabled = shopifyEmpty;
 
   return useMemo<UseBestSellersUnifiedResult>(() => {
     if (shopifyProducts.length > 0) {
+      const products = shopifyProducts.slice(0, limit);
       return {
-        products: shopifyProducts.slice(0, limit),
+        products,
+        entries: products.map((product) => ({ product })),
         isLoading: false,
         source: 'shopify',
       };
     }
 
     if (shopifyQuery.isLoading) {
-      return { products: [], isLoading: true, source: 'none' };
+      return { products: [], entries: [], isLoading: true, source: 'none' };
     }
 
     if (localEnabled && localQuery.isLoading) {
-      return { products: [], isLoading: true, source: 'none' };
+      return { products: [], entries: [], isLoading: true, source: 'none' };
     }
 
     const localRows = localQuery.data ?? [];
     if (localRows.length > 0) {
-      const mapped = sortByStockStatus(localRows.slice(0, limit).map(localToUnified));
-      return { products: mapped, isLoading: false, source: 'local' };
+      const sliced = localRows.slice(0, limit);
+      // Pair each row with its mapped UnifiedProduct so we keep total_sold
+      const paired = sliced.map((row) => ({
+        product: localToUnified(row),
+        totalSold: row.total_sold ?? undefined,
+      }));
+      // Stable sort by stock status without losing the totalSold pairing
+      const sortedProducts = sortByStockStatus(paired.map((p) => p.product));
+      const byId = new Map(paired.map((p) => [p.product.id, p.totalSold]));
+      const entries: BestSellerEntry[] = sortedProducts.map((product) => ({
+        product,
+        totalSold: byId.get(product.id),
+      }));
+      return {
+        products: sortedProducts,
+        entries,
+        isLoading: false,
+        source: 'local',
+      };
     }
 
-    return { products: [], isLoading: false, source: 'none' };
+    return { products: [], entries: [], isLoading: false, source: 'none' };
   }, [shopifyProducts, shopifyQuery.isLoading, localEnabled, localQuery.isLoading, localQuery.data, limit]);
 }
