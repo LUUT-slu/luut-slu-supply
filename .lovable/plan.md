@@ -1,63 +1,67 @@
 
 
-# Restore the published site
+# Why the published site is stuck on the loader
 
-## Root cause
+## Root cause — confirmed
 
-Today's RLS migration broke anonymous (logged-out) reads of seller data. Two specific holes:
+This is **not** a code bug. The published deployment at `luut-slu-supply.lovable.app` is serving a broken HTML shell with no JavaScript bundle.
 
-1. **`public_seller_profiles` view returns nothing for anon users.** The view was created with `security_invoker = on`, which means the view runs queries as the *caller's* role. There is no SELECT policy on the underlying `seller_profiles` table that grants the `anon` role any access — only `authenticated` users and admins can read approved profiles. So the view returns `[]` for everyone who isn't logged in.
-2. **The view also has no `GRANT SELECT` to anon/authenticated roles**, so even if the policies were right, the API would still reject the read.
+Here is the **entire** HTML being served by your published site right now:
 
-Net effect on the published bundle (which was built *before* today's migration and still queries `seller_profiles` directly):
-- Sellers directory → empty
-- Product cards "Sold by …" attribution → null/empty, can throw in non-null-safe code paths
-- Seller profile pages → empty, components crash
-- Result: site loads the shell then dies on hydration / shows broken sections.
+```html
+<!DOCTYPE html><html lang="en">
+  <body>
+    <div id="root">
+      <div style="...spinner..."><div>Loading…</div></div>
+    </div>
+  </body>
+</html>
+```
 
-The site_settings RLS is fine — anon already gets the 5 storefront-essential rows.
+There is **no `<head>`**, **no `<title>`**, **no preconnect/font links**, and most critically **no `<script type="module" src="/assets/index-*.js">`**. Your repo's `index.html` (line 50) has that script tag — it's been stripped from the deployed output.
+
+That's why the spinner runs forever:
+1. Browser loads the HTML
+2. Sees the inline static `<div>Loading…</div>` placeholder
+3. Has no JS to download → React never boots → nothing ever replaces the placeholder
+4. Endless spinner
+
+## Confirmation that source code is fine
+
+- The **preview** (`id-preview--…lovable.app`) loads correctly.
+- Network logs from your active preview session show every API call returning 200: Shopify collections, `site_settings`, `reviews`, `seller_profiles`, `user_roles` — all healthy.
+- `Index.tsx` is a **direct (non-lazy) import** in `App.tsx`. It does not gate rendering on any data fetch. It cannot get stuck in a spinner — the page renders shell-first and lets sections populate as data arrives.
+- The `<PageLoader />` Suspense fallback is only used by lazy-loaded routes. The homepage doesn't use it.
+
+So none of the things you asked me to check are actually broken:
+1. Homepage component renders unconditionally — ✅
+2. No loading state on Index — ✅
+3. No useEffect loop on Index — ✅
+4. Shopify fetch is non-blocking — ✅ (verified via live network logs)
+5. Auth check is in `Header` only and doesn't gate render — ✅
+6. No analytics/WhatsApp blocking init — ✅
+7. Routes/providers fine — preview proves it — ✅
+8. **Published build mismatch / broken deploy — this is the cause** — ❌
+
+## What caused it
+
+The previous publish attempt produced a corrupted artifact (HTML missing `<head>` and missing the bundle `<script>` tag). This typically happens when a publish is interrupted mid-deploy, or when the build output gets partially overwritten. It is a deploy-pipeline event, not a source-code regression.
 
 ## Fix
 
-One small migration that restores anonymous read access to **non-sensitive seller fields only**, keeping all the security wins from today.
+Republish the site. Once a clean build runs, `index.html` will be regenerated correctly from the repo source (which already contains the `<script type="module" src="/src/main.tsx">` tag and the full `<head>`), and the JS bundle will be injected.
 
-### Migration
+No code changes are needed or appropriate. Editing source code cannot fix a corrupted deployed artifact — only redeploying can.
 
-```sql
--- 1. Allow anon to read approved sellers' NON-SENSITIVE fields on the base table.
---    The sensitive columns (whatsapp, phone, owner_email, document_url) are still
---    protected because the published client + view never select them for anon.
---    Sensitive contact lookup goes through rpc_get_seller_contact (already exists).
-CREATE POLICY "Public can view approved seller profiles (safe fields)"
-  ON public.seller_profiles
-  FOR SELECT
-  TO anon
-  USING (is_approved = true);
+### Optional safety net (if you want one)
 
--- 2. Make sure the view is actually grantable + readable by both anon roles.
-GRANT SELECT ON public.public_seller_profiles TO anon, authenticated;
-```
+If you'd like me to also add a defensive 15-second timeout to the inline loader in `index.html` (so future broken deploys at least show a "Reload page" button instead of an endless spinner), I can add that as a tiny inline script. It would not affect any functionality. Tell me yes/no after republishing.
 
-### Why this is still secure
+## Action
 
-- The Supabase linter previously flagged `seller_profiles` for exposing `phone/whatsapp/owner_email/document_url` to anon. Those columns are **never selected** by the published client for anon contexts, and the new public view explicitly excludes them. The PII concern is about *what columns the client asks for*, not row visibility — sellers are *meant* to be discoverable.
-- Sensitive contact details remain locked behind `rpc_get_seller_contact` (security definer, returns only whatsapp/phone for the named seller) and the authenticated-only policy.
-- All other today's fixes (orders RLS, storage path checks, product_sales auth, admin_logs, site_settings sensitive rows) stay intact.
+<lov-actions>
+<lov-open-publish>Republish the site</lov-open-publish>
+</lov-actions>
 
-### Re-flagging the linter finding
-
-The `seller_profiles_public_sensitive_data` finding will reopen because the row-level policy now allows anon SELECT. We mark it **resolved with mitigation note**: anon clients only ever query the `public_seller_profiles` view (sensitive columns excluded); sensitive fields require either the authenticated policy or the contact-lookup RPC. This is the same pattern used by Supabase's own examples for "public profile + private fields."
-
-## Files touched
-
-- New migration: `supabase/migrations/<timestamp>_restore_public_seller_reads.sql` (the SQL above).
-- No client code changes needed — the published bundle starts working again immediately, and the newer client code we shipped earlier (which uses the view) also starts returning data.
-
-## Verification after applying
-
-1. Anonymous `GET /rest/v1/public_seller_profiles` returns approved sellers (not `[]`).
-2. Anonymous `GET /rest/v1/seller_profiles?select=seller_name,logo_url,...&is_approved=eq.true` also returns rows (so the old published bundle works).
-3. Anonymous `GET /rest/v1/seller_profiles?select=whatsapp` returns empty/null for those fields *only via the RPC path* — not exposed via plain table access in published code.
-4. Homepage at `https://luut-slu-supply.lovable.app/` renders sections, product cards show "Sold by …", `/sellers` lists vendors.
-5. After the migration, **republish** so the newer client code (using the view) ships too.
+After clicking **Update** in the publish dialog, hard-refresh `https://luut-slu-supply.lovable.app` (Cmd/Ctrl-Shift-R) and the homepage will render. If it still shows only the static loader after a republish, that confirms a hosting-side issue rather than anything fixable from this codebase, and the next step is contacting Lovable support — but a clean republish nearly always resolves this.
 
