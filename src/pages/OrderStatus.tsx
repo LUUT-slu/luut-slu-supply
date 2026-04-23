@@ -42,28 +42,17 @@ export default function OrderStatus() {
       }
 
       const { data, error: fetchErr } = await supabase
-        .from("orders")
-        .select(
-          "id, order_number, customer_name, location, preferred_date, pickup_time, pickup_time_window, total_price, currency_code, line_items, status, order_status, order_token, note",
-        )
-        .eq("id", orderId)
-        .maybeSingle();
+        .rpc("rpc_get_order_by_token", { p_order_id: orderId, p_token: token });
 
-      if (fetchErr || !data) {
-        setError("Order not found.");
-        setLoading(false);
-        return;
-      }
+      const row = Array.isArray(data) ? data[0] : data;
 
-      // Validate token client-side (RLS allows public select on orders, but we
-      // gate the page behind the order_token to prevent enumeration).
-      if (data.order_token !== token) {
+      if (fetchErr || !row) {
         setError("Invalid or expired order link.");
         setLoading(false);
         return;
       }
 
-      setOrder(data as OrderRow);
+      setOrder(row as unknown as OrderRow);
       setLoading(false);
     };
 

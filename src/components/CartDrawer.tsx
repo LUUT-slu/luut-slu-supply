@@ -192,24 +192,20 @@ export function CartDrawer() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Look up seller's WhatsApp number from their profile
+  // Look up seller's WhatsApp number from their profile (via secure RPC)
   const getSellerWhatsApp = async (vendorName: string): Promise<string> => {
     try {
-      // Try to find seller by seller_name matching the vendor
-      const { data: sellerProfile } = await supabase
-        .from('seller_profiles')
-        .select('whatsapp, phone')
-        .eq('seller_name', vendorName)
-        .eq('is_approved', true)
-        .maybeSingle();
+      const { data } = await supabase.rpc('rpc_get_seller_contact', {
+        p_seller_name: vendorName,
+      });
+      const contact = Array.isArray(data) ? data[0] : data;
 
-      if (sellerProfile?.whatsapp) {
-        // Clean up WhatsApp number (remove spaces, dashes, etc.)
-        return sellerProfile.whatsapp.replace(/[\s\-\(\)]/g, '');
+      if (contact?.whatsapp) {
+        return contact.whatsapp.replace(/[\s\-\(\)]/g, '');
       }
-      
-      if (sellerProfile?.phone) {
-        return sellerProfile.phone.replace(/[\s\-\(\)]/g, '');
+
+      if (contact?.phone) {
+        return contact.phone.replace(/[\s\-\(\)]/g, '');
       }
 
       // Fallback to admin number

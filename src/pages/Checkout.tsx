@@ -344,19 +344,17 @@ export default function Checkout() {
 
   const getSellerWhatsApp = async (vendorName: string): Promise<string> => {
     try {
-      const { data: sellerProfile } = await supabase
-        .from('seller_profiles')
-        .select('whatsapp, phone')
-        .eq('seller_name', vendorName)
-        .eq('is_approved', true)
-        .maybeSingle();
+      const { data } = await supabase.rpc('rpc_get_seller_contact', {
+        p_seller_name: vendorName,
+      });
+      const contact = Array.isArray(data) ? data[0] : data;
 
-      if (sellerProfile?.whatsapp) {
-        return sellerProfile.whatsapp.replace(/[\s\-\(\)]/g, '');
+      if (contact?.whatsapp) {
+        return contact.whatsapp.replace(/[\s\-\(\)]/g, '');
       }
-      
-      if (sellerProfile?.phone) {
-        return sellerProfile.phone.replace(/[\s\-\(\)]/g, '');
+
+      if (contact?.phone) {
+        return contact.phone.replace(/[\s\-\(\)]/g, '');
       }
 
       return FALLBACK_WHATSAPP_NUMBER;
