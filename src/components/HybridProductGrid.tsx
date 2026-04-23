@@ -1,6 +1,7 @@
 import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { UnifiedProductCard } from "./UnifiedProductCard";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useProductSalesCounts, lookupSoldCount } from "@/hooks/useProductSalesCounts";
 import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
 import { sortByStockStatus } from "@/lib/stockSort";
 import { Loader2 } from "lucide-react";
