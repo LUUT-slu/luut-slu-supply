@@ -25,6 +25,7 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
     limit
   });
   const { data: siteSettings } = useSiteSettings();
+  const { data: soldLookup } = useProductSalesCounts();
 
   const displayProducts = useMemo(() => {
     let list = products;
