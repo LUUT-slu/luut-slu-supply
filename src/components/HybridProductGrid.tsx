@@ -78,7 +78,11 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
       {title && <h2 className="font-display text-2xl md:text-3xl">{title}</h2>}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 rounded-sm">
         {displayProducts.map((product) => (
-          <UnifiedProductCard key={product.id} product={product} />
+          <UnifiedProductCard
+            key={product.id}
+            product={product}
+            soldCount={lookupSoldCount(soldLookup, { handle: product.handle, id: product.id })}
+          />
         ))}
       </div>
     </div>
