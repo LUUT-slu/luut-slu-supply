@@ -1,15 +1,22 @@
-import { Link } from "react-router-dom";
-import { useBestSellers } from "@/hooks/useBestSellers";
-import { getOptimizedImageUrl } from "@/lib/shopify";
+import { useEffect, useRef } from "react";
+import { useBestSellersUnified } from "@/hooks/useBestSellersUnified";
+import { UnifiedProductCard } from "@/components/UnifiedProductCard";
 import { TrendingUp } from "lucide-react";
 
 interface BestSellersSectionProps {
   limit?: number;
 }
 
-export function BestSellersSection({ limit }: BestSellersSectionProps) {
-  const { data: rawBestSellers, isLoading } = useBestSellers();
-  const bestSellers = limit ? rawBestSellers?.slice(0, limit) : rawBestSellers;
+export function BestSellersSection({ limit = 8 }: BestSellersSectionProps) {
+  const { products, isLoading, source } = useBestSellersUnified(limit);
+  const loggedRef = useRef(false);
+
+  useEffect(() => {
+    if (!loggedRef.current && source !== 'none') {
+      console.info(`[best-sellers] source=${source}`);
+      loggedRef.current = true;
+    }
+  }, [source]);
 
   if (isLoading) {
     return (
@@ -32,8 +39,8 @@ export function BestSellersSection({ limit }: BestSellersSectionProps) {
     );
   }
 
-  if (!bestSellers || bestSellers.length === 0) {
-    return null; // Don't show section if no best sellers yet
+  if (!products || products.length === 0) {
+    return null;
   }
 
   return (
@@ -45,60 +52,18 @@ export function BestSellersSection({ limit }: BestSellersSectionProps) {
             BEST SELLERS THIS WEEK
           </h2>
         </div>
-        
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {bestSellers.map((product, index) => {
-            // Shopify product IDs start with "gid://", local products are UUIDs
-            const isShopify = product.product_id.startsWith('gid://');
-            const productLink = isShopify
-              ? `/product/${product.product_handle}`
-              : `/product/local/${product.product_id}`;
-            
-            return (
-            <Link
-              key={product.product_id}
-              to={productLink}
-              className="group relative rounded-lg border border-border bg-card p-4 transition-all hover:border-primary/50 hover:shadow-lg"
-            >
+
+        <div className="relative grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {products.map((product, index) => (
+            <div key={product.id} className="relative">
               {index < 3 && (
-                <div className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground">
+                <div className="pointer-events-none absolute -top-2 -right-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground shadow-md">
                   #{index + 1}
                 </div>
               )}
-              
-              <div className="aspect-square overflow-hidden rounded-md bg-muted">
-                {product.product_image_url ? (
-                  <img
-                    src={getOptimizedImageUrl(product.product_image_url, 500)}
-                    srcSet={`${getOptimizedImageUrl(product.product_image_url, 300)} 300w, ${getOptimizedImageUrl(product.product_image_url, 500)} 500w, ${getOptimizedImageUrl(product.product_image_url, 800)} 800w`}
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    alt={product.product_title}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                    loading={index < 4 ? "eager" : "lazy"}
-                    fetchPriority={index < 4 ? "high" : "auto"}
-                    decoding="async"
-                    width={500}
-                    height={500}
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <span className="text-muted-foreground">No image</span>
-                  </div>
-                )}
-              </div>
-              
-                <div className="mt-3">
-                  <h3 className="font-display text-sm line-clamp-2">
-                    {product.product_title}
-                  </h3>
-                  <p className="font-body text-sm text-primary">
-                    {product.currency_code} {Number(product.price).toFixed(2)}
-                  </p>
-                </div>
-            </Link>
-            );
-          })}
-
+              <UnifiedProductCard product={product} priority={index < 4} />
+            </div>
+          ))}
         </div>
       </div>
     </section>

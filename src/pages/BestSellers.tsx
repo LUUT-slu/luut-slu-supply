@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ChatButton } from "@/components/ChatButton";
 import { BackButton } from "@/components/BackButton";
 import { ReviewPopup } from "@/components/ReviewPopup";
-import { useBestSellers } from "@/hooks/useBestSellers";
+import { UnifiedProductCard } from "@/components/UnifiedProductCard";
+import { useBestSellersUnified } from "@/hooks/useBestSellersUnified";
 import { supabase } from "@/integrations/supabase/client";
 import { Package, Star } from "lucide-react";
 
@@ -19,9 +19,17 @@ interface Review {
 }
 
 export default function BestSellers() {
-  const { data: bestSellers = [], isLoading: loading } = useBestSellers();
+  const { products: bestSellers, isLoading: loading, source } = useBestSellersUnified(24);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
+  const loggedRef = useRef(false);
+
+  useEffect(() => {
+    if (!loggedRef.current && source !== 'none') {
+      console.info(`[best-sellers] source=${source}`);
+      loggedRef.current = true;
+    }
+  }, [source]);
 
   useEffect(() => {
     supabase
@@ -40,13 +48,6 @@ export default function BestSellers() {
   const avgRating = reviews.length > 0
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : 0;
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "XCD",
-      minimumFractionDigits: 0,
-    }).format(amount);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -78,35 +79,15 @@ export default function BestSellers() {
               </div>
             ) : (
               <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {bestSellers.map((item) => (
-                  <Link
-                    key={item.product_id}
-                    to={`/product/${item.product_handle}`}
-                    className="group rounded-lg border border-border bg-card overflow-hidden transition-colors active:bg-muted/30"
-                  >
-                    <div className="aspect-square bg-muted relative overflow-hidden">
-                      {item.product_image_url ? (
-                        <img
-                          src={item.product_image_url}
-                          alt={item.product_title || "Product"}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <Package className="h-10 w-10 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <p className="font-medium text-sm line-clamp-1">{item.product_title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {item.total_sold} sold
-                      </p>
-                      <p className="text-sm font-bold text-primary mt-1">
-                        {formatCurrency(item.price || 0)}
-                      </p>
-                    </div>
-                  </Link>
+                {bestSellers.map((product, index) => (
+                  <div key={product.id} className="relative">
+                    {index < 3 && (
+                      <div className="pointer-events-none absolute -top-2 -right-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground shadow-md">
+                        #{index + 1}
+                      </div>
+                    )}
+                    <UnifiedProductCard product={product} priority={index < 4} />
+                  </div>
                 ))}
               </div>
             )}

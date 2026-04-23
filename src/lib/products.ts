@@ -71,7 +71,7 @@ function deriveStockStatus(quantity: number | undefined, availableForSale: boole
   return availableForSale ? 'in_stock' : 'out_of_stock';
 }
 
-function shopifyToUnified(product: ShopifyProduct): UnifiedProduct {
+export function shopifyToUnified(product: ShopifyProduct): UnifiedProduct {
   const node = product.node;
   const normalizedCategory = mapShopifyTypeToLabel(node.productType);
   const anyAvailable = node.variants.edges.some(v => v.node.availableForSale);
