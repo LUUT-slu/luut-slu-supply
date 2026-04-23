@@ -1,66 +1,69 @@
 
 
-# Sort sold-out items last across all homepage product sections
+# Switch Best Sellers to Shopify-powered data
 
-## Goal
-On the homepage, every product section/category must show **in-stock items first**, then **sold-out items last**. Sold-out items stay visible (no hiding, no badge changes) — only their order changes.
+## Shopify signal used
 
-## Current behavior
-- `fetchHybridProducts` already sorts by stock status (`in_stock → low_stock → out_of_stock`), but several homepage sections then **re-slice or re-shuffle** the list, which can let sold-out items jump ahead:
-  - `HomeNewArrivalsSection` slices the first N from a list that may have been variant-split (splitting can append color variants in any order, mixing sold-out among in-stock).
-  - `HomeCategorySection` does the same after `splitByVisualOptions`.
-  - `HybridProductGrid` (used on category pages, also reachable from homepage) also does not re-sort after splitting.
-  - `HomeFeaturedSection` keeps original `productIds` order (admin order) — sold-out can appear in the middle.
-  - `WhatPeopleAreBuyingSection` filters to in-stock only when any exist, dropping sold-out instead of moving them to the end.
-- `BestSellersSection` is driven by sales data and does not need stock reordering (no stock field exposed) — leave as is.
+**Primary source: Shopify Storefront API `products(sortKey: BEST_SELLING)`**
+
+This is Shopify's official best-seller ranking. It uses Shopify's internal sales-performance signal across the store (the same ranking that powers the "Best selling" sort in collections) and updates automatically as orders are placed in Shopify. No manual curation required.
+
+- Endpoint: `POST /api/2025-07/graphql.json`
+- Query: `products(first: N, sortKey: BEST_SELLING, query: "available_for_sale:true")`
+- Already supported by `src/lib/shopify.ts` (`ProductSortKey` already includes `'BEST_SELLING'`).
+
+**Fallback (graceful):** if Shopify returns `null`/empty (timeout, 4xx/5xx, payment-required, network), fall back to the existing Supabase `weekly_best_sellers` view so the section still renders.
 
 ## Plan
 
-### 1. Add a shared stable stock-priority sort helper
-Create `src/lib/stockSort.ts` with one small utility:
+### 1. New reusable hook: `src/hooks/useShopifyBestSellers.ts`
+- React Query hook (`queryKey: ['shopify-best-sellers', limit]`).
+- Calls `fetchProducts(limit, 'available_for_sale:true', 'BEST_SELLING', false)`.
+- Maps to `UnifiedProduct[]` (reuse the existing `shopifyToUnified` mapper — export it from `src/lib/products.ts`).
+- Applies `sortByStockStatus` so any sold-out items appear last (matches the homepage rule; sold-out still allowed per the "Best Sellers can have sold out items" rule).
+- On empty/error, returns `{ products: [], usedFallback: false }` and lets the consumer try the fallback.
+- 5-minute `staleTime` for speed; non-blocking (no `suspense`).
 
-- `sortByStockStatus<T extends { stockStatus: StockStatus }>(items: T[]): T[]`
-  - Stable sort.
-  - Order: `in_stock` (0) → `low_stock` (1) → `out_of_stock` (2).
-  - Preserves existing relative order within each group (so "newest first", featured admin order, category order, etc. are all kept inside their stock bucket).
+### 2. New combined hook: `useBestSellersUnified(limit)`
+- Calls `useShopifyBestSellers` first.
+- If empty/errored, calls existing `useBestSellers` (Supabase view) and maps those rows to a minimal `UnifiedProduct`-compatible shape so the UI can render with one component.
+- Returns `{ products, isLoading, source: 'shopify' | 'local' | 'none' }` so we can log/verify which signal is live.
 
-This guarantees consistent sold-out-last behavior wherever it is applied.
+### 3. Update `src/components/BestSellersSection.tsx`
+- Replace `useBestSellers` with `useBestSellersUnified`.
+- Render via the existing `UnifiedProductCard` so titles, prices, images, variants, stock badges, and product links all stay synced with Shopify.
+- Keep the `#1 / #2 / #3` rank badge overlay for the first three.
+- Keep "do not block homepage": loading skeleton stays, errors render `null` (section just hides), no thrown errors.
+- Console-log the active source once per mount (`[best-sellers] source=shopify` or `local`) for verification.
 
-### 2. Apply the helper in every homepage product section
+### 4. Update `src/pages/BestSellers.tsx` (the `/shop/best-sellers` page)
+- Use the same `useBestSellersUnified` hook with a higher limit (e.g. 24).
+- Reuse `UnifiedProductCard` grid for consistent links/stock/variants.
+- Reviews section stays as-is.
 
-Update each of these to run `sortByStockStatus` as the **final** step before `slice(limit)` / render, so it runs after variant splitting and any other transforms:
+### 5. Leave alone (out of scope)
+- Existing `useBestSellers` + `weekly_best_sellers` view — kept as fallback and still used by `MarketingStudio` poster generator (`useMarketingProducts` "bestsellers"). No marketing flow regressions.
+- `recordSale` writes to `product_sales` — kept; powers fallback.
+- `src/lib/stockSort.ts` — already used.
 
-- `src/components/HomeNewArrivalsSection.tsx`
-  - Sort after `splitByVisualOptions` and before `.slice(0, limit)`.
-- `src/components/HomeCategorySection.tsx`
-  - Same pattern: sort after split, before slice.
-- `src/components/HomeFeaturedSection.tsx`
-  - Sort the mapped products before render. Within in-stock, keep the admin-defined `productIds` order; sold-out featured items move to the end of the row.
-- `src/components/WhatPeopleAreBuyingSection.tsx`
-  - Stop dropping sold-out when in-stock exists.
-  - Build the daily-shuffled pool from the full list, then sort by stock so sold-out items go to the end of the displayed strip.
-- `src/components/HybridProductGrid.tsx`
-  - Sort after variant splitting and the existing `hideSoldOut` filter (so when `hideSoldOut` is off, sold-out items render last). This keeps category pages reachable from the homepage consistent.
-
-### 3. Leave alone
-- `BestSellersSection` — sales-driven, no stock data on the source rows.
-- `HomepageReviews`, hero, trust, how-it-works, CTA — not product lists.
-- Cart, checkout, product detail — out of scope.
-- Sold-out badges, opacity styling, "Sold Out" labels — unchanged.
+## Failure handling
+- Shopify request already has a 10s `AbortController` timeout in `storefrontApiRequest` and returns `null` instead of throwing.
+- Hook surfaces `null` → triggers Supabase fallback.
+- If both empty → component returns `null` (section hidden, page not blocked).
 
 ## Verification after implementation
-On `/` for each rendered section, confirm:
-1. All in-stock cards render first.
-2. All sold-out cards render after.
-3. No sold-out item appears between two in-stock items in the same row.
-4. Sold-out badges still display.
-5. Within in-stock items, existing order (newest/featured/category/daily-shuffle) is preserved.
+1. Open homepage → Network tab shows a Storefront GraphQL request with `sortKey: "BEST_SELLING"` and `query: "available_for_sale:true"`.
+2. Console shows `[best-sellers] source=shopify`.
+3. Best Sellers cards render real Shopify products with correct titles, prices, images, and links matching the live store.
+4. Toggling a product's availability in Shopify reflects after cache (5 min) or hard refresh.
+5. Sold-out items, if any appear, render last in the grid.
+6. Simulating Shopify failure (block storefront domain) → console shows `[best-sellers] source=local`, section still renders from Supabase view.
+7. Homepage TTI is unaffected (request runs in parallel, never blocks render).
 
 ## Files to change
-- add: `src/lib/stockSort.ts`
-- edit: `src/components/HomeNewArrivalsSection.tsx`
-- edit: `src/components/HomeCategorySection.tsx`
-- edit: `src/components/HomeFeaturedSection.tsx`
-- edit: `src/components/WhatPeopleAreBuyingSection.tsx`
-- edit: `src/components/HybridProductGrid.tsx`
+- add: `src/hooks/useShopifyBestSellers.ts`
+- add: `src/hooks/useBestSellersUnified.ts`
+- edit: `src/lib/products.ts` (export `shopifyToUnified`)
+- edit: `src/components/BestSellersSection.tsx`
+- edit: `src/pages/BestSellers.tsx`
 
