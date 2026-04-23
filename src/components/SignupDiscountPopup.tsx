@@ -13,18 +13,38 @@ export function SignupDiscountPopup() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsLoggedIn(!!session);
+    let cancelled = false;
+    // Defer auth check off the critical path
+    const ric: typeof window.requestIdleCallback | undefined =
+      typeof window !== "undefined" ? window.requestIdleCallback : undefined;
+
+    const run = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!cancelled) setIsLoggedIn(!!session);
+      } catch {
+        if (!cancelled) setIsLoggedIn(false);
+      }
     };
-    checkAuth();
+
+    const handle = ric
+      ? ric(() => { void run(); }, { timeout: 2500 })
+      : window.setTimeout(() => { void run(); }, 1500);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsLoggedIn(!!session);
       if (session) setOpen(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      if (ric && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(handle as number);
+      } else {
+        window.clearTimeout(handle as number);
+      }
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -33,7 +53,7 @@ export function SignupDiscountPopup() {
     // Don't show if dismissed this session
     if (sessionStorage.getItem(STORAGE_KEY)) return;
 
-    const timer = setTimeout(() => setOpen(true), 3000);
+    const timer = setTimeout(() => setOpen(true), 4000);
     return () => clearTimeout(timer);
   }, [isLoggedIn]);
 

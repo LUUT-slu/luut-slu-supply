@@ -64,6 +64,7 @@ async function streamChat({
 }
 
 export function AIChatWidget() {
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -71,6 +72,23 @@ export function AIChatWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+
+  // Defer mounting the launcher until the browser is idle so it never
+  // competes with the homepage first paint / LCP.
+  useEffect(() => {
+    const ric: typeof window.requestIdleCallback | undefined =
+      typeof window !== "undefined" ? window.requestIdleCallback : undefined;
+    const handle = ric
+      ? ric(() => setMounted(true), { timeout: 3000 })
+      : window.setTimeout(() => setMounted(true), 2000);
+    return () => {
+      if (ric && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(handle as number);
+      } else {
+        window.clearTimeout(handle as number);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -114,6 +132,8 @@ export function AIChatWidget() {
       setMessages((prev) => [...prev, { role: "assistant", content: e.message || "Something went wrong. Please try again." }]);
     }
   };
+
+  if (!mounted) return null;
 
   if (!open) {
     return (

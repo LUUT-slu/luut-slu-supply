@@ -57,15 +57,34 @@ export interface ShopifyProduct {
   };
 }
 
+// 10s hard cap so Shopify can never hang the homepage / hooks
+const SHOPIFY_REQUEST_TIMEOUT_MS = 10_000;
+
 export async function storefrontApiRequest(query: string, variables: Record<string, unknown> = {}) {
-  const response = await fetch(SHOPIFY_STOREFRONT_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN
-    },
-    body: JSON.stringify({ query, variables }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), SHOPIFY_REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(SHOPIFY_STOREFRONT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN
+      },
+      body: JSON.stringify({ query, variables }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if ((err as Error)?.name === 'AbortError') {
+      console.warn('[shopify] request timed out after', SHOPIFY_REQUEST_TIMEOUT_MS, 'ms');
+      return null;
+    }
+    console.warn('[shopify] request failed:', (err as Error)?.message);
+    return null;
+  }
+  clearTimeout(timeoutId);
 
   if (response.status === 402) {
     toast.error("Shopify: Payment required", {
@@ -75,13 +94,16 @@ export async function storefrontApiRequest(query: string, variables: Record<stri
   }
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    console.warn('[shopify] HTTP', response.status);
+    return null;
   }
 
-  const data = await response.json();
-  
+  const data = await response.json().catch(() => null);
+  if (!data) return null;
+
   if (data.errors) {
-    throw new Error(`Error calling Shopify: ${data.errors.map((e: { message: string }) => e.message).join(', ')}`);
+    console.warn('[shopify] GraphQL errors:', data.errors);
+    return null;
   }
 
   return data;

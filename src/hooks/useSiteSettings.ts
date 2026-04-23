@@ -140,12 +140,38 @@ export interface SiteSettings {
   marketingStudio: MarketingStudioSettings;
 }
 
-async function fetchSiteSettings(): Promise<SiteSettings> {
-  const { data, error } = await supabase
-    .from("site_settings" as any)
-    .select("id, value");
+function buildDefaultSettings(): SiteSettings {
+  return {
+    popups: [],
+    freezeCheckout: false,
+    hideSoldOut: false,
+    checkoutReminder: { enabled: false, code: "", message: "" },
+    colorVariantCards: { enabled: false, showOnlyInStock: true },
+    homepageLayout: DEFAULT_HOMEPAGE_LAYOUT,
+    notifications: {
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      alerts: { ...DEFAULT_NOTIFICATION_SETTINGS.alerts },
+    },
+    marketingStudio: { ...DEFAULT_MARKETING_STUDIO },
+  };
+}
 
-  if (error) throw error;
+async function fetchSiteSettings(): Promise<SiteSettings> {
+  // 8s ceiling — never let site_settings block homepage render
+  const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+    setTimeout(() => resolve({ data: null, error: new Error("site_settings timeout") }), 8000)
+  );
+  const fetchPromise = supabase
+    .from("site_settings" as any)
+    .select("id, value")
+    .then((res) => res as any);
+
+  const { data, error } = (await Promise.race([fetchPromise, timeoutPromise])) as any;
+
+  if (error) {
+    console.warn("[useSiteSettings] falling back to defaults:", error.message);
+    return buildDefaultSettings();
+  }
 
   const settings: Record<string, any> = {};
   (data as any[])?.forEach((row: { id: string; value: any }) => {
@@ -205,9 +231,14 @@ export function useSiteSettings() {
   return useQuery({
     queryKey: ["site-settings"],
     queryFn: fetchSiteSettings,
-    staleTime: 5000,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    // Longer stale time — homepage doesn't need fresh popups every render
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 1,
+    // Always resolve to safe defaults so Index never blocks
+    placeholderData: buildDefaultSettings,
   });
 }
 
