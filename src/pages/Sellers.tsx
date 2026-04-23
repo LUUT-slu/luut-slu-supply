@@ -16,13 +16,13 @@ export default function Sellers() {
     queryKey: ["approved-sellers"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("seller_profiles")
-        .select("id, seller_name, seller_id, shop_description, location, phone, logo_url, whatsapp")
+        .from("public_seller_profiles" as any)
+        .select("id, seller_name, seller_id, shop_description, location, logo_url")
         .eq("is_approved", true)
         .order("seller_name");
       
       if (error) throw error;
-      return data;
+      return (data as any[]) || [];
     },
   });
 

@@ -22,26 +22,26 @@ export default function SellerProfile() {
 
       if (isUUID) {
         const { data, error } = await supabase
-          .from("seller_profiles")
+          .from("public_seller_profiles" as any)
           .select("*")
           .eq("id", sellerId)
           .eq("is_approved", true)
           .single();
-        if (!error && data) return data;
+        if (!error && data) return data as any;
       }
 
       // Try seller_id lookup (e.g. S1A2B3)
       const { data: bySellerIdData } = await supabase
-        .from("seller_profiles")
+        .from("public_seller_profiles" as any)
         .select("*")
         .eq("seller_id", sellerId.toUpperCase())
         .eq("is_approved", true)
         .maybeSingle();
-      if (bySellerIdData) return bySellerIdData;
+      if (bySellerIdData) return bySellerIdData as any;
 
       // Fallback: slug-based lookup (e.g., "luut-slu-hub" -> match seller_name)
       const { data: allSellers } = await supabase
-        .from("seller_profiles")
+        .from("public_seller_profiles" as any)
         .select("*")
         .eq("is_approved", true);
 
