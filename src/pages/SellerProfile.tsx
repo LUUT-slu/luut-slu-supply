@@ -47,8 +47,8 @@ export default function SellerProfile() {
 
       if (allSellers) {
         const slug = sellerId.toLowerCase();
-        const match = allSellers.find(
-          (s) => s.seller_name.toLowerCase().replace(/\s+/g, "-") === slug
+        const match = (allSellers as any[]).find(
+          (s: any) => s.seller_name?.toLowerCase().replace(/\s+/g, "-") === slug
         );
         if (match) return match;
       }
