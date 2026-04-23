@@ -41,24 +41,43 @@ export default function MyOrders() {
 
   useEffect(() => {
     const fetchMyOrders = async () => {
-      const savedOrderIds = JSON.parse(localStorage.getItem("luut-my-orders") || "[]");
-      
+      const savedOrderIds: string[] = JSON.parse(
+        localStorage.getItem("luut-my-orders") || "[]",
+      );
+      const orderTokens: Record<string, string> = JSON.parse(
+        localStorage.getItem("luut-order-tokens") || "{}",
+      );
+
       if (savedOrderIds.length === 0) {
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .in("id", savedOrderIds)
-        .order("created_at", { ascending: false });
+      // Fetch each order via the secure token-based RPC in parallel.
+      const results = await Promise.all(
+        savedOrderIds.map(async (id) => {
+          const token = orderTokens[id];
+          if (!token) return null;
+          const { data, error } = await supabase.rpc("rpc_get_order_by_token", {
+            p_order_id: id,
+            p_token: token,
+          });
+          if (error) {
+            console.error("Failed to fetch order", id, error);
+            return null;
+          }
+          const row = Array.isArray(data) ? data[0] : data;
+          return row || null;
+        }),
+      );
 
-      if (error) {
-        console.error("Failed to fetch orders:", error);
-      } else {
-        setOrders((data || []) as unknown as Order[]);
-      }
+      const fetched = results
+        .filter((r): r is NonNullable<typeof r> => r !== null)
+        .sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+
+      setOrders(fetched as unknown as Order[]);
       setLoading(false);
     };
 

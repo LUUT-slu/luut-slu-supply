@@ -107,17 +107,32 @@ export default function OrderDetails() {
         return;
       }
 
-      // Fetch order - RLS allows public read
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("id", orderId)
-        .single();
+      // Fetch order via secure token-based RPC (or direct read for logged-in customer/admin)
+      let data: any = null;
+      let error: any = null;
 
-      if (error) {
-        console.error("Failed to fetch order:", error);
+      if (orderToken) {
+        const res = await supabase.rpc("rpc_get_order_by_token", {
+          p_order_id: orderId,
+          p_token: orderToken,
+        });
+        data = Array.isArray(res.data) ? res.data[0] : res.data;
+        error = res.error;
+      } else {
+        // Authenticated customer/admin/seller path (RLS will gate access)
+        const res = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", orderId)
+          .maybeSingle();
+        data = res.data;
+        error = res.error;
+      }
+
+      if (error || !data) {
+        if (error) console.error("Failed to fetch order:", error);
         toast.error("Order not found");
-      } else if (data) {
+      } else {
         setOrder(data as unknown as Order);
         setEditLocation(data.location);
         // Parse the date string back to Date object
