@@ -33,12 +33,9 @@ export default function OrderComplete() {
   // Look up seller's WhatsApp number from their profile
   const getSellerWhatsApp = async (vendorName: string): Promise<string> => {
     try {
-      const { data: sellerProfile } = await supabase
-        .from('seller_profiles')
-        .select('whatsapp, phone')
-        .eq('seller_name', vendorName)
-        .eq('is_approved', true)
-        .maybeSingle();
+      const { data: contactRows } = await supabase
+        .rpc('rpc_get_seller_contact', { p_seller_name: vendorName });
+      const sellerProfile = Array.isArray(contactRows) ? contactRows[0] : null;
 
       if (sellerProfile?.whatsapp) {
         return sellerProfile.whatsapp.replace(/[\s\-\(\)]/g, '');
