@@ -239,7 +239,13 @@ export default function SellerProducts() {
                   <span className="hidden sm:inline">{syncing ? "Syncing..." : "Sync Products"}</span>
                 </Button>
               )}
-              <Button onClick={() => navigate("/seller/products/new")} size="sm" className="gap-1.5">
+              <Button
+                onClick={() => navigate("/seller/products/new")}
+                size="sm"
+                className="gap-1.5"
+                disabled={profileLoading || !profile?.id}
+                title={!profile?.id ? "Loading seller profile…" : undefined}
+              >
                 <Plus className="h-3.5 w-3.5" />
                 Add Product
               </Button>
