@@ -55,7 +55,7 @@ interface Product {
 
 export default function SellerProducts() {
   const navigate = useNavigate();
-  const { profile } = useSellerProfile();
+  const { profile, loading: profileLoading } = useSellerProfile();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("active");
