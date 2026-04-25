@@ -160,6 +160,7 @@ export default function SellerProductForm() {
     if (!profile?.id) return [];
 
     const uploadedUrls: string[] = [];
+    const failures: string[] = [];
 
     for (const file of imageFiles) {
       const fileExt = file.name.split(".").pop();
@@ -172,6 +173,7 @@ export default function SellerProductForm() {
 
       if (uploadError) {
         console.error("Upload error:", uploadError);
+        failures.push(uploadError.message);
         continue;
       }
 
@@ -180,6 +182,13 @@ export default function SellerProductForm() {
         .getPublicUrl(filePath);
 
       uploadedUrls.push(publicUrl);
+    }
+
+    // If we tried to upload images but every one failed, surface the real reason.
+    if (imageFiles.length > 0 && uploadedUrls.length === 0) {
+      throw new Error(
+        `Image upload failed: ${failures[0] || "could not upload to storage"}`
+      );
     }
 
     return uploadedUrls;
