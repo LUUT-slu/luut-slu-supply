@@ -280,7 +280,11 @@ export default function SellerProducts() {
                 <p className="text-xs text-muted-foreground mb-4">
                   {activeTab === "active" ? "Add your first product to get started" : "No products in this category"}
                 </p>
-                <Button onClick={() => navigate("/seller/products/new")} size="sm">
+                <Button
+                  onClick={() => navigate("/seller/products/new")}
+                  size="sm"
+                  disabled={profileLoading || !profile?.id}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Product
                 </Button>
