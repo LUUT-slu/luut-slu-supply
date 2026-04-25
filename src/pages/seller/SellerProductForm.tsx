@@ -39,7 +39,7 @@ interface ProductData {
 export default function SellerProductForm() {
   const navigate = useNavigate();
   const { productId } = useParams();
-  const { profile } = useSellerProfile();
+  const { profile, loading: profileLoading, refreshProfile } = useSellerProfile();
   const isEditing = Boolean(productId);
 
   const [loading, setLoading] = useState(false);
