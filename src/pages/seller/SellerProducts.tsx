@@ -55,7 +55,7 @@ interface Product {
 
 export default function SellerProducts() {
   const navigate = useNavigate();
-  const { profile } = useSellerProfile();
+  const { profile, loading: profileLoading } = useSellerProfile();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("active");
@@ -239,7 +239,13 @@ export default function SellerProducts() {
                   <span className="hidden sm:inline">{syncing ? "Syncing..." : "Sync Products"}</span>
                 </Button>
               )}
-              <Button onClick={() => navigate("/seller/products/new")} size="sm" className="gap-1.5">
+              <Button
+                onClick={() => navigate("/seller/products/new")}
+                size="sm"
+                className="gap-1.5"
+                disabled={profileLoading || !profile?.id}
+                title={!profile?.id ? "Loading seller profile…" : undefined}
+              >
                 <Plus className="h-3.5 w-3.5" />
                 Add Product
               </Button>
@@ -274,7 +280,11 @@ export default function SellerProducts() {
                 <p className="text-xs text-muted-foreground mb-4">
                   {activeTab === "active" ? "Add your first product to get started" : "No products in this category"}
                 </p>
-                <Button onClick={() => navigate("/seller/products/new")} size="sm">
+                <Button
+                  onClick={() => navigate("/seller/products/new")}
+                  size="sm"
+                  disabled={profileLoading || !profile?.id}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Product
                 </Button>
