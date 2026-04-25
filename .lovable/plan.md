@@ -1,69 +1,55 @@
 
+# Fix: Sellers stuck in loading loop on first product creation
 
-# Switch Best Sellers to Shopify-powered data
+## Root causes found
 
-## Shopify signal used
+1. **`useSellerProfile` never exposes a `loading` flag** to consumers. `SellerProductForm` and `SellerProducts` destructure only `{ profile }`. On a non‑admin seller's first visit, `profile` is `null` for a few hundred ms while the hook fetches. The "Add Product" page renders immediately, but `profile?.id` is required by both image upload and the RLS-protected `INSERT`. Users who submit fast hit the "Seller profile not found" toast.
 
-**Primary source: Shopify Storefront API `products(sortKey: BEST_SELLING)`**
+2. **Edit-product infinite spinner.** `SellerProductForm` line 46 sets `loadingProduct = isEditing`. The effect that flips it off (`fetchProduct`) only runs once `profile?.id` exists. For a seller whose `seller_profiles` row is missing or whose hook hasn't resolved yet, `loadingProduct` never turns false → the page sits on a spinner forever. This is the literal "infinite loading" the user is describing.
 
-This is Shopify's official best-seller ranking. It uses Shopify's internal sales-performance signal across the store (the same ranking that powers the "Best selling" sort in collections) and updates automatically as orders are placed in Shopify. No manual curation required.
+3. **Missing profile not repaired.** A user who is an approved seller (admin marked them approved in `seller_applications`) but doesn't yet have a row in `seller_profiles` is stuck — the form has no path to create one. `useSellerProfile` returns `profile = null` permanently and every submit fails the `profile?.id` guard.
 
-- Endpoint: `POST /api/2025-07/graphql.json`
-- Query: `products(first: N, sortKey: BEST_SELLING, query: "available_for_sale:true")`
-- Already supported by `src/lib/shopify.ts` (`ProductSortKey` already includes `'BEST_SELLING'`).
+4. **Storage upload errors are swallowed.** `uploadImages` uses `console.error` + `continue`, so an RLS / network failure on `seller-assets` produces an empty array and the product is inserted with `images: []` (or the user gets a vague error). The user sees a spinner, never a real reason.
 
-**Fallback (graceful):** if Shopify returns `null`/empty (timeout, 4xx/5xx, payment-required, network), fall back to the existing Supabase `weekly_best_sellers` view so the section still renders.
+5. **No safety timeout.** `handleSubmit` awaits storage and the insert with no upper bound; if Supabase hangs, the spinner runs indefinitely.
 
-## Plan
+6. **Submit/Add Product buttons aren't gated** on profile readiness, so users can click before the profile is loaded.
 
-### 1. New reusable hook: `src/hooks/useShopifyBestSellers.ts`
-- React Query hook (`queryKey: ['shopify-best-sellers', limit]`).
-- Calls `fetchProducts(limit, 'available_for_sale:true', 'BEST_SELLING', false)`.
-- Maps to `UnifiedProduct[]` (reuse the existing `shopifyToUnified` mapper — export it from `src/lib/products.ts`).
-- Applies `sortByStockStatus` so any sold-out items appear last (matches the homepage rule; sold-out still allowed per the "Best Sellers can have sold out items" rule).
-- On empty/error, returns `{ products: [], usedFallback: false }` and lets the consumer try the fallback.
-- 5-minute `staleTime` for speed; non-blocking (no `suspense`).
+RLS itself is correct: `seller_products` INSERT policy allows any seller whose `seller_profiles` row matches `auth.uid()` and is `is_approved = true`. The bucket policies for `seller-assets` allow any authenticated user to INSERT. No DB changes needed.
 
-### 2. New combined hook: `useBestSellersUnified(limit)`
-- Calls `useShopifyBestSellers` first.
-- If empty/errored, calls existing `useBestSellers` (Supabase view) and maps those rows to a minimal `UnifiedProduct`-compatible shape so the UI can render with one component.
-- Returns `{ products, isLoading, source: 'shopify' | 'local' | 'none' }` so we can log/verify which signal is live.
+## Fix plan
 
-### 3. Update `src/components/BestSellersSection.tsx`
-- Replace `useBestSellers` with `useBestSellersUnified`.
-- Render via the existing `UnifiedProductCard` so titles, prices, images, variants, stock badges, and product links all stay synced with Shopify.
-- Keep the `#1 / #2 / #3` rank badge overlay for the first three.
-- Keep "do not block homepage": loading skeleton stays, errors render `null` (section just hides), no thrown errors.
-- Console-log the active source once per mount (`[best-sellers] source=shopify` or `local`) for verification.
+### 1. `src/hooks/useSellerProfile.ts`
+- Expose `loading` in the returned object (it already exists internally) and add an `error` flag.
+- Add a `repairProfile()` helper that, if the user has an `approved` row in `seller_applications` but no `seller_profiles` row, inserts a minimal `seller_profiles` row (seller_name from application, `is_approved=true`, `seller_status='approved'`). Trigger this automatically once when the initial fetch returns `null` for an authenticated user.
+- This makes the "first product" case work for sellers who were just approved but never had a profile row provisioned.
 
-### 4. Update `src/pages/BestSellers.tsx` (the `/shop/best-sellers` page)
-- Use the same `useBestSellersUnified` hook with a higher limit (e.g. 24).
-- Reuse `UnifiedProductCard` grid for consistent links/stock/variants.
-- Reviews section stays as-is.
+### 2. `src/pages/seller/SellerProductForm.tsx`
+- Import `loading` from `useSellerProfile` as `profileLoading`.
+- Gate the page render: while `profileLoading` is true, show the existing spinner. Only after profile resolves either show the form or a clear "Seller profile not available — please refresh or contact support" empty state with a Retry button.
+- Fix the edit-mode spinner: if `profileLoading` is false and `profile?.id` is still missing, stop showing the spinner and show the error state instead. Set `loadingProduct=false` in that branch.
+- In `handleSubmit`:
+  - If `profileLoading`, just return (button will be disabled anyway).
+  - Wrap `uploadImages` so each individual file failure throws a real error message (e.g. `Image upload failed: <message>`) instead of silently continuing — show toast and abort if zero images uploaded successfully when new images were attempted.
+  - Add a `Promise.race` 30 s timeout around the upload+insert sequence. On timeout, throw "Upload took too long — please try again" so `finally` resets `loading`.
+  - After the insert, if Supabase returns an RLS error, surface a friendly message: "Your seller account isn't approved yet — contact support."
+- Disable the submit button while `profileLoading || loading`.
 
-### 5. Leave alone (out of scope)
-- Existing `useBestSellers` + `weekly_best_sellers` view — kept as fallback and still used by `MarketingStudio` poster generator (`useMarketingProducts` "bestsellers"). No marketing flow regressions.
-- `recordSale` writes to `product_sales` — kept; powers fallback.
-- `src/lib/stockSort.ts` — already used.
+### 3. `src/pages/seller/SellerProducts.tsx`
+- Import `loading` from `useSellerProfile` as `profileLoading`.
+- Disable the "Add Product" button while `profileLoading || !profile?.id`, with a small helper tooltip / muted note.
+- Skip the products `fetch` until profile is ready (already does, but stop showing the spinning loader once profile resolves with no id — show the same friendly empty state).
 
-## Failure handling
-- Shopify request already has a 10s `AbortController` timeout in `storefrontApiRequest` and returns `null` instead of throwing.
-- Hook surfaces `null` → triggers Supabase fallback.
-- If both empty → component returns `null` (section hidden, page not blocked).
-
-## Verification after implementation
-1. Open homepage → Network tab shows a Storefront GraphQL request with `sortKey: "BEST_SELLING"` and `query: "available_for_sale:true"`.
-2. Console shows `[best-sellers] source=shopify`.
-3. Best Sellers cards render real Shopify products with correct titles, prices, images, and links matching the live store.
-4. Toggling a product's availability in Shopify reflects after cache (5 min) or hard refresh.
-5. Sold-out items, if any appear, render last in the grid.
-6. Simulating Shopify failure (block storefront domain) → console shows `[best-sellers] source=local`, section still renders from Supabase view.
-7. Homepage TTI is unaffected (request runs in parallel, never blocks render).
+### 4. Verification
+- New seller (no `seller_profiles` row, but approved application): visit `/seller/products/new` → `repairProfile` creates the row → form becomes usable → first product saves successfully.
+- Existing approved seller: form loads with profile already cached → submit works on first try.
+- Admin: unaffected; admin path through `SellerRouteGuard` still grants access and `useSellerProfile` returns whatever profile the admin has.
+- Force a storage failure (e.g. invalid file): toast shows the real reason; button resets, no spinner stuck.
+- Force an RLS denial (simulate `is_approved=false`): clear "not approved" toast appears.
 
 ## Files to change
-- add: `src/hooks/useShopifyBestSellers.ts`
-- add: `src/hooks/useBestSellersUnified.ts`
-- edit: `src/lib/products.ts` (export `shopifyToUnified`)
-- edit: `src/components/BestSellersSection.tsx`
-- edit: `src/pages/BestSellers.tsx`
+- edit `src/hooks/useSellerProfile.ts` — expose `loading`, auto-repair missing profile.
+- edit `src/pages/seller/SellerProductForm.tsx` — gate on `profileLoading`, fix edit-spinner, real upload errors, timeout, friendly RLS message, disabled submit.
+- edit `src/pages/seller/SellerProducts.tsx` — gate "Add Product" button on profile readiness.
 
+No database migrations, no edge function changes, no RLS changes.
