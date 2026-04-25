@@ -83,8 +83,12 @@ export default function SellerProductForm() {
   useEffect(() => {
     if (isEditing && profile?.id) {
       fetchProduct();
+    } else if (isEditing && !profileLoading && !profile?.id) {
+      // Profile finished loading but is missing — stop the spinner so the
+      // user sees the friendly empty state instead of an infinite loader.
+      setLoadingProduct(false);
     }
-  }, [isEditing, productId, profile?.id]);
+  }, [isEditing, productId, profile?.id, profileLoading]);
 
   const fetchProduct = async () => {
     if (!productId) return;
