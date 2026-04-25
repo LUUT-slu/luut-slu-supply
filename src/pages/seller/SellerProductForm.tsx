@@ -197,8 +197,13 @@ export default function SellerProductForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (profileLoading) {
+      toast.info("Loading your seller profile, please wait…");
+      return;
+    }
+
     if (!profile?.id) {
-      toast.error("Seller profile not found");
+      toast.error("Seller profile not found. Please refresh or contact support.");
       return;
     }
 
@@ -215,7 +220,16 @@ export default function SellerProductForm() {
 
     setLoading(true);
 
-    try {
+    // Hard safety timeout — never let the spinner hang forever.
+    const timeoutMs = 30_000;
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Upload took too long — please try again")),
+        timeoutMs
+      )
+    );
+
+    const work = (async () => {
       // Upload new images
       const newImageUrls = await uploadImages();
       const allImages = [...existingImages, ...newImageUrls];
@@ -265,13 +279,61 @@ export default function SellerProductForm() {
       }
 
       navigate("/seller/products");
+    })();
+
+    try {
+      await Promise.race([work, timeoutPromise]);
     } catch (error: any) {
       console.error("Error saving product:", error);
-      toast.error(error.message || "Failed to save product");
+      const msg: string = error?.message || "Failed to save product";
+      // Friendly RLS message
+      if (
+        msg.toLowerCase().includes("row-level security") ||
+        msg.toLowerCase().includes("violates row-level") ||
+        msg.toLowerCase().includes("permission denied")
+      ) {
+        toast.error(
+          "Your seller account isn't approved yet — please contact support."
+        );
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // Profile is still loading from the network — show spinner.
+  if (profileLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  // Profile resolved but is missing — show a friendly empty state instead of
+  // a stuck loader, with a Retry button.
+  if (!profile?.id) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background gap-4 px-6 text-center">
+        <Package className="h-10 w-10 text-muted-foreground" />
+        <h2 className="text-lg font-semibold">Seller profile not available</h2>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          We couldn't load your seller profile. If you were just approved,
+          try refreshing. Otherwise contact support.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refreshProfile()}>
+            Retry
+          </Button>
+          <Button onClick={() => navigate("/seller/products")}>
+            Back to Products
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (loadingProduct) {
     return (
