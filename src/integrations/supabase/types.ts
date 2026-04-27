@@ -236,6 +236,8 @@ export type Database = {
       }
       customer_profiles: {
         Row: {
+          auth_provider: string | null
+          avatar_url: string | null
           created_at: string
           document_url: string | null
           email: string | null
@@ -244,12 +246,16 @@ export type Database = {
           last_contacted_at: string | null
           meetup_notes: string | null
           phone: string | null
+          phone_prompt_dismissed_at: string | null
           preferred_location: string | null
+          shopify_customer_id: string | null
           signup_source: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          auth_provider?: string | null
+          avatar_url?: string | null
           created_at?: string
           document_url?: string | null
           email?: string | null
@@ -258,12 +264,16 @@ export type Database = {
           last_contacted_at?: string | null
           meetup_notes?: string | null
           phone?: string | null
+          phone_prompt_dismissed_at?: string | null
           preferred_location?: string | null
+          shopify_customer_id?: string | null
           signup_source?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          auth_provider?: string | null
+          avatar_url?: string | null
           created_at?: string
           document_url?: string | null
           email?: string | null
@@ -272,7 +282,9 @@ export type Database = {
           last_contacted_at?: string | null
           meetup_notes?: string | null
           phone?: string | null
+          phone_prompt_dismissed_at?: string | null
           preferred_location?: string | null
+          shopify_customer_id?: string | null
           signup_source?: string | null
           updated_at?: string
           user_id?: string

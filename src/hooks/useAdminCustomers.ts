@@ -15,6 +15,9 @@ export interface CustomerListItem {
   last_order_at: string | null;
   tags: string[];
   has_active_discount: boolean;
+  avatar_url: string | null;
+  auth_provider: string | null;
+  shopify_customer_id: string | null;
 }
 
 export interface CustomerDetail extends CustomerListItem {
@@ -89,6 +92,9 @@ export function useAdminCustomers() {
           last_order_at: agg.last,
           tags: tagsByUser.get(p.user_id) || [],
           has_active_discount: discountUsers.has(p.user_id),
+          avatar_url: (p as any).avatar_url ?? null,
+          auth_provider: (p as any).auth_provider ?? null,
+          shopify_customer_id: (p as any).shopify_customer_id ?? null,
         };
       });
     },
@@ -139,6 +145,9 @@ export function useAdminCustomerDetail(userId: string | undefined) {
         last_order_at,
         tags: (tagsRes.data || []).map((t) => t.tag),
         has_active_discount: (discountsRes.data || []).length > 0,
+        avatar_url: (profile as any).avatar_url ?? null,
+        auth_provider: (profile as any).auth_provider ?? null,
+        shopify_customer_id: (profile as any).shopify_customer_id ?? null,
       };
     },
   });

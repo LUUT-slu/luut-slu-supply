@@ -8,6 +8,8 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { RouteGuard } from "@/components/RouteGuard";
 import { SalePopup } from "@/components/SalePopup";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PhonePromptModal } from "@/components/auth/PhonePromptModal";
+import { useEnsureCustomerProfile } from "@/hooks/useEnsureCustomerProfile";
 import Index from "./pages/Index";
 
 // Retry wrapper for lazy imports — handles stale chunk errors after deploys
@@ -82,6 +84,7 @@ const MarketingStudio = lazyRetry(() => import("./pages/admin/MarketingStudio"))
 const PromotionsManager = lazyRetry(() => import("./pages/admin/PromotionsManager"));
 const AdminCustomers = lazyRetry(() => import("./pages/admin/AdminCustomers"));
 const AdminCustomerDetail = lazyRetry(() => import("./pages/admin/AdminCustomerDetail"));
+const AuthCallback = lazyRetry(() => import("./pages/AuthCallback"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -100,6 +103,11 @@ const PageLoader = () => (
   </div>
 );
 
+const AppShell = () => {
+  useEnsureCustomerProfile();
+  return null;
+};
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -107,8 +115,10 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AppShell />
         <ScrollToTop />
         <SalePopup />
+        <PhonePromptModal />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public Routes */}
@@ -139,6 +149,7 @@ const App = () => (
             <Route path="/seller-auth" element={<Login />} />
             <Route path="/customer-auth" element={<CustomerAuth />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/register-seller" element={<SellerRegistration />} />
             
             {/* Customer Account (any authenticated user) */}
