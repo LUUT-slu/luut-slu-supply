@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -176,9 +177,20 @@ export default function Auth() {
         </Button>
 
         <div className="mx-auto max-w-md space-y-4">
-          <div className="text-center mb-8">
+          <div className="text-center mb-6">
             <h1 className="font-display text-2xl mb-2">Welcome</h1>
             <p className="text-muted-foreground">Choose how you'd like to continue</p>
+          </div>
+
+          {/* One-click Google sign-in for customers */}
+          <div className="space-y-3">
+            <GoogleSignInButton />
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or choose an account type</span>
+              </div>
+            </div>
           </div>
 
           {/* Sign in as Customer */}
