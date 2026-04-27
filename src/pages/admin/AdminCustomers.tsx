@@ -9,6 +9,7 @@ import { CustomerTable } from "@/components/admin/customers/CustomerTable";
 import { CustomerFilters, type CustomerFiltersValue } from "@/components/admin/customers/CustomerFilters";
 import { SignupsTab } from "@/components/admin/customers/SignupsTab";
 import { useAdminCustomers } from "@/hooks/useAdminCustomers";
+import { useCustomerInterests } from "@/hooks/useCustomerInterests";
 import { differenceInDays } from "date-fns";
 
 const initialFilters: CustomerFiltersValue = {
@@ -24,6 +25,8 @@ export default function AdminCustomers() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<CustomerFiltersValue>(initialFilters);
   const { data: customers = [], isLoading } = useAdminCustomers();
+  // Compute & persist interest tags in the background; refreshes the customer list once tags are written.
+  useCustomerInterests();
 
   const availableTags = useMemo(() => {
     const set = new Set<string>();
