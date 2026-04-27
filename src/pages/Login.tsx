@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, EyeOff, ArrowLeft, Mail, Lock, User } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 const emailSchema = z.string().email("Please enter a valid email");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
@@ -371,7 +372,14 @@ export default function Login() {
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="login" className="mt-6">
+              <TabsContent value="login" className="mt-6 space-y-4">
+                <GoogleSignInButton nextUrl={nextUrl} />
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or with email</span>
+                  </div>
+                </div>
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
@@ -426,7 +434,14 @@ export default function Login() {
                 </form>
               </TabsContent>
 
-              <TabsContent value="signup" className="mt-6">
+              <TabsContent value="signup" className="mt-6 space-y-4">
+                <GoogleSignInButton nextUrl={nextUrl} label="Sign up with Google" />
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or with email</span>
+                  </div>
+                </div>
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="full-name">Full Name (optional)</Label>
