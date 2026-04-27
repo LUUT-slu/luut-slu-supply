@@ -1,55 +1,104 @@
+## Social login + customer data upgrade
 
-# Fix: Sellers stuck in loading loop on first product creation
+### Important provider note
+Lovable Cloud's managed OAuth natively supports **Google, Apple, Email, Phone** only. **Facebook and Instagram are NOT natively supported** — they require building a fully custom OAuth flow (your own Meta Developer App + Instagram Basic Display App, callback edge function, token storage). That is a significantly larger build with ongoing app-review maintenance from Meta.
 
-## Root causes found
+This plan ships **Google** now (1-click, zero setup, highest conversion impact) and leaves Facebook/Instagram as a follow-up if you still want them after seeing Google's lift. You picked Google-only by skipping the question — if you actually want Facebook/Instagram too, reply and I'll extend the plan.
 
-1. **`useSellerProfile` never exposes a `loading` flag** to consumers. `SellerProductForm` and `SellerProducts` destructure only `{ profile }`. On a non‑admin seller's first visit, `profile` is `null` for a few hundred ms while the hook fetches. The "Add Product" page renders immediately, but `profile?.id` is required by both image upload and the RLS-protected `INSERT`. Users who submit fast hit the "Seller profile not found" toast.
+---
 
-2. **Edit-product infinite spinner.** `SellerProductForm` line 46 sets `loadingProduct = isEditing`. The effect that flips it off (`fetchProduct`) only runs once `profile?.id` exists. For a seller whose `seller_profiles` row is missing or whose hook hasn't resolved yet, `loadingProduct` never turns false → the page sits on a spinner forever. This is the literal "infinite loading" the user is describing.
+### What ships
 
-3. **Missing profile not repaired.** A user who is an approved seller (admin marked them approved in `seller_applications`) but doesn't yet have a row in `seller_profiles` is stuck — the form has no path to create one. `useSellerProfile` returns `profile = null` permanently and every submit fails the `profile?.id` guard.
+**1. Google sign-in button** on `/login` (both Sign In and Sign Up tabs) and on `/auth`. Clean, mobile-first, branded button above the email form with an "or" divider.
 
-4. **Storage upload errors are swallowed.** `uploadImages` uses `console.error` + `continue`, so an RLS / network failure on `seller-assets` produces an empty array and the product is inserted with `images: []` (or the user gets a vague error). The user sees a spinner, never a real reason.
+**2. Customer profile auto-creation/update** after any login (social or email):
+- Pulls `full_name`, `email`, `avatar_url` from Google identity
+- Upserts into `customer_profiles` (adds new `avatar_url` and `auth_provider` columns)
+- Tags the signup_source as `google` / `email`
+- Existing email/password flow keeps working unchanged
 
-5. **No safety timeout.** `handleSubmit` awaits storage and the insert with no upper bound; if Supabase hangs, the spinner runs indefinitely.
+**3. Phone-number prompt modal** — shows once after first login if `customer_profiles.phone` is empty. Skippable but reappears next session until filled. Mobile-optimized bottom sheet on small screens.
 
-6. **Submit/Add Product buttons aren't gated** on profile readiness, so users can click before the profile is loaded.
+**4. Shopify customer sync** — new edge function `sync-shopify-customer` runs on:
+- First social signup (after profile created)
+- Phone added via prompt
+- Order placement (already covered by checkout flow, hooked here too)
 
-RLS itself is correct: `seller_products` INSERT policy allows any seller whose `seller_profiles` row matches `auth.uid()` and is `is_approved = true`. The bucket policies for `seller-assets` allow any authenticated user to INSERT. No DB changes needed.
+Uses Shopify Admin `customers.json` to upsert by email. Stores returned `shopify_customer_id` back on `customer_profiles`.
 
-## Fix plan
+**5. Admin Customers dashboard upgrades** (extends existing `/admin/customers`):
+- New "Login method" column (Google badge / Email badge)
+- Avatar thumbnails next to names
+- New "Interests" column derived from analytics_events (top viewed categories → auto-tags)
+- Existing tags, orders, spent, contact info stay
 
-### 1. `src/hooks/useSellerProfile.ts`
-- Expose `loading` in the returned object (it already exists internally) and add an `error` flag.
-- Add a `repairProfile()` helper that, if the user has an `approved` row in `seller_applications` but no `seller_profiles` row, inserts a minimal `seller_profiles` row (seller_name from application, `is_approved=true`, `seller_status='approved'`). Trigger this automatically once when the initial fetch returns `null` for an authenticated user.
-- This makes the "first product" case work for sellers who were just approved but never had a profile row provisioned.
+**6. Auto-interest tagging** — nightly-equivalent computed view: any customer with ≥3 product_view events in a category gets a `{category} interest` tag inserted into `customer_tags` (e.g. "Beanie interest"). Re-runs on each admin dashboard load (cheap query, deduped via unique constraint).
 
-### 2. `src/pages/seller/SellerProductForm.tsx`
-- Import `loading` from `useSellerProfile` as `profileLoading`.
-- Gate the page render: while `profileLoading` is true, show the existing spinner. Only after profile resolves either show the form or a clear "Seller profile not available — please refresh or contact support" empty state with a Retry button.
-- Fix the edit-mode spinner: if `profileLoading` is false and `profile?.id` is still missing, stop showing the spinner and show the error state instead. Set `loadingProduct=false` in that branch.
-- In `handleSubmit`:
-  - If `profileLoading`, just return (button will be disabled anyway).
-  - Wrap `uploadImages` so each individual file failure throws a real error message (e.g. `Image upload failed: <message>`) instead of silently continuing — show toast and abort if zero images uploaded successfully when new images were attempted.
-  - Add a `Promise.race` 30 s timeout around the upload+insert sequence. On timeout, throw "Upload took too long — please try again" so `finally` resets `loading`.
-  - After the insert, if Supabase returns an RLS error, surface a friendly message: "Your seller account isn't approved yet — contact support."
-- Disable the submit button while `profileLoading || loading`.
+---
 
-### 3. `src/pages/seller/SellerProducts.tsx`
-- Import `loading` from `useSellerProfile` as `profileLoading`.
-- Disable the "Add Product" button while `profileLoading || !profile?.id`, with a small helper tooltip / muted note.
-- Skip the products `fetch` until profile is ready (already does, but stop showing the spinning loader once profile resolves with no id — show the same friendly empty state).
+### Technical changes
 
-### 4. Verification
-- New seller (no `seller_profiles` row, but approved application): visit `/seller/products/new` → `repairProfile` creates the row → form becomes usable → first product saves successfully.
-- Existing approved seller: form loads with profile already cached → submit works on first try.
-- Admin: unaffected; admin path through `SellerRouteGuard` still grants access and `useSellerProfile` returns whatever profile the admin has.
-- Force a storage failure (e.g. invalid file): toast shows the real reason; button resets, no spinner stuck.
-- Force an RLS denial (simulate `is_approved=false`): clear "not approved" toast appears.
+**Database migration**
+- `customer_profiles`: add `avatar_url text`, `auth_provider text default 'email'`, `shopify_customer_id text`, `phone_prompt_dismissed_at timestamptz`
+- Update `handle_new_customer` trigger to capture `raw_user_meta_data->>'avatar_url'`, `full_name`, and provider from `raw_app_meta_data->>'provider'`
+- Unique constraint on `customer_tags(user_id, tag)` to support upsert for interest auto-tagging (verify if missing)
 
-## Files to change
-- edit `src/hooks/useSellerProfile.ts` — expose `loading`, auto-repair missing profile.
-- edit `src/pages/seller/SellerProductForm.tsx` — gate on `profileLoading`, fix edit-spinner, real upload errors, timeout, friendly RLS message, disabled submit.
-- edit `src/pages/seller/SellerProducts.tsx` — gate "Add Product" button on profile readiness.
+**OAuth setup**
+- Use Lovable Cloud's `Configure Social Login` to scaffold `src/integrations/lovable/` (auto-generated, do not hand-edit)
+- Call `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/auth/callback" })`
+- New page `src/pages/AuthCallback.tsx` to handle session pickup + profile sync + redirect to `next` param or `/account`
 
-No database migrations, no edge function changes, no RLS changes.
+**Frontend**
+- `src/pages/Login.tsx`: add `GoogleSignInButton` to both tabs, hide forgot-password divider when only social shown
+- `src/components/auth/GoogleSignInButton.tsx` (new): branded Google button per Google's UI guidelines
+- `src/components/auth/PhonePromptModal.tsx` (new): shadcn Dialog/Drawer responsive, zod-validated phone input, calls `customer_profiles` update + `sync-shopify-customer`
+- `src/hooks/useEnsureCustomerProfile.ts` (new): on every auth state change, upserts profile from session metadata; mounted in `App.tsx` once
+- `src/App.tsx`: mount `useEnsureCustomerProfile` + render `PhonePromptModal` globally
+
+**Edge function**
+- `supabase/functions/sync-shopify-customer/index.ts` (new): JWT-verified, accepts `{ user_id }`, reads profile, calls Shopify Admin API `POST /admin/api/2025-07/customers.json` (or `PUT` if `shopify_customer_id` exists), saves returned ID. Uses existing `SHOPIFY_ADMIN_TOKEN` secret. Returns `{ shopify_customer_id }`.
+
+**Admin dashboard**
+- `src/hooks/useAdminCustomers.ts`: include `avatar_url`, `auth_provider`, `shopify_customer_id`
+- `src/components/admin/customers/CustomerTable.tsx`: add login-method badge + avatar; new "Interests" chip group
+- `src/hooks/useCustomerInterests.ts` (new): aggregates `analytics_events` by `product_category` per `user_id`, returns top 3
+- One-time tag insertion runs on admin dashboard load (idempotent via unique constraint)
+
+**Routing**
+- New route `/auth/callback` → `AuthCallback`
+- `App.tsx` adds `<PhonePromptModal />` at root
+
+---
+
+### Files
+
+**Add**
+- `src/integrations/lovable/*` (auto-generated by tool)
+- `src/components/auth/GoogleSignInButton.tsx`
+- `src/components/auth/PhonePromptModal.tsx`
+- `src/hooks/useEnsureCustomerProfile.ts`
+- `src/hooks/useCustomerInterests.ts`
+- `src/pages/AuthCallback.tsx`
+- `supabase/functions/sync-shopify-customer/index.ts`
+
+**Edit**
+- `src/pages/Login.tsx` — add Google button to both tabs
+- `src/pages/Auth.tsx` — add Google button to logged-out view
+- `src/App.tsx` — mount profile-ensure hook + global PhonePromptModal + new `/auth/callback` route
+- `src/hooks/useAdminCustomers.ts` — surface avatar, provider, interests
+- `src/components/admin/customers/CustomerTable.tsx` — render avatar, login-method badge, interests
+- DB migration for new `customer_profiles` columns + trigger update
+
+**Untouched**
+- All existing email/password login flows
+- Existing checkout/Shopify draft order flow
+- Admin/seller/partner login paths
+
+---
+
+### Verification
+1. Sign in with Google → land on `/account` (or `next` param) → row exists in `customer_profiles` with name + avatar + `auth_provider='google'`
+2. Phone prompt appears → save phone → modal closes → Shopify customer created (visible in Shopify admin)
+3. Existing email user signs in → no prompt, no regression
+4. Admin `/admin/customers` shows Google badge + avatar + interest tags after browsing 3+ products in a category
+5. Mobile viewport (375px): Google button full-width, phone prompt opens as bottom Drawer
