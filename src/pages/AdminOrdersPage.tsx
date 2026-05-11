@@ -58,6 +58,9 @@ import {
 import { toast } from "sonner";
 import { AssignOrderModal } from "@/components/admin/AssignOrderModal";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useShopifySyncStatus } from "@/hooks/useShopifySyncStatus";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, ShoppingBag, Store } from "lucide-react";
 
 interface Order {
   id: string;
