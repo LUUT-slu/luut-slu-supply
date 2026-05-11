@@ -333,10 +333,14 @@ export default function AdminOrdersPage() {
 
   const activeFilter = isMobile ? mobileTab : statusFilter;
   const filteredOrders = useMemo(() => {
-    if (activeFilter === "ALL") return orders;
-    if (activeFilter === "ACTIVE") return orders.filter(o => ["ACCEPTED", "ON_THE_WAY"].includes(getEffectiveStatus(o)));
-    return orders.filter(o => getEffectiveStatus(o) === activeFilter);
-  }, [orders, activeFilter]);
+    let list = orders;
+    if (sourceFilter !== "ALL") {
+      list = list.filter(o => (o.source ?? "website") === sourceFilter);
+    }
+    if (activeFilter === "ALL") return list;
+    if (activeFilter === "ACTIVE") return list.filter(o => ["ACCEPTED", "ON_THE_WAY"].includes(getEffectiveStatus(o)));
+    return list.filter(o => getEffectiveStatus(o) === activeFilter);
+  }, [orders, activeFilter, sourceFilter]);
 
   const orderCounts = useMemo(() => ({
     ALL: orders.length,
