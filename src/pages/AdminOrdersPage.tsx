@@ -394,9 +394,23 @@ export default function AdminOrdersPage() {
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium text-sm">{formatOrderNumber(order.order_number)}</span>
                 {getStatusBadge(status)}
+                {order.source === "shopify_pos" && (
+                  <Badge variant="secondary" className="gap-1 text-[10px]">
+                    <Store className="h-3 w-3" /> Shopify POS
+                    {order.shopify_pos_location_name ? ` · ${order.shopify_pos_location_name}` : ""}
+                  </Badge>
+                )}
+                {order.source === "shopify_online" && (
+                  <Badge variant="secondary" className="gap-1 text-[10px]">
+                    <ShoppingBag className="h-3 w-3" /> Shopify Online
+                  </Badge>
+                )}
+                {order.shopify_order_name && (
+                  <span className="text-[10px] text-muted-foreground">{order.shopify_order_name}</span>
+                )}
               </div>
               <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <User className="h-3 w-3 shrink-0" />
