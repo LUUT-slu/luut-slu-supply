@@ -126,27 +126,18 @@ export function WhatPeopleAreBuyingSection() {
     loadProducts();
   }, []);
 
-  // Stable daily-seeded shuffle: prevents reorder thrash on re-renders
-  // and keeps a consistent above-the-fold image order across the session.
-  // Sold-out products stay visible but are pushed to the end of the strip.
+  // Only in-stock items, sorted by most recently updated/added (newest first).
   const displayProducts = useMemo(() => {
     if (products.length === 0) return [];
-    // Seed = day-of-year so order is deterministic per day per visitor.
-    const today = new Date();
-    let seed = today.getFullYear() * 1000 + today.getMonth() * 31 + today.getDate();
-    const rand = () => {
-      seed = (seed * 9301 + 49297) % 233280;
-      return seed / 233280;
-    };
-    const shuffled = [...products].sort(() => rand() - 0.5);
-    // Stable partition: in-stock first (preserving shuffled order), sold-out last.
-    const inStock = shuffled.filter(p =>
+    const inStock = products.filter(p =>
       p.node.variants.edges.some(v => v.node.availableForSale)
     );
-    const soldOut = shuffled.filter(p =>
-      !p.node.variants.edges.some(v => v.node.availableForSale)
-    );
-    return [...inStock, ...soldOut].slice(0, 6);
+    const sorted = [...inStock].sort((a, b) => {
+      const aDate = (a.node as any).updatedAt || (a.node as any).publishedAt || (a.node as any).createdAt || '';
+      const bDate = (b.node as any).updatedAt || (b.node as any).publishedAt || (b.node as any).createdAt || '';
+      return bDate.localeCompare(aDate);
+    });
+    return sorted.slice(0, 6);
   }, [products]);
 
   if (loading) {
