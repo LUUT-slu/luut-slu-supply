@@ -167,11 +167,14 @@ export async function fetchLovableProducts(): Promise<LovableProduct[]> {
 
 // Fetch combined products from both sources
 export async function fetchHybridProducts(options: {
-  categorySlug?: string;  // URL slug like "beanies-tams"
+  categorySlug?: string;  // URL slug like "beanies-tams" OR Shopify collection handle "clothing--beanies"
   shopifyQuery?: string;  // Override Shopify query
   limit?: number;
+  /** New marketplace taxonomy filters for local seller_products */
+  mainCategory?: string;
+  subCategory?: string;
 }): Promise<UnifiedProduct[]> {
-  const { categorySlug, shopifyQuery, limit = 50 } = options;
+  const { categorySlug, shopifyQuery, limit = 50, mainCategory, subCategory } = options;
 
   // Fetch from both sources in parallel
   // For Shopify: use collection-based query when categorySlug is provided (exact Shopify membership)
@@ -209,9 +212,22 @@ export async function fetchHybridProducts(options: {
   const unifiedShopify = shopifyProducts.map(shopifyToUnified);
   let unifiedLovable = lovableProducts.map(lovableToUnified);
 
-  // Filter Lovable products by category if slug provided
-  if (categorySlug) {
-    unifiedLovable = unifiedLovable.filter(p => 
+  // Filter Lovable products: prefer new main/sub taxonomy when provided,
+  // fall back to legacy category-slug matching for /shop/:category routes.
+  if (mainCategory || subCategory) {
+    const mainLower = mainCategory?.toLowerCase();
+    const subLower = subCategory?.toLowerCase();
+    unifiedLovable = unifiedLovable.filter((p) => {
+      const orig = p.originalLovableProduct;
+      if (!orig) return false;
+      const m = (orig as any).main_category?.toString().toLowerCase();
+      const s = (orig as any).sub_category?.toString().toLowerCase();
+      if (mainLower && m !== mainLower) return false;
+      if (subLower && s !== subLower) return false;
+      return true;
+    });
+  } else if (categorySlug) {
+    unifiedLovable = unifiedLovable.filter(p =>
       categoryMatchesSlug(p.category, categorySlug)
     );
   }

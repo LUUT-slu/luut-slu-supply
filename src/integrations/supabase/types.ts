@@ -1009,12 +1009,14 @@ export type Database = {
           id: string
           images: string[] | null
           location: string | null
+          main_category: string | null
           name: string
           price: number
           quantity: number
           seller_id: string
           shopify_product_id: string | null
           status: string
+          sub_category: string | null
           updated_at: string
           views_count: number
         }
@@ -1026,12 +1028,14 @@ export type Database = {
           id?: string
           images?: string[] | null
           location?: string | null
+          main_category?: string | null
           name: string
           price: number
           quantity?: number
           seller_id: string
           shopify_product_id?: string | null
           status?: string
+          sub_category?: string | null
           updated_at?: string
           views_count?: number
         }
@@ -1043,12 +1047,14 @@ export type Database = {
           id?: string
           images?: string[] | null
           location?: string | null
+          main_category?: string | null
           name?: string
           price?: number
           quantity?: number
           seller_id?: string
           shopify_product_id?: string | null
           status?: string
+          sub_category?: string | null
           updated_at?: string
           views_count?: number
         }

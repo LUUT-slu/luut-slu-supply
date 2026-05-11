@@ -9,6 +9,8 @@ import { Badge } from "./ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { useShopifyCollections, getCollectionPath } from "@/hooks/useShopifyCollections";
+import { MegaNav } from "@/components/MegaNav";
+import { MobileCategoryDrawer } from "@/components/MobileCategoryDrawer";
 
 // Fallback categories if Shopify collections aren't loaded
 const fallbackCategories = [
@@ -158,12 +160,7 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden items-center gap-6 lg:flex">
-          <Link
-            to="/shop"
-            className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
-
-            Shop Outfits
-          </Link>
+          <MegaNav />
           <Link
             to="/shop?filter=new"
             className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
@@ -263,16 +260,7 @@ export function Header() {
                   <span className="py-2 font-display text-sm text-muted-foreground">
                     SHOP BY CATEGORY
                   </span>
-                  {outfitCategories.map((cat) =>
-                  <Link
-                    key={cat.path}
-                    to={cat.path}
-                    onClick={() => setIsOpen(false)}
-                    className="py-2 font-body text-sm text-foreground/80 transition-colors hover:text-primary">
-
-                      {cat.name}
-                    </Link>
-                  )}
+                  <MobileCategoryDrawer onNavigate={() => setIsOpen(false)} />
                   
                   <div className="my-4 border-t border-border" />
                   
