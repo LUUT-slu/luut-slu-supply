@@ -260,16 +260,7 @@ export function Header() {
                   <span className="py-2 font-display text-sm text-muted-foreground">
                     SHOP BY CATEGORY
                   </span>
-                  {outfitCategories.map((cat) =>
-                  <Link
-                    key={cat.path}
-                    to={cat.path}
-                    onClick={() => setIsOpen(false)}
-                    className="py-2 font-body text-sm text-foreground/80 transition-colors hover:text-primary">
-
-                      {cat.name}
-                    </Link>
-                  )}
+                  <MobileCategoryDrawer onNavigate={() => setIsOpen(false)} />
                   
                   <div className="my-4 border-t border-border" />
                   
