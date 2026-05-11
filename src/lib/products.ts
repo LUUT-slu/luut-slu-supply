@@ -167,11 +167,14 @@ export async function fetchLovableProducts(): Promise<LovableProduct[]> {
 
 // Fetch combined products from both sources
 export async function fetchHybridProducts(options: {
-  categorySlug?: string;  // URL slug like "beanies-tams"
+  categorySlug?: string;  // URL slug like "beanies-tams" OR Shopify collection handle "clothing--beanies"
   shopifyQuery?: string;  // Override Shopify query
   limit?: number;
+  /** New marketplace taxonomy filters for local seller_products */
+  mainCategory?: string;
+  subCategory?: string;
 }): Promise<UnifiedProduct[]> {
-  const { categorySlug, shopifyQuery, limit = 50 } = options;
+  const { categorySlug, shopifyQuery, limit = 50, mainCategory, subCategory } = options;
 
   // Fetch from both sources in parallel
   // For Shopify: use collection-based query when categorySlug is provided (exact Shopify membership)
