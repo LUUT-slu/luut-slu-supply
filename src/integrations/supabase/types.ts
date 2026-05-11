@@ -446,6 +446,9 @@ export type Database = {
           product_name: string
           quantity: number
           seller_id: string | null
+          shopify_line_id: string | null
+          shopify_product_id: string | null
+          shopify_variant_id: string | null
           total_price: number
           unit_price: number
         }
@@ -458,6 +461,9 @@ export type Database = {
           product_name: string
           quantity?: number
           seller_id?: string | null
+          shopify_line_id?: string | null
+          shopify_product_id?: string | null
+          shopify_variant_id?: string | null
           total_price: number
           unit_price: number
         }
@@ -470,6 +476,9 @@ export type Database = {
           product_name?: string
           quantity?: number
           seller_id?: string | null
+          shopify_line_id?: string | null
+          shopify_product_id?: string | null
+          shopify_variant_id?: string | null
           total_price?: number
           unit_price?: number
         }
@@ -534,6 +543,16 @@ export type Database = {
           preferred_date: string
           seller_notes: string | null
           settlement_status: string | null
+          shopify_channel: string | null
+          shopify_financial_status: string | null
+          shopify_fulfillment_status: string | null
+          shopify_order_id: string | null
+          shopify_order_name: string | null
+          shopify_pos_location_id: string | null
+          shopify_pos_location_name: string | null
+          shopify_synced_at: string | null
+          shopify_total_discounts: number | null
+          source: string
           status: string
           total_price: number
           updated_at: string
@@ -567,6 +586,16 @@ export type Database = {
           preferred_date: string
           seller_notes?: string | null
           settlement_status?: string | null
+          shopify_channel?: string | null
+          shopify_financial_status?: string | null
+          shopify_fulfillment_status?: string | null
+          shopify_order_id?: string | null
+          shopify_order_name?: string | null
+          shopify_pos_location_id?: string | null
+          shopify_pos_location_name?: string | null
+          shopify_synced_at?: string | null
+          shopify_total_discounts?: number | null
+          source?: string
           status?: string
           total_price: number
           updated_at?: string
@@ -600,6 +629,16 @@ export type Database = {
           preferred_date?: string
           seller_notes?: string | null
           settlement_status?: string | null
+          shopify_channel?: string | null
+          shopify_financial_status?: string | null
+          shopify_fulfillment_status?: string | null
+          shopify_order_id?: string | null
+          shopify_order_name?: string | null
+          shopify_pos_location_id?: string | null
+          shopify_pos_location_name?: string | null
+          shopify_synced_at?: string | null
+          shopify_total_discounts?: number | null
+          source?: string
           status?: string
           total_price?: number
           updated_at?: string
@@ -1150,6 +1189,36 @@ export type Database = {
         }
         Relationships: []
       }
+      shopify_sync_state: {
+        Row: {
+          id: string
+          last_cursor: string | null
+          last_error: string | null
+          last_run_count: number | null
+          last_status: string | null
+          last_synced_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          last_cursor?: string | null
+          last_error?: string | null
+          last_run_count?: number | null
+          last_status?: string | null
+          last_synced_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          last_cursor?: string | null
+          last_error?: string | null
+          last_run_count?: number | null
+          last_status?: string | null
+          last_synced_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           id: string
@@ -1370,6 +1439,16 @@ export type Database = {
           preferred_date: string
           seller_notes: string | null
           settlement_status: string | null
+          shopify_channel: string | null
+          shopify_financial_status: string | null
+          shopify_fulfillment_status: string | null
+          shopify_order_id: string | null
+          shopify_order_name: string | null
+          shopify_pos_location_id: string | null
+          shopify_pos_location_name: string | null
+          shopify_synced_at: string | null
+          shopify_total_discounts: number | null
+          source: string
           status: string
           total_price: number
           updated_at: string

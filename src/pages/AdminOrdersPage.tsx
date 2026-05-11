@@ -58,6 +58,9 @@ import {
 import { toast } from "sonner";
 import { AssignOrderModal } from "@/components/admin/AssignOrderModal";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useShopifySyncStatus } from "@/hooks/useShopifySyncStatus";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, ShoppingBag, Store } from "lucide-react";
 
 interface Order {
   id: string;
@@ -73,6 +76,10 @@ interface Order {
   total_price: number;
   currency_code: string;
   assigned_partner_id: string | null;
+  source?: string | null;
+  shopify_order_name?: string | null;
+  shopify_pos_location_name?: string | null;
+  shopify_financial_status?: string | null;
   line_items: Array<{
     title: string;
     quantity: number;
@@ -113,7 +120,9 @@ export default function AdminOrdersPage() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [sourceFilter, setSourceFilter] = useState<string>("ALL");
   const [mobileTab, setMobileTab] = useState("ALL");
+  const { state: syncState, syncing, triggerSync } = useShopifySyncStatus();
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminUserId, setAdminUserId] = useState<string | null>(null);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -324,10 +333,14 @@ export default function AdminOrdersPage() {
 
   const activeFilter = isMobile ? mobileTab : statusFilter;
   const filteredOrders = useMemo(() => {
-    if (activeFilter === "ALL") return orders;
-    if (activeFilter === "ACTIVE") return orders.filter(o => ["ACCEPTED", "ON_THE_WAY"].includes(getEffectiveStatus(o)));
-    return orders.filter(o => getEffectiveStatus(o) === activeFilter);
-  }, [orders, activeFilter]);
+    let list = orders;
+    if (sourceFilter !== "ALL") {
+      list = list.filter(o => (o.source ?? "website") === sourceFilter);
+    }
+    if (activeFilter === "ALL") return list;
+    if (activeFilter === "ACTIVE") return list.filter(o => ["ACCEPTED", "ON_THE_WAY"].includes(getEffectiveStatus(o)));
+    return list.filter(o => getEffectiveStatus(o) === activeFilter);
+  }, [orders, activeFilter, sourceFilter]);
 
   const orderCounts = useMemo(() => ({
     ALL: orders.length,
@@ -381,9 +394,23 @@ export default function AdminOrdersPage() {
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium text-sm">{formatOrderNumber(order.order_number)}</span>
                 {getStatusBadge(status)}
+                {order.source === "shopify_pos" && (
+                  <Badge variant="secondary" className="gap-1 text-[10px]">
+                    <Store className="h-3 w-3" /> Shopify POS
+                    {order.shopify_pos_location_name ? ` · ${order.shopify_pos_location_name}` : ""}
+                  </Badge>
+                )}
+                {order.source === "shopify_online" && (
+                  <Badge variant="secondary" className="gap-1 text-[10px]">
+                    <ShoppingBag className="h-3 w-3" /> Shopify Online
+                  </Badge>
+                )}
+                {order.shopify_order_name && (
+                  <span className="text-[10px] text-muted-foreground">{order.shopify_order_name}</span>
+                )}
               </div>
               <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <User className="h-3 w-3 shrink-0" />
@@ -548,6 +575,10 @@ export default function AdminOrdersPage() {
                 </Button>
               </>
             )}
+            <Button onClick={triggerSync} disabled={syncing} variant="outline" size="sm" className="gap-1 text-xs">
+              <ShoppingBag className={`h-3 w-3 ${syncing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{syncing ? "Syncing…" : "Sync Shopify"}</span>
+            </Button>
             <Button onClick={() => { fetchOrders(); fetchPartners(); }} variant="outline" size="sm" className="gap-1 text-xs">
               <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
             </Button>
@@ -557,7 +588,42 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        {/* Stats (desktop only) */}
+        {/* Shopify sync status */}
+        {syncState?.last_status === "error" && (
+          <Alert variant="destructive" className="mb-3">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              Shopify order sync failed. Check API permissions or connection.
+              {syncState.last_error ? ` (${syncState.last_error.slice(0, 120)})` : ""}
+            </AlertDescription>
+          </Alert>
+        )}
+        {syncState?.last_synced_at && syncState.last_status !== "error" && (
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            Shopify last synced {new Date(syncState.last_synced_at).toLocaleString()}
+            {typeof syncState.last_run_count === "number" ? ` · ${syncState.last_run_count} updated` : ""}
+          </p>
+        )}
+
+        {/* Source filter */}
+        <Tabs value={sourceFilter} onValueChange={setSourceFilter} className="mb-3">
+          <TabsList className="w-full overflow-x-auto flex justify-start gap-0 h-auto p-1">
+            {[
+              { value: "ALL", label: "All Orders" },
+              { value: "website", label: "Website" },
+              { value: "shopify_online", label: "Shopify Online" },
+              { value: "shopify_pos", label: "Shopify POS" },
+              { value: "manual", label: "Manual" },
+            ].map(s => (
+              <TabsTrigger key={s.value} value={s.value} className="text-xs px-2.5 py-1.5 whitespace-nowrap gap-1">
+                {s.value === "shopify_pos" && <Store className="h-3 w-3" />}
+                {s.value === "shopify_online" && <ShoppingBag className="h-3 w-3" />}
+                {s.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
         <div className="mb-4 hidden md:grid gap-3 grid-cols-2 lg:grid-cols-5">
           {[
             { label: "New", count: orderCounts.NEW, icon: Package, color: "text-blue-500", filter: "NEW" },
