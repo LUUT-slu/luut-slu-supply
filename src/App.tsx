@@ -129,6 +129,9 @@ const App = () => (
             <Route path="/shop/new-arrivals" element={<NewArrivals />} />
             <Route path="/shop/best-sellers" element={<BestSellersPage />} />
             <Route path="/shop/:category" element={<ShopCategory />} />
+            {/* New marketplace taxonomy routes */}
+            <Route path="/c/:main" element={<CategoryMain />} />
+            <Route path="/c/:main/:sub" element={<CategorySub />} />
             <Route path="/product/:handle" element={<ProductDetail />} />
             <Route path="/product/local/:productId" element={<LocalProductDetail />} />
             <Route path="/cart" element={<Cart />} />
