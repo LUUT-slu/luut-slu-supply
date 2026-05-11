@@ -561,6 +561,10 @@ export default function AdminOrdersPage() {
                 </Button>
               </>
             )}
+            <Button onClick={triggerSync} disabled={syncing} variant="outline" size="sm" className="gap-1 text-xs">
+              <ShoppingBag className={`h-3 w-3 ${syncing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{syncing ? "Syncing…" : "Sync Shopify"}</span>
+            </Button>
             <Button onClick={() => { fetchOrders(); fetchPartners(); }} variant="outline" size="sm" className="gap-1 text-xs">
               <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
             </Button>
