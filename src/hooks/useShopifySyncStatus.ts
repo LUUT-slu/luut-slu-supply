@@ -14,8 +14,8 @@ export function useShopifySyncStatus() {
   const [syncing, setSyncing] = useState(false);
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase
-      .from("shopify_sync_state" as any)
+    const { data } = await (supabase as any)
+      .from("shopify_sync_state")
       .select("last_synced_at, last_status, last_error, last_run_count")
       .eq("id", "orders")
       .maybeSingle();
