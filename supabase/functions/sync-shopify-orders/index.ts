@@ -90,8 +90,8 @@ Deno.serve(async (req) => {
   const jwt = authHeader.replace("Bearer ", "");
   let isAdminCall = false;
   if (jwt) {
-    const { data: claims } = await admin.auth.getClaims(jwt).catch(() => ({ data: null }));
-    const userId = (claims as any)?.claims?.sub;
+    const { data: userRes } = await admin.auth.getUser(jwt).catch(() => ({ data: null as any }));
+    const userId = userRes?.user?.id;
     if (userId) {
       const { data: roleRow } = await admin
         .from("user_roles")
