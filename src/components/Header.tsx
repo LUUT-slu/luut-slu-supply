@@ -9,6 +9,8 @@ import { Badge } from "./ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { useShopifyCollections, getCollectionPath } from "@/hooks/useShopifyCollections";
+import { MegaNav } from "@/components/MegaNav";
+import { MobileCategoryDrawer } from "@/components/MobileCategoryDrawer";
 
 // Fallback categories if Shopify collections aren't loaded
 const fallbackCategories = [
