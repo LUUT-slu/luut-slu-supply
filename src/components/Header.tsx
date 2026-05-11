@@ -160,12 +160,7 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden items-center gap-6 lg:flex">
-          <Link
-            to="/shop"
-            className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
-
-            Shop Outfits
-          </Link>
+          <MegaNav />
           <Link
             to="/shop?filter=new"
             className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
