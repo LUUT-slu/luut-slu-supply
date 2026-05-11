@@ -152,7 +152,25 @@ export function WhatPeopleAreBuyingSection() {
     );
   }
 
-  if (displayProducts.length === 0) return null;
+  if (displayProducts.length === 0) {
+    return (
+      <section className="relative md:py-16 overflow-hidden py-[30px]">
+        <div className="container relative">
+          <div className="mb-10">
+            <h2 className="text-xl font-semibold tracking-tight text-center md:text-2xl">
+              IN STOCK NOW
+            </h2>
+            <p className="mt-3 font-body text-sm text-muted-foreground/70 text-center">
+              Available right now — ready for pickup.
+            </p>
+          </div>
+          <p className="text-center font-body text-sm text-muted-foreground/60">
+            No items in stock right now. Check back soon.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="relative md:py-16 overflow-hidden py-[30px]">
@@ -162,10 +180,10 @@ export function WhatPeopleAreBuyingSection() {
       <div className="container relative">
         <div className="mb-10">
           <h2 className="text-xl font-semibold tracking-tight text-center md:text-2xl">
-            WHAT'S TRENDING
+            IN STOCK NOW
           </h2>
           <p className="mt-3 font-body text-sm text-muted-foreground/70 text-center">
-            See what's moving in your community right now
+            Available right now — ready for pickup.
           </p>
         </div>
 
