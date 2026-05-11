@@ -574,7 +574,42 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        {/* Stats (desktop only) */}
+        {/* Shopify sync status */}
+        {syncState?.last_status === "error" && (
+          <Alert variant="destructive" className="mb-3">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              Shopify order sync failed. Check API permissions or connection.
+              {syncState.last_error ? ` (${syncState.last_error.slice(0, 120)})` : ""}
+            </AlertDescription>
+          </Alert>
+        )}
+        {syncState?.last_synced_at && syncState.last_status !== "error" && (
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            Shopify last synced {new Date(syncState.last_synced_at).toLocaleString()}
+            {typeof syncState.last_run_count === "number" ? ` · ${syncState.last_run_count} updated` : ""}
+          </p>
+        )}
+
+        {/* Source filter */}
+        <Tabs value={sourceFilter} onValueChange={setSourceFilter} className="mb-3">
+          <TabsList className="w-full overflow-x-auto flex justify-start gap-0 h-auto p-1">
+            {[
+              { value: "ALL", label: "All Orders" },
+              { value: "website", label: "Website" },
+              { value: "shopify_online", label: "Shopify Online" },
+              { value: "shopify_pos", label: "Shopify POS" },
+              { value: "manual", label: "Manual" },
+            ].map(s => (
+              <TabsTrigger key={s.value} value={s.value} className="text-xs px-2.5 py-1.5 whitespace-nowrap gap-1">
+                {s.value === "shopify_pos" && <Store className="h-3 w-3" />}
+                {s.value === "shopify_online" && <ShoppingBag className="h-3 w-3" />}
+                {s.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
         <div className="mb-4 hidden md:grid gap-3 grid-cols-2 lg:grid-cols-5">
           {[
             { label: "New", count: orderCounts.NEW, icon: Package, color: "text-blue-500", filter: "NEW" },
