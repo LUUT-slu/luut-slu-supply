@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.send-admin-alert]
 verify_jwt = false
+
+[functions.sync-shopify-orders]
+verify_jwt = false
