@@ -212,9 +212,22 @@ export async function fetchHybridProducts(options: {
   const unifiedShopify = shopifyProducts.map(shopifyToUnified);
   let unifiedLovable = lovableProducts.map(lovableToUnified);
 
-  // Filter Lovable products by category if slug provided
-  if (categorySlug) {
-    unifiedLovable = unifiedLovable.filter(p => 
+  // Filter Lovable products: prefer new main/sub taxonomy when provided,
+  // fall back to legacy category-slug matching for /shop/:category routes.
+  if (mainCategory || subCategory) {
+    const mainLower = mainCategory?.toLowerCase();
+    const subLower = subCategory?.toLowerCase();
+    unifiedLovable = unifiedLovable.filter((p) => {
+      const orig = p.originalLovableProduct;
+      if (!orig) return false;
+      const m = (orig as any).main_category?.toString().toLowerCase();
+      const s = (orig as any).sub_category?.toString().toLowerCase();
+      if (mainLower && m !== mainLower) return false;
+      if (subLower && s !== subLower) return false;
+      return true;
+    });
+  } else if (categorySlug) {
+    unifiedLovable = unifiedLovable.filter(p =>
       categoryMatchesSlug(p.category, categorySlug)
     );
   }
