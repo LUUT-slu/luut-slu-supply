@@ -32,6 +32,8 @@ function lazyRetry(importFn: () => Promise<any>) {
 // Lazy-loaded routes for code splitting
 const Shop = lazyRetry(() => import("./pages/Shop"));
 const ShopCategory = lazyRetry(() => import("./pages/ShopCategory"));
+const CategoryMain = lazyRetry(() => import("./pages/CategoryMain"));
+const CategorySub = lazyRetry(() => import("./pages/CategorySub"));
 const ProductDetail = lazyRetry(() => import("./pages/ProductDetail"));
 const LocalProductDetail = lazyRetry(() => import("./pages/LocalProductDetail"));
 const NewArrivals = lazyRetry(() => import("./pages/NewArrivals"));
