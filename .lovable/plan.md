@@ -1,166 +1,107 @@
+# Shopify Order Sync (Online Store + POS)
 
-# Marketplace Category Restructure
+Pull Shopify orders into Lovable Cloud so POS sales appear in the admin dashboard alongside website orders, with no double entry.
 
-Move from a hardcoded clothing-only list to a **dynamic, multi-level taxonomy** sourced entirely from Shopify, with marketplace-style navigation and auto-hidden empty categories. Clothing remains the prominent experience; all other verticals quietly come online as inventory appears.
+## 1. Database changes
 
----
+Extend the existing `orders` table (preserves order numbering, assignments, ledger, RLS):
 
-## 1. Source of Truth: Shopify
+- `source` text (default `'website'`) — one of: `website`, `shopify_online`, `shopify_pos`, `manual`
+- `shopify_order_id` text, **UNIQUE** — Shopify GraphQL ID
+- `shopify_order_name` text — e.g. `#1042`
+- `shopify_channel` text — raw Shopify source/channel name
+- `shopify_pos_location_id` text, `shopify_pos_location_name` text
+- `shopify_financial_status` text (paid, pending, refunded…)
+- `shopify_fulfillment_status` text (fulfilled, partial, unfulfilled)
+- `shopify_total_discounts` numeric
+- `shopify_synced_at` timestamptz
+- Index on `(source)` and `(shopify_order_id)`
 
-Stop hardcoding categories in `src/lib/categories.ts`. Categories are derived from Shopify at runtime + cached via React Query.
+New table `shopify_sync_state`:
+- `id` text PK (singleton `'orders'`)
+- `last_synced_at` timestamptz
+- `last_cursor` text (Shopify `updated_at` watermark)
+- `last_status` text, `last_error` text, `last_run_count` int
 
-**Mapping convention (managed in Shopify, no code changes needed):**
+RLS: admin-only read/write on `shopify_sync_state`.
 
-- **Level 1 (Main category)** = Shopify collection with handle prefixed `main-` (e.g. `main-clothing`, `main-electronics`, `main-vehicles`) **OR** a `category.level:1` tag.
-- **Level 2 (Subcategory)** = Shopify collection with `parent:<main-handle>` metafield (namespace `luut`, key `parent`) **OR** handle pattern `<main>--<sub>` (e.g. `clothing--beanies`, `electronics--phones`).
-- Products are assigned by adding them to the relevant L2 collection in Shopify. Optional tags `vertical:clothing`, `subcategory:beanies` give a fallback path.
+## 2. Edge function: `sync-shopify-orders`
 
-This means: add a product → assign collection in Shopify → site updates automatically (no code edit).
+Secure backend (uses existing `SHOPIFY_ADMIN_TOKEN`). `verify_jwt = false` with manual admin check via `has_role`.
 
-For local seller products (`seller_products` table), add two nullable text columns: `main_category` and `sub_category` so they slot into the same taxonomy.
+Flow per run:
+1. Read `shopify_sync_state.last_synced_at` (default = now − 7 days on first run).
+2. GraphQL Admin API `orders(query: "updated_at:>=<watermark>", first: 50, sortKey: UPDATED_AT)` with pagination cursor. Fields: id, name, createdAt, updatedAt, displayFinancialStatus, displayFulfillmentStatus, totalPriceSet, totalDiscountsSet, currencyCode, sourceName, channelInformation { channelDefinition { handle } }, customer { id email phone firstName lastName }, shippingAddress, lineItems(first:50) { title quantity originalUnitPriceSet variant { id sku product { id } } }, retailLocation { id name } (POS only).
+3. For each order:
+   - `source` = `shopify_pos` if `sourceName == 'pos'` or retailLocation present, else `shopify_online`.
+   - `UPSERT` on `shopify_order_id`. Map line items to `order_items` (also upsert by `(order_id, shopify_line_id)` — add this column too).
+   - If customer email/phone present: find or create `customer_profiles` (re-use `handle_new_customer` logic; no auth user → null `user_id`, store email/phone/full_name + `auth_provider='shopify_pos'`). Link via `orders.customer_user_id` only when matching auth user exists.
+   - Insert `order_events` row `{ event_type: 'shopify_synced', payload: { source, financial_status, ... } }`.
+4. Update `shopify_sync_state` watermark to max `updatedAt` seen + status.
+5. On API failure: write `last_status='error'`, `last_error`, send `send-admin-alert`, return 502.
 
----
+Inventory: do **not** mutate `partner_stock` from POS — Shopify is source of truth. Add a `shopify_inventory_snapshot` field on `order_items` (qty after sale) for analytics; live levels stay queried via Shopify when needed.
 
-## 2. New Taxonomy Layer (code)
+## 3. Scheduled sync
 
-New file `src/lib/taxonomy.ts`:
-
-- `fetchTaxonomy()` — single call that pulls all Shopify collections + their metafield/tag info, builds a tree:
-
-```text
-Main (Clothing)
-├── Sub (Beanies)        productCount: 12
-├── Sub (Hoodies)        productCount: 4
-└── Sub (Shoes)          productCount: 0   ← hidden
-Main (Electronics)       ← hidden if all subs empty
-└── Sub (Phones)         productCount: 1
+Use `pg_cron` + `pg_net` (per `schedule-jobs-supabase-edge-functions`):
+```sql
+select cron.schedule(
+  'shopify-orders-sync', '*/5 * * * *',
+  $$ select net.http_post(
+       url:='https://<ref>.supabase.co/functions/v1/sync-shopify-orders',
+       headers:='{"Content-Type":"application/json","apikey":"<anon>"}'::jsonb,
+       body:='{"trigger":"cron"}'::jsonb) $$);
 ```
+Inserted via `supabase--insert` (not migration) since URL/anon are project-specific.
 
-- Counts come from Shopify `collection.products.count` (Storefront API) + a Supabase aggregate of `seller_products` grouped by `(main_category, sub_category)`.
-- Visibility rule applied here: a sub is shown if `productCount > 0`; a main is shown if it has at least one visible sub.
-- `usePriorityOrder()` keeps Clothing / Streetwear / Sneakers / Accessories pinned to the front; other verticals follow alphabetically.
+## 4. Admin UI
 
-New hook `src/hooks/useTaxonomy.ts` wraps it with React Query (10-min stale, lazy on idle).
+`src/pages/AdminOrdersPage.tsx`:
+- Add **"Sync Shopify Orders"** button (top right): calls `supabase.functions.invoke('sync-shopify-orders')`, shows toast with count + last sync time. Disable while running.
+- Replace/extend the existing tabs filter with: **All · Website · Shopify Online · Shopify POS · Manual**, driven by `orders.source`.
+- Order row badge: show `Shopify POS`, `Shopify Online`, `Manual`, or none — colored variants. Show Shopify order name (`#1042`) and POS location when applicable.
+- Order detail sheet: show financial/fulfillment status, channel, location, "View in Shopify Admin" link.
+- Surface `shopify_sync_state.last_status='error'` as a red banner: *"Shopify order sync failed. Check API permissions or connection."* with retry button.
 
-Delete the static `PRODUCT_CATEGORIES` list from `src/lib/categories.ts`; keep only helper functions (`normalizeCategoryForStorage`, slug helpers) and have them read from the cached taxonomy.
+New hook `useShopifySyncStatus()` polls `shopify_sync_state` every 30s for the banner + last-synced timestamp.
 
----
+## 5. Customer linking
 
-## 3. Navigation UX
+In sync function, for each Shopify customer:
+- Match by `email` (case-insensitive) → existing `customer_profiles.email`.
+- Else by normalized `phone`.
+- Else insert a new `customer_profiles` row (no `user_id`); future social login will merge via existing `handle_new_customer` (extend it to claim orphan profile by email).
 
-**Desktop — Mega menu** (`src/components/MegaNav.tsx`, replaces the flat `<nav>` in `Header.tsx`):
+## 6. Security
 
-- Hover/focus on a main category opens a panel listing its visible subs in 2–3 columns, each with a thumbnail (collection image) + product count.
-- Pinned shortcuts row: New Arrivals, Best Sellers, Sellers, Sell on Luut.
+- Admin token stays in edge function env (`SHOPIFY_ADMIN_TOKEN`, already set).
+- Function validates caller: cron path uses service-role check; UI path requires `has_role(admin)`.
+- No Shopify Admin call ever runs from the browser.
 
-**Mobile — Expandable drawer** (update existing `Sheet` in `Header.tsx`):
+## 7. Future-ready hooks
 
-- Replace the flat `outfitCategories` list with an accordion: tap a main to expand subs, tap sub to navigate. Uses shadcn `Accordion`.
-- Lazy: only fetches taxonomy when the drawer opens.
+The `source`, `shopify_pos_location_*`, financial status, and per-item Shopify IDs unlock without further migrations:
+- Sales analytics by channel/location
+- Best sellers including POS
+- Customer purchase history (joined via `customer_profiles`)
+- Loyalty discounts (existing `customer_discounts`)
+- WhatsApp follow-ups (existing seller WhatsApp routing)
 
----
-
-## 4. Routing & Auto-Generated Pages
-
-New routes (add in `src/App.tsx`):
-
-- `/c/:main` — main-category landing (grid of visible subs + featured products).
-- `/c/:main/:sub` — subcategory product grid (replaces ad-hoc `/shop/:category`).
-- Keep existing `/shop/:category` working via a redirect to the resolved `/c/:main/:sub`.
-
-Each page renders:
-
-- Breadcrumbs (`Home > Clothing > Beanies`)
-- H1 with category name + product count
-- Sort dropdown (Newest, Price ↑/↓, Best Selling) — passes `sortKey`/`reverse` to `fetchProducts`
-- Filter sidebar (see §5)
-- SEO: per-page `<title>`, meta description, canonical, JSON-LD `BreadcrumbList` + `CollectionPage`
-
----
-
-## 5. Modular Filter System
-
-New `src/components/filters/` directory with a registry pattern:
-
-```text
-filters/
-  registry.ts          // mainCategory → filter component[]
-  ClothingFilters.tsx  // size, color, brand, gender, style
-  ElectronicsFilters.tsx // brand, storage, condition
-  VehicleFilters.tsx     // brand, year, mileage, transmission
-  CommonFilters.tsx      // price range, in-stock toggle
-```
-
-Filter values are pulled from product **variant options** (already in Shopify response — `options` + `selectedOptions`) and product **tags** (`brand:nike`, `condition:new`, `year:2020`). Adding a new vertical = add one component + register it; no other code needs to change.
-
-State lives in URL search params so filters are shareable and SEO-friendly.
-
----
-
-## 6. Clothing-First Priority
-
-- Homepage continues to feature the clothing experience: hero, "IN STOCK NOW", outfit categories.
-- Add a **"Explore the Marketplace"** strip below the clothing sections that renders main categories only when they have ≥1 product (uses the same taxonomy hook). On a fresh store this simply doesn't render.
-- Streetwear / Sneakers / Trending sections stay as-is and become curated Shopify collections (`featured-streetwear`, `featured-sneakers`).
-
----
-
-## 7. Marketplace Future-Readiness (structure only, no UI)
-
-DB migration (separate plan once approved):
-
-- `seller_products`: add `main_category text`, `sub_category text`, index both.
-- Optional new table `category_overrides` (admin-curated display name / image / order overrides keyed by Shopify handle) — not built now, just reserved.
-
-This keeps every product (Shopify or local) addressable by `(main, sub)` so future seller storefronts and service/digital listings drop in cleanly.
-
----
-
-## 8. Performance
-
-- Single taxonomy fetch, React Query cached 10 min, deduped across header/menu/pages.
-- Empty collections never render (no wasted requests).
-- Category pages: `React.lazy` + `Suspense`, image `loading="lazy"` for non-priority cards.
-- Filters compute client-side from already-loaded products (no extra calls).
-
----
-
-## 9. Files Touched
+## Files
 
 **New**
-- `src/lib/taxonomy.ts`
-- `src/hooks/useTaxonomy.ts`
-- `src/components/MegaNav.tsx`
-- `src/components/MobileCategoryDrawer.tsx`
-- `src/components/filters/{registry,ClothingFilters,ElectronicsFilters,VehicleFilters,CommonFilters}.tsx`
-- `src/pages/CategoryMain.tsx`, `src/pages/CategorySub.tsx`
+- `supabase/functions/sync-shopify-orders/index.ts`
+- `src/hooks/useShopifySyncStatus.ts`
+- `supabase/migrations/<ts>_shopify_order_sync.sql`
 
 **Edited**
-- `src/components/Header.tsx` (swap flat nav for MegaNav + drawer)
-- `src/lib/categories.ts` (strip static list, keep helpers)
-- `src/lib/products.ts` (filter by `(main, sub)` instead of single slug)
-- `src/components/HomeCategorySection.tsx` (use taxonomy + hide-if-empty)
-- `src/App.tsx` (new routes + redirect)
-- `src/pages/Shop.tsx`, `src/pages/ShopCategory.tsx` (redirect or rebuild on new taxonomy)
+- `src/pages/AdminOrdersPage.tsx` — sync button, source tabs, badges, error banner
+- `src/components/admin/AssignOrderModal.tsx` (only if needed for Shopify metadata display)
+- `supabase/config.toml` — register `sync-shopify-orders` (no JWT)
 
-**DB migration (after plan approval)**
-- Add `main_category`, `sub_category` to `seller_products`.
+## Open questions
 
----
-
-## 10. Rollout
-
-1. Build taxonomy layer + hook (no UI change yet).
-2. Add `/c/:main/:sub` routes alongside existing ones.
-3. Swap Header nav to mega menu / drawer.
-4. Migrate `seller_products` schema.
-5. Redirect legacy `/shop/:category` → new routes.
-6. Document the Shopify collection-naming convention in README so the user can manage everything from Shopify going forward.
-
----
-
-### Open questions before building
-
-1. **Taxonomy convention** — OK with `main-<slug>` / `<main>--<sub>` collection handles, or prefer Shopify **metafields** (`luut.parent` on each collection)? Metafields are cleaner but require setup in Shopify admin.
-2. **Legacy URLs** — keep `/shop/:category` permanently (redirect) or sunset after migration?
-3. **Initial main categories** — should I seed the Shopify side with the full L1 list now (Clothing, Electronics, Vehicles, …) so the structure is visible even when empty (with a "Coming soon" tag), or strictly hide until products exist?
+1. **Backfill window** — first run pulls last 7 days. Do you want a longer initial backfill (30/90 days / all time)?
+2. **POS-synced order assignment** — POS sales are already completed by you in person. Should they auto-mark as `COMPLETED` (skipping NEW → ASSIGNED), or land as `NEW` for manual review?
+3. **Inventory** — confirm we keep Shopify as sole source of truth (no writes back to `partner_stock`) for POS orders.
