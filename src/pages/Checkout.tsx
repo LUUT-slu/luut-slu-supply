@@ -430,6 +430,18 @@ export default function Checkout() {
         return `• ${item.product.node.title}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — EC$${itemTotal}`;
       }).join('\n');
 
+      // Customer-facing confirmation message (spec format)
+      const productNames = items
+        .map(item => `${item.product.node.title}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`)
+        .join(', ');
+      const customerConfirmMessage =
+        `Hi Luut SLU, I want to confirm my order ${data.draftOrder.name}.\n` +
+        `Name: ${customerName.trim()}\n` +
+        `Items: ${productNames}\n` +
+        `Total: EC$${finalPrice.toFixed(2)}\n` +
+        `Pickup location: ${selectedLocation}\n` +
+        `Please confirm availability.`;
+
       let message = `🛒 *NEW ORDER: ${data.draftOrder.name}*\n\n`;
       message += `👤 Name: ${customerName.trim()}\n`;
       message += `📱 Phone: ${customerPhone.trim()}\n\n`;
