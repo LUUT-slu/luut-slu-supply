@@ -199,6 +199,29 @@ function inferSlugFromTitle(text: string | null | undefined): string | null {
   return null;
 }
 
+/**
+ * Returns true if a product should be EXCLUDED from the given slug, regardless
+ * of how Shopify categorized it. Currently used to keep beanies/skull caps
+ * out of the Hats/Caps section even when Shopify places them under Hats.
+ */
+export function isExcludedFromSlug(
+  slug: string,
+  title?: string | null,
+  productType?: string | null,
+  tags?: string[] | null,
+  collectionHandles?: string[] | null,
+): boolean {
+  if (slug !== 'hats') return false;
+
+  const haystacks: string[] = [];
+  if (title) haystacks.push(title);
+  if (productType) haystacks.push(productType);
+  if (tags?.length) haystacks.push(tags.join(' '));
+  if (collectionHandles?.length) haystacks.push(collectionHandles.join(' '));
+
+  return haystacks.some((h) => BEANIE_TITLE_PATTERNS.some((re) => re.test(h)));
+}
+
 // Check if a product's category matches a slug (for filtering)
 export function categoryMatchesSlug(productCategory: string | null, slug: string, title?: string | null): boolean {
   if (!slug) return false;
