@@ -226,6 +226,18 @@ export default function SellerDashboardNew() {
                 </div>
               </CardContent>
             </Card>
+            <Card
+              className="border-border/60 cursor-pointer transition-all hover:border-primary/50"
+              onClick={() => navigate("/seller/purchase-orders")}
+            >
+              <CardContent className="p-4 flex items-center gap-3">
+                <Package className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium text-sm">Purchase Orders</p>
+                  <p className="text-xs text-muted-foreground">Track stock & profit</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Empty State */}

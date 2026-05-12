@@ -88,6 +88,9 @@ const AdminCustomers = lazyRetry(() => import("./pages/admin/AdminCustomers"));
 const AdminCustomerDetail = lazyRetry(() => import("./pages/admin/AdminCustomerDetail"));
 const CategoryImagesManager = lazyRetry(() => import("./pages/admin/CategoryImagesManager"));
 const AuthCallback = lazyRetry(() => import("./pages/AuthCallback"));
+const PurchaseOrdersList = lazyRetry(() => import("./pages/purchase-orders/PurchaseOrdersList"));
+const PurchaseOrderDetail = lazyRetry(() => import("./pages/purchase-orders/PurchaseOrderDetail"));
+const PurchaseOrderReports = lazyRetry(() => import("./pages/purchase-orders/PurchaseOrderReports"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -213,6 +216,22 @@ const App = () => (
                 <SellerSettingsPage />
               </RouteGuard>
             } />
+            <Route path="/seller/purchase-orders" element={
+              <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+                <PurchaseOrdersList basePath="/seller/purchase-orders" />
+              </RouteGuard>
+            } />
+            <Route path="/seller/purchase-orders/reports" element={
+              <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+                <PurchaseOrderReports basePath="/seller/purchase-orders" />
+              </RouteGuard>
+            } />
+            <Route path="/seller/purchase-orders/:id" element={
+              <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+                <PurchaseOrderDetail basePath="/seller/purchase-orders" />
+              </RouteGuard>
+            } />
+
             
             {/* Admin Routes (requires admin role) */}
             <Route path="/admin" element={
@@ -305,7 +324,22 @@ const App = () => (
                 <AdminOrdersPage />
               </RouteGuard>
             } />
-            
+            <Route path="/admin/purchase-orders" element={
+              <RouteGuard requiredRole="admin">
+                <PurchaseOrdersList basePath="/admin/purchase-orders" />
+              </RouteGuard>
+            } />
+            <Route path="/admin/purchase-orders/reports" element={
+              <RouteGuard requiredRole="admin">
+                <PurchaseOrderReports basePath="/admin/purchase-orders" />
+              </RouteGuard>
+            } />
+            <Route path="/admin/purchase-orders/:id" element={
+              <RouteGuard requiredRole="admin">
+                <PurchaseOrderDetail basePath="/admin/purchase-orders" />
+              </RouteGuard>
+            } />
+
             {/* Partner Routes (requires partner role + approval) */}
             <Route path="/partner" element={
               <RouteGuard requiredRole="partner">
