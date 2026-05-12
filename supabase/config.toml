@@ -44,3 +44,10 @@ verify_jwt = false
 
 [functions.sync-shopify-orders]
 verify_jwt = false
+
+[functions.po-publish-to-shopify]
+verify_jwt = false
+
+[functions.po-sales-rollup]
+verify_jwt = false
+
