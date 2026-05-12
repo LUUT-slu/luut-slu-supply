@@ -166,6 +166,63 @@ export type Database = {
         }
         Relationships: []
       }
+      category_images: {
+        Row: {
+          category_key: string
+          created_at: string
+          display_name: string
+          image_source: string
+          image_url: string | null
+          image_url_banner: string | null
+          image_url_hero: string | null
+          last_generated_at: string | null
+          main_slug: string
+          prompt_override: string | null
+          prompt_used: string | null
+          sample_titles: Json | null
+          status: string
+          sub_slug: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category_key: string
+          created_at?: string
+          display_name: string
+          image_source?: string
+          image_url?: string | null
+          image_url_banner?: string | null
+          image_url_hero?: string | null
+          last_generated_at?: string | null
+          main_slug: string
+          prompt_override?: string | null
+          prompt_used?: string | null
+          sample_titles?: Json | null
+          status?: string
+          sub_slug?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category_key?: string
+          created_at?: string
+          display_name?: string
+          image_source?: string
+          image_url?: string | null
+          image_url_banner?: string | null
+          image_url_hero?: string | null
+          last_generated_at?: string | null
+          main_slug?: string
+          prompt_override?: string | null
+          prompt_used?: string | null
+          sample_titles?: Json | null
+          status?: string
+          sub_slug?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       customer_discounts: {
         Row: {
           created_at: string

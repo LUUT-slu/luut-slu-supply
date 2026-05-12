@@ -1,75 +1,105 @@
-## Goal
-Make Shopify POS / Online orders that are imported into the website appear in the correct seller's dashboard, broken down per seller, while admin still sees the full parent order.
+# Category Image System
 
-## Key insight
-The website already supports per-seller order visibility through `order_items.seller_id`:
-- `useSellerOrders` queries `order_items` where `seller_id = sellerProfileId`, then loads parent orders.
-- RLS policy "Sellers can view own order items" + "Sellers can view orders containing their items" already enforces that sellers only see their own items.
+Generate a unique, product-specific AI image for every visible category and subcategory, with full admin control.
 
-So I do NOT need a new `seller_orders` table. I need to:
-1. Populate `order_items.seller_id` correctly when the Shopify sync writes line items.
-2. Add a `source` indicator on the order so seller UIs can filter.
+## What you'll see
 
-## Plan
+**On the storefront**
+- `/c/:main` (CategoryMain) shows each subcategory tile with its own dedicated image (beanies tile → real beanie photo, glasses tile → real glasses, etc.) instead of falling back to the generic Shopify collection image.
+- `/shop` and the mega-nav category cards use the same images.
+- Empty categories stay hidden — no image is generated or displayed for them.
 
-### 1) Match Shopify line items to website sellers (in `sync-shopify-orders/index.ts`)
-For each imported line item, resolve a `seller_id` (FK to `seller_profiles.id`) using this priority:
-1. `seller_products.shopify_product_id == lineItem.variant.product.id`
-2. Fallback: match by SKU on `seller_products` (add a lookup helper if SKU exists; today seller_products has no SKU column — skip if absent).
-3. Fallback: case-insensitive match on `seller_products.name == lineItem.title`.
-4. If nothing matches → leave `seller_id = null` (admin-only) and record a structured warning in `skip_details` with reason `Product not assigned to seller` (do not count as a skipped order — the order still imports).
+**In the admin (new "Category Images" page in AdminHub)**
+A table of every active category + subcategory with:
+- Category name and path (e.g. `Clothing › Beanies`)
+- Live thumbnail of the current image
+- Source badge: `AI` / `Manual upload` / `Shopify default` / `Missing`
+- The exact prompt used
+- Sample product titles fed into the prompt (read-only preview)
+- Last generated date
+- Buttons: **Regenerate**, **Edit prompt & regenerate**, **Upload manually**, **Reset to Shopify image**, **Approve / Reject**
+- "Regenerate all missing" bulk action
 
-Cache `shopify_product_id → seller_id` and `name → seller_id` lookups per sync run to avoid N queries.
+## How it decides the image (priority)
 
-Also set `product_id` on the order_item when the matched `seller_products` row is found, so future analytics work.
+1. Manual admin upload (if present and approved)
+2. AI-generated image stored for that category (if approved)
+3. Shopify collection image (existing fallback)
+4. First-letter placeholder tile (existing fallback)
 
-### 2) Persist attribution on `order_items`
-When inserting the order_items snapshot (existing block at lines 316–335), include:
-- `seller_id` (resolved above, nullable)
-- `product_id` (resolved above, nullable)
-- existing shopify_line_id / shopify_variant_id / shopify_product_id
+## How the AI prompt is built
 
-The existing delete-and-reinsert pattern already handles re-sync updates idempotently. Dedupe per (order_id, shopify_line_id) is implicit because we wipe and re-insert.
+```
+A premium marketplace product photo of {subcategory_or_category},
+showing 1-3 real items such as: {sample_product_titles}.
+Style: modern, clean, sharp, dark premium background, studio lighting,
+mobile-friendly square crop, marketplace-quality, no text, no logos.
+```
 
-### 3) Seller-side display
-- `useSellerOrders` already filters by `seller_id` — no change needed for visibility.
-- `SellerOrders` page: add filter chips:
-  - All
-  - Website
-  - Shopify POS
-  - Shopify Online
-  - Completed
-  Driven by `order.source` (`website` / `shopify_pos` / `shopify_online` / `manual`) and `order.order_status`.
-- Show a small "Shopify POS Sale" / "Shopify Online" badge on imported rows.
-- For imported Shopify orders the seller view is read-only (no status edits, no delete) since the sale already happened externally.
+- Sample titles = up to 5 in-stock product titles in that exact (main, sub) bucket, pulled from Shopify collection products + `seller_products` rows that match.
+- Subcategories use the sub name as the primary subject ("beanies", "skull caps", "glasses"). Mains use the main name + a brief mention of its top subs.
+- The prompt is editable per category in admin; user edits override the auto-built prompt on next regenerate.
 
-### 4) Sync log enrichment (`AdminOrdersPage.tsx` panel + edge function summary)
-Extend the sync result with per-line counters:
-- `lineItemsTotal`
-- `lineItemsMatchedToSeller`
-- `lineItemsUnassigned` (with sample `{ shopify_order_name, line_title, shopify_product_id }`)
-- `sellerOrdersCreated` = number of distinct (order, seller) pairs touched
-Show these in the existing "Last Shopify Sync" card.
+## Generation backend
 
-### 5) Avoid duplicates / re-runs
-Continue using `shopify_order_id` as parent dedupe (already implemented).
-For line items, the wipe-and-reinsert per order is correct because Shopify is the source of truth; this naturally implements "(shopify_line_id + seller) is unique".
+New Supabase edge function `generate-category-image`:
+- Input: `{ categoryKey, prompt? }` where `categoryKey` is `main:<slug>` or `sub:<main>--<sub>`.
+- Admin-only (verifies role with service-role client).
+- Builds prompt from taxonomy + product samples if none provided.
+- Calls Lovable AI Gateway image model `google/gemini-2.5-flash-image` (Nano Banana) — no extra API key needed.
+- Uploads the result to a new public Storage bucket `category-images` at `{categoryKey}.png`.
+- Upserts a `category_images` row with `image_url`, `prompt_used`, `source = 'ai'`, `last_generated_at`, `status = 'pending'` (or `approved` if admin enables auto-approve).
 
-### 6) Status mapping for seller view
-Seller-facing status for imported Shopify orders is the parent `order_status`:
-- `COMPLETED` for paid / fulfilled / POS → shown as "Completed POS Sale" or "Completed Online Sale" depending on `source`.
-- `CANCELLED` for refunded/voided.
-- Otherwise `NEW`.
-No new column needed.
+## Database changes
 
-## Files to change
-- `supabase/functions/sync-shopify-orders/index.ts` — add seller matcher, set `seller_id`/`product_id` on order_items, expand summary.
-- `src/hooks/useShopifySyncStatus.ts` — extend `ShopifySyncResult` with line-item counters and unassigned samples.
-- `src/pages/AdminOrdersPage.tsx` — show new line-item/seller stats in sync log panel.
-- `src/pages/seller/SellerOrders.tsx` — add source filter chips and source badge; lock editing for Shopify-imported orders.
-- (Optional) `src/hooks/useSellerOrders.ts` — expose `source` on returned orders so the page can filter (already passes `...order` so likely already there).
+New table `category_images` (admin-only writes, public read of approved rows):
 
-## Out of scope
-- No schema changes (uses existing `order_items.seller_id`, `orders.source`, `orders.shopify_order_id`).
-- No new seller_orders table; `order_items` already serves the split-per-seller need.
-- Commission calculation for Shopify POS sales — left for later.
+| column | purpose |
+|---|---|
+| `category_key` (PK, text) | `main:clothing` or `sub:clothing--beanies` |
+| `main_slug`, `sub_slug` | for joins |
+| `display_name` | cached title |
+| `image_url` | public URL in `category-images` bucket OR external upload |
+| `image_source` | `ai` / `manual` / `shopify` |
+| `prompt_used` | last prompt sent to the model |
+| `prompt_override` | admin-edited prompt, used next regenerate |
+| `status` | `pending` / `approved` / `rejected` |
+| `last_generated_at`, `updated_at`, `updated_by` | metadata |
+
+Plus a public Storage bucket `category-images`.
+
+## Storefront integration
+
+- Extend `fetchTaxonomy()` in `src/lib/taxonomy.ts` to LEFT JOIN `category_images` (status = `approved`) and attach `image` from there when present, falling back to today's Shopify collection image.
+- `CategoryMain.tsx` and any category cards already read `sub.image` / `main.image` — no UI changes needed beyond that.
+- A small `useCategoryImage(categoryKey)` hook for places that need to render outside taxonomy (e.g. mega-nav).
+
+## Admin UI
+
+New route `/admin/category-images` (lazy-loaded), linked from AdminHub:
+- Lists every taxonomy entry with > 0 products.
+- Shows current state and the controls above.
+- Regenerate calls the edge function and refreshes the row.
+- Manual upload uses Supabase Storage upload to the same bucket and sets `image_source = 'manual'`.
+- Edit-prompt opens a textarea pre-filled with the auto-built prompt; saving stores `prompt_override` and triggers regenerate.
+- Approve/Reject toggles `status` (only `approved` is shown publicly).
+
+## Exclusions & guardrails
+
+- Only categories with at least one product are listed in admin or considered for generation.
+- "Regenerate all" is rate-limited client-side (one request at a time, ~2s delay) and surfaces 429/402 gateway errors with a clear toast.
+- Generated images are 1024×1024 square (matches the existing 1:1 crop rule).
+
+## Out of scope (can follow later)
+
+- Auto-regenerate when a new product is added (manual regenerate only for v1).
+- Hero/banner variants — v1 ships the square thumbnail; banner/hero columns are reserved in the schema (`image_url_banner`, `image_url_hero`) but not generated yet.
+
+## Files to add / change
+
+- New: `supabase/functions/generate-category-image/index.ts`
+- New migration: `category_images` table + `category-images` storage bucket + RLS
+- New: `src/pages/admin/CategoryImagesManager.tsx`
+- New: `src/hooks/useCategoryImages.ts`
+- Edit: `src/lib/taxonomy.ts` (merge approved overrides)
+- Edit: `src/pages/AdminHub.tsx` + router (add route + nav entry)

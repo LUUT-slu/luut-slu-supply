@@ -157,10 +157,29 @@ function sortByPriority<T extends { slug: string; title: string }>(items: T[]): 
   });
 }
 
+interface CategoryImageRow {
+  category_key: string;
+  image_url: string | null;
+}
+
+async function fetchCategoryImageOverrides(): Promise<Map<string, string>> {
+  const { data, error } = await supabase
+    .from('category_images')
+    .select('category_key, image_url')
+    .eq('status', 'approved');
+  const map = new Map<string, string>();
+  if (error || !data) return map;
+  for (const row of data as CategoryImageRow[]) {
+    if (row.image_url) map.set(row.category_key, row.image_url);
+  }
+  return map;
+}
+
 export async function fetchTaxonomy(): Promise<Taxonomy> {
-  const [collections, localCounts] = await Promise.all([
+  const [collections, localCounts, imageOverrides] = await Promise.all([
     fetchAllCollections(),
     fetchLocalCounts().catch(() => [] as LocalCount[]),
+    fetchCategoryImageOverrides().catch(() => new Map<string, string>()),
   ]);
 
   const mainsRaw = collections.filter((c) => c.handle.startsWith(MAIN_PREFIX));
@@ -176,7 +195,7 @@ export async function fetchTaxonomy(): Promise<Taxonomy> {
       slug,
       title: m.title,
       description: m.description,
-      image: m.image?.url ?? null,
+      image: imageOverrides.get(`main:${slug}`) ?? m.image?.url ?? null,
       productCount: 0,
       subs: [],
       url: `/c/${slug}`,
@@ -210,7 +229,7 @@ export async function fetchTaxonomy(): Promise<Taxonomy> {
       slug: subSlug,
       title: s.title,
       description: s.description,
-      image: s.image?.url ?? null,
+      image: imageOverrides.get(`sub:${parent.slug}--${subSlug}`) ?? s.image?.url ?? null,
       productCount: s.productCount,
       url: `/c/${parent.slug}/${subSlug}`,
     };

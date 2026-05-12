@@ -86,6 +86,7 @@ const MarketingStudio = lazyRetry(() => import("./pages/admin/MarketingStudio"))
 const PromotionsManager = lazyRetry(() => import("./pages/admin/PromotionsManager"));
 const AdminCustomers = lazyRetry(() => import("./pages/admin/AdminCustomers"));
 const AdminCustomerDetail = lazyRetry(() => import("./pages/admin/AdminCustomerDetail"));
+const CategoryImagesManager = lazyRetry(() => import("./pages/admin/CategoryImagesManager"));
 const AuthCallback = lazyRetry(() => import("./pages/AuthCallback"));
 
 const queryClient = new QueryClient({
@@ -292,6 +293,11 @@ const App = () => (
             <Route path="/admin/customers/:userId" element={
               <RouteGuard requiredRole="admin">
                 <AdminCustomerDetail />
+              </RouteGuard>
+            } />
+            <Route path="/admin/category-images" element={
+              <RouteGuard requiredRole="admin">
+                <CategoryImagesManager />
               </RouteGuard>
             } />
             <Route path="/admin-orders" element={

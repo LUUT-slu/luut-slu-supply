@@ -209,6 +209,14 @@ export default function AdminHome() {
       bgColor: "bg-rose-500/10",
     },
     {
+      title: "Category Images",
+      description: "AI-generated images for each category & subcategory",
+      icon: Megaphone,
+      href: "/admin/category-images",
+      color: "text-cyan-500",
+      bgColor: "bg-cyan-500/10",
+    },
+    {
       title: "Seller Portal",
       description: "Access your seller dashboard & stats",
       icon: Store,
