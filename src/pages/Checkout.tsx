@@ -430,6 +430,18 @@ export default function Checkout() {
         return `• ${item.product.node.title}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — EC$${itemTotal}`;
       }).join('\n');
 
+      // Customer-facing confirmation message (spec format)
+      const productNames = items
+        .map(item => `${item.product.node.title}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`)
+        .join(', ');
+      const customerConfirmMessage =
+        `Hi Luut SLU, I want to confirm my order ${data.draftOrder.name}.\n` +
+        `Name: ${customerName.trim()}\n` +
+        `Items: ${productNames}\n` +
+        `Total: EC$${finalPrice.toFixed(2)}\n` +
+        `Pickup location: ${selectedLocation}\n` +
+        `Please confirm availability.`;
+
       let message = `🛒 *NEW ORDER: ${data.draftOrder.name}*\n\n`;
       message += `👤 Name: ${customerName.trim()}\n`;
       message += `📱 Phone: ${customerPhone.trim()}\n\n`;
@@ -460,13 +472,18 @@ export default function Checkout() {
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://wa.me/${sellerWhatsApp}?text=${encodedMessage}`;
 
+      // Customer confirmation WhatsApp URL (used by popup + reminder banner)
+      const customerWhatsappUrl = `https://wa.me/${sellerWhatsApp}?text=${encodeURIComponent(customerConfirmMessage)}`;
+
       // Save order confirmation data to localStorage for the confirmation page
       const orderConfirmationData = {
+        orderId: data.localOrderId,
+        orderToken: data.localOrderToken,
         orderName: data.draftOrder.name,
         sellerName: sellerVendor || 'Seller',
         sellerWhatsApp,
-        whatsappUrl,
-        whatsappMessage: message,
+        whatsappUrl: customerWhatsappUrl,
+        whatsappMessage: customerConfirmMessage,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
         items: items.map(item => ({
@@ -483,6 +500,8 @@ export default function Checkout() {
         preferredDate: formattedDate,
         pickupTime,
         note: note.trim() || undefined,
+        source: 'website',
+        isPos: false,
         timestamp: Date.now(),
       };
 

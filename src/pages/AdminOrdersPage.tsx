@@ -80,6 +80,7 @@ interface Order {
   shopify_order_name?: string | null;
   shopify_pos_location_name?: string | null;
   shopify_financial_status?: string | null;
+  communication_status?: string | null;
   line_items: Array<{
     title: string;
     quantity: number;
@@ -337,6 +338,9 @@ export default function AdminOrdersPage() {
     if (sourceFilter !== "ALL") {
       list = list.filter(o => (o.source ?? "website") === sourceFilter);
     }
+    if (activeFilter === "PENDING_WHATSAPP") {
+      return list.filter(o => (o.communication_status ?? "pending_whatsapp") === "pending_whatsapp");
+    }
     if (activeFilter === "ALL") return list;
     if (activeFilter === "ACTIVE") return list.filter(o => ["ACCEPTED", "ON_THE_WAY"].includes(getEffectiveStatus(o)));
     return list.filter(o => getEffectiveStatus(o) === activeFilter);
@@ -410,6 +414,11 @@ export default function AdminOrdersPage() {
                 )}
                 {order.shopify_order_name && (
                   <span className="text-[10px] text-muted-foreground">{order.shopify_order_name}</span>
+                )}
+                {(order.communication_status ?? "pending_whatsapp") === "pending_whatsapp" && (order.source ?? "website") === "website" && (
+                  <Badge variant="outline" className="gap-1 text-[10px] border-primary text-primary">
+                    Pending WA
+                  </Badge>
                 )}
               </div>
               <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -750,6 +759,7 @@ export default function AdminOrdersPage() {
                 <SelectContent>
                   <SelectItem value="ALL">All Orders</SelectItem>
                   <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="PENDING_WHATSAPP">Pending WhatsApp Confirmation</SelectItem>
                   {statusOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
