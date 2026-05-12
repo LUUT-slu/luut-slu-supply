@@ -576,6 +576,7 @@ export type Database = {
           assigned_at: string | null
           assigned_partner_id: string | null
           cancelled_at: string | null
+          communication_status: string
           completed_at: string | null
           created_at: string
           currency_code: string
@@ -619,6 +620,7 @@ export type Database = {
           assigned_at?: string | null
           assigned_partner_id?: string | null
           cancelled_at?: string | null
+          communication_status?: string
           completed_at?: string | null
           created_at?: string
           currency_code?: string
@@ -662,6 +664,7 @@ export type Database = {
           assigned_at?: string | null
           assigned_partner_id?: string | null
           cancelled_at?: string | null
+          communication_status?: string
           completed_at?: string | null
           created_at?: string
           currency_code?: string
@@ -1472,6 +1475,7 @@ export type Database = {
           assigned_at: string | null
           assigned_partner_id: string | null
           cancelled_at: string | null
+          communication_status: string
           completed_at: string | null
           created_at: string
           currency_code: string
@@ -1532,6 +1536,10 @@ export type Database = {
         Args: { p_note?: string; p_order_id: string }
         Returns: Json
       }
+      rpc_mark_whatsapp_opened: {
+        Args: { p_order_id: string; p_token: string }
+        Returns: Json
+      }
       rpc_partner_respond: {
         Args: {
           p_decline_reason?: string
@@ -1548,6 +1556,10 @@ export type Database = {
           p_product_id: string
           p_quantity: number
         }
+        Returns: Json
+      }
+      rpc_set_communication_status: {
+        Args: { p_order_id: string; p_status: string }
         Returns: Json
       }
       rpc_settle_partner: {
