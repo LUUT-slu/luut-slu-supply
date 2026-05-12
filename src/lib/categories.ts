@@ -187,36 +187,51 @@ export function normalizeCategoryForStorage(input: string): string {
   return category?.label || input;
 }
 
+// Title-based fallback rules. "skull cap" must override the bare word "cap".
+const BEANIE_TITLE_PATTERNS = [/\bskull\s*cap/i, /\bbeanie/i, /\bknit\s*cap/i, /\bwinter\s*cap/i, /\bcuffed/i, /\btam\b/i];
+const CAP_TITLE_PATTERNS = [/\bsnapback/i, /\btrucker/i, /\bfitted\s*cap/i, /\bdad\s*hat/i, /\bbaseball\s*cap/i, /\bcap\b/i];
+
+function inferSlugFromTitle(text: string | null | undefined): string | null {
+  if (!text) return null;
+  // Beanie patterns win first — "skull cap" beats generic "cap".
+  if (BEANIE_TITLE_PATTERNS.some((re) => re.test(text))) return "beanies-tams";
+  if (CAP_TITLE_PATTERNS.some((re) => re.test(text))) return "hats";
+  return null;
+}
+
 // Check if a product's category matches a slug (for filtering)
-export function categoryMatchesSlug(productCategory: string | null, slug: string): boolean {
-  if (!productCategory || !slug) return false;
-  
+export function categoryMatchesSlug(productCategory: string | null, slug: string, title?: string | null): boolean {
+  if (!slug) return false;
+
+  // Title override (skull cap → beanies, snapback → caps, etc.)
+  const titleSlug = inferSlugFromTitle(title) ?? inferSlugFromTitle(productCategory);
+  if (titleSlug) return titleSlug === slug;
+
+  if (!productCategory) return false;
   const targetCategory = getCategoryBySlug(slug);
   if (!targetCategory) return false;
-  
+
   const productCategoryLower = productCategory.toLowerCase();
-  
-  // Match by label
   if (targetCategory.label.toLowerCase() === productCategoryLower) return true;
-  
-  // Match by Shopify type
   if (targetCategory.shopifyType.toLowerCase() === productCategoryLower) return true;
-  
-  // Match by keywords
-  if (targetCategory.keywords.some(k => productCategoryLower.includes(k))) return true;
-  
+  if (targetCategory.keywords.some(k => productCategoryLower.includes(k.toLowerCase()))) return true;
   return false;
 }
 
-// Map Shopify productType to our category label
-export function mapShopifyTypeToLabel(productType: string | null): string | null {
+// Map Shopify productType (and optional title) to our category label
+export function mapShopifyTypeToLabel(productType: string | null, title?: string | null): string | null {
+  // Title takes precedence so "Nike Skull Cap" lands in Beanies even if productType is "Cap".
+  const titleSlug = inferSlugFromTitle(title);
+  if (titleSlug) return getCategoryBySlug(titleSlug)?.label ?? productType;
+
   if (!productType) return null;
   const lowerType = productType.toLowerCase();
-  
+  const typeSlug = inferSlugFromTitle(productType);
+  if (typeSlug) return getCategoryBySlug(typeSlug)?.label ?? productType;
+
   const category = PRODUCT_CATEGORIES.find(c =>
     c.shopifyType.toLowerCase() === lowerType ||
-    c.keywords.some(k => lowerType.includes(k))
+    c.keywords.some(k => lowerType.includes(k.toLowerCase()))
   );
-  
   return category?.label || productType;
 }
