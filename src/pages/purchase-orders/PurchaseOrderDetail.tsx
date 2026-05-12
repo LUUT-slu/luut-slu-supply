@@ -144,8 +144,25 @@ export default function PurchaseOrderDetail({ basePath }: { basePath: "/admin/pu
             <Card key={item.id} className="border-border/60">
               <CardContent className="p-3 space-y-2">
                 <div className="flex items-start gap-2">
-                  <Input className="font-medium" defaultValue={item.product_name}
-                    onBlur={e => upsertItem.mutate({ id: item.id, purchase_order_id: po.id, product_name: e.target.value })} />
+                  <div className="flex-1 space-y-1">
+                    <Input className="font-medium" defaultValue={item.product_name}
+                      onBlur={e => upsertItem.mutate({ id: item.id, purchase_order_id: po.id, product_name: e.target.value })} />
+                    {(item as any).is_restock && (
+                      <div className="flex flex-wrap gap-1 text-[10px]">
+                        <Badge variant="secondary">Restock · {(item as any).source_type === "shopify" ? "Shopify" : "Website"}</Badge>
+                        {(item as any).current_shopify_price != null && (
+                          <Badge variant="outline">
+                            Current EC${Number((item as any).current_shopify_price).toFixed(2)} → New EC${Number(item.selling_price).toFixed(2)}
+                          </Badge>
+                        )}
+                        {(item as any).current_shopify_stock != null && (
+                          <Badge variant="outline">
+                            Stock {(item as any).current_shopify_stock} → +{item.quantity_ordered} (after arrival: {((item as any).current_shopify_stock || 0) + (item.quantity_ordered || 0)})
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <Button size="icon" variant="ghost" onClick={() => deleteItem.mutate({ id: item.id, purchase_order_id: po.id })}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
