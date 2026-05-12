@@ -27,15 +27,17 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     slug: "beanies-tams",
     label: "Beanies & Tams",
     shopifyType: "Beanies",
-    shopifyQuery: 'product_type:beanies OR product_type:"Beanies & Tams" OR title:beanie OR title:tam',
-    keywords: ["beanie", "beanies", "tam", "tams", "knit hat", "winter hat"],
+    shopifyQuery:
+      'product_type:beanies OR product_type:"Beanies & Tams" OR title:beanie OR title:tam OR title:"skull cap" OR title:"knit cap" OR title:"winter cap" OR title:cuffed',
+    keywords: ["beanie", "beanies", "tam", "tams", "skull cap", "knit cap", "winter cap", "cuffed beanie", "knit hat", "winter hat"],
   },
   {
     slug: "hats",
-    label: "Hats",
-    shopifyType: "Hats",
-    shopifyQuery: "product_type:hats OR product_type:caps OR title:hat OR title:cap",
-    keywords: ["hat", "hats", "cap", "caps", "snapback", "fitted"],
+    label: "Caps",
+    shopifyType: "Caps",
+    shopifyQuery:
+      'product_type:caps OR product_type:hats OR title:"baseball cap" OR title:snapback OR title:trucker OR title:"fitted cap" OR title:"dad hat"',
+    keywords: ["baseball cap", "snapback", "trucker", "fitted cap", "dad hat", "cap", "caps", "hat", "hats"],
   },
   {
     slug: "facewear",
