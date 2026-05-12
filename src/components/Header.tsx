@@ -66,13 +66,18 @@ export function Header() {
     }
 
     const checkPortal = async () => {
-      const [rolesRes, sellerRes] = await Promise.all([
+      const [rolesRes, sellerRes, partnerRes] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", currentUser.id),
         supabase
           .from("seller_profiles")
           .select("is_approved")
           .eq("user_id", currentUser.id)
           .eq("is_approved", true)
+          .maybeSingle(),
+        supabase
+          .from("partner_profiles")
+          .select("id")
+          .eq("user_id", currentUser.id)
           .maybeSingle(),
       ]);
 
@@ -83,6 +88,10 @@ export function Header() {
       }
       if (sellerRes.data) {
         setPortalLink("/seller");
+        return;
+      }
+      if (partnerRes.data) {
+        setPortalLink("/partner");
         return;
       }
       setPortalLink(null);
