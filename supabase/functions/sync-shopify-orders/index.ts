@@ -105,6 +105,7 @@ Deno.serve(async (req) => {
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
   const isCron = body?.trigger === "cron";
+  const fullResync = body?.mode === "full";
   if (!isAdminCall && !isCron) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
