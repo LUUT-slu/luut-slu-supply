@@ -228,7 +228,7 @@ export async function fetchHybridProducts(options: {
     });
   } else if (categorySlug) {
     unifiedLovable = unifiedLovable.filter(p =>
-      categoryMatchesSlug(p.category, categorySlug)
+      categoryMatchesSlug(p.category, categorySlug, p.title)
     );
   }
 
