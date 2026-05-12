@@ -1061,18 +1061,96 @@ export type Database = {
           },
         ]
       }
+      purchase_order_item_variants: {
+        Row: {
+          compare_at_price: number | null
+          cost_per_item: number
+          created_at: string
+          expected_profit: number | null
+          id: string
+          included: boolean
+          is_new_variant: boolean
+          item_id: string
+          option_color: string | null
+          option_other: string | null
+          option_size: string | null
+          profit_margin: number | null
+          quantity_arrived: number
+          quantity_damaged: number
+          quantity_missing: number
+          quantity_ordered: number
+          selling_price: number
+          shopify_variant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          compare_at_price?: number | null
+          cost_per_item?: number
+          created_at?: string
+          expected_profit?: number | null
+          id?: string
+          included?: boolean
+          is_new_variant?: boolean
+          item_id: string
+          option_color?: string | null
+          option_other?: string | null
+          option_size?: string | null
+          profit_margin?: number | null
+          quantity_arrived?: number
+          quantity_damaged?: number
+          quantity_missing?: number
+          quantity_ordered?: number
+          selling_price?: number
+          shopify_variant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          compare_at_price?: number | null
+          cost_per_item?: number
+          created_at?: string
+          expected_profit?: number | null
+          id?: string
+          included?: boolean
+          is_new_variant?: boolean
+          item_id?: string
+          option_color?: string | null
+          option_other?: string | null
+          option_size?: string | null
+          profit_margin?: number | null
+          quantity_arrived?: number
+          quantity_damaged?: number
+          quantity_missing?: number
+          quantity_ordered?: number
+          selling_price?: number
+          shopify_variant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_item_variants_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_order_items: {
         Row: {
           brand: string | null
           category: string | null
           color: string | null
+          compare_at_price: number | null
           cost_per_item: number
           created_at: string
+          current_shopify_price: number | null
+          current_shopify_stock: number | null
           expected_profit: number | null
           expected_revenue: number | null
           first_sold_at: string | null
           id: string
           image_url: string | null
+          is_restock: boolean
           last_sold_at: string | null
           linked_seller_product_id: string | null
           notes: string | null
@@ -1092,6 +1170,8 @@ export type Database = {
           shopify_synced_at: string | null
           shopify_variant_id: string | null
           size: string | null
+          source_product_ref: string | null
+          source_type: Database["public"]["Enums"]["po_source_type"]
           sub_category: string | null
           supplier_link: string | null
           total_cost: number | null
@@ -1101,13 +1181,17 @@ export type Database = {
           brand?: string | null
           category?: string | null
           color?: string | null
+          compare_at_price?: number | null
           cost_per_item?: number
           created_at?: string
+          current_shopify_price?: number | null
+          current_shopify_stock?: number | null
           expected_profit?: number | null
           expected_revenue?: number | null
           first_sold_at?: string | null
           id?: string
           image_url?: string | null
+          is_restock?: boolean
           last_sold_at?: string | null
           linked_seller_product_id?: string | null
           notes?: string | null
@@ -1127,6 +1211,8 @@ export type Database = {
           shopify_synced_at?: string | null
           shopify_variant_id?: string | null
           size?: string | null
+          source_product_ref?: string | null
+          source_type?: Database["public"]["Enums"]["po_source_type"]
           sub_category?: string | null
           supplier_link?: string | null
           total_cost?: number | null
@@ -1136,13 +1222,17 @@ export type Database = {
           brand?: string | null
           category?: string | null
           color?: string | null
+          compare_at_price?: number | null
           cost_per_item?: number
           created_at?: string
+          current_shopify_price?: number | null
+          current_shopify_stock?: number | null
           expected_profit?: number | null
           expected_revenue?: number | null
           first_sold_at?: string | null
           id?: string
           image_url?: string | null
+          is_restock?: boolean
           last_sold_at?: string | null
           linked_seller_product_id?: string | null
           notes?: string | null
@@ -1162,6 +1252,8 @@ export type Database = {
           shopify_synced_at?: string | null
           shopify_variant_id?: string | null
           size?: string | null
+          source_product_ref?: string | null
+          source_type?: Database["public"]["Enums"]["po_source_type"]
           sub_category?: string | null
           supplier_link?: string | null
           total_cost?: number | null
@@ -1711,6 +1803,10 @@ export type Database = {
         Args: { p_seller_id: string }
         Returns: boolean
       }
+      recalc_po_item_from_variants: {
+        Args: { p_item_id: string }
+        Returns: undefined
+      }
       recalc_po_totals: { Args: { p_po_id: string }; Returns: undefined }
       rpc_add_partner_stock: {
         Args: {
@@ -1827,6 +1923,15 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_po_add_existing_product: {
+        Args: {
+          p_po_id: string
+          p_snapshot: Json
+          p_source_ref: string
+          p_source_type: string
+        }
+        Returns: Json
+      }
       rpc_po_apply_auto_tags: { Args: { p_po_id: string }; Returns: Json }
       rpc_po_buying_insights: {
         Args: { p_category?: string; p_product_name: string }
@@ -1866,6 +1971,7 @@ export type Database = {
       po_owner_role: "admin" | "seller"
       po_payment_status: "unpaid" | "partial" | "paid"
       po_publish_state: "hidden" | "coming_soon" | "draft" | "active"
+      po_source_type: "manual" | "shopify" | "seller_product"
       po_status:
         | "draft"
         | "ordered"
@@ -2009,6 +2115,7 @@ export const Constants = {
       po_owner_role: ["admin", "seller"],
       po_payment_status: ["unpaid", "partial", "paid"],
       po_publish_state: ["hidden", "coming_soon", "draft", "active"],
+      po_source_type: ["manual", "shopify", "seller_product"],
       po_status: [
         "draft",
         "ordered",
