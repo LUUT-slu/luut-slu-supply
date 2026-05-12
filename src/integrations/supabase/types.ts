@@ -994,6 +994,283 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_order_events: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          event_payload: Json | null
+          event_type: string
+          id: string
+          purchase_order_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_payload?: Json | null
+          event_type: string
+          id?: string
+          purchase_order_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_payload?: Json | null
+          event_type?: string
+          id?: string
+          purchase_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_events_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_order_item_tags: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          source: Database["public"]["Enums"]["po_tag_source"]
+          tag: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          source?: Database["public"]["Enums"]["po_tag_source"]
+          tag: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          source?: Database["public"]["Enums"]["po_tag_source"]
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_item_tags_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_order_items: {
+        Row: {
+          brand: string | null
+          category: string | null
+          color: string | null
+          cost_per_item: number
+          created_at: string
+          expected_profit: number | null
+          expected_revenue: number | null
+          first_sold_at: string | null
+          id: string
+          image_url: string | null
+          last_sold_at: string | null
+          linked_seller_product_id: string | null
+          notes: string | null
+          product_name: string
+          profit_margin: number | null
+          purchase_order_id: string
+          qty_sold_cached: number
+          quantity_arrived: number
+          quantity_damaged: number
+          quantity_missing: number
+          quantity_ordered: number
+          revenue_cached: number
+          selling_price: number
+          shopify_product_id: string | null
+          shopify_publish_state: Database["public"]["Enums"]["po_publish_state"]
+          shopify_sync_status: string | null
+          shopify_synced_at: string | null
+          shopify_variant_id: string | null
+          size: string | null
+          sub_category: string | null
+          supplier_link: string | null
+          total_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          category?: string | null
+          color?: string | null
+          cost_per_item?: number
+          created_at?: string
+          expected_profit?: number | null
+          expected_revenue?: number | null
+          first_sold_at?: string | null
+          id?: string
+          image_url?: string | null
+          last_sold_at?: string | null
+          linked_seller_product_id?: string | null
+          notes?: string | null
+          product_name: string
+          profit_margin?: number | null
+          purchase_order_id: string
+          qty_sold_cached?: number
+          quantity_arrived?: number
+          quantity_damaged?: number
+          quantity_missing?: number
+          quantity_ordered?: number
+          revenue_cached?: number
+          selling_price?: number
+          shopify_product_id?: string | null
+          shopify_publish_state?: Database["public"]["Enums"]["po_publish_state"]
+          shopify_sync_status?: string | null
+          shopify_synced_at?: string | null
+          shopify_variant_id?: string | null
+          size?: string | null
+          sub_category?: string | null
+          supplier_link?: string | null
+          total_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          category?: string | null
+          color?: string | null
+          cost_per_item?: number
+          created_at?: string
+          expected_profit?: number | null
+          expected_revenue?: number | null
+          first_sold_at?: string | null
+          id?: string
+          image_url?: string | null
+          last_sold_at?: string | null
+          linked_seller_product_id?: string | null
+          notes?: string | null
+          product_name?: string
+          profit_margin?: number | null
+          purchase_order_id?: string
+          qty_sold_cached?: number
+          quantity_arrived?: number
+          quantity_damaged?: number
+          quantity_missing?: number
+          quantity_ordered?: number
+          revenue_cached?: number
+          selling_price?: number
+          shopify_product_id?: string | null
+          shopify_publish_state?: Database["public"]["Enums"]["po_publish_state"]
+          shopify_sync_status?: string | null
+          shopify_synced_at?: string | null
+          shopify_variant_id?: string | null
+          size?: string | null
+          sub_category?: string | null
+          supplier_link?: string | null
+          total_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_linked_seller_product_id_fkey"
+            columns: ["linked_seller_product_id"]
+            isOneToOne: false
+            referencedRelation: "seller_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          actual_arrival_date: string | null
+          avg_margin: number
+          created_at: string
+          date_ordered: string | null
+          expected_arrival_date: string | null
+          high_roi_count: number
+          id: string
+          name: string
+          notes: string | null
+          owner_role: Database["public"]["Enums"]["po_owner_role"]
+          owner_user_id: string
+          payment_status: Database["public"]["Enums"]["po_payment_status"]
+          risky_count: number
+          seller_profile_id: string | null
+          status: Database["public"]["Enums"]["po_status"]
+          supplier_link: string | null
+          supplier_name: string | null
+          total_cost: number
+          total_expected_profit: number
+          total_expected_revenue: number
+          updated_at: string
+        }
+        Insert: {
+          actual_arrival_date?: string | null
+          avg_margin?: number
+          created_at?: string
+          date_ordered?: string | null
+          expected_arrival_date?: string | null
+          high_roi_count?: number
+          id?: string
+          name: string
+          notes?: string | null
+          owner_role?: Database["public"]["Enums"]["po_owner_role"]
+          owner_user_id: string
+          payment_status?: Database["public"]["Enums"]["po_payment_status"]
+          risky_count?: number
+          seller_profile_id?: string | null
+          status?: Database["public"]["Enums"]["po_status"]
+          supplier_link?: string | null
+          supplier_name?: string | null
+          total_cost?: number
+          total_expected_profit?: number
+          total_expected_revenue?: number
+          updated_at?: string
+        }
+        Update: {
+          actual_arrival_date?: string | null
+          avg_margin?: number
+          created_at?: string
+          date_ordered?: string | null
+          expected_arrival_date?: string | null
+          high_roi_count?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_role?: Database["public"]["Enums"]["po_owner_role"]
+          owner_user_id?: string
+          payment_status?: Database["public"]["Enums"]["po_payment_status"]
+          risky_count?: number
+          seller_profile_id?: string | null
+          status?: Database["public"]["Enums"]["po_status"]
+          supplier_link?: string | null
+          supplier_name?: string | null
+          total_cost?: number
+          total_expected_profit?: number
+          total_expected_revenue?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_seller_profile_id_fkey"
+            columns: ["seller_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_seller_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_seller_profile_id_fkey"
+            columns: ["seller_profile_id"]
+            isOneToOne: false
+            referencedRelation: "seller_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           comment: string | null
@@ -1428,11 +1705,13 @@ export type Database = {
         Returns: boolean
       }
       is_partner: { Args: { _user_id: string }; Returns: boolean }
+      is_po_owner: { Args: { p_po_id: string }; Returns: boolean }
       is_seller_for_order: { Args: { p_order_id: string }; Returns: boolean }
       is_seller_for_order_item: {
         Args: { p_seller_id: string }
         Returns: boolean
       }
+      recalc_po_totals: { Args: { p_po_id: string }; Returns: undefined }
       rpc_add_partner_stock: {
         Args: {
           p_note?: string
@@ -1548,6 +1827,20 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_po_apply_auto_tags: { Args: { p_po_id: string }; Returns: Json }
+      rpc_po_buying_insights: {
+        Args: { p_category?: string; p_product_name: string }
+        Returns: Json
+      }
+      rpc_po_confirm_arrival: {
+        Args: {
+          p_actual_date?: string
+          p_arrivals: Json
+          p_notes?: string
+          p_po_id: string
+        }
+        Returns: Json
+      }
       rpc_remove_partner_stock: {
         Args: {
           p_movement_type?: string
@@ -1570,6 +1863,21 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "partner"
+      po_owner_role: "admin" | "seller"
+      po_payment_status: "unpaid" | "partial" | "paid"
+      po_publish_state: "hidden" | "coming_soon" | "draft" | "active"
+      po_status:
+        | "draft"
+        | "ordered"
+        | "paid"
+        | "in_transit"
+        | "arrived"
+        | "partially_arrived"
+        | "published"
+        | "selling"
+        | "completed"
+        | "cancelled"
+      po_tag_source: "manual" | "auto"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1698,6 +2006,22 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user", "partner"],
+      po_owner_role: ["admin", "seller"],
+      po_payment_status: ["unpaid", "partial", "paid"],
+      po_publish_state: ["hidden", "coming_soon", "draft", "active"],
+      po_status: [
+        "draft",
+        "ordered",
+        "paid",
+        "in_transit",
+        "arrived",
+        "partially_arrived",
+        "published",
+        "selling",
+        "completed",
+        "cancelled",
+      ],
+      po_tag_source: ["manual", "auto"],
     },
   },
 } as const
