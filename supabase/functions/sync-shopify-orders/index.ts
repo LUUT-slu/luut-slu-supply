@@ -84,8 +84,6 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-  // Auth: allow either an admin user OR cron (service-role calls itself via net.http_post w/ anon).
-  // For UI calls we require an admin role.
   const authHeader = req.headers.get("Authorization") ?? "";
   const jwt = authHeader.replace("Bearer ", "");
   let isAdminCall = false;
@@ -131,20 +129,17 @@ Deno.serve(async (req) => {
       .eq("id", "orders")
       .maybeSingle();
 
-    // Full resync = all-time backfill. Otherwise use last watermark or first-run 365d.
     const since = fullResync
       ? new Date("2000-01-01T00:00:00Z")
       : state?.last_synced_at
         ? new Date(state.last_synced_at)
         : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 
-    // No status/financial/fulfillment filter — import every order Shopify returns.
     const queryStr = `updated_at:>=${since.toISOString()}`;
 
     let cursor: string | null = null;
     let maxUpdated = since;
 
-    // Counters
     let fetched = 0;
     let paidCount = 0;
     let completedCount = 0;
@@ -153,7 +148,7 @@ Deno.serve(async (req) => {
     let createdCount = 0;
     let updatedCount = 0;
     let skippedCount = 0;
-    const skipReasons: string[] = [];
+    const skipDetails: Array<Record<string, unknown>> = [];
 
     const maxPages = fullResync ? 200 : 40;
 
@@ -176,7 +171,7 @@ Deno.serve(async (req) => {
         const customerName =
           [customer?.firstName, customer?.lastName].filter(Boolean).join(" ").trim() ||
           customer?.email ||
-          "Shopify customer";
+          (source === "shopify_pos" ? "Walk-in Customer" : "Shopify Customer");
         const total = Number(node.totalPriceSet?.shopMoney?.amount ?? 0);
         const discounts = Number(node.totalDiscountsSet?.shopMoney?.amount ?? 0);
         const lineItems = (node.lineItems?.edges ?? []).map((e: any) => e.node);
@@ -185,7 +180,6 @@ Deno.serve(async (req) => {
         const financial = (node.displayFinancialStatus || "").toUpperCase();
         if (financial === "PAID") paidCount++;
 
-        // Derive local status — preserve completed state but never block import.
         let derivedStatus = "NEW";
         if (financial === "REFUNDED" || financial === "VOIDED") {
           derivedStatus = "CANCELLED";
@@ -198,13 +192,13 @@ Deno.serve(async (req) => {
         }
         if (derivedStatus === "COMPLETED") completedCount++;
 
-        // Customer profile linkage (best-effort; never block sync)
+        // Customer linkage (best-effort)
         let customerUserId: string | null = null;
         if (customer?.email || customer?.phone) {
           try {
             const { data: existing } = await admin
               .from("customer_profiles")
-              .select("user_id, email, phone")
+              .select("user_id")
               .or([
                 customer?.email ? `email.ilike.${customer.email}` : null,
                 customer?.phone ? `phone.eq.${customer.phone}` : null,
@@ -215,13 +209,26 @@ Deno.serve(async (req) => {
           } catch { /* ignore */ }
         }
 
-        // Detect existing local order (created vs updated)
-        const { data: existingOrder } = await admin
+        // Look up existing by shopify_order_id (the only dedupe key)
+        const { data: existingOrder, error: lookupErr } = await admin
           .from("orders")
           .select("id")
           .eq("shopify_order_id", node.id)
           .maybeSingle();
-        const isNew = !existingOrder;
+
+        if (lookupErr) {
+          skippedCount++;
+          if (skipDetails.length < 100) skipDetails.push({
+            shopify_order_id: node.id,
+            shopify_order_name: node.name,
+            source, financial_status: node.displayFinancialStatus,
+            fulfillment_status: node.displayFulfillmentStatus,
+            created_at: node.createdAt,
+            reason: `lookup failed: ${lookupErr.message}`,
+          });
+          console.error("[sync-shopify-orders] lookup failed", lookupErr, node.id);
+          continue;
+        }
 
         const orderPayload: Record<string, unknown> = {
           source,
@@ -260,40 +267,71 @@ Deno.serve(async (req) => {
           orderPayload.cancelled_at = node.updatedAt;
         }
 
-        // Upsert by shopify_order_id
-        const { data: upserted, error: upErr } = await admin
-          .from("orders")
-          .upsert(orderPayload, { onConflict: "shopify_order_id" })
-          .select("id")
-          .single();
+        let savedOrderId: string | null = null;
 
-        if (upErr) {
-          skippedCount++;
-          if (skipReasons.length < 20) skipReasons.push(`${node.name}: ${upErr.message}`);
-          console.error("[sync-shopify-orders] upsert order failed", upErr, node.id);
-          continue;
+        if (existingOrder?.id) {
+          const { error: updErr } = await admin
+            .from("orders")
+            .update(orderPayload)
+            .eq("id", existingOrder.id);
+          if (updErr) {
+            skippedCount++;
+            if (skipDetails.length < 100) skipDetails.push({
+              shopify_order_id: node.id,
+              shopify_order_name: node.name,
+              source, financial_status: node.displayFinancialStatus,
+              fulfillment_status: node.displayFulfillmentStatus,
+              created_at: node.createdAt,
+              reason: `update failed: ${updErr.message}`,
+            });
+            console.error("[sync-shopify-orders] update failed", updErr, node.id);
+            continue;
+          }
+          savedOrderId = existingOrder.id;
+          updatedCount++;
+        } else {
+          const { data: inserted, error: insErr } = await admin
+            .from("orders")
+            .insert(orderPayload)
+            .select("id")
+            .single();
+          if (insErr) {
+            skippedCount++;
+            if (skipDetails.length < 100) skipDetails.push({
+              shopify_order_id: node.id,
+              shopify_order_name: node.name,
+              source, financial_status: node.displayFinancialStatus,
+              fulfillment_status: node.displayFulfillmentStatus,
+              created_at: node.createdAt,
+              reason: `insert failed: ${insErr.message}`,
+            });
+            console.error("[sync-shopify-orders] insert failed", insErr, node.id);
+            continue;
+          }
+          savedOrderId = inserted.id;
+          createdCount++;
         }
 
-        if (isNew) createdCount++; else updatedCount++;
-
-        // Replace order_items for this order with the latest snapshot
-        await admin.from("order_items").delete().eq("order_id", upserted.id);
-        if (lineItems.length) {
-          const items = lineItems.map((li: any) => ({
-            order_id: upserted.id,
-            product_name: li.title,
-            quantity: li.quantity,
-            unit_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0),
-            total_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0) * (li.quantity ?? 1),
-            product_image_url:
-              li.variant?.image?.url ??
-              li.variant?.product?.featuredMedia?.preview?.image?.url ??
-              null,
-            shopify_line_id: li.id,
-            shopify_variant_id: li.variant?.id ?? null,
-            shopify_product_id: li.variant?.product?.id ?? null,
-          }));
-          await admin.from("order_items").insert(items);
+        // Replace order_items snapshot
+        if (savedOrderId) {
+          await admin.from("order_items").delete().eq("order_id", savedOrderId);
+          if (lineItems.length) {
+            const items = lineItems.map((li: any) => ({
+              order_id: savedOrderId,
+              product_name: li.title,
+              quantity: li.quantity,
+              unit_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0),
+              total_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0) * (li.quantity ?? 1),
+              product_image_url:
+                li.variant?.image?.url ??
+                li.variant?.product?.featuredMedia?.preview?.image?.url ??
+                null,
+              shopify_line_id: li.id,
+              shopify_variant_id: li.variant?.id ?? null,
+              shopify_product_id: li.variant?.product?.id ?? null,
+            }));
+            await admin.from("order_items").insert(items);
+          }
         }
       }
 
@@ -310,14 +348,16 @@ Deno.serve(async (req) => {
       created: createdCount,
       updated: updatedCount,
       skipped: skippedCount,
-      skip_reasons: skipReasons,
+      skip_details: skipDetails,
       mode: fullResync ? "full" : "incremental",
     };
 
     await admin.from("shopify_sync_state").update({
       last_synced_at: maxUpdated.toISOString(),
       last_status: "ok",
-      last_error: skippedCount > 0 ? `Skipped ${skippedCount}: ${skipReasons.slice(0, 3).join("; ")}` : null,
+      last_error: skippedCount > 0
+        ? `Skipped ${skippedCount}: ${skipDetails.slice(0, 3).map((d) => `${d.shopify_order_name}: ${d.reason}`).join("; ")}`
+        : null,
       last_run_count: createdCount + updatedCount,
       updated_at: new Date().toISOString(),
     }).eq("id", "orders");

@@ -122,7 +122,7 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [sourceFilter, setSourceFilter] = useState<string>("ALL");
   const [mobileTab, setMobileTab] = useState("ALL");
-  const { state: syncState, syncing, triggerSync } = useShopifySyncStatus();
+  const { state: syncState, syncing, triggerSync, lastResult } = useShopifySyncStatus();
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminUserId, setAdminUserId] = useState<string | null>(null);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -607,6 +607,43 @@ export default function AdminOrdersPage() {
             Shopify last synced {new Date(syncState.last_synced_at).toLocaleString()}
             {typeof syncState.last_run_count === "number" ? ` · ${syncState.last_run_count} updated` : ""}
           </p>
+        )}
+
+        {lastResult && (
+          <Card className="mb-3">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Last Shopify Sync ({lastResult.mode ?? "incremental"})</CardTitle>
+            </CardHeader>
+            <CardContent className="text-xs space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline">Fetched {lastResult.fetched ?? 0}</Badge>
+                <Badge variant="outline" className="text-green-600 border-green-600/40">Created {lastResult.created ?? 0}</Badge>
+                <Badge variant="outline" className="text-blue-600 border-blue-600/40">Updated {lastResult.updated ?? 0}</Badge>
+                <Badge variant="outline">POS {lastResult.pos ?? 0}</Badge>
+                <Badge variant="outline">Online {lastResult.online ?? 0}</Badge>
+                <Badge variant="outline">Paid {lastResult.paid ?? 0}</Badge>
+                <Badge variant="outline">Completed {lastResult.completed ?? 0}</Badge>
+                {(lastResult.skipped ?? 0) > 0 && (
+                  <Badge variant="outline" className="text-red-600 border-red-600/40">Skipped {lastResult.skipped}</Badge>
+                )}
+              </div>
+              {lastResult.skip_details && lastResult.skip_details.length > 0 && (
+                <div className="mt-2 max-h-48 overflow-y-auto border rounded p-2 bg-muted/30">
+                  <p className="text-[11px] font-medium mb-1">Skip reasons ({lastResult.skip_details.length}):</p>
+                  <ul className="space-y-1">
+                    {lastResult.skip_details.map((s, i) => (
+                      <li key={i} className="text-[11px] text-muted-foreground">
+                        <span className="font-mono">{s.shopify_order_name ?? "?"}</span>
+                        {" · "}{s.source ?? "?"}
+                        {" · "}{s.financial_status ?? "—"}/{s.fulfillment_status ?? "—"}
+                        {" · "}<span className="text-red-600">{s.reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Source filter */}
