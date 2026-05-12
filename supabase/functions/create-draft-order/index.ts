@@ -29,6 +29,10 @@ interface DraftOrderRequest {
   totalPrice: number;
   sellerVendor?: string;
   discountCode?: string | null;
+  orderSource?: 'customer_checkout' | 'seller_dashboard';
+  createdBySellerId?: string | null;
+  sellerName?: string | null;
+  existingOrderId?: string | null;
 }
 
 const SHOPIFY_STORE_DOMAIN = "lovable-project-yf43m.myshopify.com";
@@ -257,7 +261,14 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: DraftOrderRequest = await req.json();
-    const { customerName, customerPhone, customerEmail, location, preferredDate, pickupTime, note, lineItems, totalPrice, discountCode } = body;
+    const {
+      customerName, customerPhone, customerEmail, location, preferredDate,
+      pickupTime, note, lineItems, totalPrice, discountCode,
+      orderSource = 'customer_checkout',
+      createdBySellerId = null,
+      sellerName = null,
+      existingOrderId = null,
+    } = body;
 
     if (!customerName || !customerPhone || !location || !preferredDate || !lineItems?.length) {
       return new Response(
@@ -266,7 +277,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("Creating order for:", customerName, "phone:", customerPhone, "at", location);
+    console.log(`[${orderSource}] Creating order for:`, customerName, "phone:", customerPhone, "at", location);
 
     // Separate Shopify and Lovable products
     const shopifyItems = lineItems.filter(item => 
@@ -278,35 +289,57 @@ serve(async (req) => {
 
     console.log(`Processing ${shopifyItems.length} Shopify items and ${lovableItems.length} Lovable items`);
 
-    // Save to local database
-    const { data: localOrder, error: insertError } = await supabase
-      .from("orders")
-      .insert({
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_email: customerEmail || null,
-        location: location,
-        preferred_date: preferredDate,
-        pickup_time: pickupTime || null,
-        note: note || null,
-        total_price: totalPrice,
-        currency_code: "XCD",
-        line_items: lineItems,
-        status: "pending",
-      })
-      .select("*")
-      .single();
+    // ============================================================
+    // Save / load local order (idempotency)
+    // ============================================================
+    let localOrder: any = null;
 
-    if (insertError) {
-      console.error("Database error:", insertError);
-      throw new Error(`Failed to create order: ${insertError.message}`);
+    if (existingOrderId) {
+      const { data: existing, error: existingErr } = await supabase
+        .from("orders").select("*").eq("id", existingOrderId).single();
+      if (existingErr || !existing) {
+        return new Response(
+          JSON.stringify({ error: `Order not found: ${existingOrderId}` }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      localOrder = existing;
+      console.log("Resyncing existing order:", localOrder.id, "draft:", localOrder.shopify_draft_order_id);
+    } else {
+      const { data: inserted, error: insertError } = await supabase
+        .from("orders")
+        .insert({
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_email: customerEmail || null,
+          location: location,
+          preferred_date: preferredDate,
+          pickup_time: pickupTime || null,
+          note: note || null,
+          total_price: totalPrice,
+          currency_code: "XCD",
+          line_items: lineItems,
+          status: "pending",
+          order_source: orderSource,
+          created_by_seller_id: createdBySellerId,
+          communication_status: 'pending_whatsapp',
+          shopify_sync_status: 'not_synced',
+        })
+        .select("*")
+        .single();
+
+      if (insertError) {
+        console.error("Database error:", insertError);
+        throw new Error(`Failed to create order: ${insertError.message}`);
+      }
+      localOrder = inserted;
+      console.log("Local order created:", localOrder.id);
     }
 
-    console.log("Local order created:", localOrder.id);
-
     // ============================================================
-    // Create order_items for ALL products (both Shopify & Lovable)
+    // Create order_items (skip when resyncing existing order)
     // ============================================================
+    if (!existingOrderId) {
 
     const shopifyProductIds = shopifyItems.map(item => item.product_id).filter(Boolean);
     let shopifyProductMap: Record<string, { id: string; seller_id: string }> = {};
@@ -404,6 +437,7 @@ serve(async (req) => {
         console.log(`Created ${orderItemsToInsert.length} order_items`);
       }
     }
+    } // end if (!existingOrderId)
 
     let draftOrder = null;
 
@@ -419,18 +453,46 @@ serve(async (req) => {
           shopifyAdminToken, firstName, lastName, customerPhone
         );
 
-        // ========== BUILD NOTE ==========
-        let shopifyNote = `📍 Pickup: ${location} | 📅 Date: ${preferredDate}`;
-        if (pickupTime) shopifyNote += ` | ⏰ Time: ${pickupTime}`;
-        shopifyNote += ` | 📱 Phone: ${normalizedPhone}`;
-        shopifyNote += `\n👤 Customer: ${customerName}`;
+        // ========== BUILD NOTE (per spec, source-aware) ==========
+        const isSellerCreated = orderSource === 'seller_dashboard';
+        const intro = isSellerCreated
+          ? 'Created by seller from Luut SLU seller dashboard. Awaiting customer confirmation.'
+          : 'Created from Luut SLU website checkout. Awaiting WhatsApp confirmation.';
+        let shopifyNote = `${intro}\n\n`;
+        shopifyNote += `Website Order ID: ${localOrder.id}\n`;
+        shopifyNote += `Order #: #L${String(localOrder.order_number).padStart(4, '0')}\n`;
+        shopifyNote += `👤 Customer: ${customerName}\n`;
+        shopifyNote += `📱 Phone: ${normalizedPhone}\n`;
+        shopifyNote += `📍 Pickup: ${location}\n`;
+        shopifyNote += `📅 Date: ${preferredDate}`;
+        if (pickupTime) shopifyNote += ` ⏰ ${pickupTime}`;
+        if (isSellerCreated && sellerName) {
+          shopifyNote += `\n🏪 Seller: ${sellerName}`;
+          if (createdBySellerId) shopifyNote += ` (${createdBySellerId})`;
+        }
+        shopifyNote += `\nCommunication: pending_whatsapp`;
         if (note) shopifyNote += `\n📝 Note: ${note}`;
         if (discountCode) shopifyNote += `\n🏷️ Discount Code: ${discountCode}`;
-        shopifyNote += `\n\n💳 Payment: Pay on pickup`;
-        shopifyNote += `\nLocal Order ID: ${localOrder.id}`;
+        shopifyNote += `\n💳 Payment: Pay on pickup`;
         if (lovableItems.length > 0) {
           shopifyNote += `\n\n⚠️ This order also contains ${lovableItems.length} local seller product(s) not in Shopify.`;
         }
+
+        // ========== TAGS (per spec) ==========
+        const tagSet = new Set<string>([
+          'Website Order',
+          'Luut SLU',
+          'Pending WhatsApp Confirmation',
+          'Pickup',
+          `pickup-${location.toLowerCase().replace(/\s+/g, '-').slice(0, 25)}`,
+        ]);
+        if (isSellerCreated) {
+          tagSet.add('Seller Created Order');
+          if (sellerName) tagSet.add(`Seller: ${sellerName}`);
+        } else {
+          tagSet.add('Customer Checkout');
+        }
+        if (discountCode) tagSet.add(`discount-${discountCode.toLowerCase()}`);
 
         // ========== LINE ITEMS ==========
         const shopifyLineItems = shopifyItems.map(item => {
@@ -459,11 +521,13 @@ serve(async (req) => {
               country_code: "LC",
             },
             use_customer_default_address: false,
-            tags: `pickup-${location.toLowerCase().replace(/\s+/g, '-').slice(0, 25)}, pending-pickup`,
+            tags: Array.from(tagSet).join(', '),
             metafields: [
               { namespace: "pickup", key: "location", value: location, type: "single_line_text_field" },
               { namespace: "pickup", key: "date", value: preferredDate, type: "single_line_text_field" },
               { namespace: "pickup", key: "phone", value: normalizedPhone, type: "single_line_text_field" },
+              { namespace: "luut", key: "order_source", value: orderSource, type: "single_line_text_field" },
+              { namespace: "luut", key: "website_order_id", value: localOrder.id, type: "single_line_text_field" },
             ],
           }
         };
@@ -480,19 +544,21 @@ serve(async (req) => {
           const appliedDiscount = await resolveDiscountForDraftOrder(shopifyAdminToken, discountCode);
           if (appliedDiscount) {
             draftOrderPayload.draft_order.applied_discount = appliedDiscount;
-            console.log(`Discount applied to draft order: ${appliedDiscount.title} (${appliedDiscount.value_type}: ${appliedDiscount.value})`);
           } else {
             console.warn(`Could not resolve discount "${discountCode}" — draft order will be created without discount`);
           }
-          draftOrderPayload.draft_order.tags += `, discount-${discountCode.toLowerCase()}`;
         }
 
-        // ========== CREATE DRAFT ORDER ==========
-        console.log("Sending to Shopify Draft Order API...");
-        const shopifyUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders.json`;
+        // ========== CREATE OR UPDATE DRAFT ORDER (idempotent) ==========
+        const existingDraftId = localOrder.shopify_draft_order_id;
+        const isUpdate = !!existingDraftId;
+        const shopifyUrl = isUpdate
+          ? `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders/${existingDraftId}.json`
+          : `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders.json`;
+        console.log(`${isUpdate ? 'Updating' : 'Creating'} Shopify Draft Order...`);
 
         const shopifyResponse = await fetch(shopifyUrl, {
-          method: "POST",
+          method: isUpdate ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
             "X-Shopify-Access-Token": shopifyAdminToken,
@@ -504,14 +570,32 @@ serve(async (req) => {
 
         if (shopifyResponse.ok && shopifyData.draft_order) {
           draftOrder = shopifyData.draft_order;
-          console.log("Shopify draft order created:", draftOrder.id, draftOrder.name, 
-            "Customer:", draftOrder.customer?.id || "none",
-            "Discount:", draftOrder.applied_discount ? "yes" : "none");
+          console.log("Shopify draft order ok:", draftOrder.id, draftOrder.name);
+
+          // Persist draft metadata back to website order
+          await supabase.from("orders").update({
+            shopify_draft_order_id: String(draftOrder.id),
+            shopify_draft_order_name: draftOrder.name || null,
+            shopify_draft_order_invoice_url: draftOrder.invoice_url || null,
+            shopify_sync_status: isUpdate ? 'draft_updated' : 'draft_created',
+            shopify_sync_error: null,
+            shopify_synced_at: new Date().toISOString(),
+          }).eq("id", localOrder.id);
         } else {
-          console.error("Shopify API error (non-fatal):", JSON.stringify(shopifyData));
+          const errMsg = JSON.stringify(shopifyData?.errors || shopifyData).slice(0, 500);
+          console.error("Shopify API error:", errMsg);
+          await supabase.from("orders").update({
+            shopify_sync_status: 'draft_failed',
+            shopify_sync_error: errMsg,
+          }).eq("id", localOrder.id);
         }
       } catch (shopifyError) {
-        console.error("Shopify draft order creation failed (non-fatal):", shopifyError);
+        const errMsg = shopifyError instanceof Error ? shopifyError.message : String(shopifyError);
+        console.error("Shopify draft order creation failed:", errMsg);
+        await supabase.from("orders").update({
+          shopify_sync_status: 'draft_failed',
+          shopify_sync_error: errMsg,
+        }).eq("id", localOrder.id);
       }
     } else if (lovableItems.length > 0 && shopifyItems.length === 0) {
       console.log("Order contains only Lovable products — skipping Shopify draft order");
@@ -579,10 +663,14 @@ serve(async (req) => {
           createdAt: draftOrder?.created_at || localOrder.created_at,
           invoiceUrl: draftOrder?.invoice_url || null,
           lineItems: draftOrder?.line_items || localOrder.line_items,
-          shopifyDraftOrderId: draftOrder?.id || null,
+          shopifyDraftOrderId: draftOrder?.id ? String(draftOrder.id) : null,
+          shopifyDraftOrderName: draftOrder?.name || null,
+          shopifyInvoiceUrl: draftOrder?.invoice_url || null,
         },
         localOrderId: localOrder.id,
         localOrderToken: localOrder.order_token,
+        orderSource,
+        shopifySyncStatus: draftOrder ? (localOrder.shopify_draft_order_id ? 'draft_updated' : 'draft_created') : (shopifyAdminToken && shopifyItems.length > 0 ? 'draft_failed' : 'not_synced'),
         merchantWhatsAppUrl,
         customerMessage: merchantMessage,
         hasShopifyProducts: shopifyItems.length > 0,

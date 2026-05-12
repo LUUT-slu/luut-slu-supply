@@ -12,6 +12,12 @@ verify_jwt = false
 [functions.cancel-draft-order]
 verify_jwt = false
 
+[functions.update-draft-order-tags]
+verify_jwt = false
+
+[functions.complete-draft-order]
+verify_jwt = false
+
 [functions.manage-discounts]
 verify_jwt = false
 

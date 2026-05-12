@@ -406,6 +406,7 @@ export default function Checkout() {
             totalPrice: finalPrice,
             sellerVendor: vendors.length === 1 ? (currentSeller || '') : '',
             discountCode: appliedDiscount?.code || null,
+            orderSource: 'customer_checkout',
           },
         });
 

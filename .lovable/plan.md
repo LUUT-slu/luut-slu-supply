@@ -1,99 +1,122 @@
-## Add Existing Products to Purchase Orders
+# Unified Order → Shopify Draft Order Flow
 
-Extend the PO system so users can pull in already-listed products (Shopify or local seller products) as a restock snapshot, edit a batch-specific copy of price/variants/qty, and later choose how (or whether) to push back to Shopify on arrival.
+Goal: every order created on the website (customer checkout OR seller dashboard) flows through one path that (a) saves the website order, (b) creates a Shopify Draft Order, (c) stores draft-order metadata back on the website order, (d) drives a consistent WhatsApp confirmation lifecycle.
 
-### 1. Data Model Changes (migration)
+## What already exists
+- `supabase/functions/create-draft-order` — customer checkout calls this. It saves `orders`, creates `order_items`, calls Shopify `draft_orders.json`, returns invoice + draft id, fires emails.
+- `OrderConfirmed.tsx` — customer WhatsApp confirmation popup (skips for POS).
+- `rpc_mark_whatsapp_opened` — flips `communication_status` to `whatsapp_opened`.
+- `orders` has `shopify_order_id`, `shopify_order_name`, `shopify_synced_at` (used for completed Shopify orders) but NO draft-order columns and no `order_source` / `created_by_seller_id`.
+- `CreateOrderDialog` (seller) inserts into `orders` directly and does NOT call Shopify at all.
 
-Extend `purchase_order_items` to support multi-variant restock snapshots:
+## What's missing
+1. Seller-created orders never reach Shopify.
+2. Draft order id / invoice url / sync status / source / creator are not persisted.
+3. No idempotency (re-submitting could double-create drafts).
+4. Tagging isn't spec-compliant; no "WhatsApp Confirmed" tag flip.
+5. No admin buttons for: Open Shopify draft, Resync, Mark WhatsApp Confirmed, Mark No Response, Cancel, Complete Shopify draft.
+6. Seller dashboard has no WhatsApp button + status controls for the new flow.
+7. Seller dialog deducts `seller_products.quantity` immediately — spec says don't double-decrement (Shopify does it on completion).
 
-- `source_type` enum: `manual` | `shopify` | `seller_product` (default `manual`)
-- `source_product_ref` text (Shopify product ID OR seller_products.id)
-- `current_shopify_price` numeric (snapshot of live price at add-time, for display "Current vs New")
-- `current_shopify_stock` int (snapshot of live stock at add-time)
-- `compare_at_price` numeric
-- `is_restock` boolean default false
+---
 
-New table `purchase_order_item_variants`:
-- `id`, `item_id` (fk → purchase_order_items, on delete cascade)
-- `included` boolean default true (toggle in/out of this PO)
-- `shopify_variant_id` text nullable
-- `option_color`, `option_size`, `option_other` text
-- `cost_per_item`, `selling_price`, `compare_at_price` numeric
-- `quantity_ordered`, `quantity_arrived`, `quantity_missing`, `quantity_damaged` int
-- `is_new_variant` boolean (variant added inside PO, not in Shopify yet)
-- generated `expected_profit`, `profit_margin`
-- RLS: piggyback on parent item ownership via `is_po_owner` lookup
+## Plan
 
-Trigger `recalc_po_totals` updated to roll up variants when present (sum across variants for items with `source_type != 'manual'`).
+### 1. Database migration (`orders` + new RPCs)
+Add columns to `public.orders`:
+- `shopify_draft_order_id text`
+- `shopify_draft_order_name text`
+- `shopify_draft_order_invoice_url text`
+- `shopify_sync_status text` default `'not_synced'` (`draft_created | draft_updated | draft_failed | not_synced | completed`)
+- `shopify_sync_error text`
+- `order_source text` default `'customer_checkout'` (`customer_checkout | seller_dashboard | shopify_pos | shopify_online | manual`)
+- `created_by_seller_id uuid` (nullable, references `seller_profiles.id` logically)
 
-### 2. RPCs
+Extend `communication_status` allowed values to include `whatsapp_confirmed` and `no_response` (already in `rpc_set_communication_status` validation — also extend `order_status` checks where needed).
 
-- `rpc_po_add_existing_product(p_po_id, p_source_type, p_source_ref, p_snapshot jsonb)` — creates an item + child variant rows from a snapshot built client-side (fewer round trips, no SQL string-building).
-- `rpc_po_confirm_arrival` extended: accepts per-variant arrivals when item has variants.
+New RPCs (SECURITY DEFINER, search_path=public):
+- `rpc_mark_order_confirmed(p_order_id uuid)` — admin OR seller-of-order; sets `communication_status='whatsapp_confirmed'`, logs `order_events`. Triggers Shopify tag flip via edge function call (best-effort; the edge function does the actual API call).
+- `rpc_mark_no_response(p_order_id uuid)` — admin/seller; sets `communication_status='no_response'`.
+- `rpc_cancel_order(p_order_id uuid, p_reason text)` — admin only; sets `order_status='CANCELLED'`, logs event.
 
-### 3. Edge Function: `po-publish-to-shopify` (extend, do not break existing)
+### 2. Refactor edge function: `create-draft-order` → unified
+Rename intent: handle BOTH customer checkout AND seller dashboard.
 
-New body shape:
-```
-{ item_id, sync_mode: "inventory_only" | "inventory_price" | "inventory_variants" | "create_new" | "po_only", confirm_price_change: boolean }
-```
+New request fields:
+- `orderSource: 'customer_checkout' | 'seller_dashboard'` (required)
+- `createdBySellerId?: string` (uuid; required when `seller_dashboard`)
+- `sellerName?: string` (for tagging)
+- `existingOrderId?: string` (for retry — skip insert, only sync to Shopify)
 
-Behavior:
-- `po_only` → mark synced=skipped, no Shopify call.
-- `inventory_only` → for each included variant with shopify_variant_id, call Inventory Levels API to add `quantity_arrived` to current on-hand at the store's primary location. Do NOT touch price/options.
-- `inventory_price` → above, plus update variant `price` (and `compare_at_price`) only when `confirm_price_change=true`.
-- `inventory_variants` → above, plus PUT variant option1/option2 values; create new variants for `is_new_variant=true` rows via POST `/products/{id}/variants.json`.
-- `create_new` → existing create-product flow (today's behavior) with a fresh Shopify product.
-- Seller role guard: sellers may only call `inventory_only` and `po_only`. Anything that mutates Shopify price/variants → 403 unless admin.
+Behavior changes:
+- Insert order with `order_source`, `created_by_seller_id`, `communication_status='pending_whatsapp'`, `shopify_sync_status='not_synced'`.
+- Build Shopify tags array per spec:
+  - Common: `Website Order`, `Luut SLU`, `Pending WhatsApp Confirmation`, `Pickup`, `pickup-{location}`.
+  - Customer: add `Customer Checkout`.
+  - Seller: add `Seller Created Order`, `Seller: {sellerName}`.
+- Build Shopify note per spec (different intro + fields per source).
+- After Shopify create succeeds: `update orders set shopify_draft_order_id, shopify_draft_order_name, shopify_draft_order_invoice_url, shopify_sync_status='draft_created', shopify_synced_at=now()`.
+- On failure: `shopify_sync_status='draft_failed'`, `shopify_sync_error=<msg>`. Still return success (order saved).
+- Idempotency: if order already has `shopify_draft_order_id`, do PUT update instead of POST create; mark `draft_updated`.
 
-Always write the existing `luut_purchase` private metafields snapshot.
+### 3. New edge function: `po-… ` style — `update-draft-order-tags`
+Single-purpose helper used by:
+- "Mark WhatsApp Confirmed" → remove `Pending WhatsApp Confirmation`, add `WhatsApp Confirmed`.
+- "Mark No Response" → add `No Response`.
+- Used internally by `rpc_mark_order_confirmed` callers (UI calls function after RPC).
 
-### 4. Frontend
+### 4. New edge function: `complete-draft-order` (admin only)
+- Verifies admin via JWT + `has_role`.
+- Calls Shopify `PUT /draft_orders/{id}/complete.json` (mark as paid optional flag).
+- On success: copy `shopify_order_id` / `shopify_order_name` from response onto `orders`, set `shopify_sync_status='completed'`, `order_status='COMPLETED'`.
 
-**New components**
-- `ExistingProductPickerDialog.tsx` — search across Shopify (Storefront API via existing `lib/shopify.ts`) + `seller_products` (Supabase) in a single tabbed/typeahead modal. Filters: name, category, subcategory, source (Shopify/Website), seller (admin only), tags. Returns a unified `PickedProduct` shape with variants.
-- `RestockEditDialog.tsx` — opens after a product is picked. Shows:
-  - Header: existing name, current Shopify price, current stock (if known), restock badge.
-  - Editable batch fields: cost, selling price, compare-at, qty, expected arrival, supplier, image, category/sub, tags, notes.
-  - Variants table: include checkbox, color, size, cost, selling price, qty ordered. Buttons: "Add variant", "Remove from PO".
-  - Save → calls `rpc_po_add_existing_product`.
-- `RestockSyncDialog.tsx` — replaces/wraps `PublishShopifyDialog` when `source_type != 'manual'`. Radio group for the 5 sync modes + "Update Shopify price?" confirmation when batch selling price differs from `current_shopify_price`.
+(`po-publish-to-shopify` is unrelated — for POs, leave alone.)
 
-**PO detail page (`PurchaseOrderDetail.tsx`)**
-- Add second button next to "Add Item": **"Add Existing Product"** → opens `ExistingProductPickerDialog`.
-- For items with `source_type != 'manual'`, item row renders an expanded card with: current vs new price, current vs incoming stock, expected stock after arrival, variants table, expected batch profit. Replaces the existing single-row layout for those items only.
-- Confirm Arrival dialog: when item has variants, show per-variant arrived/missing/damaged fields.
-- Sync button uses `RestockSyncDialog` for restock items.
+### 5. Frontend — customer flow (`Checkout.tsx`)
+- Pass `orderSource: 'customer_checkout'` in invoke body.
+- Persist `shopifyDraftOrderId` + invoice URL into the `luut-order-confirmed` localStorage payload (already partial). No popup change — `OrderConfirmed` + `WhatsAppConfirmPopup` already match the spec wording.
+- Already handles POS skip via `isPos`.
 
-**Hook updates (`usePurchaseOrders.ts`)**
-- Add `POItemVariant` type and include variants in `usePurchaseOrder` query.
-- `useAddExistingProduct()` mutation wrapping the new RPC.
-- Update `useUpsertItem` to leave `source_type='manual'` items untouched.
+### 6. Frontend — seller flow (`CreateOrderDialog.tsx`)
+- Replace direct `supabase.from("orders").insert(...)` with `supabase.functions.invoke('create-draft-order', { body: { ...form, orderSource: 'seller_dashboard', createdBySellerId: sellerId, sellerName } })`.
+- After success, show a small post-create card with:
+  - Order number, totals.
+  - "Message Customer on WhatsApp" button — prefilled per spec.
+  - Status pill: Pending WhatsApp Confirmation.
+  - Buttons: Mark WhatsApp Opened, Mark Confirmed, Mark No Response.
+- Remove the manual `seller_products.quantity` decrement (spec: don't double-decrement). Keep `product_sales` recording out of this path — Shopify completion is the source of truth. (Confirm with user if they want a soft reservation flag instead.)
 
-### 5. Seller / Permission Rules
+### 7. Admin dashboard (`AdminOrders.tsx` / `AdminOrdersPage.tsx`)
+Add per-row action menu showing draft + sync info and buttons:
+- Open Shopify Draft (links to `https://{shop}.myshopify.com/admin/draft_orders/{id}`)
+- Resync Draft Order → invokes `create-draft-order` with `existingOrderId`.
+- Mark WhatsApp Confirmed → `rpc_mark_order_confirmed` + `update-draft-order-tags`.
+- Mark No Response → `rpc_mark_no_response`.
+- Cancel Order → `rpc_cancel_order`.
+- Complete Shopify Draft Order → `complete-draft-order` (admin only).
+Row badges: `order_source`, `shopify_sync_status`, `communication_status`, seller chip if seller-created.
 
-- Picker filters seller_products to `seller.user_id = auth.uid()` for non-admin owners.
-- Shopify products freely browsable but the sync edge function enforces role gates (above).
-- UI hides "Update Shopify price/variants" radios for non-admin owners and shows: "Admin approval required for Shopify changes."
+### 8. Seller dashboard (`SellerOrders.tsx` / `SellerOrderDetail.tsx`)
+Per-row buttons (only own/own-product orders, RLS already enforces):
+- Message Customer (WhatsApp prefilled).
+- Mark WhatsApp Opened / Confirmed / No Response.
+- Request Admin Completion → inserts an `order_events` row with type `completion_requested`; admin sees in queue.
+No "Complete draft" button for sellers.
 
-### 6. Out of Scope / Non-changes
+### 9. Multi-seller orders
+- Already split via `order_items.seller_id` — no change. Sellers see only their items via existing RLS; admins see full order.
 
-- Existing manual-item flow, totals/tags RPCs, reports page, dashboard cards, customer-facing flows untouched.
-- No new secrets needed (`SHOPIFY_ADMIN_TOKEN`, `SHOPIFY_STORE_DOMAIN` already configured).
-- No changes to checkout, orders, or PO list page beyond new buttons.
+### 10. Inventory
+- Confirm: do NOT decrement `seller_products.quantity` on draft creation. Shopify handles real inventory at completion. Document this in `mem://feature/order-flow-inventory`.
 
-### Files
+### Technical details
 
-**New**
-- `supabase/migrations/<ts>_po_existing_products.sql`
-- `src/components/purchase-orders/ExistingProductPickerDialog.tsx`
-- `src/components/purchase-orders/RestockEditDialog.tsx`
-- `src/components/purchase-orders/RestockSyncDialog.tsx`
+- Edge functions involved: `create-draft-order` (refactor), new `update-draft-order-tags`, new `complete-draft-order`. All deploy under existing `verify_jwt = false` and validate caller role in code.
+- Shopify Admin API: `2025-01` (already in use). Endpoints: `POST /draft_orders.json`, `PUT /draft_orders/{id}.json`, `PUT /draft_orders/{id}/complete.json`.
+- Existing `SHOPIFY_ADMIN_TOKEN` secret is sufficient.
+- All new RPCs follow the project pattern (SECURITY DEFINER, `has_role` / `is_seller_for_order` gates).
 
-**Edited**
-- `supabase/functions/po-publish-to-shopify/index.ts`
-- `src/hooks/usePurchaseOrders.ts`
-- `src/pages/purchase-orders/PurchaseOrderDetail.tsx`
-- `src/integrations/supabase/types.ts` (auto)
-
-Approve to proceed; I'll run the migration first, then code.
+### Out of scope (will not be built unless asked)
+- Stock reservation system (mentioned in spec as optional / future).
+- Shopify webhook ingestion of completion back into website (orders already have a sync function `sync-shopify-orders` that can be used later).
+- Editing existing draft orders' line items from admin UI (only resync of current website state).
