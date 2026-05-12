@@ -1,9 +1,13 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { CheckCircle2, MessageCircle, ShoppingBag, MapPin, Calendar, Package, Clock } from "lucide-react";
+import { CheckCircle2, MessageCircle, ShoppingBag, MapPin, Calendar, Package, Clock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { WhatsAppConfirmPopup } from "@/components/order/WhatsAppConfirmPopup";
 
 interface OrderConfirmationData {
+  orderId?: string;
+  orderToken?: string;
   orderName: string;
   sellerName: string;
   sellerWhatsApp: string;
@@ -22,17 +26,18 @@ interface OrderConfirmationData {
   preferredDate: string;
   pickupTime?: string;
   note?: string;
+  source?: string;
+  isPos?: boolean;
   timestamp: number;
 }
-
-const SESSION_KEY = "luut-whatsapp-opened";
 
 export default function OrderConfirmed() {
   const navigate = useNavigate();
   const [orderData, setOrderData] = useState<OrderConfirmationData | null>(null);
   const [whatsappOpened, setWhatsappOpened] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const didAutoOpen = useRef(false);
+  const [popupOpen, setPopupOpen] = useState(false);
+  const didShowPopup = useRef(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("luut-order-confirmed");
@@ -53,19 +58,12 @@ export default function OrderConfirmed() {
 
       setOrderData(parsed);
       setLoaded(true);
-
       localStorage.removeItem("luut-order-confirmed");
 
-      const alreadyOpened = sessionStorage.getItem(SESSION_KEY);
-      if (!alreadyOpened && !didAutoOpen.current) {
-        didAutoOpen.current = true;
-        setTimeout(() => {
-          const popup = window.open(parsed.whatsappUrl, "_blank");
-          if (popup) {
-            setWhatsappOpened(true);
-          }
-          sessionStorage.setItem(SESSION_KEY, "true");
-        }, 500);
+      const isPos = parsed.isPos || parsed.source === "pos";
+      if (!isPos && !didShowPopup.current) {
+        didShowPopup.current = true;
+        setTimeout(() => setPopupOpen(true), 400);
       }
     } catch {
       localStorage.removeItem("luut-order-confirmed");
@@ -75,21 +73,30 @@ export default function OrderConfirmed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    return () => {
-      sessionStorage.removeItem(SESSION_KEY);
-    };
-  }, []);
+  const markWhatsappOpened = async () => {
+    if (!orderData?.orderId || !orderData?.orderToken) return;
+    try {
+      await supabase.rpc("rpc_mark_whatsapp_opened", {
+        p_order_id: orderData.orderId,
+        p_token: orderData.orderToken,
+      });
+    } catch (e) {
+      console.error("Failed to mark whatsapp opened:", e);
+    }
+  };
 
   const handleOpenWhatsApp = () => {
     if (!orderData) return;
     window.open(orderData.whatsappUrl, "_blank");
     setWhatsappOpened(true);
+    setPopupOpen(false);
+    markWhatsappOpened();
   };
 
-  if (!loaded || !orderData) {
-    return null;
-  }
+  if (!loaded || !orderData) return null;
+
+  const isPos = orderData.isPos || orderData.source === "pos";
+  const showPendingBanner = !isPos && !whatsappOpened;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -104,28 +111,40 @@ export default function OrderConfirmed() {
             <p className="text-lg font-semibold text-primary">{orderData.orderName}</p>
           </div>
 
-          {/* WhatsApp CTA */}
-          <div className="rounded-xl border-2 border-primary bg-primary/5 p-6 space-y-4">
-            <div className="text-center space-y-2">
-              <h2 className="font-display text-lg font-semibold">
-                Send your order to {orderData.sellerName}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {whatsappOpened
-                  ? "WhatsApp opened. Please send the message to confirm your meetup."
-                  : "Tap the button below to send your order details via WhatsApp. This confirms your meetup."}
-              </p>
+          {/* Pending WhatsApp Confirmation Banner */}
+          {showPendingBanner && (
+            <div className="rounded-xl border-2 border-primary bg-primary/5 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                <p className="text-sm">
+                  Your order is not fully confirmed yet. Tap below to confirm on WhatsApp.
+                </p>
+              </div>
+              <Button
+                onClick={handleOpenWhatsApp}
+                className="w-full gap-2 h-12"
+                size="lg"
+              >
+                <MessageCircle className="h-5 w-5" />
+                Confirm on WhatsApp
+              </Button>
             </div>
+          )}
 
-            <Button
-              onClick={handleOpenWhatsApp}
-              className="w-full gap-2 text-base"
-              size="lg"
-            >
-              <MessageCircle className="h-5 w-5" />
-              {whatsappOpened ? "Confirm With Seller" : "Message Seller on WhatsApp"}
-            </Button>
-          </div>
+          {whatsappOpened && (
+            <div className="rounded-xl border border-border bg-card p-4 text-center text-sm text-muted-foreground">
+              WhatsApp opened — please send the message to lock in your meetup.
+              <Button
+                onClick={handleOpenWhatsApp}
+                variant="outline"
+                size="sm"
+                className="w-full gap-2 mt-3"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Open WhatsApp Again
+              </Button>
+            </div>
+          )}
 
           {/* Order Summary */}
           <div className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -187,6 +206,12 @@ export default function OrderConfirmed() {
           </div>
         </div>
       </main>
+
+      <WhatsAppConfirmPopup
+        open={popupOpen}
+        onOpenChange={setPopupOpen}
+        onConfirm={handleOpenWhatsApp}
+      />
     </div>
   );
 }
