@@ -37,6 +37,8 @@ export default function PurchaseOrderDetail({ basePath }: { basePath: "/admin/pu
   const removeTag = useRemoveTag();
   const [showArrival, setShowArrival] = useState(false);
   const [publishItem, setPublishItem] = useState<POItem | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const [picked, setPicked] = useState<PickedProduct | null>(null);
   const isAdminPath = basePath.startsWith("/admin");
 
   const { data: isAdmin } = useQuery({
