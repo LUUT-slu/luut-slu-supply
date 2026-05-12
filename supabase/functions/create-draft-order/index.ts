@@ -29,6 +29,10 @@ interface DraftOrderRequest {
   totalPrice: number;
   sellerVendor?: string;
   discountCode?: string | null;
+  orderSource?: 'customer_checkout' | 'seller_dashboard';
+  createdBySellerId?: string | null;
+  sellerName?: string | null;
+  existingOrderId?: string | null;
 }
 
 const SHOPIFY_STORE_DOMAIN = "lovable-project-yf43m.myshopify.com";
