@@ -361,24 +361,46 @@ Deno.serve(async (req) => {
           createdCount++;
         }
 
-        // Replace order_items snapshot
+        // Replace order_items snapshot with seller attribution
         if (savedOrderId) {
           await admin.from("order_items").delete().eq("order_id", savedOrderId);
           if (lineItems.length) {
-            const items = lineItems.map((li: any) => ({
-              order_id: savedOrderId,
-              product_name: li.title,
-              quantity: li.quantity,
-              unit_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0),
-              total_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0) * (li.quantity ?? 1),
-              product_image_url:
-                li.variant?.image?.url ??
-                li.variant?.product?.featuredMedia?.preview?.image?.url ??
-                null,
-              shopify_line_id: li.id,
-              shopify_variant_id: li.variant?.id ?? null,
-              shopify_product_id: li.variant?.product?.id ?? null,
-            }));
+            const items: Array<Record<string, unknown>> = [];
+            for (const li of lineItems) {
+              lineItemsTotal++;
+              const { seller_id, product_id } = await resolveSellerForLineItem(li);
+              if (seller_id) {
+                lineItemsMatched++;
+                sellerOrderPairs.add(`${savedOrderId}::${seller_id}`);
+              } else {
+                lineItemsUnassigned++;
+                if (unassignedSamples.length < 50) {
+                  unassignedSamples.push({
+                    shopify_order_name: node.name,
+                    line_title: li.title,
+                    shopify_product_id: li.variant?.product?.id ?? null,
+                    shopify_variant_id: li.variant?.id ?? null,
+                    reason: "Product not assigned to seller",
+                  });
+                }
+              }
+              items.push({
+                order_id: savedOrderId,
+                product_name: li.title,
+                quantity: li.quantity,
+                unit_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0),
+                total_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0) * (li.quantity ?? 1),
+                product_image_url:
+                  li.variant?.image?.url ??
+                  li.variant?.product?.featuredMedia?.preview?.image?.url ??
+                  null,
+                shopify_line_id: li.id,
+                shopify_variant_id: li.variant?.id ?? null,
+                shopify_product_id: li.variant?.product?.id ?? null,
+                seller_id,
+                product_id,
+              });
+            }
             await admin.from("order_items").insert(items);
           }
         }
