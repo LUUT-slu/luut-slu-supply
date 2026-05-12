@@ -209,6 +209,14 @@ export default function AdminHome() {
       bgColor: "bg-rose-500/10",
     },
     {
+      title: "Purchase Orders",
+      description: "Track stock buys, costs, profit & smart tags",
+      icon: Package,
+      href: "/admin/purchase-orders",
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10",
+    },
+    {
       title: "Category Images",
       description: "AI-generated images for each category & subcategory",
       icon: Megaphone,
