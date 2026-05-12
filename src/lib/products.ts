@@ -233,7 +233,23 @@ export async function fetchHybridProducts(options: {
   }
 
   // Combine and sort by stock status: in_stock first, low_stock second, out_of_stock last
-  const combined = [...unifiedLovable, ...unifiedShopify];
+  let combined = [...unifiedLovable, ...unifiedShopify];
+
+  // Slug-level exclusions: keep beanies/skull caps out of Hats/Caps even if
+  // Shopify's collection or product type categorizes them as Hats.
+  if (categorySlug) {
+    combined = combined.filter((p) => {
+      const sp = p.originalShopifyProduct?.node;
+      return !isExcludedFromSlug(
+        categorySlug,
+        p.title,
+        sp?.productType ?? p.category,
+        sp?.tags ?? null,
+        null,
+      );
+    });
+  }
+
   const stockOrder: Record<StockStatus, number> = { in_stock: 0, low_stock: 1, out_of_stock: 2 };
   combined.sort((a, b) => stockOrder[a.stockStatus] - stockOrder[b.stockStatus]);
   return combined;
