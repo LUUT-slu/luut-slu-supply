@@ -203,6 +203,15 @@ export default function SellerOrders() {
       result = result.filter((o) => !archivedIds.has(o.id));
     }
 
+    // Source filter (website / shopify_pos / shopify_online / manual)
+    if (sourceFilter !== "all") {
+      if (sourceFilter === "shopify") {
+        result = result.filter((o) => (o.source || "").startsWith("shopify"));
+      } else {
+        result = result.filter((o) => (o.source || "website") === sourceFilter);
+      }
+    }
+
     // Status filter
     if (statusFilter !== "all") {
       result = result.filter((o) => o.status === statusFilter);
