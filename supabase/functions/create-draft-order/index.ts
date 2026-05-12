@@ -261,7 +261,14 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: DraftOrderRequest = await req.json();
-    const { customerName, customerPhone, customerEmail, location, preferredDate, pickupTime, note, lineItems, totalPrice, discountCode } = body;
+    const {
+      customerName, customerPhone, customerEmail, location, preferredDate,
+      pickupTime, note, lineItems, totalPrice, discountCode,
+      orderSource = 'customer_checkout',
+      createdBySellerId = null,
+      sellerName = null,
+      existingOrderId = null,
+    } = body;
 
     if (!customerName || !customerPhone || !location || !preferredDate || !lineItems?.length) {
       return new Response(
@@ -270,7 +277,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("Creating order for:", customerName, "phone:", customerPhone, "at", location);
+    console.log(`[${orderSource}] Creating order for:`, customerName, "phone:", customerPhone, "at", location);
 
     // Separate Shopify and Lovable products
     const shopifyItems = lineItems.filter(item => 
@@ -282,31 +289,52 @@ serve(async (req) => {
 
     console.log(`Processing ${shopifyItems.length} Shopify items and ${lovableItems.length} Lovable items`);
 
-    // Save to local database
-    const { data: localOrder, error: insertError } = await supabase
-      .from("orders")
-      .insert({
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_email: customerEmail || null,
-        location: location,
-        preferred_date: preferredDate,
-        pickup_time: pickupTime || null,
-        note: note || null,
-        total_price: totalPrice,
-        currency_code: "XCD",
-        line_items: lineItems,
-        status: "pending",
-      })
-      .select("*")
-      .single();
+    // ============================================================
+    // Save / load local order (idempotency)
+    // ============================================================
+    let localOrder: any = null;
 
-    if (insertError) {
-      console.error("Database error:", insertError);
-      throw new Error(`Failed to create order: ${insertError.message}`);
+    if (existingOrderId) {
+      const { data: existing, error: existingErr } = await supabase
+        .from("orders").select("*").eq("id", existingOrderId).single();
+      if (existingErr || !existing) {
+        return new Response(
+          JSON.stringify({ error: `Order not found: ${existingOrderId}` }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      localOrder = existing;
+      console.log("Resyncing existing order:", localOrder.id, "draft:", localOrder.shopify_draft_order_id);
+    } else {
+      const { data: inserted, error: insertError } = await supabase
+        .from("orders")
+        .insert({
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_email: customerEmail || null,
+          location: location,
+          preferred_date: preferredDate,
+          pickup_time: pickupTime || null,
+          note: note || null,
+          total_price: totalPrice,
+          currency_code: "XCD",
+          line_items: lineItems,
+          status: "pending",
+          order_source: orderSource,
+          created_by_seller_id: createdBySellerId,
+          communication_status: 'pending_whatsapp',
+          shopify_sync_status: 'not_synced',
+        })
+        .select("*")
+        .single();
+
+      if (insertError) {
+        console.error("Database error:", insertError);
+        throw new Error(`Failed to create order: ${insertError.message}`);
+      }
+      localOrder = inserted;
+      console.log("Local order created:", localOrder.id);
     }
-
-    console.log("Local order created:", localOrder.id);
 
     // ============================================================
     // Create order_items for ALL products (both Shopify & Lovable)
