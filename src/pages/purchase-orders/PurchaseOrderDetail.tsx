@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { POStatusBadge } from "@/components/purchase-orders/POStatusBadge";
 import { POSummaryCard } from "@/components/purchase-orders/POSummaryCard";
 import { ConfirmArrivalDialog } from "@/components/purchase-orders/ConfirmArrivalDialog";
-import { PublishShopifyDialog } from "@/components/purchase-orders/PublishShopifyDialog";
+// PublishShopifyDialog superseded by RestockSyncDialog
 import { BuyingInsightHint } from "@/components/purchase-orders/BuyingInsightHint";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
