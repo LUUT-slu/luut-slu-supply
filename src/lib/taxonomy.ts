@@ -195,7 +195,7 @@ export async function fetchTaxonomy(): Promise<Taxonomy> {
       slug,
       title: m.title,
       description: m.description,
-      image: m.image?.url ?? null,
+      image: imageOverrides.get(`main:${slug}`) ?? m.image?.url ?? null,
       productCount: 0,
       subs: [],
       url: `/c/${slug}`,
