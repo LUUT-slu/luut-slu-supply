@@ -148,7 +148,56 @@ Deno.serve(async (req) => {
     let createdCount = 0;
     let updatedCount = 0;
     let skippedCount = 0;
+    let lineItemsTotal = 0;
+    let lineItemsMatched = 0;
+    let lineItemsUnassigned = 0;
+    const sellerOrderPairs = new Set<string>();
     const skipDetails: Array<Record<string, unknown>> = [];
+    const unassignedSamples: Array<Record<string, unknown>> = [];
+
+    // Per-run cache for seller_products lookups
+    const sellerByShopifyProductId = new Map<string, { seller_id: string; product_id: string }>();
+    const sellerByName = new Map<string, { seller_id: string; product_id: string }>();
+
+    async function resolveSellerForLineItem(li: any): Promise<{ seller_id: string | null; product_id: string | null }> {
+      const shopifyProductId: string | null = li.variant?.product?.id ?? null;
+      const title: string = (li.title || "").trim();
+
+      if (shopifyProductId) {
+        const cached = sellerByShopifyProductId.get(shopifyProductId);
+        if (cached) return cached;
+        const { data } = await admin
+          .from("seller_products")
+          .select("id, seller_id")
+          .eq("shopify_product_id", shopifyProductId)
+          .limit(1)
+          .maybeSingle();
+        if (data?.seller_id) {
+          const v = { seller_id: data.seller_id as string, product_id: data.id as string };
+          sellerByShopifyProductId.set(shopifyProductId, v);
+          return v;
+        }
+      }
+
+      if (title) {
+        const key = title.toLowerCase();
+        const cached = sellerByName.get(key);
+        if (cached) return cached;
+        const { data } = await admin
+          .from("seller_products")
+          .select("id, seller_id")
+          .ilike("name", title)
+          .limit(1)
+          .maybeSingle();
+        if (data?.seller_id) {
+          const v = { seller_id: data.seller_id as string, product_id: data.id as string };
+          sellerByName.set(key, v);
+          return v;
+        }
+      }
+
+      return { seller_id: null, product_id: null };
+    }
 
     const maxPages = fullResync ? 200 : 40;
 
@@ -312,24 +361,46 @@ Deno.serve(async (req) => {
           createdCount++;
         }
 
-        // Replace order_items snapshot
+        // Replace order_items snapshot with seller attribution
         if (savedOrderId) {
           await admin.from("order_items").delete().eq("order_id", savedOrderId);
           if (lineItems.length) {
-            const items = lineItems.map((li: any) => ({
-              order_id: savedOrderId,
-              product_name: li.title,
-              quantity: li.quantity,
-              unit_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0),
-              total_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0) * (li.quantity ?? 1),
-              product_image_url:
-                li.variant?.image?.url ??
-                li.variant?.product?.featuredMedia?.preview?.image?.url ??
-                null,
-              shopify_line_id: li.id,
-              shopify_variant_id: li.variant?.id ?? null,
-              shopify_product_id: li.variant?.product?.id ?? null,
-            }));
+            const items: Array<Record<string, unknown>> = [];
+            for (const li of lineItems) {
+              lineItemsTotal++;
+              const { seller_id, product_id } = await resolveSellerForLineItem(li);
+              if (seller_id) {
+                lineItemsMatched++;
+                sellerOrderPairs.add(`${savedOrderId}::${seller_id}`);
+              } else {
+                lineItemsUnassigned++;
+                if (unassignedSamples.length < 50) {
+                  unassignedSamples.push({
+                    shopify_order_name: node.name,
+                    line_title: li.title,
+                    shopify_product_id: li.variant?.product?.id ?? null,
+                    shopify_variant_id: li.variant?.id ?? null,
+                    reason: "Product not assigned to seller",
+                  });
+                }
+              }
+              items.push({
+                order_id: savedOrderId,
+                product_name: li.title,
+                quantity: li.quantity,
+                unit_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0),
+                total_price: Number(li.originalUnitPriceSet?.shopMoney?.amount ?? 0) * (li.quantity ?? 1),
+                product_image_url:
+                  li.variant?.image?.url ??
+                  li.variant?.product?.featuredMedia?.preview?.image?.url ??
+                  null,
+                shopify_line_id: li.id,
+                shopify_variant_id: li.variant?.id ?? null,
+                shopify_product_id: li.variant?.product?.id ?? null,
+                seller_id,
+                product_id,
+              });
+            }
             await admin.from("order_items").insert(items);
           }
         }
@@ -348,6 +419,11 @@ Deno.serve(async (req) => {
       created: createdCount,
       updated: updatedCount,
       skipped: skippedCount,
+      line_items_total: lineItemsTotal,
+      line_items_matched_to_seller: lineItemsMatched,
+      line_items_unassigned: lineItemsUnassigned,
+      seller_orders_touched: sellerOrderPairs.size,
+      unassigned_samples: unassignedSamples,
       skip_details: skipDetails,
       mode: fullResync ? "full" : "incremental",
     };

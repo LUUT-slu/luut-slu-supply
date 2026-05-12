@@ -104,6 +104,7 @@ export default function SellerOrders() {
   const locationFilter = searchParams.get("location") || "all";
   const dateFilter = searchParams.get("date") || "all";
   const showArchived = searchParams.get("archived") === "1";
+  const sourceFilter = searchParams.get("source") || "all";
 
   const [archivedIds, setArchivedIdsState] = useState<Set<string>>(() =>
     getArchivedOrders(profile?.id || "")
@@ -202,6 +203,15 @@ export default function SellerOrders() {
       result = result.filter((o) => !archivedIds.has(o.id));
     }
 
+    // Source filter (website / shopify_pos / shopify_online / manual)
+    if (sourceFilter !== "all") {
+      if (sourceFilter === "shopify") {
+        result = result.filter((o) => (o.source || "").startsWith("shopify"));
+      } else {
+        result = result.filter((o) => (o.source || "website") === sourceFilter);
+      }
+    }
+
     // Status filter
     if (statusFilter !== "all") {
       result = result.filter((o) => o.status === statusFilter);
@@ -263,7 +273,7 @@ export default function SellerOrders() {
     terminal.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return [...active, ...terminal];
-  }, [orders, statusFilter, searchQuery, sortBy, locationFilter, dateFilter, showArchived, archivedIds]);
+  }, [orders, statusFilter, searchQuery, sortBy, locationFilter, dateFilter, showArchived, archivedIds, sourceFilter]);
 
   // Stats
   const stats = useMemo(() => {
@@ -306,6 +316,27 @@ export default function SellerOrders() {
                 />
               )}
             </div>
+          </div>
+
+          {/* Source chips */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {[
+              { value: "all", label: "All Orders" },
+              { value: "website", label: "Website" },
+              { value: "shopify_pos", label: "Shopify POS" },
+              { value: "shopify_online", label: "Shopify Online" },
+              { value: "manual", label: "Manual" },
+            ].map((s) => (
+              <Button
+                key={s.value}
+                size="sm"
+                variant={sourceFilter === s.value ? "secondary" : "ghost"}
+                className="h-7 text-xs px-2.5"
+                onClick={() => updateParam("source", s.value)}
+              >
+                {s.label}
+              </Button>
+            ))}
           </div>
 
           {/* Filters Row */}
@@ -445,6 +476,12 @@ export default function SellerOrders() {
                           <div className="flex items-center gap-2 mb-1">
                             <p className="font-medium text-sm truncate">{order.customer_name}</p>
                             {getStatusBadge(order.status)}
+                            {order.source === "shopify_pos" && (
+                              <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 border-purple-500/40 text-purple-600">POS Sale</Badge>
+                            )}
+                            {order.source === "shopify_online" && (
+                              <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 border-blue-500/40 text-blue-600">Shopify</Badge>
+                            )}
                           </div>
                           {order.customer_phone && (
                             <p className="text-xs text-muted-foreground mb-1">{order.customer_phone}</p>

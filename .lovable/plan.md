@@ -1,65 +1,75 @@
 ## Goal
-Make Shopify full resync create or update fetched orders instead of skipping them, and expose exact skip reasons when a record truly cannot be saved.
+Make Shopify POS / Online orders that are imported into the website appear in the correct seller's dashboard, broken down per seller, while admin still sees the full parent order.
 
-## What I found
-- The Shopify sync function is fetching orders successfully.
-- The current failure is a database write issue, not a business-rule filter on completed/POS/paid orders.
-- Recent backend logs show every skipped order failing on the same error:
-  - `there is no unique or exclusion constraint matching the ON CONFLICT specification`
-- The function currently uses `upsert(... onConflict: "shopify_order_id")`.
-- The database has a partial unique index on `orders.shopify_order_id`, but PostgREST upsert conflict inference is not matching it reliably here, so every write is treated as a skip.
-- Admin Orders already loads from `orders` without filtering out completed or Shopify sources; the main reason nothing shows is that the sync is not saving any Shopify orders.
+## Key insight
+The website already supports per-seller order visibility through `order_items.seller_id`:
+- `useSellerOrders` queries `order_items` where `seller_id = sellerProfileId`, then loads parent orders.
+- RLS policy "Sellers can view own order items" + "Sellers can view orders containing their items" already enforces that sellers only see their own items.
+
+So I do NOT need a new `seller_orders` table. I need to:
+1. Populate `order_items.seller_id` correctly when the Shopify sync writes line items.
+2. Add a `source` indicator on the order so seller UIs can filter.
 
 ## Plan
 
-### 1) Fix backend import logic so fetched Shopify orders save
-Update `sync-shopify-orders` to stop depending on the failing `onConflict: "shopify_order_id"` path.
-- Read by `shopify_order_id` first.
-- If a matching order exists, update it by row `id`.
-- If no match exists, insert a new row.
-- Keep `shopify_order_id` as the only Shopify dedupe key.
-- Do not skip because an order is completed, paid, fulfilled, POS, archived, closed, unassigned, or missing a website customer.
-- Preserve fallback values like `Shopify customer` / `Walk-in Customer`, blank phone, and null partner assignment.
+### 1) Match Shopify line items to website sellers (in `sync-shopify-orders/index.ts`)
+For each imported line item, resolve a `seller_id` (FK to `seller_profiles.id`) using this priority:
+1. `seller_products.shopify_product_id == lineItem.variant.product.id`
+2. Fallback: match by SKU on `seller_products` (add a lookup helper if SKU exists; today seller_products has no SKU column — skip if absent).
+3. Fallback: case-insensitive match on `seller_products.name == lineItem.title`.
+4. If nothing matches → leave `seller_id = null` (admin-only) and record a structured warning in `skip_details` with reason `Product not assigned to seller` (do not count as a skipped order — the order still imports).
 
-### 2) Improve skip diagnostics in sync results
-Expand the sync function response and saved sync state so real failures are explicit.
-- Record a structured per-order skip/error item with:
-  - Shopify order ID
-  - Shopify order number
-  - source
-  - financial status
-  - fulfillment status
-  - created date
-  - exact reason
-- Distinguish update/create success from real database failures.
-- Treat duplicate-existing orders as updates, not skips.
-- Save a readable summary in `shopify_sync_state` and return the detailed list to the UI.
+Cache `shopify_product_id → seller_id` and `name → seller_id` lookups per sync run to avoid N queries.
 
-### 3) Add a dedicated admin sync log panel
-Extend the Admin Orders page with a panel showing:
-- fetched
-- created
-- updated
-- skipped
-- detailed per-skip reason rows
-This will make it obvious whether a full resync produced creates, updates, or true failures.
+Also set `product_id` on the order_item when the matched `seller_products` row is found, so future analytics work.
 
-### 4) Verify All Orders behavior for imported Shopify data
-Confirm the Admin Orders page continues to include:
-- website orders
-- Shopify POS
-- Shopify Online
-- manual orders
-- completed and archived/closed imported Shopify orders
-If any display-only condition blocks Shopify rows after backend save succeeds, remove that condition.
+### 2) Persist attribution on `order_items`
+When inserting the order_items snapshot (existing block at lines 316–335), include:
+- `seller_id` (resolved above, nullable)
+- `product_id` (resolved above, nullable)
+- existing shopify_line_id / shopify_variant_id / shopify_product_id
 
-## Technical notes
-- Primary source files:
-  - `supabase/functions/sync-shopify-orders/index.ts`
-  - `src/hooks/useShopifySyncStatus.ts`
-  - `src/pages/AdminOrdersPage.tsx`
-- Likely no schema change is required for the main fix because the table already has `shopify_order_id` and supporting fields.
-- If the existing partial unique index still needs hardening for long-term safety, I’ll add a follow-up migration only if it is necessary after the function fix.
+The existing delete-and-reinsert pattern already handles re-sync updates idempotently. Dedupe per (order_id, shopify_line_id) is implicit because we wipe and re-insert.
 
-## Expected result
-After Full Resync, `Fetched 142` should become a mix of `Created` and `Updated`, with `Skipped` only for genuine invalid-record or database errors, and any skipped rows should show exact reasons in the admin UI.
+### 3) Seller-side display
+- `useSellerOrders` already filters by `seller_id` — no change needed for visibility.
+- `SellerOrders` page: add filter chips:
+  - All
+  - Website
+  - Shopify POS
+  - Shopify Online
+  - Completed
+  Driven by `order.source` (`website` / `shopify_pos` / `shopify_online` / `manual`) and `order.order_status`.
+- Show a small "Shopify POS Sale" / "Shopify Online" badge on imported rows.
+- For imported Shopify orders the seller view is read-only (no status edits, no delete) since the sale already happened externally.
+
+### 4) Sync log enrichment (`AdminOrdersPage.tsx` panel + edge function summary)
+Extend the sync result with per-line counters:
+- `lineItemsTotal`
+- `lineItemsMatchedToSeller`
+- `lineItemsUnassigned` (with sample `{ shopify_order_name, line_title, shopify_product_id }`)
+- `sellerOrdersCreated` = number of distinct (order, seller) pairs touched
+Show these in the existing "Last Shopify Sync" card.
+
+### 5) Avoid duplicates / re-runs
+Continue using `shopify_order_id` as parent dedupe (already implemented).
+For line items, the wipe-and-reinsert per order is correct because Shopify is the source of truth; this naturally implements "(shopify_line_id + seller) is unique".
+
+### 6) Status mapping for seller view
+Seller-facing status for imported Shopify orders is the parent `order_status`:
+- `COMPLETED` for paid / fulfilled / POS → shown as "Completed POS Sale" or "Completed Online Sale" depending on `source`.
+- `CANCELLED` for refunded/voided.
+- Otherwise `NEW`.
+No new column needed.
+
+## Files to change
+- `supabase/functions/sync-shopify-orders/index.ts` — add seller matcher, set `seller_id`/`product_id` on order_items, expand summary.
+- `src/hooks/useShopifySyncStatus.ts` — extend `ShopifySyncResult` with line-item counters and unassigned samples.
+- `src/pages/AdminOrdersPage.tsx` — show new line-item/seller stats in sync log panel.
+- `src/pages/seller/SellerOrders.tsx` — add source filter chips and source badge; lock editing for Shopify-imported orders.
+- (Optional) `src/hooks/useSellerOrders.ts` — expose `source` on returned orders so the page can filter (already passes `...order` so likely already there).
+
+## Out of scope
+- No schema changes (uses existing `order_items.seller_id`, `orders.source`, `orders.shopify_order_id`).
+- No new seller_orders table; `order_items` already serves the split-per-seller need.
+- Commission calculation for Shopify POS sales — left for later.

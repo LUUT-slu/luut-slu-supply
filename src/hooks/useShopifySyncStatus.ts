@@ -18,6 +18,17 @@ export interface ShopifySyncResult {
   online?: number;
   paid?: number;
   completed?: number;
+  line_items_total?: number;
+  line_items_matched_to_seller?: number;
+  line_items_unassigned?: number;
+  seller_orders_touched?: number;
+  unassigned_samples?: Array<{
+    shopify_order_name?: string;
+    line_title?: string;
+    shopify_product_id?: string | null;
+    shopify_variant_id?: string | null;
+    reason?: string;
+  }>;
   mode?: string;
   skip_details?: Array<{
     shopify_order_id?: string;
