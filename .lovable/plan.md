@@ -1,117 +1,99 @@
-# Purchase Orders — Plan
+## Add Existing Products to Purchase Orders
 
-A simple, mobile-first Purchase Order (PO) system for Admin and Sellers. Tracks incoming stock, cost vs. selling price, expected profit, smart tags, arrival confirmation, and (admin-only) Shopify publish/sync. Shows up on Admin and all Seller dashboards.
+Extend the PO system so users can pull in already-listed products (Shopify or local seller products) as a restock snapshot, edit a batch-specific copy of price/variants/qty, and later choose how (or whether) to push back to Shopify on arrival.
 
-## Scope
+### 1. Data Model Changes (migration)
 
-In:
-- PO CRUD with line items, auto-calculated totals/margins
-- Statuses: Draft, Ordered, Paid, In Transit, Arrived, Partially Arrived, Published, Selling, Completed, Cancelled
-- Confirm Arrival flow (arrived/missing/damaged qty, actual date)
-- Smart tags (manual + auto rules), editable
-- Buying insights from past POs (last cost/sell, avg margin, sell-through, recommendation)
-- PO summary card + 3 reports (PO Report, Weekly Review, Product Performance)
-- Sales matching against existing `orders` / `order_items` and `product_sales`
-- Admin-only Shopify create/update via existing `SHOPIFY_ADMIN_TOKEN` (writes select fields to `luut_purchase` metafields, never exposes cost)
-- Sellers: own PO, submit-for-review, no direct Shopify publish
+Extend `purchase_order_items` to support multi-variant restock snapshots:
 
-Out (explicitly):
-- Barcodes, SKUs, multi-warehouse, complex inventory transfers
-- Customer-facing changes
-- Editing existing checkout/order flows
+- `source_type` enum: `manual` | `shopify` | `seller_product` (default `manual`)
+- `source_product_ref` text (Shopify product ID OR seller_products.id)
+- `current_shopify_price` numeric (snapshot of live price at add-time, for display "Current vs New")
+- `current_shopify_stock` int (snapshot of live stock at add-time)
+- `compare_at_price` numeric
+- `is_restock` boolean default false
 
-## Database (new tables, all RLS-protected)
+New table `purchase_order_item_variants`:
+- `id`, `item_id` (fk → purchase_order_items, on delete cascade)
+- `included` boolean default true (toggle in/out of this PO)
+- `shopify_variant_id` text nullable
+- `option_color`, `option_size`, `option_other` text
+- `cost_per_item`, `selling_price`, `compare_at_price` numeric
+- `quantity_ordered`, `quantity_arrived`, `quantity_missing`, `quantity_damaged` int
+- `is_new_variant` boolean (variant added inside PO, not in Shopify yet)
+- generated `expected_profit`, `profit_margin`
+- RLS: piggyback on parent item ownership via `is_po_owner` lookup
 
-`purchase_orders`
-- id, owner_user_id, owner_role ('admin'|'seller'), seller_profile_id (nullable)
-- name, supplier_name, supplier_link, date_ordered, expected_arrival_date, actual_arrival_date
-- payment_status ('unpaid'|'partial'|'paid'), status (enum of 10 above, default 'draft')
-- notes, created_at, updated_at
-- Generated/aggregated columns updated by trigger: total_cost, total_expected_revenue, total_expected_profit, avg_margin
+Trigger `recalc_po_totals` updated to roll up variants when present (sum across variants for items with `source_type != 'manual'`).
 
-`purchase_order_items`
-- id, purchase_order_id, product_name, category, sub_category
-- quantity_ordered, quantity_arrived (default 0), quantity_missing, quantity_damaged
-- cost_per_item, selling_price
-- image_url, supplier_link, color, size, brand, notes
-- linked_seller_product_id (nullable FK to seller_products), shopify_product_id, shopify_variant_id
-- shopify_sync_status, shopify_synced_at, shopify_publish_state ('hidden'|'coming_soon'|'draft'|'active')
-- Generated columns: total_cost, expected_revenue, expected_profit, profit_margin
+### 2. RPCs
 
-`purchase_order_item_tags`
-- id, item_id, tag (text), source ('manual'|'auto'), created_at
+- `rpc_po_add_existing_product(p_po_id, p_source_type, p_source_ref, p_snapshot jsonb)` — creates an item + child variant rows from a snapshot built client-side (fewer round trips, no SQL string-building).
+- `rpc_po_confirm_arrival` extended: accepts per-variant arrivals when item has variants.
 
-`purchase_order_events` (audit: created, status changed, arrival confirmed, published, etc.)
+### 3. Edge Function: `po-publish-to-shopify` (extend, do not break existing)
 
-RLS:
-- Admin: full access (via `has_role(auth.uid(),'admin')`)
-- Seller: only rows where `owner_user_id = auth.uid()`
-- No public/anon access
+New body shape:
+```
+{ item_id, sync_mode: "inventory_only" | "inventory_price" | "inventory_variants" | "create_new" | "po_only", confirm_price_change: boolean }
+```
 
-Indexes on `(owner_user_id, status)`, `(category, sub_category)`, `(shopify_product_id)`.
+Behavior:
+- `po_only` → mark synced=skipped, no Shopify call.
+- `inventory_only` → for each included variant with shopify_variant_id, call Inventory Levels API to add `quantity_arrived` to current on-hand at the store's primary location. Do NOT touch price/options.
+- `inventory_price` → above, plus update variant `price` (and `compare_at_price`) only when `confirm_price_change=true`.
+- `inventory_variants` → above, plus PUT variant option1/option2 values; create new variants for `is_new_variant=true` rows via POST `/products/{id}/variants.json`.
+- `create_new` → existing create-product flow (today's behavior) with a fresh Shopify product.
+- Seller role guard: sellers may only call `inventory_only` and `po_only`. Anything that mutates Shopify price/variants → 403 unless admin.
 
-## Key RPCs / Edge Functions
+Always write the existing `luut_purchase` private metafields snapshot.
 
-- `rpc_po_recalculate(po_id)` — recalc totals after item changes (also via triggers).
-- `rpc_po_confirm_arrival(po_id, arrivals[])` — sets per-item arrived/missing/damaged, actual_arrival_date, flips status to Arrived/Partially Arrived, logs event.
-- `rpc_po_apply_auto_tags(po_id)` — runs auto-tag rules for items in PO.
-- `rpc_po_buying_insights(product_name, category)` — returns last cost, last sell, avg margin, total sold, restock count, recommendation string.
-- Edge function `po-publish-to-shopify` (admin-only, verify_jwt=false + manual admin check using service role): create or update Shopify product via Admin API, set price/inventory/tags, write `luut_purchase` metafields (cost, qty_ordered, qty_arrived, expected_profit, margin, supplier — admin-only namespace, no storefront exposure), save IDs back to item.
-- Edge function `po-sales-rollup` (cron-able, manual trigger button): joins `order_items` + `product_sales` to PO items by `shopify_product_id`/`linked_seller_product_id`/name+category fallback; updates derived "sold qty / revenue / days-to-sell / sell-through" cached on item.
+### 4. Frontend
 
-## Auto-tag rules (server-side in `rpc_po_apply_auto_tags`)
-- margin ≥50% → High ROI; 30–49% → Good margin; <25% → Low ROI
-- cost < 50% of user's avg cost → Cheap item
-- selling_price > 150% of user's avg → Premium item
-- ≥50% sold within 7d of arrival → Quick seller
-- <20% sold after 14d → Slow seller
-- remaining ≤3 → Limited stock
-- first time product+category for this owner → Test product
-- prior PO with same product → Restock again
-- repeat strong sales (e.g., ≥2 prior POs all sold ≥80%) → Best seller
-Manual override: any auto tag can be deleted; manual tags additive.
+**New components**
+- `ExistingProductPickerDialog.tsx` — search across Shopify (Storefront API via existing `lib/shopify.ts`) + `seller_products` (Supabase) in a single tabbed/typeahead modal. Filters: name, category, subcategory, source (Shopify/Website), seller (admin only), tags. Returns a unified `PickedProduct` shape with variants.
+- `RestockEditDialog.tsx` — opens after a product is picked. Shows:
+  - Header: existing name, current Shopify price, current stock (if known), restock badge.
+  - Editable batch fields: cost, selling price, compare-at, qty, expected arrival, supplier, image, category/sub, tags, notes.
+  - Variants table: include checkbox, color, size, cost, selling price, qty ordered. Buttons: "Add variant", "Remove from PO".
+  - Save → calls `rpc_po_add_existing_product`.
+- `RestockSyncDialog.tsx` — replaces/wraps `PublishShopifyDialog` when `source_type != 'manual'`. Radio group for the 5 sync modes + "Update Shopify price?" confirmation when batch selling price differs from `current_shopify_price`.
 
-## Frontend
+**PO detail page (`PurchaseOrderDetail.tsx`)**
+- Add second button next to "Add Item": **"Add Existing Product"** → opens `ExistingProductPickerDialog`.
+- For items with `source_type != 'manual'`, item row renders an expanded card with: current vs new price, current vs incoming stock, expected stock after arrival, variants table, expected batch profit. Replaces the existing single-row layout for those items only.
+- Confirm Arrival dialog: when item has variants, show per-variant arrived/missing/damaged fields.
+- Sync button uses `RestockSyncDialog` for restock items.
 
-New routes (lazy-loaded):
-- Admin: `/admin/purchase-orders`, `/admin/purchase-orders/:id`, `/admin/purchase-orders/new`, `/admin/purchase-orders/reports`
-- Seller: `/seller/purchase-orders`, `/seller/purchase-orders/:id`, `/seller/purchase-orders/new`
+**Hook updates (`usePurchaseOrders.ts`)**
+- Add `POItemVariant` type and include variants in `usePurchaseOrder` query.
+- `useAddExistingProduct()` mutation wrapping the new RPC.
+- Update `useUpsertItem` to leave `source_type='manual'` items untouched.
 
-Shared components in `src/components/purchase-orders/`:
-- `POList` — cards with status chip, totals, expected arrival, ROI counts
-- `POForm` — header fields + items repeater, mobile-friendly
-- `POItemRow` — name/qty/cost/sell with live profit/margin, image upload, tag chips, inline buying-insight popover
-- `POSummaryCard` — totals + risk/ROI counts
-- `ConfirmArrivalDialog` — per-item arrived/missing/damaged
-- `PublishShopifyDialog` (admin) — choose hidden / coming soon / draft / active, push to Shopify
-- `BuyingInsightHint` — surfaces past-PO data on name/category change
-- `POReports` — three tabs: PO Report, Weekly Review, Product Performance
+### 5. Seller / Permission Rules
 
-Dashboard integration:
-- Add "Purchase Orders" card+link to `AdminHome` and to all seller dashboards (`SellerDashboard`, `SellerDashboardNew`) — visible per spec on every seller dashboard.
+- Picker filters seller_products to `seller.user_id = auth.uid()` for non-admin owners.
+- Shopify products freely browsable but the sync edge function enforces role gates (above).
+- UI hides "Update Shopify price/variants" radios for non-admin owners and shows: "Admin approval required for Shopify changes."
 
-Mobile-first: stacked layouts, large CTAs (New PO, Add Item, Confirm Arrival, Publish to Shopify, Update Inventory, View Report), touch-friendly inputs, sticky totals on mobile.
+### 6. Out of Scope / Non-changes
 
-Design tokens only (existing black/gold theme, semantic Tailwind tokens). No new color literals.
+- Existing manual-item flow, totals/tags RPCs, reports page, dashboard cards, customer-facing flows untouched.
+- No new secrets needed (`SHOPIFY_ADMIN_TOKEN`, `SHOPIFY_STORE_DOMAIN` already configured).
+- No changes to checkout, orders, or PO list page beyond new buttons.
 
-## Sales matching
-- Background reconciliation links `order_items` and `product_sales` to PO items in this priority: shopify_product_id+variant → shopify_product_id → linked_seller_product_id → normalized (product_name + category). Cached aggregates on item: qty_sold, revenue, profit_actual, first_sold_at, last_sold_at, days_to_50pct.
+### Files
 
-## Shopify safety
-- Only admin can publish/update; sellers' "submit for review" creates an internal flag, no API call.
-- Cost/supplier never written to public fields; only inside `luut_purchase` metafields (admin namespace) plus product notes hidden from theme.
-- If `shopify_product_id` exists → update; else create. Save returned IDs.
+**New**
+- `supabase/migrations/<ts>_po_existing_products.sql`
+- `src/components/purchase-orders/ExistingProductPickerDialog.tsx`
+- `src/components/purchase-orders/RestockEditDialog.tsx`
+- `src/components/purchase-orders/RestockSyncDialog.tsx`
 
-## Out-of-scope confirmations
-- No changes to checkout, customer flows, existing order lifecycle, or auth.
-- No new secrets needed (`SHOPIFY_ADMIN_TOKEN` already configured).
+**Edited**
+- `supabase/functions/po-publish-to-shopify/index.ts`
+- `src/hooks/usePurchaseOrders.ts`
+- `src/pages/purchase-orders/PurchaseOrderDetail.tsx`
+- `src/integrations/supabase/types.ts` (auto)
 
-## Rollout steps
-1. Migration: tables, enums, RLS, triggers for totals, indexes.
-2. RPCs: insights, confirm arrival, auto-tags.
-3. Edge functions: `po-publish-to-shopify`, `po-sales-rollup`.
-4. Shared UI components + admin routes.
-5. Seller routes + submit-for-review.
-6. Reports tab.
-7. Dashboard entry points (Admin + every seller dashboard).
-8. QA: mobile layout, RLS isolation, Shopify create/update idempotency, metafield write, sales matching accuracy.
+Approve to proceed; I'll run the migration first, then code.
