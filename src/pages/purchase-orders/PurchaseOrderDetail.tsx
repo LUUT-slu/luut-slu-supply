@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, Sparkles, PackageCheck, Send, Tag as TagIcon } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Sparkles, PackageCheck, Send, Tag as TagIcon, PackagePlus } from "lucide-react";
 import {
   usePurchaseOrder, useUpdatePO, useDeletePO, useUpsertItem, useDeleteItem,
   useAddTag, useRemoveTag, applyAutoTags, PO_STATUSES, STATUS_LABELS, PAYMENT_STATUSES,
   POStatus, PaymentStatus, MANUAL_TAGS, POItem,
 } from "@/hooks/usePurchaseOrders";
+import { ExistingProductPickerDialog, PickedProduct } from "@/components/purchase-orders/ExistingProductPickerDialog";
+import { RestockEditDialog } from "@/components/purchase-orders/RestockEditDialog";
+import { RestockSyncDialog } from "@/components/purchase-orders/RestockSyncDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
