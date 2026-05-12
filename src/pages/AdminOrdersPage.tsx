@@ -338,6 +338,9 @@ export default function AdminOrdersPage() {
     if (sourceFilter !== "ALL") {
       list = list.filter(o => (o.source ?? "website") === sourceFilter);
     }
+    if (activeFilter === "PENDING_WHATSAPP") {
+      return list.filter(o => (o.communication_status ?? "pending_whatsapp") === "pending_whatsapp");
+    }
     if (activeFilter === "ALL") return list;
     if (activeFilter === "ACTIVE") return list.filter(o => ["ACCEPTED", "ON_THE_WAY"].includes(getEffectiveStatus(o)));
     return list.filter(o => getEffectiveStatus(o) === activeFilter);
