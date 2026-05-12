@@ -476,6 +476,12 @@ export default function SellerOrders() {
                           <div className="flex items-center gap-2 mb-1">
                             <p className="font-medium text-sm truncate">{order.customer_name}</p>
                             {getStatusBadge(order.status)}
+                            {order.source === "shopify_pos" && (
+                              <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 border-purple-500/40 text-purple-600">POS Sale</Badge>
+                            )}
+                            {order.source === "shopify_online" && (
+                              <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 border-blue-500/40 text-blue-600">Shopify</Badge>
+                            )}
                           </div>
                           {order.customer_phone && (
                             <p className="text-xs text-muted-foreground mb-1">{order.customer_phone}</p>
