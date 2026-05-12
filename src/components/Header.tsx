@@ -149,24 +149,47 @@ export function Header() {
     <SaleBanner />
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between md:h-20">
-        {/* Logo and My Orders */}
+        {/* Left cluster: logo + Orders (or homepage variant) */}
         <div className="flex-row gap-[14px] flex items-end justify-center">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-2xl font-bold tracking-tight md:text-3xl">
-              <span className="text-primary text-lg font-semibold">Home</span>
-            </span>
-          </Link>
-          <Link
-            to="/my-orders"
-            className="relative tracking-wide text-primary transition-colors hover:text-primary/80 text-base font-sans">
-
-            My Orders
-            {orderCount > 0 &&
-            <Badge className="absolute -right-5 -top-2 h-5 min-w-5 justify-center rounded-full px-1.5 text-xs">
-                {orderCount === 10 ? "10+" : orderCount}
-              </Badge>
-            }
-          </Link>
+          {isHomepage ? (
+            <>
+              <Link
+                to="/my-orders"
+                className="relative tracking-wide text-primary transition-colors hover:text-primary/80 text-base font-sans">
+                Orders
+                {orderCount > 0 &&
+                <Badge className="absolute -right-5 -top-2 h-5 min-w-5 justify-center rounded-full px-1.5 text-xs">
+                    {orderCount === 10 ? "10+" : orderCount}
+                  </Badge>
+                }
+              </Link>
+              {portalLink &&
+                <Link
+                  to={portalLink}
+                  className="tracking-wide text-primary transition-colors hover:text-primary/80 text-base font-sans">
+                  Dashboard
+                </Link>
+              }
+            </>
+          ) : (
+            <>
+              <Link to="/" className="flex items-center gap-2">
+                <span className="text-2xl font-bold tracking-tight md:text-3xl">
+                  <span className="text-primary text-lg font-semibold">Home</span>
+                </span>
+              </Link>
+              <Link
+                to="/my-orders"
+                className="relative tracking-wide text-primary transition-colors hover:text-primary/80 text-base font-sans">
+                My Orders
+                {orderCount > 0 &&
+                <Badge className="absolute -right-5 -top-2 h-5 min-w-5 justify-center rounded-full px-1.5 text-xs">
+                    {orderCount === 10 ? "10+" : orderCount}
+                  </Badge>
+                }
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Desktop Navigation */}
