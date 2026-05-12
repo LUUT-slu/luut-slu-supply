@@ -182,12 +182,16 @@ export function CreateOrderDialog({
       const parsedDate = parse(preferredDate, "yyyy-MM-dd", new Date());
       const formattedDate = format(parsedDate, "EEEE, MMMM d, yyyy");
 
+      // Build line items in unified create-draft-order shape
       const lineItems = cart.map((item) => ({
-        title: item.product.name,
-        quantity: item.quantity,
-        price: item.product.price,
+        variant_id: `lovable-variant-${item.product.id}`,
         product_id: item.product.id,
+        quantity: item.quantity,
+        title: item.product.name,
+        price: String(item.product.price),
         image_url: item.product.images?.[0] || null,
+        source: "lovable" as const,
+        vendor: sellerName,
       }));
 
       const orderNote = [
@@ -196,91 +200,41 @@ export function CreateOrderDialog({
         quickMode ? "⚡ Quick order — details pending" : null,
       ].filter(Boolean).join("\n");
 
-      // Create order
-      const { data: order, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          customer_name: quickMode ? "Quick Order" : customerName.trim(),
-          customer_phone: quickMode ? null : customerPhone.trim(),
-          location: quickMode ? "TBD" : location,
-          preferred_date: formattedDate,
-          note: orderNote || null,
-          pickup_time: pickupTime || null,
-          total_price: totalPrice,
-          line_items: lineItems,
-          status: "pending",
-          currency_code: "XCD",
-        })
-        .select()
-        .single();
+      // Call unified edge function — creates DB order + Shopify Draft Order
+      const { data: invokeData, error: invokeError } = await supabase.functions.invoke(
+        "create-draft-order",
+        {
+          body: {
+            customerName: quickMode ? "Quick Order" : customerName.trim(),
+            customerPhone: quickMode ? "+17580000000" : customerPhone.trim(),
+            location: quickMode ? "TBD" : location,
+            preferredDate: formattedDate,
+            pickupTime: pickupTime || undefined,
+            note: orderNote || undefined,
+            lineItems,
+            totalPrice,
+            discountCode: discount || undefined,
+            orderSource: "seller_dashboard",
+            createdBySellerId: sellerId,
+            sellerName,
+          },
+        }
+      );
 
-      if (orderError) throw orderError;
-
-      // Create order_items for seller attribution
-      const orderItems = cart.map((item) => ({
-        order_id: order.id,
-        product_id: item.product.id,
-        seller_id: sellerId,
-        product_name: item.product.name,
-        product_image_url: item.product.images?.[0] || null,
-        quantity: item.quantity,
-        unit_price: item.product.price,
-        total_price: item.product.price * item.quantity,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("order_items")
-        .insert(orderItems);
-
-      if (itemsError) {
-        console.error("Failed to create order items:", itemsError);
+      if (invokeError) throw invokeError;
+      const orderName = invokeData?.draftOrder?.name || "";
+      const syncStatus = invokeData?.shopifySyncStatus;
+      if (syncStatus === "draft_failed") {
+        toast.warning(`Order ${orderName} saved — Shopify sync failed. Use Resync from admin.`);
+      } else {
+        toast.success(`Order ${orderName} created!`);
       }
 
-      // Order created successfully — close dialog and notify immediately
-      toast.success(`Order #L${String(order.order_number).padStart(4, "0")} created!`);
       resetForm();
       setOpen(false);
       setSubmitting(false);
 
-      // Best-effort: record sales and deduct stock (non-blocking)
-      try {
-        const { data: sellerData } = await supabase
-          .from("seller_profiles")
-          .select("user_id")
-          .eq("id", sellerId)
-          .single();
-
-        if (sellerData) {
-          const salesRecords = cart.map((item) => ({
-            product_id: item.product.id,
-            variant_id: item.product.id,
-            product_title: item.product.name,
-            product_handle: item.product.name.toLowerCase().replace(/\s+/g, "-"),
-            product_image_url: item.product.images?.[0] || null,
-            quantity: item.quantity,
-            price_amount: item.product.price,
-            seller_user_id: sellerData.user_id,
-            sold_at: new Date().toISOString(),
-          }));
-
-          await supabase.from("product_sales").insert(salesRecords).throwOnError();
-        }
-      } catch (e) {
-        console.warn("Non-critical: failed to record product sales", e);
-      }
-
-      try {
-        for (const item of cart) {
-          await supabase
-            .from("seller_products")
-            .update({ quantity: item.product.quantity - item.quantity })
-            .eq("id", item.product.id);
-        }
-      } catch (e) {
-        console.warn("Non-critical: failed to deduct stock", e);
-      }
-
-      // Notify parent to refetch after everything
+      // Notify parent to refetch
       onOrderCreated?.();
     } catch (error) {
       console.error("Failed to create order:", error);
