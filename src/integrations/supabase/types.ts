@@ -579,6 +579,7 @@ export type Database = {
           communication_status: string
           completed_at: string | null
           created_at: string
+          created_by_seller_id: string | null
           currency_code: string
           customer_email: string | null
           customer_name: string
@@ -592,6 +593,7 @@ export type Database = {
           no_sale_at: string | null
           note: string | null
           order_number: number
+          order_source: string
           order_status: string | null
           order_token: string | null
           partner_commission: number | null
@@ -602,12 +604,17 @@ export type Database = {
           seller_notes: string | null
           settlement_status: string | null
           shopify_channel: string | null
+          shopify_draft_order_id: string | null
+          shopify_draft_order_invoice_url: string | null
+          shopify_draft_order_name: string | null
           shopify_financial_status: string | null
           shopify_fulfillment_status: string | null
           shopify_order_id: string | null
           shopify_order_name: string | null
           shopify_pos_location_id: string | null
           shopify_pos_location_name: string | null
+          shopify_sync_error: string | null
+          shopify_sync_status: string
           shopify_synced_at: string | null
           shopify_total_discounts: number | null
           source: string
@@ -623,6 +630,7 @@ export type Database = {
           communication_status?: string
           completed_at?: string | null
           created_at?: string
+          created_by_seller_id?: string | null
           currency_code?: string
           customer_email?: string | null
           customer_name: string
@@ -636,6 +644,7 @@ export type Database = {
           no_sale_at?: string | null
           note?: string | null
           order_number?: number
+          order_source?: string
           order_status?: string | null
           order_token?: string | null
           partner_commission?: number | null
@@ -646,12 +655,17 @@ export type Database = {
           seller_notes?: string | null
           settlement_status?: string | null
           shopify_channel?: string | null
+          shopify_draft_order_id?: string | null
+          shopify_draft_order_invoice_url?: string | null
+          shopify_draft_order_name?: string | null
           shopify_financial_status?: string | null
           shopify_fulfillment_status?: string | null
           shopify_order_id?: string | null
           shopify_order_name?: string | null
           shopify_pos_location_id?: string | null
           shopify_pos_location_name?: string | null
+          shopify_sync_error?: string | null
+          shopify_sync_status?: string
           shopify_synced_at?: string | null
           shopify_total_discounts?: number | null
           source?: string
@@ -667,6 +681,7 @@ export type Database = {
           communication_status?: string
           completed_at?: string | null
           created_at?: string
+          created_by_seller_id?: string | null
           currency_code?: string
           customer_email?: string | null
           customer_name?: string
@@ -680,6 +695,7 @@ export type Database = {
           no_sale_at?: string | null
           note?: string | null
           order_number?: number
+          order_source?: string
           order_status?: string | null
           order_token?: string | null
           partner_commission?: number | null
@@ -690,12 +706,17 @@ export type Database = {
           seller_notes?: string | null
           settlement_status?: string | null
           shopify_channel?: string | null
+          shopify_draft_order_id?: string | null
+          shopify_draft_order_invoice_url?: string | null
+          shopify_draft_order_name?: string | null
           shopify_financial_status?: string | null
           shopify_fulfillment_status?: string | null
           shopify_order_id?: string | null
           shopify_order_name?: string | null
           shopify_pos_location_id?: string | null
           shopify_pos_location_name?: string | null
+          shopify_sync_error?: string | null
+          shopify_sync_status?: string
           shopify_synced_at?: string | null
           shopify_total_discounts?: number | null
           source?: string
@@ -1843,6 +1864,10 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_cancel_order: {
+        Args: { p_order_id: string; p_reason?: string }
+        Returns: Json
+      }
       rpc_get_order_by_token: {
         Args: { p_order_id: string; p_token: string }
         Returns: {
@@ -1853,6 +1878,7 @@ export type Database = {
           communication_status: string
           completed_at: string | null
           created_at: string
+          created_by_seller_id: string | null
           currency_code: string
           customer_email: string | null
           customer_name: string
@@ -1866,6 +1892,7 @@ export type Database = {
           no_sale_at: string | null
           note: string | null
           order_number: number
+          order_source: string
           order_status: string | null
           order_token: string | null
           partner_commission: number | null
@@ -1876,12 +1903,17 @@ export type Database = {
           seller_notes: string | null
           settlement_status: string | null
           shopify_channel: string | null
+          shopify_draft_order_id: string | null
+          shopify_draft_order_invoice_url: string | null
+          shopify_draft_order_name: string | null
           shopify_financial_status: string | null
           shopify_fulfillment_status: string | null
           shopify_order_id: string | null
           shopify_order_name: string | null
           shopify_pos_location_id: string | null
           shopify_pos_location_name: string | null
+          shopify_sync_error: string | null
+          shopify_sync_status: string
           shopify_synced_at: string | null
           shopify_total_discounts: number | null
           source: string
@@ -1907,10 +1939,12 @@ export type Database = {
         Args: { p_gross_collected?: number; p_order_id: string }
         Returns: Json
       }
+      rpc_mark_no_response: { Args: { p_order_id: string }; Returns: Json }
       rpc_mark_no_sale: {
         Args: { p_note?: string; p_order_id: string }
         Returns: Json
       }
+      rpc_mark_order_confirmed: { Args: { p_order_id: string }; Returns: Json }
       rpc_mark_whatsapp_opened: {
         Args: { p_order_id: string; p_token: string }
         Returns: Json
