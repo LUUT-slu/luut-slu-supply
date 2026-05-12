@@ -415,6 +415,11 @@ export default function AdminOrdersPage() {
                 {order.shopify_order_name && (
                   <span className="text-[10px] text-muted-foreground">{order.shopify_order_name}</span>
                 )}
+                {(order.communication_status ?? "pending_whatsapp") === "pending_whatsapp" && (order.source ?? "website") === "website" && (
+                  <Badge variant="outline" className="gap-1 text-[10px] border-primary text-primary">
+                    Pending WA
+                  </Badge>
+                )}
               </div>
               <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <User className="h-3 w-3 shrink-0" />
