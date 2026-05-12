@@ -31,6 +31,9 @@ export interface SellerOrder {
   updated_at: string;
   last_edited_at: string | null;
   last_edited_by: string | null;
+  source?: string | null;
+  shopify_order_id?: string | null;
+  shopify_order_name?: string | null;
   items: SellerOrderItem[];
 }
 
