@@ -472,13 +472,18 @@ export default function Checkout() {
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://wa.me/${sellerWhatsApp}?text=${encodedMessage}`;
 
+      // Customer confirmation WhatsApp URL (used by popup + reminder banner)
+      const customerWhatsappUrl = `https://wa.me/${sellerWhatsApp}?text=${encodeURIComponent(customerConfirmMessage)}`;
+
       // Save order confirmation data to localStorage for the confirmation page
       const orderConfirmationData = {
+        orderId: data.localOrderId,
+        orderToken: data.localOrderToken,
         orderName: data.draftOrder.name,
         sellerName: sellerVendor || 'Seller',
         sellerWhatsApp,
-        whatsappUrl,
-        whatsappMessage: message,
+        whatsappUrl: customerWhatsappUrl,
+        whatsappMessage: customerConfirmMessage,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
         items: items.map(item => ({
@@ -495,6 +500,8 @@ export default function Checkout() {
         preferredDate: formattedDate,
         pickupTime,
         note: note.trim() || undefined,
+        source: 'website',
+        isPos: false,
         timestamp: Date.now(),
       };
 
