@@ -28,15 +28,29 @@ export function useShopifySyncStatus() {
     return () => clearInterval(t);
   }, [refresh]);
 
-  const triggerSync = useCallback(async () => {
+  const triggerSync = useCallback(async (opts?: { mode?: "full" | "incremental" }) => {
     setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke("sync-shopify-orders", {
-        body: { trigger: "manual" },
+        body: { trigger: "manual", mode: opts?.mode ?? "incremental" },
       });
       if (error) throw error;
-      toast.success(`Shopify sync complete — ${data?.processed ?? 0} orders updated`);
+      const d = data || {};
+      const desc = [
+        `Fetched ${d.fetched ?? 0}`,
+        `Created ${d.created ?? 0}`,
+        `Updated ${d.updated ?? 0}`,
+        `POS ${d.pos ?? 0}`,
+        `Paid ${d.paid ?? 0}`,
+        `Completed ${d.completed ?? 0}`,
+        d.skipped ? `Skipped ${d.skipped}` : null,
+      ].filter(Boolean).join(" · ");
+      toast.success(
+        opts?.mode === "full" ? "Shopify full resync complete" : "Shopify sync complete",
+        { description: desc },
+      );
       await refresh();
+      return d;
     } catch (e: any) {
       toast.error("Shopify order sync failed", { description: e?.message ?? "Check API permissions or connection." });
     } finally {

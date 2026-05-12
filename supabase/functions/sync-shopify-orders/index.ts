@@ -105,6 +105,7 @@ Deno.serve(async (req) => {
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
   const isCron = body?.trigger === "cron";
+  const fullResync = body?.mode === "full";
   if (!isAdminCall && !isCron) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -130,28 +131,47 @@ Deno.serve(async (req) => {
       .eq("id", "orders")
       .maybeSingle();
 
-    const since =
-      state?.last_synced_at
+    // Full resync = all-time backfill. Otherwise use last watermark or first-run 365d.
+    const since = fullResync
+      ? new Date("2000-01-01T00:00:00Z")
+      : state?.last_synced_at
         ? new Date(state.last_synced_at)
-        : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30-day backfill on first run
+        : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 
+    // No status/financial/fulfillment filter — import every order Shopify returns.
     const queryStr = `updated_at:>=${since.toISOString()}`;
 
     let cursor: string | null = null;
-    let processed = 0;
     let maxUpdated = since;
 
-    for (let page = 0; page < 20; page++) {
+    // Counters
+    let fetched = 0;
+    let paidCount = 0;
+    let completedCount = 0;
+    let posCount = 0;
+    let onlineCount = 0;
+    let createdCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    const skipReasons: string[] = [];
+
+    const maxPages = fullResync ? 200 : 40;
+
+    for (let page = 0; page < maxPages; page++) {
       const data: any = await shopifyAdmin(SHOPIFY_TOKEN, ORDERS_QUERY, {
         first: 50, query: queryStr, cursor,
       });
       const edges = data.orders?.edges ?? [];
       for (const edge of edges) {
         const node = edge.node;
+        fetched++;
         const updated = new Date(node.updatedAt);
         if (updated > maxUpdated) maxUpdated = updated;
 
         const { source, channel } = classifySource(node);
+        if (source === "shopify_pos") posCount++;
+        else onlineCount++;
+
         const customer = node.customer;
         const customerName =
           [customer?.firstName, customer?.lastName].filter(Boolean).join(" ").trim() ||
@@ -161,40 +181,47 @@ Deno.serve(async (req) => {
         const discounts = Number(node.totalDiscountsSet?.shopMoney?.amount ?? 0);
         const lineItems = (node.lineItems?.edges ?? []).map((e: any) => e.node);
 
-        // POS sales are completed in person; online unfulfilled stays NEW.
         const fulfillment = (node.displayFulfillmentStatus || "").toUpperCase();
         const financial = (node.displayFinancialStatus || "").toUpperCase();
+        if (financial === "PAID") paidCount++;
+
+        // Derive local status — preserve completed state but never block import.
         let derivedStatus = "NEW";
-        if (source === "shopify_pos" || fulfillment === "FULFILLED" || financial === "PAID") {
+        if (financial === "REFUNDED" || financial === "VOIDED") {
+          derivedStatus = "CANCELLED";
+        } else if (
+          source === "shopify_pos" ||
+          fulfillment === "FULFILLED" ||
+          financial === "PAID"
+        ) {
           derivedStatus = "COMPLETED";
         }
+        if (derivedStatus === "COMPLETED") completedCount++;
 
-        // Customer profile linkage (orphan profile if no auth user)
+        // Customer profile linkage (best-effort; never block sync)
         let customerUserId: string | null = null;
         if (customer?.email || customer?.phone) {
-          const { data: existing } = await admin
-            .from("customer_profiles")
-            .select("user_id, email, phone")
-            .or([
-              customer?.email ? `email.ilike.${customer.email}` : null,
-              customer?.phone ? `phone.eq.${customer.phone}` : null,
-            ].filter(Boolean).join(","))
-            .limit(1)
-            .maybeSingle();
-          if (existing?.user_id) {
-            customerUserId = existing.user_id;
-          } else if (!existing) {
-            // Create orphan profile (no user_id) so future sign-ups can claim it
-            await admin.from("customer_profiles").insert({
-              user_id: crypto.randomUUID(), // placeholder; real claim flow will replace via merge
-              email: customer.email ?? null,
-              phone: customer.phone ?? null,
-              full_name: customerName,
-              auth_provider: source,
-              signup_source: source,
-            }).then(() => undefined).catch(() => undefined);
-          }
+          try {
+            const { data: existing } = await admin
+              .from("customer_profiles")
+              .select("user_id, email, phone")
+              .or([
+                customer?.email ? `email.ilike.${customer.email}` : null,
+                customer?.phone ? `phone.eq.${customer.phone}` : null,
+              ].filter(Boolean).join(","))
+              .limit(1)
+              .maybeSingle();
+            if (existing?.user_id) customerUserId = existing.user_id;
+          } catch { /* ignore */ }
         }
+
+        // Detect existing local order (created vs updated)
+        const { data: existingOrder } = await admin
+          .from("orders")
+          .select("id")
+          .eq("shopify_order_id", node.id)
+          .maybeSingle();
+        const isNew = !existingOrder;
 
         const orderPayload: Record<string, unknown> = {
           source,
@@ -229,6 +256,9 @@ Deno.serve(async (req) => {
         if (derivedStatus === "COMPLETED") {
           orderPayload.completed_at = node.updatedAt;
         }
+        if (derivedStatus === "CANCELLED") {
+          orderPayload.cancelled_at = node.updatedAt;
+        }
 
         // Upsert by shopify_order_id
         const { data: upserted, error: upErr } = await admin
@@ -238,9 +268,13 @@ Deno.serve(async (req) => {
           .single();
 
         if (upErr) {
+          skippedCount++;
+          if (skipReasons.length < 20) skipReasons.push(`${node.name}: ${upErr.message}`);
           console.error("[sync-shopify-orders] upsert order failed", upErr, node.id);
           continue;
         }
+
+        if (isNew) createdCount++; else updatedCount++;
 
         // Replace order_items for this order with the latest snapshot
         await admin.from("order_items").delete().eq("order_id", upserted.id);
@@ -261,36 +295,34 @@ Deno.serve(async (req) => {
           }));
           await admin.from("order_items").insert(items);
         }
-
-        await admin.from("order_events").insert({
-          order_id: upserted.id,
-          actor_user_id: "00000000-0000-0000-0000-000000000000",
-          event_type: "shopify_synced",
-          event_payload: {
-            source, channel,
-            shopify_order_id: node.id,
-            financial_status: node.displayFinancialStatus,
-            fulfillment_status: node.displayFulfillmentStatus,
-            pos_location: node.retailLocation?.name ?? null,
-          },
-        }).then(() => undefined).catch(() => undefined);
-
-        processed++;
       }
 
       if (!data.orders?.pageInfo?.hasNextPage) break;
       cursor = data.orders.pageInfo.endCursor;
     }
 
+    const summary = {
+      fetched,
+      paid: paidCount,
+      completed: completedCount,
+      pos: posCount,
+      online: onlineCount,
+      created: createdCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      skip_reasons: skipReasons,
+      mode: fullResync ? "full" : "incremental",
+    };
+
     await admin.from("shopify_sync_state").update({
       last_synced_at: maxUpdated.toISOString(),
       last_status: "ok",
-      last_error: null,
-      last_run_count: processed,
+      last_error: skippedCount > 0 ? `Skipped ${skippedCount}: ${skipReasons.slice(0, 3).join("; ")}` : null,
+      last_run_count: createdCount + updatedCount,
       updated_at: new Date().toISOString(),
     }).eq("id", "orders");
 
-    return new Response(JSON.stringify({ ok: true, processed }), {
+    return new Response(JSON.stringify({ ok: true, processed: createdCount + updatedCount, ...summary }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
