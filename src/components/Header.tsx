@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { SaleBanner } from "@/components/SaleBanner";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Menu, X, ShoppingBag, DollarSign, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
