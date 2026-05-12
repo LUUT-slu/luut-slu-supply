@@ -37,6 +37,8 @@ export function Header() {
   const [portalLink, setPortalLink] = useState<string | null>(null);
   const totalItems = useCartStore((state) => state.getTotalItems());
   const { collections } = useShopifyCollections();
+  const location = useLocation();
+  const isHomepage = location.pathname === "/";
 
   // Use Shopify collections if available, otherwise fallback
   const outfitCategories = collections.length > 0 ?
