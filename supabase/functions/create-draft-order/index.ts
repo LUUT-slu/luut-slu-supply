@@ -337,8 +337,9 @@ serve(async (req) => {
     }
 
     // ============================================================
-    // Create order_items for ALL products (both Shopify & Lovable)
+    // Create order_items (skip when resyncing existing order)
     // ============================================================
+    if (!existingOrderId) {
 
     const shopifyProductIds = shopifyItems.map(item => item.product_id).filter(Boolean);
     let shopifyProductMap: Record<string, { id: string; seller_id: string }> = {};
