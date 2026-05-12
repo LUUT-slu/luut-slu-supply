@@ -437,6 +437,7 @@ serve(async (req) => {
         console.log(`Created ${orderItemsToInsert.length} order_items`);
       }
     }
+    } // end if (!existingOrderId)
 
     let draftOrder = null;
 
