@@ -234,7 +234,16 @@ export default function PurchaseOrderDetail({ basePath }: { basePath: "/admin/pu
         <ConfirmArrivalDialog open={showArrival} onOpenChange={setShowArrival} poId={po.id} items={items} />
       )}
       {publishItem && (
-        <PublishShopifyDialog open={!!publishItem} onOpenChange={(v) => !v && setPublishItem(null)} item={publishItem} poId={po.id} />
+        <RestockSyncDialog open={!!publishItem} onOpenChange={(v) => !v && setPublishItem(null)} item={publishItem} poId={po.id} isAdmin={!!isAdmin} />
+      )}
+      <ExistingProductPickerDialog
+        open={showPicker}
+        onOpenChange={setShowPicker}
+        isAdmin={!!isAdmin}
+        onPick={(p) => { setShowPicker(false); setPicked(p); }}
+      />
+      {picked && (
+        <RestockEditDialog open={!!picked} onOpenChange={(v) => !v && setPicked(null)} picked={picked} poId={po.id} />
       )}
     </div>
   );
