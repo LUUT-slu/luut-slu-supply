@@ -80,6 +80,7 @@ interface Order {
   shopify_order_name?: string | null;
   shopify_pos_location_name?: string | null;
   shopify_financial_status?: string | null;
+  communication_status?: string | null;
   line_items: Array<{
     title: string;
     quantity: number;
