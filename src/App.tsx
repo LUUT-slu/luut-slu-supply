@@ -216,6 +216,22 @@ const App = () => (
                 <SellerSettingsPage />
               </RouteGuard>
             } />
+            <Route path="/seller/purchase-orders" element={
+              <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+                <PurchaseOrdersList basePath="/seller/purchase-orders" />
+              </RouteGuard>
+            } />
+            <Route path="/seller/purchase-orders/reports" element={
+              <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+                <PurchaseOrderReports basePath="/seller/purchase-orders" />
+              </RouteGuard>
+            } />
+            <Route path="/seller/purchase-orders/:id" element={
+              <RouteGuard requiredRole="seller" showApplyPage="/seller/apply">
+                <PurchaseOrderDetail basePath="/seller/purchase-orders" />
+              </RouteGuard>
+            } />
+
             
             {/* Admin Routes (requires admin role) */}
             <Route path="/admin" element={
