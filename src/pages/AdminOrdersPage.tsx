@@ -122,7 +122,7 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [sourceFilter, setSourceFilter] = useState<string>("ALL");
   const [mobileTab, setMobileTab] = useState("ALL");
-  const { state: syncState, syncing, triggerSync } = useShopifySyncStatus();
+  const { state: syncState, syncing, triggerSync, lastResult } = useShopifySyncStatus();
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminUserId, setAdminUserId] = useState<string | null>(null);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
