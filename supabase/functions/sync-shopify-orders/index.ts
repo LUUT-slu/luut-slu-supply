@@ -148,7 +148,56 @@ Deno.serve(async (req) => {
     let createdCount = 0;
     let updatedCount = 0;
     let skippedCount = 0;
+    let lineItemsTotal = 0;
+    let lineItemsMatched = 0;
+    let lineItemsUnassigned = 0;
+    const sellerOrderPairs = new Set<string>();
     const skipDetails: Array<Record<string, unknown>> = [];
+    const unassignedSamples: Array<Record<string, unknown>> = [];
+
+    // Per-run cache for seller_products lookups
+    const sellerByShopifyProductId = new Map<string, { seller_id: string; product_id: string }>();
+    const sellerByName = new Map<string, { seller_id: string; product_id: string }>();
+
+    async function resolveSellerForLineItem(li: any): Promise<{ seller_id: string | null; product_id: string | null }> {
+      const shopifyProductId: string | null = li.variant?.product?.id ?? null;
+      const title: string = (li.title || "").trim();
+
+      if (shopifyProductId) {
+        const cached = sellerByShopifyProductId.get(shopifyProductId);
+        if (cached) return cached;
+        const { data } = await admin
+          .from("seller_products")
+          .select("id, seller_id")
+          .eq("shopify_product_id", shopifyProductId)
+          .limit(1)
+          .maybeSingle();
+        if (data?.seller_id) {
+          const v = { seller_id: data.seller_id as string, product_id: data.id as string };
+          sellerByShopifyProductId.set(shopifyProductId, v);
+          return v;
+        }
+      }
+
+      if (title) {
+        const key = title.toLowerCase();
+        const cached = sellerByName.get(key);
+        if (cached) return cached;
+        const { data } = await admin
+          .from("seller_products")
+          .select("id, seller_id")
+          .ilike("name", title)
+          .limit(1)
+          .maybeSingle();
+        if (data?.seller_id) {
+          const v = { seller_id: data.seller_id as string, product_id: data.id as string };
+          sellerByName.set(key, v);
+          return v;
+        }
+      }
+
+      return { seller_id: null, product_id: null };
+    }
 
     const maxPages = fullResync ? 200 : 40;
 
