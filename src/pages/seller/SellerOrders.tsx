@@ -318,6 +318,27 @@ export default function SellerOrders() {
             </div>
           </div>
 
+          {/* Source chips */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {[
+              { value: "all", label: "All Orders" },
+              { value: "website", label: "Website" },
+              { value: "shopify_pos", label: "Shopify POS" },
+              { value: "shopify_online", label: "Shopify Online" },
+              { value: "manual", label: "Manual" },
+            ].map((s) => (
+              <Button
+                key={s.value}
+                size="sm"
+                variant={sourceFilter === s.value ? "secondary" : "ghost"}
+                className="h-7 text-xs px-2.5"
+                onClick={() => updateParam("source", s.value)}
+              >
+                {s.label}
+              </Button>
+            ))}
+          </div>
+
           {/* Filters Row */}
           <div className="flex flex-wrap gap-2 mb-4">
             <div className="relative flex-1 min-w-[160px]">
