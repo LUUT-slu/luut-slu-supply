@@ -419,6 +419,11 @@ Deno.serve(async (req) => {
       created: createdCount,
       updated: updatedCount,
       skipped: skippedCount,
+      line_items_total: lineItemsTotal,
+      line_items_matched_to_seller: lineItemsMatched,
+      line_items_unassigned: lineItemsUnassigned,
+      seller_orders_touched: sellerOrderPairs.size,
+      unassigned_samples: unassignedSamples,
       skip_details: skipDetails,
       mode: fullResync ? "full" : "incremental",
     };
