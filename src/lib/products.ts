@@ -73,7 +73,7 @@ function deriveStockStatus(quantity: number | undefined, availableForSale: boole
 
 export function shopifyToUnified(product: ShopifyProduct): UnifiedProduct {
   const node = product.node;
-  const normalizedCategory = mapShopifyTypeToLabel(node.productType);
+  const normalizedCategory = mapShopifyTypeToLabel(node.productType, node.title);
   const anyAvailable = node.variants.edges.some(v => v.node.availableForSale);
   
   return {
@@ -228,7 +228,7 @@ export async function fetchHybridProducts(options: {
     });
   } else if (categorySlug) {
     unifiedLovable = unifiedLovable.filter(p =>
-      categoryMatchesSlug(p.category, categorySlug)
+      categoryMatchesSlug(p.category, categorySlug, p.title)
     );
   }
 
