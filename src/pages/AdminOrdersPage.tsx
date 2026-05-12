@@ -754,6 +754,7 @@ export default function AdminOrdersPage() {
                 <SelectContent>
                   <SelectItem value="ALL">All Orders</SelectItem>
                   <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="PENDING_WHATSAPP">Pending WhatsApp Confirmation</SelectItem>
                   {statusOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
