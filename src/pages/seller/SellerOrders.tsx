@@ -273,7 +273,7 @@ export default function SellerOrders() {
     terminal.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return [...active, ...terminal];
-  }, [orders, statusFilter, searchQuery, sortBy, locationFilter, dateFilter, showArchived, archivedIds]);
+  }, [orders, statusFilter, searchQuery, sortBy, locationFilter, dateFilter, showArchived, archivedIds, sourceFilter]);
 
   // Stats
   const stats = useMemo(() => {
