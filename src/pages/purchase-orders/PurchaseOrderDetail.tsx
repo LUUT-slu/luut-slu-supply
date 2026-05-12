@@ -127,6 +127,9 @@ export default function PurchaseOrderDetail({ basePath }: { basePath: "/admin/pu
         {/* Actions */}
         <div className="flex flex-wrap gap-2">
           <Button onClick={addBlankItem}><Plus className="h-4 w-4 mr-1" />Add Item</Button>
+          <Button variant="secondary" onClick={() => setShowPicker(true)}>
+            <PackagePlus className="h-4 w-4 mr-1" />Add Existing Product
+          </Button>
           <Button variant="outline" onClick={() => setShowArrival(true)} disabled={items.length === 0}>
             <PackageCheck className="h-4 w-4 mr-1" />Confirm Arrival
           </Button>
