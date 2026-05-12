@@ -88,6 +88,9 @@ const AdminCustomers = lazyRetry(() => import("./pages/admin/AdminCustomers"));
 const AdminCustomerDetail = lazyRetry(() => import("./pages/admin/AdminCustomerDetail"));
 const CategoryImagesManager = lazyRetry(() => import("./pages/admin/CategoryImagesManager"));
 const AuthCallback = lazyRetry(() => import("./pages/AuthCallback"));
+const PurchaseOrdersList = lazyRetry(() => import("./pages/purchase-orders/PurchaseOrdersList"));
+const PurchaseOrderDetail = lazyRetry(() => import("./pages/purchase-orders/PurchaseOrderDetail"));
+const PurchaseOrderReports = lazyRetry(() => import("./pages/purchase-orders/PurchaseOrderReports"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
