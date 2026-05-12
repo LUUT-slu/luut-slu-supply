@@ -72,6 +72,7 @@ export function useShopifySyncStatus() {
         { description: desc },
       );
       await refresh();
+      setLastResult(d as ShopifySyncResult);
       return d;
     } catch (e: any) {
       toast.error("Shopify order sync failed", { description: e?.message ?? "Check API permissions or connection." });
@@ -80,5 +81,5 @@ export function useShopifySyncStatus() {
     }
   }, [refresh]);
 
-  return { state, syncing, triggerSync, refresh };
+  return { state, syncing, triggerSync, refresh, lastResult };
 }
