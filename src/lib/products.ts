@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ShopifyProduct, fetchProducts, fetchProductsByCollection, normalizeVendorName } from './shopify';
-import { categoryMatchesSlug, mapShopifyTypeToLabel, getShopifyQueryForSlug } from './categories';
+import { categoryMatchesSlug, mapShopifyTypeToLabel, getShopifyQueryForSlug, isExcludedFromSlug } from './categories';
 
 // Unified product interface that works for both Shopify and Lovable products
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
