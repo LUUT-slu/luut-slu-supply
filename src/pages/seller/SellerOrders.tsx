@@ -104,6 +104,7 @@ export default function SellerOrders() {
   const locationFilter = searchParams.get("location") || "all";
   const dateFilter = searchParams.get("date") || "all";
   const showArchived = searchParams.get("archived") === "1";
+  const sourceFilter = searchParams.get("source") || "all";
 
   const [archivedIds, setArchivedIdsState] = useState<Set<string>>(() =>
     getArchivedOrders(profile?.id || "")
