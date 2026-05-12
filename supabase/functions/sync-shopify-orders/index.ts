@@ -281,6 +281,7 @@ Deno.serve(async (req) => {
 
         const orderPayload: Record<string, unknown> = {
           source,
+          communication_status: "confirmed",
           shopify_order_id: node.id,
           shopify_order_name: node.name,
           shopify_channel: channel,
