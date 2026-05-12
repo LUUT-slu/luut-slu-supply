@@ -324,7 +324,22 @@ const App = () => (
                 <AdminOrdersPage />
               </RouteGuard>
             } />
-            
+            <Route path="/admin/purchase-orders" element={
+              <RouteGuard requiredRole="admin">
+                <PurchaseOrdersList basePath="/admin/purchase-orders" />
+              </RouteGuard>
+            } />
+            <Route path="/admin/purchase-orders/reports" element={
+              <RouteGuard requiredRole="admin">
+                <PurchaseOrderReports basePath="/admin/purchase-orders" />
+              </RouteGuard>
+            } />
+            <Route path="/admin/purchase-orders/:id" element={
+              <RouteGuard requiredRole="admin">
+                <PurchaseOrderDetail basePath="/admin/purchase-orders" />
+              </RouteGuard>
+            } />
+
             {/* Partner Routes (requires partner role + approval) */}
             <Route path="/partner" element={
               <RouteGuard requiredRole="partner">
