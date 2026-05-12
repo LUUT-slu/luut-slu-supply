@@ -9,9 +9,31 @@ export interface ShopifySyncState {
   last_run_count: number | null;
 }
 
+export interface ShopifySyncResult {
+  fetched?: number;
+  created?: number;
+  updated?: number;
+  skipped?: number;
+  pos?: number;
+  online?: number;
+  paid?: number;
+  completed?: number;
+  mode?: string;
+  skip_details?: Array<{
+    shopify_order_id?: string;
+    shopify_order_name?: string;
+    source?: string;
+    financial_status?: string | null;
+    fulfillment_status?: string | null;
+    created_at?: string;
+    reason?: string;
+  }>;
+}
+
 export function useShopifySyncStatus() {
   const [state, setState] = useState<ShopifySyncState | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [lastResult, setLastResult] = useState<ShopifySyncResult | null>(null);
 
   const refresh = useCallback(async () => {
     const { data } = await (supabase as any)
