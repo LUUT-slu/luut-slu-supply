@@ -64,12 +64,12 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
   const firstVariant = product.variants[0];
   const price = parseFloat(product.price.amount);
   const rawImageUrl = product.images[0]?.url;
-  // Mobile thumb 224px (covers 112px @ 2x DPR), desktop card 600px
-  const baseWidth = isMobile ? 224 : 600;
+  // Mobile 2-col card image ~ half viewport (≈220-260px logical, request 2x for retina)
+  const baseWidth = isMobile ? 520 : 600;
   const imageUrl = rawImageUrl ? getOptimizedImageUrl(rawImageUrl, baseWidth) : undefined;
   const imageSrcSet = rawImageUrl ? getImageSrcSet(rawImageUrl, baseWidth) : undefined;
   const imageSizes = isMobile
-    ? "112px"
+    ? "50vw"
     : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw";
   const isOutOfStock = product.stockStatus === 'out_of_stock';
   
