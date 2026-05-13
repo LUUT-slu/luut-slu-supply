@@ -4,7 +4,7 @@ import { VariantListingProduct } from "@/lib/variantSplitter";
 import { getOptimizedImageUrl, getImageSrcSet } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { Button } from "./ui/button";
-import { ShoppingCart, MapPin, Wallet } from "lucide-react";
+import { ShoppingCart, MapPin, Wallet, Heart, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
