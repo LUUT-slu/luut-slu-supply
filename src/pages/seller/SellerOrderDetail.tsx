@@ -8,6 +8,7 @@ import { SellerNav } from "@/components/seller/SellerNav";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
 import { useSellerOrders, ORDER_STATUSES, OrderStatus } from "@/hooks/useSellerOrders";
 import { EditOrderDialog } from "@/components/seller/EditOrderDialog";
+import { OrderShopifyActions } from "@/components/orders/OrderShopifyActions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
