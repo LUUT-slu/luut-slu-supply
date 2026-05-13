@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssignOrderModal } from "@/components/admin/AssignOrderModal";
+import { OrderShopifyActions } from "@/components/orders/OrderShopifyActions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useShopifySyncStatus } from "@/hooks/useShopifySyncStatus";
 import { Alert, AlertDescription } from "@/components/ui/alert";
