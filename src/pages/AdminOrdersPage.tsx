@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssignOrderModal } from "@/components/admin/AssignOrderModal";
+import { OrderShopifyActions } from "@/components/orders/OrderShopifyActions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useShopifySyncStatus } from "@/hooks/useShopifySyncStatus";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -528,6 +529,11 @@ export default function AdminOrdersPage() {
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">Update Status</p>
               <StatusSelect order={detailOrder} />
+            </div>
+
+            <div className="border-t pt-3">
+              <p className="text-xs text-muted-foreground mb-2">Shopify & Communication</p>
+              <OrderShopifyActions order={detailOrder as any} isAdmin onChanged={fetchOrders} />
             </div>
           </div>
         </SheetContent>
