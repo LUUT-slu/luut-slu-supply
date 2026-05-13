@@ -250,6 +250,10 @@ export default function SellerOrderDetail() {
             </div>
           </div>
 
+          <div className="mb-6">
+            <OrderShopifyActions order={order as any} onChanged={refetch} />
+          </div>
+
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
