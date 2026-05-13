@@ -59,7 +59,7 @@ export function HomeFeaturedSection({ label, productIds, limit = 4 }: HomeFeatur
     <section className="border-t border-border/50 py-10 md:py-14">
       <div className="container">
         <h2 className="mb-6 text-xl font-semibold tracking-tight md:text-2xl">{label}</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 rounded-sm">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 rounded-sm">
           {products.map((product, idx) => (
             <UnifiedProductCard key={product.id} product={product} priority={idx < 4} />
           ))}

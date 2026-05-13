@@ -37,7 +37,7 @@ function ProductCard({ product, index }: ProductCardProps) {
   return (
     <Link
       to={`/product/${node.handle}`}
-      className={`group relative flex-shrink-0 w-[70vw] sm:w-[45vw] md:w-auto snap-start ${!anyAvailable ? 'opacity-[0.65]' : ''}`}
+      className={`group relative w-full md:w-auto ${!anyAvailable ? 'opacity-[0.65]' : ''}`}
       style={{ animationDelay: `${index * 100}ms`, animationFillMode: "forwards" }}
     >
       <div className="relative overflow-hidden rounded-lg bg-card/50 border border-border/20 transition-all duration-300 group-hover:border-primary/20 group-hover:-translate-y-0.5">
@@ -187,13 +187,11 @@ export function WhatPeopleAreBuyingSection() {
           </p>
         </div>
 
-        {/* Mobile: Horizontal Scroll */}
-        <div className="md:hidden -mx-4 px-4">
-          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
-            {displayProducts.map((product, index) => (
-              <ProductCard key={product.node.id} product={product} index={index} />
-            ))}
-          </div>
+        {/* Mobile: 2-column Grid */}
+        <div className="md:hidden grid grid-cols-2 gap-3">
+          {displayProducts.map((product, index) => (
+            <ProductCard key={product.node.id} product={product} index={index} />
+          ))}
         </div>
 
         {/* Desktop: Grid */}
