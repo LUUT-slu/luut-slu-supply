@@ -530,6 +530,11 @@ export default function AdminOrdersPage() {
               <p className="text-xs text-muted-foreground">Update Status</p>
               <StatusSelect order={detailOrder} />
             </div>
+
+            <div className="border-t pt-3">
+              <p className="text-xs text-muted-foreground mb-2">Shopify & Communication</p>
+              <OrderShopifyActions order={detailOrder as any} isAdmin onChanged={fetchOrders} />
+            </div>
           </div>
         </SheetContent>
       </Sheet>
