@@ -58,14 +58,15 @@ export function BestSellersSection({ limit = 8 }: BestSellersSectionProps) {
 
         {isMobile ? (
           <div className="grid grid-cols-2 gap-3">
-            {entries.map(({ product, totalSold }, index) => (
-              <BestSellerCard
-                key={product.id}
-                product={product}
-                rank={index + 1}
-                totalSold={totalSold}
-                priority={index < 4}
-              />
+            {entries.map(({ product }, index) => (
+              <div key={product.id} className="relative">
+                {index < 3 && (
+                  <div className="pointer-events-none absolute top-2 left-2 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-primary font-display text-[10px] text-primary-foreground shadow-md">
+                    #{index + 1}
+                  </div>
+                )}
+                <UnifiedProductCard product={product} priority={index < 4} />
+              </div>
             ))}
           </div>
         ) : (
