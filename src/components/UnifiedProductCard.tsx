@@ -164,18 +164,21 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
     }
   };
 
-  // Mobile: horizontal card layout
+  // Mobile: vertical 2-column card (image on top)
   if (isMobile) {
+    const qty = (product as UnifiedProduct).quantity;
+    const showLeftBadge = typeof qty === "number" && qty > 0 && qty < 5;
+
     return (
       <Link
         to={productLink}
         onClick={handleCardClick}
-        className="group flex gap-3 overflow-hidden rounded-lg bg-card ring-1 ring-border/50 p-2 transition-all touch-manipulation"
+        className="group flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-border/50 touch-manipulation"
       >
-        {/* Square image thumbnail */}
-        <div className="relative h-28 w-28 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+        {/* Image */}
+        <div className="relative aspect-square overflow-hidden bg-muted">
           {imageUrl ? (
-          <img
+            <img
               src={imageUrl}
               srcSet={imageSrcSet}
               sizes={imageSizes}
@@ -184,82 +187,65 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
               loading={priority ? "eager" : "lazy"}
               fetchPriority={priority ? "high" : "auto"}
               decoding="async"
-              width={112}
-              height={112}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted">
-              <span className="text-[10px] text-muted-foreground">No image</span>
+            <div className="flex h-full w-full items-center justify-center">
+              <span className="text-xs text-muted-foreground">No image</span>
             </div>
           )}
-          <StockBadge status={product.stockStatus} />
-          {product.source === 'lovable' && (
-            <div className="absolute left-1 top-1">
-              <span className="rounded-full bg-primary/90 px-1.5 py-0.5 text-[9px] font-medium text-primary-foreground">
-                Local
-              </span>
-            </div>
+
+          {/* Wishlist icon top-right */}
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            aria-label="Save to wishlist"
+            className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 backdrop-blur-sm ring-1 ring-border/40"
+          >
+            <Heart className="h-4 w-4 text-foreground" />
+          </button>
+
+          {/* Out of stock badge (top-left) */}
+          {isOutOfStock && (
+            <span className="absolute left-2 top-2 z-10 rounded-full bg-destructive/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+              Sold Out
+            </span>
+          )}
+
+          {/* "X left" badge bottom-right when low stock and qty known */}
+          {showLeftBadge && (
+            <span className="absolute right-2 bottom-2 z-10 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white">
+              {qty} left
+            </span>
           )}
         </div>
 
         {/* Details */}
-        <div className="flex flex-1 flex-col justify-between min-w-0 py-0.5">
-          <div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] text-muted-foreground truncate">{product.vendor}</p>
-              {typeof soldCount === 'number' && soldCount > 0 && (
-                <span className="text-[10px] font-medium text-primary whitespace-nowrap">
-                  {formatSold(soldCount)}
-                </span>
-              )}
-            </div>
-            <h3 className="font-body text-sm font-medium leading-tight line-clamp-2 mt-0.5">
-              {displayTitle}
-            </h3>
-            {isVariant && product.visualOptionValue && (
-              <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                {product.visualOptionValue}
-              </span>
-            )}
-            {!isVariant && product.category && (
-              <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                {product.category}
-              </span>
-            )}
+        <div className="flex flex-1 flex-col gap-1 p-2.5">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground/80 truncate">
+            {product.vendor}
+          </p>
+          <h3 className="font-body text-[13px] font-semibold leading-snug line-clamp-2 text-foreground">
+            {displayTitle}
+          </h3>
+
+          {(isVariant && product.visualOptionValue) || (!isVariant && product.category) ? (
+            <span className="mt-0.5 inline-block self-start rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+              {isVariant ? product.visualOptionValue : product.category}
+            </span>
+          ) : null}
+
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span className="font-display text-[15px] font-semibold text-primary">
+              EC${price.toFixed(2)}
+            </span>
           </div>
 
-          <div className="mt-auto space-y-1">
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70">
-              <span className="flex items-center gap-0.5">
-                <Wallet className="h-2.5 w-2.5 text-primary/60" />
-                Pay on Meetup
-              </span>
-              <span className="flex items-center gap-0.5">
-                <MapPin className="h-2.5 w-2.5 text-primary/60" />
-                Local
-              </span>
+          {typeof soldCount === "number" && soldCount > 0 && (
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
+              <Star className="h-3 w-3 fill-primary text-primary" />
+              <span>{formatSold(soldCount)}</span>
             </div>
-            
-            <div className="flex items-center justify-between">
-              <span className="font-display text-base text-primary">
-                EC${price.toFixed(2)}
-              </span>
-              {isOutOfStock ? (
-                <Button size="sm" className="h-7 px-2 text-xs" disabled variant="outline">
-                  Sold Out
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={handleAddToCart}
-                >
-                  <ShoppingCart className="h-3 w-3 mr-1" />
-                  Add
-                </Button>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </Link>
     );
