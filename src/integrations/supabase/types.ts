@@ -298,8 +298,10 @@ export type Database = {
           created_at: string
           document_url: string | null
           email: string | null
+          favorite_categories: string[] | null
           full_name: string | null
           id: string
+          instagram_url: string | null
           last_contacted_at: string | null
           meetup_notes: string | null
           phone: string | null
@@ -307,6 +309,7 @@ export type Database = {
           preferred_location: string | null
           shopify_customer_id: string | null
           signup_source: string | null
+          tiktok_url: string | null
           updated_at: string
           user_id: string
         }
@@ -316,8 +319,10 @@ export type Database = {
           created_at?: string
           document_url?: string | null
           email?: string | null
+          favorite_categories?: string[] | null
           full_name?: string | null
           id?: string
+          instagram_url?: string | null
           last_contacted_at?: string | null
           meetup_notes?: string | null
           phone?: string | null
@@ -325,6 +330,7 @@ export type Database = {
           preferred_location?: string | null
           shopify_customer_id?: string | null
           signup_source?: string | null
+          tiktok_url?: string | null
           updated_at?: string
           user_id: string
         }
@@ -334,8 +340,10 @@ export type Database = {
           created_at?: string
           document_url?: string | null
           email?: string | null
+          favorite_categories?: string[] | null
           full_name?: string | null
           id?: string
+          instagram_url?: string | null
           last_contacted_at?: string | null
           meetup_notes?: string | null
           phone?: string | null
@@ -343,6 +351,7 @@ export type Database = {
           preferred_location?: string | null
           shopify_customer_id?: string | null
           signup_source?: string | null
+          tiktok_url?: string | null
           updated_at?: string
           user_id?: string
         }
