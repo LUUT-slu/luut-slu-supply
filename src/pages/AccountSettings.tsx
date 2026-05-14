@@ -28,7 +28,6 @@ import {
   Truck,
   ShieldAlert,
   LogOut,
-  Check,
   X,
   Save,
 } from "lucide-react";
