@@ -855,6 +855,27 @@ export default function ProductDetail() {
         </div>
       </main>
 
+      {/* Lightbox */}
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="max-w-4xl bg-background border-border p-0 overflow-hidden">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(false)}
+              className="absolute right-3 top-3 z-10 rounded-full bg-background/70 p-2 text-foreground backdrop-blur"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <img
+              src={product.images.edges[selectedImage]?.node.url}
+              alt={product.title}
+              className="w-full h-auto max-h-[85vh] object-contain"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Footer />
       <ChatButton variant="floating" />
     </div>);
