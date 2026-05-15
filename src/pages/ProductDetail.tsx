@@ -161,10 +161,6 @@ export default function ProductDetail() {
 
   }
 
-  const currentVariant = product.variants.edges.find(
-    (v) => v.node.id === selectedVariant
-  )?.node;
-
   // Identify color & size options
   const colorOption = product.options.find((o) =>
     COLOR_OPTION_NAMES.includes(o.name.toLowerCase())
