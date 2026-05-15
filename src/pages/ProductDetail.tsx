@@ -318,7 +318,7 @@ export default function ProductDetail() {
           return true;
         })
       );
-      setSelectedVariant((match || v).id ? (match?.node.id ?? v.id) : v.id);
+      setSelectedVariant(match?.node.id ?? v.id);
     } else {
       setSelectedVariant(v.id);
     }
