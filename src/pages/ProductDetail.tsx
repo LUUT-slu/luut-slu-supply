@@ -1,18 +1,18 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   ShoppingBag,
   Minus,
   Plus,
-  Check,
   MapPin,
   CreditCard,
   Truck,
   MessageCircle,
   Shield,
   Clock,
-  Store } from
+  Store,
+  Ruler,
+  X } from
 "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -20,6 +20,7 @@ import { ChatButton } from "@/components/ChatButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { fetchProductByHandle, ShopifyProduct, normalizeVendorName } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
@@ -27,6 +28,10 @@ import { cn } from "@/lib/utils";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 import { ProductReviews } from "@/components/ProductReviews";
 import { ReviewPopup } from "@/components/ReviewPopup";
+
+const WHATSAPP_NUMBER = "17587185478";
+const COLOR_OPTION_NAMES = ["color", "colour"];
+const SIZE_OPTION_NAMES = ["size"];
 
 // Meetup locations - can be extracted from product description or configured per seller
 const MEETUP_LOCATIONS = ["Castries", "Gros Islet", "Rodney Bay"];
