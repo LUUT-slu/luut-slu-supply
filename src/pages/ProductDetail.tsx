@@ -4,6 +4,7 @@ import {
   ShoppingBag,
   Minus,
   Plus,
+  Check,
   MapPin,
   CreditCard,
   Truck,
