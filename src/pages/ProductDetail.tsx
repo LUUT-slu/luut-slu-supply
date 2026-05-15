@@ -165,226 +165,497 @@ export default function ProductDetail() {
     (v) => v.node.id === selectedVariant
   )?.node;
 
-  const handleAddToCart = () => {
-    if (!currentVariant) return;
+  // Identify color & size options
+  const colorOption = product.options.find((o) =>
+    COLOR_OPTION_NAMES.includes(o.name.toLowerCase())
+  );
+  const sizeOption = product.options.find((o) =>
+    SIZE_OPTION_NAMES.includes(o.name.toLowerCase())
+  );
+  const otherOptions = product.options.filter(
+    (o) =>
+      o !== colorOption &&
+      o !== sizeOption &&
+      !(o.name === "Title" && o.values.length === 1 && o.values[0] === "Default Title")
+  );
 
+  const currentVariant = product.variants.edges.find(
+    (v) => v.node.id === selectedVariant
+  )?.node;
+
+  const selectedColor = currentVariant?.selectedOptions.find((o) =>
+    COLOR_OPTION_NAMES.includes(o.name.toLowerCase())
+  )?.value;
+  const selectedSize = currentVariant?.selectedOptions.find((o) =>
+    SIZE_OPTION_NAMES.includes(o.name.toLowerCase())
+  )?.value;
+
+  // Map color value -> first matching variant (for swatch image + click target)
+  const colorVariantMap = new Map<string, typeof product.variants.edges[number]["node"]>();
+  if (colorOption) {
+    for (const value of colorOption.values) {
+      const v = product.variants.edges.find((e) =>
+        e.node.selectedOptions.some(
+          (o) => COLOR_OPTION_NAMES.includes(o.name.toLowerCase()) && o.value === value
+        )
+      );
+      if (v) colorVariantMap.set(value, v.node);
+    }
+  }
+
+  const isOutOfStock = currentVariant ? !currentVariant.availableForSale : false;
+  const totalImages = product.images.edges.length;
+
+  const buildWhatsAppMessage = (restock = false) => {
+    const parts: string[] = [];
+    if (restock) {
+      parts.push(`Hi LUUT, is "${product.title}" coming back in stock?`);
+    } else {
+      let line = `Hi LUUT, I'm interested in ${product.title}`;
+      if (selectedColor) line += ` — ${selectedColor}`;
+      if (selectedSize) line += ` — ${selectedSize}`;
+      line += ` — Qty: ${quantity}. Is it still available?`;
+      parts.push(line);
+    }
+    if (typeof window !== "undefined") parts.push(window.location.href);
+    return parts.join("\n");
+  };
+
+  const validateSelection = () => {
+    if (colorOption && colorOption.values.length > 1 && !selectedColor) {
+      toast.error("Please select a color.");
+      return false;
+    }
+    if (sizeOption && sizeOption.values.length > 1 && !selectedSize) {
+      toast.error("Please select a size.");
+      return false;
+    }
+    return true;
+  };
+
+  const doAddToCart = (): boolean => {
+    if (!currentVariant) return false;
+    if (!validateSelection()) return false;
     const result = addItem({
       product: { node: product },
       variantId: currentVariant.id,
       variantTitle: currentVariant.title,
       price: currentVariant.price,
       quantity,
-      selectedOptions: currentVariant.selectedOptions
+      selectedOptions: currentVariant.selectedOptions,
     });
-
-    if (result.success) {
-      navigate('/cart');
-    } else {
+    if (!result.success) {
       toast.error("Cannot add to cart", {
         description: result.error,
         position: "top-center",
-        duration: 5000
+        duration: 5000,
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const handleAddToCart = () => {
+    if (doAddToCart()) {
+      toast.success("Added to cart");
+      trackEvent({
+        eventType: "add_to_cart",
+        productId: product.id,
+        productName: product.title,
+        sellerId: product.vendor || undefined,
+        metadata: {
+          variantId: currentVariant?.id,
+          color: selectedColor,
+          size: selectedSize,
+          quantity,
+        },
       });
     }
   };
 
-  const whatsappMessage = `Hi! I'm interested in: ${product.title}${
-  currentVariant ? ` (${currentVariant.title})` : ""} - EC$${
-  parseFloat(currentVariant?.price.amount || "0").toFixed(2)}`;
+  const handleBuyNow = () => {
+    if (doAddToCart()) {
+      trackEvent({
+        eventType: "buy_now_clicked",
+        productId: product.id,
+        productName: product.title,
+        sellerId: product.vendor || undefined,
+        metadata: {
+          variantId: currentVariant?.id,
+          color: selectedColor,
+          size: selectedSize,
+          quantity,
+        },
+      });
+      navigate("/checkout");
+    }
+  };
+
+  const handleWhatsApp = () => {
+    const msg = encodeURIComponent(buildWhatsAppMessage(isOutOfStock));
+    trackEvent({
+      eventType: "whatsapp_clicked",
+      productId: product.id,
+      productName: product.title,
+      sellerId: product.vendor || undefined,
+      metadata: {
+        variantId: currentVariant?.id,
+        color: selectedColor,
+        size: selectedSize,
+        quantity,
+        restock: isOutOfStock,
+      },
+    });
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`, "_blank", "noopener,noreferrer");
+  };
+
+  const handleSelectColor = (value: string) => {
+    const v = colorVariantMap.get(value);
+    if (!v) return;
+    // Try to keep current size if possible
+    if (sizeOption && selectedSize) {
+      const match = product.variants.edges.find((e) =>
+        e.node.selectedOptions.every((o) => {
+          if (COLOR_OPTION_NAMES.includes(o.name.toLowerCase())) return o.value === value;
+          if (SIZE_OPTION_NAMES.includes(o.name.toLowerCase())) return o.value === selectedSize;
+          return true;
+        })
+      );
+      setSelectedVariant((match || v).id ? (match?.node.id ?? v.id) : v.id);
+    } else {
+      setSelectedVariant(v.id);
+    }
+    trackEvent({
+      eventType: "variant_color_selected",
+      productId: product.id,
+      productName: product.title,
+      metadata: { color: value },
+    });
+  };
+
+  const handleSelectSize = (value: string) => {
+    const match = product.variants.edges.find((e) =>
+      e.node.selectedOptions.every((o) => {
+        if (SIZE_OPTION_NAMES.includes(o.name.toLowerCase())) return o.value === value;
+        if (COLOR_OPTION_NAMES.includes(o.name.toLowerCase()) && selectedColor)
+          return o.value === selectedColor;
+        return true;
+      })
+    );
+    if (match) setSelectedVariant(match.node.id);
+    trackEvent({
+      eventType: "variant_size_selected",
+      productId: product.id,
+      productName: product.title,
+      metadata: { size: value },
+    });
+  };
+
+  const handleQtyChange = (next: number) => {
+    const clamped = Math.max(1, next);
+    setQuantity(clamped);
+    trackEvent({
+      eventType: "quantity_changed",
+      productId: product.id,
+      productName: product.title,
+      metadata: { quantity: clamped },
+    });
+  };
 
   // Check if seller is certified
   const isCertifiedSeller = product.vendor?.includes("Certified") || product.tags?.includes("certified-seller");
   const sellerName = normalizeVendorName(product.vendor?.replace(" (Certified Seller)", "") || "Luut SLU");
+
+  const MAX_COLOR_SWATCHES = 4;
+  const visibleColors = colorOption ? colorOption.values.slice(0, MAX_COLOR_SWATCHES) : [];
+  const hiddenColorCount = colorOption ? Math.max(0, colorOption.values.length - MAX_COLOR_SWATCHES) : 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
 
       <main className="flex-1">
-        <div className="container py-6">
-          {/* Back button */}
-          <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-
+        <div className="container py-4 md:py-6">
           <div className="grid gap-8 lg:grid-cols-2">
             {/* ========== PRODUCT IMAGES ========== */}
-            <div className="space-y-4 w-full max-w-full">
-              {/* Main Image - Fixed aspect ratio container with padding */}
-              <div className="relative w-full aspect-square bg-card p-3 md:p-4 shadow-none border-0 border-primary-foreground px-0 py-0 rounded-md">
-                {product.images.edges.length > 1 ?
-                // Swipeable gallery for multiple images
-                <div
-                  className="flex h-full w-full snap-x snap-mandatory overflow-x-scroll overscroll-x-contain rounded-xl"
-                  ref={galleryRef}
-                  style={{
-                    WebkitOverflowScrolling: 'touch',
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none'
-                  }}>
-
-                    <style>{`div::-webkit-scrollbar { display: none; }`}</style>
-                    {product.images.edges.map((img, idx) =>
+            <div className="space-y-3 w-full max-w-full">
+              {/* Main Image */}
+              <div className="relative w-full aspect-square overflow-hidden rounded-2xl bg-card">
+                {totalImages > 1 ? (
                   <div
-                    key={idx}
-                    className="h-full min-w-full flex-shrink-0 snap-center flex items-center justify-center">
-
+                    className="flex h-full w-full snap-x snap-mandatory overflow-x-scroll overscroll-x-contain"
+                    ref={galleryRef}
+                    style={{
+                      WebkitOverflowScrolling: "touch",
+                      scrollbarWidth: "none",
+                      msOverflowStyle: "none",
+                    }}
+                  >
+                    <style>{`div::-webkit-scrollbar { display: none; }`}</style>
+                    {product.images.edges.map((img, idx) => (
+                      <button
+                        type="button"
+                        key={idx}
+                        onClick={() => setLightboxOpen(true)}
+                        className="h-full min-w-full flex-shrink-0 snap-center flex items-center justify-center bg-card"
+                      >
                         <img
-                      src={img.node.url}
-                      alt={img.node.altText || `${product.title} ${idx + 1}`}
-                      className="max-h-full max-w-full object-contain rounded-lg pointer-events-none" />
-
-                      </div>
-                  )}
-                  </div> :
-                product.images.edges[0]?.node ?
-                <div className="h-full w-full flex items-center justify-center">
+                          src={img.node.url}
+                          alt={img.node.altText || `${product.title} ${idx + 1}`}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                ) : product.images.edges[0]?.node ? (
+                  <button
+                    type="button"
+                    onClick={() => setLightboxOpen(true)}
+                    className="h-full w-full flex items-center justify-center"
+                  >
                     <img
-                    src={product.images.edges[0].node.url}
-                    alt={product.images.edges[0].node.altText || product.title}
-                    className="max-h-full max-w-full rounded object-contain" />
-
-                  </div> :
-
-                <div className="flex h-full items-center justify-center">
+                      src={product.images.edges[0].node.url}
+                      alt={product.images.edges[0].node.altText || product.title}
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </button>
+                ) : (
+                  <div className="flex h-full items-center justify-center">
                     <ShoppingBag className="h-20 w-20 text-muted-foreground" />
                   </div>
-                }
+                )}
+
+                {/* Image count indicator */}
+                {totalImages > 1 && (
+                  <div className="absolute bottom-3 right-3 rounded-full bg-background/70 px-2.5 py-1 text-xs font-medium text-foreground backdrop-blur">
+                    {selectedImage + 1}/{totalImages}
+                  </div>
+                )}
               </div>
-              
-              {/* Image indicators for swipe gallery */}
-              {product.images.edges.length > 1 &&
-              <div className="flex justify-center gap-1.5">
-                  {product.images.edges.map((_, idx) =>
-                <button
-                  key={idx}
-                  onClick={() => scrollToImage(idx)}
-                  className={cn(
-                    "h-2 w-2 rounded-full transition-colors",
-                    selectedImage === idx ? "bg-primary" : "bg-muted-foreground/30"
-                  )} />
 
-                )}
+              {/* Carousel dots */}
+              {totalImages > 1 && (
+                <div className="flex justify-center gap-1.5">
+                  {product.images.edges.slice(0, 5).map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => scrollToImage(idx)}
+                      className={cn(
+                        "h-2 w-2 rounded-full transition-colors",
+                        selectedImage === idx ? "bg-primary" : "bg-muted-foreground/30"
+                      )}
+                      aria-label={`Go to image ${idx + 1}`}
+                    />
+                  ))}
                 </div>
-              }
-              
+              )}
+
               {/* Thumbnail strip for desktop */}
-              {product.images.edges.length > 1 &&
-              <div className="hidden md:flex gap-2 overflow-x-auto pb-2">
-                  {product.images.edges.map((img, idx) =>
-                <button
-                  key={idx}
-                  onClick={() => scrollToImage(idx)}
-                  className={`h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
-                  selectedImage === idx ?
-                  "border-primary ring-2 ring-primary/20" :
-                  "border-border hover:border-muted-foreground"}`
-                  }>
-
+              {totalImages > 1 && (
+                <div className="hidden md:flex gap-2 overflow-x-auto pb-2">
+                  {product.images.edges.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => scrollToImage(idx)}
+                      className={`h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+                        selectedImage === idx
+                          ? "border-primary ring-2 ring-primary/20"
+                          : "border-border hover:border-muted-foreground"
+                      }`}
+                    >
                       <img
-                    src={img.node.url}
-                    alt={img.node.altText || `${product.title} ${idx + 1}`}
-                    className="h-full w-full object-cover pointer-events-none" />
-
+                        src={img.node.url}
+                        alt={img.node.altText || `${product.title} ${idx + 1}`}
+                        className="h-full w-full object-cover pointer-events-none"
+                      />
                     </button>
-                )}
+                  ))}
                 </div>
-              }
+              )}
             </div>
 
             {/* ========== PRODUCT DETAILS ========== */}
-            <div className="space-y-6">
+            <div className="space-y-5">
               {/* Seller Info */}
-              <div className="flex items-center justify-start gap-[7px]">
-                <Store className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Sold by:</span>
+              <div className="flex items-center gap-4 text-sm">
                 <Link
-                  to={`/seller/${encodeURIComponent(sellerName.toLowerCase().replace(/\s+/g, '-'))}`}
-                  className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-
-                  {sellerName}
+                  to={`/seller/${encodeURIComponent(sellerName.toLowerCase().replace(/\s+/g, "-"))}`}
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Store className="h-4 w-4" />
+                  <span>Sold by:</span>
+                  <span className="font-medium text-foreground">{sellerName}</span>
                 </Link>
-                {isCertifiedSeller &&
-                <Badge variant="secondary" className="text-xs gap-1">
-                    <Shield className="h-3 w-3" />
-                    Certified
-                  </Badge>
-                }
+                <span className="flex items-center gap-1.5 text-primary font-medium">
+                  <Shield className="h-4 w-4" />
+                  Verified Seller
+                </span>
               </div>
 
               {/* Product Title */}
-              <h1 className="text-xl md:text-2xl leading-tight font-sans">
+              <h1 className="text-2xl md:text-3xl leading-tight font-sans text-foreground">
                 {product.title}
               </h1>
 
               {/* Price */}
-              {currentVariant &&
-              <div className="gap-2 items-center justify-start flex">
-                  <span className="text-2xl md:text-3xl text-primary font-sans">
+              {currentVariant && (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl md:text-4xl text-primary font-sans">
                     EC${parseFloat(currentVariant.price.amount).toFixed(2)}
                   </span>
                   <span className="text-sm text-muted-foreground">
                     {currentVariant.price.currencyCode}
                   </span>
                 </div>
-              }
+              )}
 
-              <Separator />
+              {/* ========== COLOR SELECTOR ========== */}
+              {colorOption && colorOption.values.length > 1 && (
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <label className="font-body text-sm font-medium text-foreground">Color</label>
+                    <span className="text-sm text-muted-foreground">
+                      {selectedColor || "Select"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {visibleColors.map((value) => {
+                      const v = colorVariantMap.get(value);
+                      const swatchImg =
+                        v?.image?.url ||
+                        product.images.edges[0]?.node.url;
+                      const isSelected = selectedColor === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => handleSelectColor(value)}
+                          aria-label={value}
+                          className={cn(
+                            "relative h-12 w-12 overflow-hidden rounded-full border-2 transition-all",
+                            isSelected
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "border-border hover:border-muted-foreground"
+                          )}
+                        >
+                          {swatchImg ? (
+                            <img
+                              src={swatchImg}
+                              alt={value}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center text-[10px]">
+                              {value}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {hiddenColorCount > 0 && (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-border text-xs text-muted-foreground">
+                        +{hiddenColorCount}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-              {/* ========== VARIANT OPTIONS ========== */}
-              {product.options.map((option) => {
-                // Skip default "Title" option if only one value
-                if (option.name === "Title" && option.values.length === 1 && option.values[0] === "Default Title") {
-                  return null;
-                }
-                return (
-                  <div key={option.name}>
-                    <label className="mb-3 block font-body text-sm font-medium">
-                      {option.name}
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {option.values.map((value) => {
-                        const variant = product.variants.edges.find((v) =>
+              {/* ========== SIZE SELECTOR ========== */}
+              {sizeOption && sizeOption.values.length > 0 && (
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <label className="font-body text-sm font-medium text-foreground">Size</label>
+                    <span className="text-sm text-muted-foreground">
+                      {selectedSize || "Select"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {sizeOption.values.map((value) => {
+                      const variant = product.variants.edges.find((e) =>
+                        e.node.selectedOptions.some(
+                          (o) =>
+                            SIZE_OPTION_NAMES.includes(o.name.toLowerCase()) &&
+                            o.value === value
+                        )
+                      );
+                      const isSelected = selectedSize === value;
+                      const isAvailable = variant?.node.availableForSale ?? true;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          disabled={!isAvailable}
+                          onClick={() => handleSelectSize(value)}
+                          className={cn(
+                            "min-w-[60px] rounded-lg border px-4 py-2 text-sm font-medium transition-all",
+                            isSelected
+                              ? "border-primary text-primary bg-primary/5"
+                              : "border-border text-foreground hover:border-muted-foreground",
+                            !isAvailable && "opacity-40 line-through cursor-not-allowed"
+                          )}
+                        >
+                          {value}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => toast.info("Size guide coming soon")}
+                      className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <Ruler className="h-3.5 w-3.5" />
+                      Size Guide
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ========== OTHER VARIANT OPTIONS ========== */}
+              {otherOptions.map((option) => (
+                <div key={option.name}>
+                  <label className="mb-3 block font-body text-sm font-medium">
+                    {option.name}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {option.values.map((value) => {
+                      const variant = product.variants.edges.find((v) =>
                         v.node.selectedOptions.some(
                           (o) => o.name === option.name && o.value === value
                         )
-                        );
-                        const isSelected = currentVariant?.selectedOptions.some(
-                          (o) => o.name === option.name && o.value === value
-                        );
-                        const isAvailable = variant?.node.availableForSale;
-
-                        return (
-                          <Button
-                            key={value}
-                            variant={isSelected ? "default" : "outline"}
-                            size="sm"
-                            disabled={!isAvailable}
-                            onClick={() => variant && setSelectedVariant(variant.node.id)}
-                            className="min-w-[60px]">
-
-                            {value}
-                            {isSelected && <Check className="ml-1 h-3 w-3" />}
-                          </Button>);
-
-                      })}
-                    </div>
-                  </div>);
-
-              })}
+                      );
+                      const isSelected = currentVariant?.selectedOptions.some(
+                        (o) => o.name === option.name && o.value === value
+                      );
+                      const isAvailable = variant?.node.availableForSale;
+                      return (
+                        <Button
+                          key={value}
+                          variant={isSelected ? "default" : "outline"}
+                          size="sm"
+                          disabled={!isAvailable}
+                          onClick={() => variant && setSelectedVariant(variant.node.id)}
+                          className="min-w-[60px]"
+                        >
+                          {value}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
 
               {/* ========== QUANTITY SELECTOR ========== */}
               <div>
-                <label className="mb-3 block font-body text-sm font-medium">
-                  Quantity
-                </label>
+                <label className="mb-3 block font-body text-sm font-medium">Quantity</label>
                 <div className="flex items-center gap-3">
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}>
-
+                    className="rounded-lg"
+                    onClick={() => handleQtyChange(quantity - 1)}
+                    disabled={quantity <= 1}
+                  >
                     <Minus className="h-4 w-4" />
                   </Button>
                   <span className="w-12 text-center font-body text-lg font-medium">
@@ -393,33 +664,58 @@ export default function ProductDetail() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setQuantity(quantity + 1)}>
-
+                    className="rounded-lg"
+                    onClick={() => handleQtyChange(quantity + 1)}
+                    disabled={isOutOfStock}
+                  >
                     <Plus className="h-4 w-4" />
                   </Button>
+                  {isOutOfStock && (
+                    <span className="text-xs text-destructive font-medium">Sold out</span>
+                  )}
                 </div>
               </div>
 
-              {/* ========== ADD TO CART BUTTON ========== */}
+              {/* ========== ACTION BUTTONS ========== */}
               <div className="space-y-3 pt-2">
-                <Button
-                  size="lg"
-                  className="w-full text-base"
-                  onClick={handleAddToCart}
-                  disabled={!currentVariant?.availableForSale}>
+                {/* PRIMARY: WhatsApp */}
+                <button
+                  type="button"
+                  onClick={handleWhatsApp}
+                  className="w-full rounded-xl bg-primary py-3 px-4 text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  <span className="flex items-center justify-center gap-2 text-base font-semibold">
+                    <MessageCircle className="h-5 w-5" />
+                    {isOutOfStock ? "Ask About Restock" : "Ask on WhatsApp"}
+                  </span>
+                  <span className="block text-xs font-normal opacity-80 mt-0.5">
+                    Chat with us about this item
+                  </span>
+                </button>
 
-                  <ShoppingBag className="mr-2 h-5 w-5" />
-                  Add to Cart — EC${currentVariant ? (parseFloat(currentVariant.price.amount) * quantity).toFixed(2) : '0.00'}
-                </Button>
+                {/* SECONDARY: Add to Cart */}
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full text-base"
-                  onClick={() => {
-                    handleAddToCart();
-                  }}
-                  disabled={!currentVariant?.availableForSale}>
+                  className="w-full text-base rounded-xl border-primary text-primary hover:bg-primary/10 hover:text-primary"
+                  onClick={handleAddToCart}
+                  disabled={isOutOfStock}
+                >
+                  <ShoppingBag className="mr-2 h-5 w-5" />
+                  Add to Cart — EC$
+                  {currentVariant
+                    ? (parseFloat(currentVariant.price.amount) * quantity).toFixed(2)
+                    : "0.00"}
+                </Button>
 
+                {/* TERTIARY: Buy Now */}
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full text-base rounded-xl"
+                  onClick={handleBuyNow}
+                  disabled={isOutOfStock}
+                >
                   <CreditCard className="mr-2 h-5 w-5" />
                   Buy Now
                 </Button>
