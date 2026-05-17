@@ -118,6 +118,7 @@ export default function Index() {
                   key={section.id}
                   slug={section.slug || ""}
                   label={section.label}
+                  subtitle={section.subtitle}
                   limit={section.limit}
                 />
               );

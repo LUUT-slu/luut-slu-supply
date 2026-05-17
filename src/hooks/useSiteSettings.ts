@@ -26,8 +26,12 @@ export interface ColorVariantCardsSetting {
 export interface HomepageSection {
   id: string;
   type: "category" | "best_sellers" | "trending" | "new_arrivals" | "featured";
+  /** Shopify collection handle (or legacy category slug) */
   slug?: string;
+  /** Cached Shopify collection title — used for admin display when collection is unavailable */
+  collectionTitle?: string;
   label: string;
+  subtitle?: string;
   limit: number;
   enabled: boolean;
   featuredProductIds?: string[];
