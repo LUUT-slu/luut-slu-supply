@@ -13,6 +13,7 @@ import { MegaNav } from "@/components/MegaNav";
 import { MobileCategoryDrawer } from "@/components/MobileCategoryDrawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHeader } from "@/components/home/MobileHeader";
+import { MobileMenuDrawer } from "@/components/home/MobileMenuDrawer";
 
 // Fallback categories if Shopify collections aren't loaded
 const fallbackCategories = [
@@ -259,77 +260,16 @@ export function Header() {
           </Link>
 
           {/* Mobile menu */}
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild className="lg:hidden">
-              <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-80 bg-background p-0 overflow-y-auto">
-              <div className="flex flex-col min-h-full">
-                <div className="border-b border-border p-6 sticky top-0 bg-background z-10">
-                  <span className="font-display text-2xl text-primary">Home</span>
-                </div>
-                
-                <nav className="flex flex-col p-4">
-                  <Link
-                    to="/shop"
-                    onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-foreground">
-
-                    Shop All Outfits
-                  </Link>
-                  <Link
-                    to="/shop?filter=new"
-                    onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-foreground">
-
-                    New Arrivals
-                  </Link>
-                  <Link
-                    to="/shop?filter=best"
-                    onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-foreground">
-
-                    Best Sellers
-                  </Link>
-                  <Link
-                    to="/sellers"
-                    onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-foreground">
-
-                    Sellers
-                  </Link>
-                  
-                  <div className="my-4 border-t border-border" />
-                  
-                  <span className="py-2 font-display text-sm text-muted-foreground">
-                    SHOP BY CATEGORY
-                  </span>
-                  <MobileCategoryDrawer onNavigate={() => setIsOpen(false)} />
-                  
-                  <div className="my-4 border-t border-border" />
-                  
-                  <Link
-                    to="/sell"
-                    onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-primary">
-
-                    Sell on Luut
-                  </Link>
-                  
-                  <Link
-                    to={currentUser ? "/account" : "/login"}
-                    onClick={() => setIsOpen(false)}
-                    className="py-3 font-body text-lg font-medium text-foreground flex items-center gap-2">
-
-                    <User className="h-5 w-5" />
-                    {currentUser ? "My Account" : "Sign In"}
-                  </Link>
-                </nav>
-              </div>
-            </SheetContent>
-          </Sheet>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            aria-label="Open menu"
+            onClick={() => setIsOpen(true)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <MobileMenuDrawer open={isOpen} onOpenChange={setIsOpen} />
         </div>
       </div>
     </header>
