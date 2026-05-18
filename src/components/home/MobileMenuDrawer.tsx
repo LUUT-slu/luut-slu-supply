@@ -88,18 +88,9 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
 
   useEffect(() => {
     if (!user) { setDisplayName(""); return; }
-    supabase
-      .from("profiles")
-      .select("display_name, full_name")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        setDisplayName(
-          (data as any)?.display_name ||
-          (data as any)?.full_name ||
-          user.email?.split("@")[0] || ""
-        );
-      });
+    const meta = (user.user_metadata || {}) as Record<string, unknown>;
+    const name = (meta.full_name as string) || (meta.name as string) || user.email?.split("@")[0] || "";
+    setDisplayName(name);
   }, [user]);
 
   useEffect(() => {
