@@ -24,7 +24,7 @@ export function ChatButton({
     return (
       <button
         onClick={handleClick}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-110 md:h-16 md:w-16"
+        className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/40 transition-transform hover:scale-110 active:scale-95 md:bottom-6 md:right-6 md:h-16 md:w-16"
         aria-label="Chat with us"
       >
         <MessageCircle className="h-7 w-7 md:h-8 md:w-8" />
