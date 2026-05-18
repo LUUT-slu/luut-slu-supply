@@ -13,6 +13,7 @@ import { MegaNav } from "@/components/MegaNav";
 import { MobileCategoryDrawer } from "@/components/MobileCategoryDrawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHeader } from "@/components/home/MobileHeader";
+import { MobileMenuDrawer } from "@/components/home/MobileMenuDrawer";
 
 // Fallback categories if Shopify collections aren't loaded
 const fallbackCategories = [
