@@ -18,7 +18,7 @@ import { SignupDiscountPopup } from "@/components/SignupDiscountPopup";
 import { HomepageReviews } from "@/components/HomepageReviews";
 import { AIChatWidget } from "@/components/AIChatWidget";
 import { HeroSlider } from "@/components/home/HeroSlider";
-import { InStockNowSection } from "@/components/home/InStockNowSection";
+import { MarketplaceFeed } from "@/components/home/MarketplaceFeed";
 import { MobileBottomNav } from "@/components/home/MobileBottomNav";
 
 const howItWorks = [
