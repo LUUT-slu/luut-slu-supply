@@ -18,7 +18,7 @@ import { SignupDiscountPopup } from "@/components/SignupDiscountPopup";
 import { HomepageReviews } from "@/components/HomepageReviews";
 import { AIChatWidget } from "@/components/AIChatWidget";
 import { HeroSlider } from "@/components/home/HeroSlider";
-import { InStockNowSection } from "@/components/home/InStockNowSection";
+import { MarketplaceFeed } from "@/components/home/MarketplaceFeed";
 import { MobileBottomNav } from "@/components/home/MobileBottomNav";
 
 const howItWorks = [
@@ -97,41 +97,43 @@ export default function Index() {
           </section>
         )}
 
-        {/* IN STOCK NOW — mobile-first pill-filtered section */}
-        {isMobile && <InStockNowSection />}
-
-        {/* Dynamic sections — rendered in order from settings */}
-        {sections.map((section) => {
-          switch (section.type) {
-            case "trending":
-              return <WhatPeopleAreBuyingSection key={section.id} />;
-            case "best_sellers":
-              return <BestSellersSection key={section.id} limit={section.limit} />;
-            case "new_arrivals":
-              return <HomeNewArrivalsSection key={section.id} label={section.label} limit={section.limit} />;
-            case "featured":
-              return (
-                <HomeFeaturedSection
-                  key={section.id}
-                  label={section.label}
-                  productIds={section.featuredProductIds || []}
-                  limit={section.limit}
-                />
-              );
-            case "category":
-              return (
-                <HomeCategorySection
-                  key={section.id}
-                  slug={section.slug || ""}
-                  label={section.label}
-                  subtitle={section.subtitle}
-                  limit={section.limit}
-                />
-              );
-            default:
-              return null;
-          }
-        })}
+        {/* MARKETPLACE FEED — mobile: dynamic Shopify-synced unified feed */}
+        {isMobile ? (
+          <MarketplaceFeed />
+        ) : (
+          /* Desktop: dynamic sections from admin homepage settings */
+          sections.map((section) => {
+            switch (section.type) {
+              case "trending":
+                return <WhatPeopleAreBuyingSection key={section.id} />;
+              case "best_sellers":
+                return <BestSellersSection key={section.id} limit={section.limit} />;
+              case "new_arrivals":
+                return <HomeNewArrivalsSection key={section.id} label={section.label} limit={section.limit} />;
+              case "featured":
+                return (
+                  <HomeFeaturedSection
+                    key={section.id}
+                    label={section.label}
+                    productIds={section.featuredProductIds || []}
+                    limit={section.limit}
+                  />
+                );
+              case "category":
+                return (
+                  <HomeCategorySection
+                    key={section.id}
+                    slug={section.slug || ""}
+                    label={section.label}
+                    subtitle={section.subtitle}
+                    limit={section.limit}
+                  />
+                );
+              default:
+                return null;
+            }
+          })
+        )}
 
         {/* Customer Reviews */}
         <HomepageReviews />
