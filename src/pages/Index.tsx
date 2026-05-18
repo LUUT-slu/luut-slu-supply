@@ -190,8 +190,6 @@ export default function Index() {
 
       <Footer />
       <SignupDiscountPopup />
-      <ChatButton variant="floating" />
-      <AIChatWidget />
       <MobileBottomNav />
     </div>
   );
