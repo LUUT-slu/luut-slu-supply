@@ -1,122 +1,83 @@
-# Unified Order → Shopify Draft Order Flow
+## Goal
 
-Goal: every order created on the website (customer checkout OR seller dashboard) flows through one path that (a) saves the website order, (b) creates a Shopify Draft Order, (c) stores draft-order metadata back on the website order, (d) drives a consistent WhatsApp confirmation lifecycle.
+Rebuild the mobile homepage to match the uploaded reference: cinematic hero slider, sticky translucent header with cart badge, "In Stock Now" with category pill filters, redesigned 2-up product cards, New Arrivals, fixed bottom nav, gold WhatsApp FAB. Keep current branding, Shopify sync, collections, and product data. Desktop stays functional — mobile is the priority.
 
-## What already exists
-- `supabase/functions/create-draft-order` — customer checkout calls this. It saves `orders`, creates `order_items`, calls Shopify `draft_orders.json`, returns invoice + draft id, fires emails.
-- `OrderConfirmed.tsx` — customer WhatsApp confirmation popup (skips for POS).
-- `rpc_mark_whatsapp_opened` — flips `communication_status` to `whatsapp_opened`.
-- `orders` has `shopify_order_id`, `shopify_order_name`, `shopify_synced_at` (used for completed Shopify orders) but NO draft-order columns and no `order_source` / `created_by_seller_id`.
-- `CreateOrderDialog` (seller) inserts into `orders` directly and does NOT call Shopify at all.
+## Scope
 
-## What's missing
-1. Seller-created orders never reach Shopify.
-2. Draft order id / invoice url / sync status / source / creator are not persisted.
-3. No idempotency (re-submitting could double-create drafts).
-4. Tagging isn't spec-compliant; no "WhatsApp Confirmed" tag flip.
-5. No admin buttons for: Open Shopify draft, Resync, Mark WhatsApp Confirmed, Mark No Response, Cancel, Complete Shopify draft.
-6. Seller dashboard has no WhatsApp button + status controls for the new flow.
-7. Seller dialog deducts `seller_products.quantity` immediately — spec says don't double-decrement (Shopify does it on completion).
+Frontend only. No backend, schema, or business-logic changes. Reuses existing hooks (`useHybridProducts`, `useShopifyCollections`, `useSiteSettings`, `useShopifyBestSellers`, cart store).
 
----
+## Changes
 
-## Plan
+### 1. New `MobileHeader` (mobile-only, sticky)
+- Left: hamburger (opens existing Sheet drawer logic).
+- Center: gold "LUUT SLU" wordmark.
+- Right: cart icon + live count badge from `useCartStore`.
+- Black/70 background + `backdrop-blur`, hairline gold border bottom.
+- Render conditionally inside existing `Header.tsx` so desktop header is untouched.
 
-### 1. Database migration (`orders` + new RPCs)
-Add columns to `public.orders`:
-- `shopify_draft_order_id text`
-- `shopify_draft_order_name text`
-- `shopify_draft_order_invoice_url text`
-- `shopify_sync_status text` default `'not_synced'` (`draft_created | draft_updated | draft_failed | not_synced | completed`)
-- `shopify_sync_error text`
-- `order_source text` default `'customer_checkout'` (`customer_checkout | seller_dashboard | shopify_pos | shopify_online | manual`)
-- `created_by_seller_id uuid` (nullable, references `seller_profiles.id` logically)
+### 2. New `HeroSlider` component
+- Swipeable carousel of 3–4 banners (existing hero image first; remaining pulled from site-settings hero or static fallbacks).
+- `embla-carousel-react` (already in repo via shadcn `carousel.tsx`) with autoplay + drag.
+- Overlay gradient, bold heading, gold CTA pill, pagination dots.
+- `aspect-[4/5]` on mobile, capped height on desktop.
+- LCP image keeps `fetchPriority="high"`.
 
-Extend `communication_status` allowed values to include `whatsapp_confirmed` and `no_response` (already in `rpc_set_communication_status` validation — also extend `order_status` checks where needed).
+### 3. New `InStockNowSection`
+- Header row: "IN STOCK NOW" + subtitle + gold "View All →".
+- Horizontal scroll pill filter: All, Beanies & Tams, Hats, Footwear, Bags, Accessories (mapped to existing Shopify handles). Active pill = gold fill, inactive = outlined.
+- Below: 2-col grid of `UnifiedProductCard` from `useHybridProducts` filtered by selected pill. Sold-out pushed last (already handled by `sortByStockStatus`).
+- Replaces the first auto-rendered category section on mobile only.
 
-New RPCs (SECURITY DEFINER, search_path=public):
-- `rpc_mark_order_confirmed(p_order_id uuid)` — admin OR seller-of-order; sets `communication_status='whatsapp_confirmed'`, logs `order_events`. Triggers Shopify tag flip via edge function call (best-effort; the edge function does the actual API call).
-- `rpc_mark_no_response(p_order_id uuid)` — admin/seller; sets `communication_status='no_response'`.
-- `rpc_cancel_order(p_order_id uuid, p_reason text)` — admin only; sets `order_status='CANCELLED'`, logs event.
+### 4. `UnifiedProductCard` mobile polish
+Card already matches most reference points. Small refinements:
+- Add strikethrough `compareAtPrice` next to gold price when present.
+- Always show rating + sold row when `soldCount` available (already wired).
+- Tighter shadow + `ring-1 ring-white/5` for premium feel.
+- No structural change — keeps Shopify/local data flow.
 
-### 2. Refactor edge function: `create-draft-order` → unified
-Rename intent: handle BOTH customer checkout AND seller dashboard.
+### 5. New `MobileBottomNav` (fixed, mobile-only)
+- 5 tabs: Home `/`, Categories `/shop`, Orders `/my-orders`, Favourites `/account?tab=favourites`, Account `/account`.
+- Active tab gold, others muted; `backdrop-blur` black background.
+- Active state derived from `useLocation()`.
+- Add `pb-20` spacing to homepage main so content isn't hidden under nav.
 
-New request fields:
-- `orderSource: 'customer_checkout' | 'seller_dashboard'` (required)
-- `createdBySellerId?: string` (uuid; required when `seller_dashboard`)
-- `sellerName?: string` (for tagging)
-- `existingOrderId?: string` (for retry — skip insert, only sync to Shopify)
+### 6. Floating WhatsApp button
+- Reuse existing `ChatButton variant="floating"` — re-style to gold circular with subtle pulse; reposition above bottom nav on mobile (`bottom-24`).
 
-Behavior changes:
-- Insert order with `order_source`, `created_by_seller_id`, `communication_status='pending_whatsapp'`, `shopify_sync_status='not_synced'`.
-- Build Shopify tags array per spec:
-  - Common: `Website Order`, `Luut SLU`, `Pending WhatsApp Confirmation`, `Pickup`, `pickup-{location}`.
-  - Customer: add `Customer Checkout`.
-  - Seller: add `Seller Created Order`, `Seller: {sellerName}`.
-- Build Shopify note per spec (different intro + fields per source).
-- After Shopify create succeeds: `update orders set shopify_draft_order_id, shopify_draft_order_name, shopify_draft_order_invoice_url, shopify_sync_status='draft_created', shopify_synced_at=now()`.
-- On failure: `shopify_sync_status='draft_failed'`, `shopify_sync_error=<msg>`. Still return success (order saved).
-- Idempotency: if order already has `shopify_draft_order_id`, do PUT update instead of POST create; mark `draft_updated`.
+### 7. `Index.tsx` updates
+- Render `<HeroSlider />` instead of inline hero on mobile (desktop keeps current hero).
+- Insert `<InStockNowSection />` as the first content section.
+- Keep existing dynamic `sections.map(...)` for New Arrivals, Best Sellers, additional category sections.
+- Add bottom padding for nav clearance; mount `<MobileBottomNav />` at the end.
+- Lazy-load below-fold sections via `React.lazy` + `Suspense` to improve initial paint.
 
-### 3. New edge function: `po-… ` style — `update-draft-order-tags`
-Single-purpose helper used by:
-- "Mark WhatsApp Confirmed" → remove `Pending WhatsApp Confirmation`, add `WhatsApp Confirmed`.
-- "Mark No Response" → add `No Response`.
-- Used internally by `rpc_mark_order_confirmed` callers (UI calls function after RPC).
+### 8. Performance
+- Add `loading="lazy"` + `decoding="async"` everywhere not already set.
+- `priority` only on the first 2 visible product cards.
+- Hero images already use `<picture>` + WebP — keep.
 
-### 4. New edge function: `complete-draft-order` (admin only)
-- Verifies admin via JWT + `has_role`.
-- Calls Shopify `PUT /draft_orders/{id}/complete.json` (mark as paid optional flag).
-- On success: copy `shopify_order_id` / `shopify_order_name` from response onto `orders`, set `shopify_sync_status='completed'`, `order_status='COMPLETED'`.
+## Files
 
-(`po-publish-to-shopify` is unrelated — for POs, leave alone.)
+**New**
+- `src/components/home/MobileHeader.tsx`
+- `src/components/home/HeroSlider.tsx`
+- `src/components/home/InStockNowSection.tsx`
+- `src/components/home/MobileBottomNav.tsx`
 
-### 5. Frontend — customer flow (`Checkout.tsx`)
-- Pass `orderSource: 'customer_checkout'` in invoke body.
-- Persist `shopifyDraftOrderId` + invoice URL into the `luut-order-confirmed` localStorage payload (already partial). No popup change — `OrderConfirmed` + `WhatsAppConfirmPopup` already match the spec wording.
-- Already handles POS skip via `isPos`.
+**Edited**
+- `src/pages/Index.tsx` — wire new components, mobile/desktop split, lazy-loading, bottom padding.
+- `src/components/Header.tsx` — render `MobileHeader` on mobile, keep desktop nav intact.
+- `src/components/UnifiedProductCard.tsx` — minor mobile polish (compareAtPrice, ring).
+- `src/components/ChatButton.tsx` — adjust floating position/style on mobile.
 
-### 6. Frontend — seller flow (`CreateOrderDialog.tsx`)
-- Replace direct `supabase.from("orders").insert(...)` with `supabase.functions.invoke('create-draft-order', { body: { ...form, orderSource: 'seller_dashboard', createdBySellerId: sellerId, sellerName } })`.
-- After success, show a small post-create card with:
-  - Order number, totals.
-  - "Message Customer on WhatsApp" button — prefilled per spec.
-  - Status pill: Pending WhatsApp Confirmation.
-  - Buttons: Mark WhatsApp Opened, Mark Confirmed, Mark No Response.
-- Remove the manual `seller_products.quantity` decrement (spec: don't double-decrement). Keep `product_sales` recording out of this path — Shopify completion is the source of truth. (Confirm with user if they want a soft reservation flag instead.)
+## Out of scope
 
-### 7. Admin dashboard (`AdminOrders.tsx` / `AdminOrdersPage.tsx`)
-Add per-row action menu showing draft + sync info and buttons:
-- Open Shopify Draft (links to `https://{shop}.myshopify.com/admin/draft_orders/{id}`)
-- Resync Draft Order → invokes `create-draft-order` with `existingOrderId`.
-- Mark WhatsApp Confirmed → `rpc_mark_order_confirmed` + `update-draft-order-tags`.
-- Mark No Response → `rpc_mark_no_response`.
-- Cancel Order → `rpc_cancel_order`.
-- Complete Shopify Draft Order → `complete-draft-order` (admin only).
-Row badges: `order_source`, `shopify_sync_status`, `communication_status`, seller chip if seller-created.
+- Wishlist persistence (heart stays visual-only as today).
+- Admin homepage editor changes (existing dynamic sections still render).
+- Category/sub pages, product detail, checkout — untouched.
+- Auth and any backend tables.
 
-### 8. Seller dashboard (`SellerOrders.tsx` / `SellerOrderDetail.tsx`)
-Per-row buttons (only own/own-product orders, RLS already enforces):
-- Message Customer (WhatsApp prefilled).
-- Mark WhatsApp Opened / Confirmed / No Response.
-- Request Admin Completion → inserts an `order_events` row with type `completion_requested`; admin sees in queue.
-No "Complete draft" button for sellers.
+## Risks
 
-### 9. Multi-seller orders
-- Already split via `order_items.seller_id` — no change. Sellers see only their items via existing RLS; admins see full order.
-
-### 10. Inventory
-- Confirm: do NOT decrement `seller_products.quantity` on draft creation. Shopify handles real inventory at completion. Document this in `mem://feature/order-flow-inventory`.
-
-### Technical details
-
-- Edge functions involved: `create-draft-order` (refactor), new `update-draft-order-tags`, new `complete-draft-order`. All deploy under existing `verify_jwt = false` and validate caller role in code.
-- Shopify Admin API: `2025-01` (already in use). Endpoints: `POST /draft_orders.json`, `PUT /draft_orders/{id}.json`, `PUT /draft_orders/{id}/complete.json`.
-- Existing `SHOPIFY_ADMIN_TOKEN` secret is sufficient.
-- All new RPCs follow the project pattern (SECURITY DEFINER, `has_role` / `is_seller_for_order` gates).
-
-### Out of scope (will not be built unless asked)
-- Stock reservation system (mentioned in spec as optional / future).
-- Shopify webhook ingestion of completion back into website (orders already have a sync function `sync-shopify-orders` that can be used later).
-- Editing existing draft orders' line items from admin UI (only resync of current website state).
+- Adding a fixed bottom nav can collide with existing floating chat/AI widgets — mitigated by repositioning `ChatButton` and `AIChatWidget` above the nav on mobile.
+- Embla autoplay can hurt LCP if it cycles before image paints — autoplay starts after 4 s and the first slide uses the existing preloaded hero image.

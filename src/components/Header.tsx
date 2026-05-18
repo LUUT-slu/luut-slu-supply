@@ -11,6 +11,8 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { useShopifyCollections, getCollectionPath } from "@/hooks/useShopifyCollections";
 import { MegaNav } from "@/components/MegaNav";
 import { MobileCategoryDrawer } from "@/components/MobileCategoryDrawer";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileHeader } from "@/components/home/MobileHeader";
 
 // Fallback categories if Shopify collections aren't loaded
 const fallbackCategories = [
@@ -39,6 +41,7 @@ export function Header() {
   const { collections } = useShopifyCollections();
   const location = useLocation();
   const isHomepage = location.pathname === "/";
+  const isMobile = useIsMobile();
 
   // Use Shopify collections if available, otherwise fallback
   const outfitCategories = collections.length > 0 ?
@@ -143,6 +146,15 @@ export function Header() {
 
     fetchActiveOrderCount();
   }, []);
+
+  if (isMobile && isHomepage) {
+    return (
+      <>
+        <SaleBanner />
+        <MobileHeader />
+      </>
+    );
+  }
 
   return (
     <>
