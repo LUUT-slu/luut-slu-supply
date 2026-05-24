@@ -4,12 +4,24 @@ import { VariantListingProduct } from "@/lib/variantSplitter";
 import { getOptimizedImageUrl, getImageSrcSet } from "@/lib/shopify";
 import { useCartStore } from "@/stores/cartStore";
 import { Button } from "./ui/button";
-import { ShoppingCart, MapPin, Wallet, Heart, Star } from "lucide-react";
+import { ShoppingCart, MapPin, Wallet, Heart, Star, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 import { useResolvedPrice } from "@/hooks/useActivePromotions";
+import { useCountdown } from "@/hooks/useCountdown";
 import { PriceTag, SaleRibbon } from "./PriceTag";
+
+function PromoCountdownPill({ endDate }: { endDate: string }) {
+  const cd = useCountdown(endDate);
+  if (cd.isExpired) return null;
+  return (
+    <span className="inline-flex items-center gap-1 self-start rounded-full border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+      <Clock className="h-2.5 w-2.5" />
+      Ends {cd.formatted}
+    </span>
+  );
+}
 
 interface UnifiedProductCardProps {
   product: UnifiedProduct | VariantListingProduct;
@@ -256,6 +268,9 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
           ) : null}
 
           <PriceTag resolved={resolved} size="sm" className="mt-1" showPercentChip />
+          {resolved.hasDiscount && resolved.endDate && (
+            <PromoCountdownPill endDate={resolved.endDate} />
+          )}
 
 
           {typeof soldCount === "number" && soldCount > 0 && (
@@ -351,6 +366,11 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
             </Button>
           )}
         </div>
+        {resolved.hasDiscount && resolved.endDate && (
+          <div className="mt-1.5">
+            <PromoCountdownPill endDate={resolved.endDate} />
+          </div>
+        )}
       </div>
     </Link>
   );

@@ -35,10 +35,12 @@ export interface HomepageSection {
   limit: number;
   enabled: boolean;
   featuredProductIds?: string[];
-  /** Promo collection section: collection handle this section pulls from */
+  /** Promo collection section: collection handle this section pulls from (only used when autoScan is off) */
   promoCollectionHandle?: string;
   /** Promo collection section: auto-move to top when a matching active promotion exists */
   autoPrioritize?: boolean;
+  /** Promo collection section: when true, aggregate products from every active campaign automatically */
+  autoScan?: boolean;
   /** Promo collection section: optional badge override */
   badgeLabel?: string;
   /** Promo collection section: render an empty-state message instead of hiding when no promos */
@@ -82,6 +84,7 @@ export const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayout = {
       limit: 8,
       enabled: true,
       autoPrioritize: true,
+      autoScan: true,
       promoCollectionHandle: "",
       badgeLabel: "SALE",
       showEmptyState: false,
@@ -229,6 +232,14 @@ async function fetchSiteSettings(): Promise<SiteSettings> {
   if (!homepageLayout.sections.some((s) => s.type === "promo_collection")) {
     const promo = DEFAULT_HOMEPAGE_LAYOUT.sections.find((s) => s.type === "promo_collection");
     if (promo) homepageLayout = { ...homepageLayout, sections: [promo, ...homepageLayout.sections] };
+  } else {
+    // Default autoScan to true for existing promo sections that pre-date this field
+    homepageLayout = {
+      ...homepageLayout,
+      sections: homepageLayout.sections.map((s) =>
+        s.type === "promo_collection" && s.autoScan === undefined ? { ...s, autoScan: true } : s,
+      ),
+    };
   }
 
   return {

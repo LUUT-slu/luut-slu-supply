@@ -134,6 +134,7 @@ export default function Index() {
               matchedCampaign={matchCampaign(handle)}
               showEmptyState={promoSection.showEmptyState}
               emptyStateMessage={promoSection.emptyStateMessage}
+              autoScan={promoSection.autoScan !== false}
             />
           );
         })()}
