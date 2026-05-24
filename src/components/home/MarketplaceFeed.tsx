@@ -13,7 +13,7 @@ export function MarketplaceFeed() {
   const { collections, loading: collectionsLoading } = useShopifyCollections(50);
   const { products, loading } = useHybridProducts({
     categorySlug: active || undefined,
-    limit: 40,
+    limit: 48,
   });
   const { data: siteSettings } = useSiteSettings();
   const { data: soldLookup } = useProductSalesCounts();
@@ -41,11 +41,11 @@ export function MarketplaceFeed() {
   );
 
   return (
-    <section className="border-t border-border/40 py-5">
+    <section className="border-t border-border/40 py-5 md:py-10">
       <div className="container px-4">
         {/* Pills */}
-        <div className="-mx-4 mb-4 overflow-x-auto px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex gap-2 pb-1">
+        <div className="-mx-4 mb-4 overflow-x-auto px-4 [scrollbar-width:none] [-ms-overflow-style:none] md:overflow-visible md:px-0 [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-2 pb-1 md:flex-wrap">
             {collectionsLoading && pills.length === 1
               ? [0, 1, 2, 3, 4].map((i) => (
                   <div key={i} className="h-9 w-20 shrink-0 animate-pulse rounded-full bg-muted/40" />
@@ -73,7 +73,7 @@ export function MarketplaceFeed() {
 
         {/* Feed */}
         {loading ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {[0, 1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="aspect-square animate-pulse rounded-xl bg-muted/40" />
             ))}
@@ -83,7 +83,7 @@ export function MarketplaceFeed() {
             No products in this category yet.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {displayProducts.map((p, i) => (
               <UnifiedProductCard
                 key={p.id}
