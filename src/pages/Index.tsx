@@ -140,6 +140,20 @@ export default function Index() {
             switch (section.type) {
               case "trending":
                 return <WhatPeopleAreBuyingSection key={section.id} />;
+              case "promo_collection": {
+                const handle = section.promoCollectionHandle || section.slug || "";
+                return (
+                  <PromoCollectionSection
+                    key={section.id}
+                    slug={handle}
+                    label={section.label}
+                    subtitle={section.subtitle}
+                    limit={section.limit}
+                    badgeLabel={section.badgeLabel}
+                    matchedCampaign={matchCampaign(handle)}
+                  />
+                );
+              }
               case "best_sellers":
                 return <BestSellersSection key={section.id} limit={section.limit} />;
               case "new_arrivals":
