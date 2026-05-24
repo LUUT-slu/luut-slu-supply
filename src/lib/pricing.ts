@@ -2,6 +2,8 @@ import type { PromotionCampaign } from "@/hooks/usePromotionCampaigns";
 
 export interface PriceableProduct {
   id: string;
+  /** Original (unsplit) product id, when the visible card represents a variant split. */
+  originalId?: string;
   price: number;
   collectionHandles?: string[];
   category?: string | null;
