@@ -270,6 +270,60 @@ export function HomepageEditor({ initialLayout }: HomepageEditorProps) {
                   </div>
                 )}
 
+                {/* Promo collection picker */}
+                {section.type === "promo_collection" && (
+                  <div className="pl-7 space-y-2">
+                    <Select
+                      value={section.promoCollectionHandle || ""}
+                      onValueChange={(handle) => {
+                        const col = collections.find(c => c.handle === handle);
+                        updateSection(section.id, {
+                          promoCollectionHandle: handle,
+                          slug: handle,
+                          collectionTitle: col?.title,
+                          label: section.label === "Promo / Clearance" || !section.label
+                            ? `${col?.title || "Promo"} — On Sale`
+                            : section.label,
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="h-7 text-xs w-64">
+                        <SelectValue placeholder={loadingCollections ? "Loading collections..." : "Select promo collection..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {collections.map(col => (
+                          <SelectItem key={col.handle} value={col.handle} className="text-xs">
+                            {col.title}
+                            <span className="ml-2 text-muted-foreground">/{col.handle}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={section.badgeLabel || ""}
+                        onChange={(e) => updateSection(section.id, { badgeLabel: e.target.value })}
+                        placeholder="Badge label (e.g. CLEARANCE, SALE)"
+                        className="h-7 text-xs w-56"
+                      />
+                      <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={section.autoPrioritize !== false}
+                          onChange={(e) => updateSection(section.id, { autoPrioritize: e.target.checked })}
+                          className="h-3 w-3"
+                        />
+                        Auto-prioritize when promotion is active
+                      </label>
+                    </div>
+
+                    <p className="text-[10px] text-muted-foreground italic">
+                      Only displays products with an active discount. Hides automatically when no items are on sale.
+                    </p>
+                  </div>
+                )}
+
                 {/* Auto section info */}
                 {(section.type === "best_sellers" || section.type === "trending" || section.type === "new_arrivals") && (
                   <p className="pl-7 text-[10px] text-muted-foreground italic">
