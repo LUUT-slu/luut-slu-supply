@@ -14,6 +14,7 @@ import { MobileCategoryDrawer } from "@/components/MobileCategoryDrawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHeader } from "@/components/home/MobileHeader";
 import { MobileMenuDrawer } from "@/components/home/MobileMenuDrawer";
+import { LocaleSelector } from "@/components/locale/LocaleSelector";
 
 // Fallback categories if Shopify collections aren't loaded
 const fallbackCategories = [
