@@ -225,6 +225,12 @@ async function fetchSiteSettings(): Promise<SiteSettings> {
     homepageLayout = DEFAULT_HOMEPAGE_LAYOUT;
   }
 
+  // Ensure a PROMOS section exists for stores that saved a layout before promo_collection existed
+  if (!homepageLayout.sections.some((s) => s.type === "promo_collection")) {
+    const promo = DEFAULT_HOMEPAGE_LAYOUT.sections.find((s) => s.type === "promo_collection");
+    if (promo) homepageLayout = { ...homepageLayout, sections: [promo, ...homepageLayout.sections] };
+  }
+
   return {
     popups: (settings.popups as PopupSetting[]) || [],
     freezeCheckout: settings.freeze_checkout === true,
