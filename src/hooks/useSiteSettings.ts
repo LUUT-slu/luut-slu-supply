@@ -74,6 +74,19 @@ export const DEFAULT_HERO: HeroConfig = {
 
 export const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayout = {
   sections: [
+    {
+      id: "sec-promos",
+      type: "promo_collection",
+      label: "PROMOS",
+      subtitle: "Limited time deals",
+      limit: 8,
+      enabled: true,
+      autoPrioritize: true,
+      promoCollectionHandle: "",
+      badgeLabel: "SALE",
+      showEmptyState: false,
+      emptyStateMessage: "No active promos right now.",
+    },
     { id: "sec-trending", type: "trending", label: "What's Trending", limit: 6, enabled: true },
     { id: "sec-1", type: "category", slug: "beanies-tams", label: "Beanies & Tams", limit: 4, enabled: true },
     { id: "sec-2", type: "category", slug: "shoes", label: "Shoes", limit: 4, enabled: true },
