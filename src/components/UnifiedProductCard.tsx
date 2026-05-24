@@ -100,6 +100,12 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
     ? `${product.title} — ${product.visualOptionValue}`
     : product.title;
 
+  // When a promo applies, snapshot the discounted price into the cart line so
+  // checkout totals + Shopify Draft Order line items use the sale price.
+  const discountedVariantPrice = resolved.hasDiscount && firstVariant
+    ? { amount: resolved.final.toFixed(2), currencyCode: firstVariant.price.currencyCode }
+    : firstVariant?.price;
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
