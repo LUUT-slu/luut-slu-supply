@@ -18,6 +18,8 @@ interface PromoCollectionSectionProps {
   limit?: number;
   badgeLabel?: string;
   matchedCampaign?: PromotionCampaign;
+  showEmptyState?: boolean;
+  emptyStateMessage?: string;
 }
 
 export function PromoCollectionSection({
@@ -27,6 +29,8 @@ export function PromoCollectionSection({
   limit = 8,
   badgeLabel,
   matchedCampaign,
+  showEmptyState = false,
+  emptyStateMessage = "No active promos right now.",
 }: PromoCollectionSectionProps) {
   // Pull a wider net so we have enough discounted products to fill the section
   const { products, loading } = useHybridProducts({ categorySlug: slug, limit: limit * 3 });
