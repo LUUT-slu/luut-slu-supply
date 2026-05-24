@@ -1,7 +1,6 @@
-import { lazy, Suspense } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Link } from "react-router-dom";
-import { ArrowRight, MapPin, ShieldCheck, Users, Package, MessageCircle } from "lucide-react";
+import { MapPin, ShieldCheck, Users, Package, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -11,12 +10,9 @@ import { WhatPeopleAreBuyingSection } from "@/components/WhatPeopleAreBuyingSect
 import { HomeCategorySection } from "@/components/HomeCategorySection";
 import { HomeFeaturedSection } from "@/components/HomeFeaturedSection";
 import { HomeNewArrivalsSection } from "@/components/HomeNewArrivalsSection";
-import { useSiteSettings, DEFAULT_HERO } from "@/hooks/useSiteSettings";
-import storefrontHeroDesktop from "@/assets/storefront-hero-desktop.webp";
-import storefrontHeroMobile from "@/assets/storefront-hero-mobile.webp";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { SignupDiscountPopup } from "@/components/SignupDiscountPopup";
 import { HomepageReviews } from "@/components/HomepageReviews";
-import { AIChatWidget } from "@/components/AIChatWidget";
 import { HeroSlider } from "@/components/home/HeroSlider";
 import { MarketplaceFeed } from "@/components/home/MarketplaceFeed";
 import { MobileBottomNav } from "@/components/home/MobileBottomNav";
@@ -40,11 +36,8 @@ export default function Index() {
   const { data: settings } = useSiteSettings();
   const { data: activeCampaigns } = useActivePromotionCampaigns();
   const layout = settings?.homepageLayout;
-  const hero = layout?.hero || DEFAULT_HERO;
-  const customHeroImage = hero.imageUrl;
-  const heroImageDesktop = customHeroImage || storefrontHeroDesktop;
-  const heroImageMobile = customHeroImage || storefrontHeroMobile;
   const enabledSections = layout?.sections?.filter(s => s.enabled) || [];
+
 
   // Find best-matching active campaign for a promo_collection section
   const matchCampaign = (handle?: string) => {
