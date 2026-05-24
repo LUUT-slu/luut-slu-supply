@@ -15,6 +15,10 @@ import { useBestSellersUnified } from "@/hooks/useBestSellersUnified";
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
+import { LocaleSelector } from "@/components/locale/LocaleSelector";
+import { useLocaleStore } from "@/stores/localeStore";
+import { flagEmoji, getCurrency, getLanguage } from "@/lib/localization";
+import { Globe } from "lucide-react";
 
 interface MobileMenuDrawerProps {
   open: boolean;
