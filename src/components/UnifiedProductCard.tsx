@@ -65,6 +65,13 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
   const isVariant = isVariantListing(product);
   const firstVariant = product.variants[0];
   const price = parseFloat(product.price.amount);
+  const resolved = useResolvedPrice({
+    id: product.id,
+    price,
+    collectionHandles: (product as UnifiedProduct).collectionHandles,
+    category: product.category,
+    vendor: product.vendor,
+  });
   const rawImageUrl = product.images[0]?.url;
   // Mobile 2-col card image ~ half viewport (≈220-260px logical, request 2x for retina)
   const baseWidth = isMobile ? 520 : 600;
