@@ -29,7 +29,6 @@ interface LocalProduct {
   seller_profiles: {
     seller_name: string;
     location: string | null;
-    whatsapp: string | null;
   };
 }
 
