@@ -22,11 +22,19 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
   const firstVariant = node.variants.edges[0]?.node;
   const price = node.priceRange.minVariantPrice;
+  const priceNum = parseFloat(price.amount);
+  const resolved = useResolvedPrice({
+    id: node.id,
+    price: priceNum,
+    collectionHandles: (node as any).collectionHandles,
+    category: node.productType,
+    vendor: node.vendor,
+  });
   const rawImage = node.images.edges[0]?.node;
   const image = rawImage ? { ...rawImage, url: getOptimizedImageUrl(rawImage.url, 600) } : undefined;
   const imageSrcSet = rawImage ? getImageSrcSet(rawImage.url, 600) : undefined;
   const vendor = normalizeVendorName(node.vendor || "Luut SLU");
-  
+
   // Check if certified seller
   const isCertified = vendor.includes("Certified") || node.tags?.includes("certified-seller");
 
