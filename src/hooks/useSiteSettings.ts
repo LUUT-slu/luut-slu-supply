@@ -25,7 +25,7 @@ export interface ColorVariantCardsSetting {
 
 export interface HomepageSection {
   id: string;
-  type: "category" | "best_sellers" | "trending" | "new_arrivals" | "featured";
+  type: "category" | "best_sellers" | "trending" | "new_arrivals" | "featured" | "promo_collection";
   /** Shopify collection handle (or legacy category slug) */
   slug?: string;
   /** Cached Shopify collection title — used for admin display when collection is unavailable */
@@ -35,6 +35,12 @@ export interface HomepageSection {
   limit: number;
   enabled: boolean;
   featuredProductIds?: string[];
+  /** Promo collection section: collection handle this section pulls from */
+  promoCollectionHandle?: string;
+  /** Promo collection section: auto-move to top when a matching active promotion exists */
+  autoPrioritize?: boolean;
+  /** Promo collection section: optional badge override */
+  badgeLabel?: string;
 }
 
 export interface HeroConfig {

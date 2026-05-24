@@ -20,6 +20,8 @@ import { AIChatWidget } from "@/components/AIChatWidget";
 import { HeroSlider } from "@/components/home/HeroSlider";
 import { MarketplaceFeed } from "@/components/home/MarketplaceFeed";
 import { MobileBottomNav } from "@/components/home/MobileBottomNav";
+import { PromoCollectionSection } from "@/components/home/PromoCollectionSection";
+import { useActivePromotionCampaigns } from "@/hooks/usePromotionCampaigns";
 
 const howItWorks = [
   { step: 1, title: "Browse Products", description: "Explore outfits from verified local sellers on our marketplace", icon: Package },
@@ -36,12 +38,44 @@ const trustPoints = [
 export default function Index() {
   const isMobile = useIsMobile();
   const { data: settings } = useSiteSettings();
+  const { data: activeCampaigns } = useActivePromotionCampaigns();
   const layout = settings?.homepageLayout;
   const hero = layout?.hero || DEFAULT_HERO;
   const customHeroImage = hero.imageUrl;
   const heroImageDesktop = customHeroImage || storefrontHeroDesktop;
   const heroImageMobile = customHeroImage || storefrontHeroMobile;
-  const sections = layout?.sections?.filter(s => s.enabled) || [];
+  const enabledSections = layout?.sections?.filter(s => s.enabled) || [];
+
+  // Find best-matching active campaign for a promo_collection section
+  const matchCampaign = (handle?: string) => {
+    if (!handle || !activeCampaigns?.length) return undefined;
+    const h = handle.toLowerCase();
+    const matches = activeCampaigns.filter(
+      (c) =>
+        c.target_mode === "collections" &&
+        Array.isArray(c.target_collections) &&
+        c.target_collections.some((th) => th.toLowerCase() === h),
+    );
+    if (!matches.length) return undefined;
+    return matches.sort((a, b) => (Number(b.priority) || 0) - (Number(a.priority) || 0))[0];
+  };
+
+  // Auto-prioritize: promo_collection sections with autoPrioritize + matching active campaign
+  // jump to the front, ordered by campaign priority desc. Others keep admin-defined order.
+  const sections = [...enabledSections]
+    .map((s, i) => {
+      const handle = s.promoCollectionHandle || s.slug;
+      const matched =
+        s.type === "promo_collection" && s.autoPrioritize !== false
+          ? matchCampaign(handle)
+          : undefined;
+      return { s, i, boost: matched ? Number(matched.priority) || 1 : 0 };
+    })
+    .sort((a, b) => {
+      if (a.boost !== b.boost) return b.boost - a.boost;
+      return a.i - b.i;
+    })
+    .map(({ s }) => s);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -106,6 +140,20 @@ export default function Index() {
             switch (section.type) {
               case "trending":
                 return <WhatPeopleAreBuyingSection key={section.id} />;
+              case "promo_collection": {
+                const handle = section.promoCollectionHandle || section.slug || "";
+                return (
+                  <PromoCollectionSection
+                    key={section.id}
+                    slug={handle}
+                    label={section.label}
+                    subtitle={section.subtitle}
+                    limit={section.limit}
+                    badgeLabel={section.badgeLabel}
+                    matchedCampaign={matchCampaign(handle)}
+                  />
+                );
+              }
               case "best_sellers":
                 return <BestSellersSection key={section.id} limit={section.limit} />;
               case "new_arrivals":
