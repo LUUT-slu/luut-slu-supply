@@ -65,7 +65,7 @@ export default function LocalProductDetail() {
         .from('seller_products')
         .select(`
           *,
-          seller_profiles!inner(seller_name, location, whatsapp)
+          seller_profiles!inner(seller_name, location)
         `)
         .eq('id', productId)
         .single();
