@@ -11,7 +11,7 @@ export { useActivePromotionCampaigns as useActivePromotions } from "./usePromoti
  */
 export function useResolvedPrice(product: PriceableProduct): ResolvedPrice {
   const { data: campaigns } = useActivePromotionCampaigns();
-  const key = `${product.id}|${product.price}|${(product.collectionHandles || []).join(",")}|${product.category || ""}`;
+  const key = `${product.id}|${product.originalId || ""}|${product.price}|${(product.collectionHandles || []).join(",")}|${product.category || ""}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => resolveProductPrice(product, campaigns), [key, campaigns]);
 }
