@@ -8,6 +8,8 @@ import { ShoppingCart, MapPin, Wallet, Heart, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
+import { useResolvedPrice } from "@/hooks/useActivePromotions";
+import { PriceTag, SaleRibbon } from "./PriceTag";
 
 interface UnifiedProductCardProps {
   product: UnifiedProduct | VariantListingProduct;
@@ -63,6 +65,13 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
   const isVariant = isVariantListing(product);
   const firstVariant = product.variants[0];
   const price = parseFloat(product.price.amount);
+  const resolved = useResolvedPrice({
+    id: product.id,
+    price,
+    collectionHandles: (product as UnifiedProduct).collectionHandles,
+    category: product.category,
+    vendor: product.vendor,
+  });
   const rawImageUrl = product.images[0]?.url;
   // Mobile 2-col card image ~ half viewport (≈220-260px logical, request 2x for retina)
   const baseWidth = isMobile ? 520 : 600;
@@ -90,6 +99,12 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
   const displayTitle = isVariant
     ? `${product.title} — ${product.visualOptionValue}`
     : product.title;
+
+  // When a promo applies, snapshot the discounted price into the cart line so
+  // checkout totals + Shopify Draft Order line items use the sale price.
+  const discountedVariantPrice = resolved.hasDiscount && firstVariant
+    ? { amount: resolved.final.toFixed(2), currencyCode: firstVariant.price.currencyCode }
+    : firstVariant?.price;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -136,7 +151,7 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
         },
         variantId: firstVariant.id,
         variantTitle: firstVariant.title,
-        price: firstVariant.price,
+        price: discountedVariantPrice!,
         quantity: 1,
         selectedOptions: firstVariant.selectedOptions,
       });
@@ -151,7 +166,7 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
         product: product.originalShopifyProduct,
         variantId: firstVariant.id,
         variantTitle: firstVariant.title,
-        price: firstVariant.price,
+        price: discountedVariantPrice!,
         quantity: 1,
         selectedOptions: firstVariant.selectedOptions,
       });
@@ -211,6 +226,11 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
             </span>
           )}
 
+          {/* Sale ribbon (top-left, below sold-out if both) */}
+          {resolved.hasDiscount && !isOutOfStock && (
+            <SaleRibbon resolved={resolved} className="absolute left-2 top-2" />
+          )}
+
           {/* "X left" badge bottom-right when low stock and qty known */}
           {showLeftBadge && (
             <span className="absolute right-2 bottom-2 z-10 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white">
@@ -234,11 +254,8 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
             </span>
           ) : null}
 
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="font-display text-[15px] font-semibold text-primary">
-              EC${price.toFixed(2)}
-            </span>
-          </div>
+          <PriceTag resolved={resolved} size="sm" className="mt-1" showPercentChip />
+
 
           {typeof soldCount === "number" && soldCount > 0 && (
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
@@ -280,6 +297,9 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
         )}
         
         <StockBadge status={product.stockStatus} />
+        {resolved.hasDiscount && !isOutOfStock && (
+          <SaleRibbon resolved={resolved} className="absolute right-2 top-2" />
+        )}
         
         {product.source === 'lovable' && (
           <div className="absolute left-2 top-2">
@@ -322,9 +342,8 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
           </span>
         )}
         <div className="mt-auto flex items-center justify-between">
-          <span className="font-display text-lg">
-            EC${price.toFixed(2)}
-          </span>
+          <PriceTag resolved={resolved} size="md" showPercentChip />
+
           {isOutOfStock && (
             <Button size="sm" disabled variant="outline" className="text-xs">
               Sold Out

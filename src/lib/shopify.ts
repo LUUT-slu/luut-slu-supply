@@ -15,6 +15,8 @@ export interface ShopifyProduct {
     productType: string;
     tags: string[];
     createdAt: string;
+    /** Collection handles this product belongs to (populated when fetched via list/collection queries). */
+    collectionHandles?: string[];
     priceRange: {
       minVariantPrice: {
         amount: string;
@@ -122,6 +124,13 @@ const PRODUCTS_QUERY = `
           productType
           tags
           createdAt
+          collections(first: 10) {
+            edges {
+              node {
+                handle
+              }
+            }
+          }
           priceRange {
             minVariantPrice {
               amount
@@ -284,15 +293,25 @@ const COLLECTION_PRODUCTS_QUERY = `
 
 export type ProductSortKey = 'TITLE' | 'PRODUCT_TYPE' | 'VENDOR' | 'UPDATED_AT' | 'CREATED_AT' | 'BEST_SELLING' | 'PRICE';
 
+function attachCollectionHandles(edges: any[]): ShopifyProduct[] {
+  return (edges || []).map((edge: any) => {
+    const node = edge?.node ?? edge;
+    const handles: string[] = Array.isArray(node?.collections?.edges)
+      ? node.collections.edges.map((e: any) => e?.node?.handle).filter(Boolean)
+      : [];
+    return { node: { ...node, collectionHandles: handles } } as ShopifyProduct;
+  });
+}
+
 export async function fetchProducts(
-  first: number = 50, 
+  first: number = 50,
   query?: string,
   sortKey: ProductSortKey = 'CREATED_AT',
   reverse: boolean = true
 ): Promise<ShopifyProduct[]> {
   const data = await storefrontApiRequest(PRODUCTS_QUERY, { first, query, sortKey, reverse });
   if (!data) return [];
-  return data.data.products.edges;
+  return attachCollectionHandles(data.data.products.edges);
 }
 
 export async function fetchProductsByCollection(
@@ -303,8 +322,13 @@ export async function fetchProductsByCollection(
   if (!data) return [];
   const collection = data.data?.collectionByHandle;
   if (!collection) return [];
-  // Map to same ShopifyProduct format (edges already contain { node: {...} })
-  return collection.products.edges;
+  // Decorate every product in this collection with the current handle so the
+  // shared pricing layer can match collection-targeted promotions.
+  return (collection.products.edges || []).map((edge: any) => {
+    const node = edge?.node ?? edge;
+    const existing: string[] = Array.isArray(node?.collectionHandles) ? node.collectionHandles : [];
+    return { node: { ...node, collectionHandles: Array.from(new Set([...existing, collectionHandle])) } } as ShopifyProduct;
+  });
 }
 
 export async function fetchProductsByVendor(vendorFilter: string): Promise<ShopifyProduct[]> {

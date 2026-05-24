@@ -975,50 +975,74 @@ export type Database = {
       }
       promotion_campaigns: {
         Row: {
+          badge_text: string | null
+          banner_text: string | null
           created_at: string
           created_by: string | null
+          cta_url: string | null
           description: string | null
           discount_type: string
           discount_value: number
           end_date: string | null
+          exclude_product_ids: string[]
           id: string
           is_active: boolean
           name: string
+          priority: number
           product_refs: Json
           promo_label: string
           start_date: string | null
+          target_categories: string[]
+          target_collections: string[]
+          target_mode: string
           updated_at: string
           visibility: Json
         }
         Insert: {
+          badge_text?: string | null
+          banner_text?: string | null
           created_at?: string
           created_by?: string | null
+          cta_url?: string | null
           description?: string | null
           discount_type?: string
           discount_value?: number
           end_date?: string | null
+          exclude_product_ids?: string[]
           id?: string
           is_active?: boolean
           name: string
+          priority?: number
           product_refs?: Json
           promo_label?: string
           start_date?: string | null
+          target_categories?: string[]
+          target_collections?: string[]
+          target_mode?: string
           updated_at?: string
           visibility?: Json
         }
         Update: {
+          badge_text?: string | null
+          banner_text?: string | null
           created_at?: string
           created_by?: string | null
+          cta_url?: string | null
           description?: string | null
           discount_type?: string
           discount_value?: number
           end_date?: string | null
+          exclude_product_ids?: string[]
           id?: string
           is_active?: boolean
           name?: string
+          priority?: number
           product_refs?: Json
           promo_label?: string
           start_date?: string | null
+          target_categories?: string[]
+          target_collections?: string[]
+          target_mode?: string
           updated_at?: string
           visibility?: Json
         }

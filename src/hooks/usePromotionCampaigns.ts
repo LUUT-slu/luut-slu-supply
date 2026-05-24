@@ -19,6 +19,8 @@ export interface PromotionVisibility {
   collections: boolean;
 }
 
+export type PromotionTargetMode = "products" | "collections" | "categories" | "sitewide";
+
 export interface PromotionCampaign {
   id: string;
   name: string;
@@ -33,6 +35,15 @@ export interface PromotionCampaign {
   visibility: PromotionVisibility;
   created_at: string;
   updated_at: string;
+  // Extended targeting + presentation fields
+  target_mode: PromotionTargetMode;
+  target_collections: string[];
+  target_categories: string[];
+  badge_text: string | null;
+  banner_text: string | null;
+  cta_url: string | null;
+  priority: number;
+  exclude_product_ids: string[];
 }
 
 export function deriveStatus(c: Pick<PromotionCampaign, "is_active" | "start_date" | "end_date">): CampaignStatus {
@@ -45,6 +56,25 @@ export function deriveStatus(c: Pick<PromotionCampaign, "is_active" | "start_dat
   return "active";
 }
 
+function normalizeRow(r: any): PromotionCampaign {
+  return {
+    ...r,
+    product_refs: Array.isArray(r.product_refs) ? r.product_refs : [],
+    visibility:
+      r.visibility && typeof r.visibility === "object"
+        ? r.visibility
+        : { posters: true, productPages: false, homepage: false, collections: false },
+    target_mode: (r.target_mode as PromotionTargetMode) || "products",
+    target_collections: Array.isArray(r.target_collections) ? r.target_collections : [],
+    target_categories: Array.isArray(r.target_categories) ? r.target_categories : [],
+    badge_text: r.badge_text ?? null,
+    banner_text: r.banner_text ?? null,
+    cta_url: r.cta_url ?? null,
+    priority: Number(r.priority) || 0,
+    exclude_product_ids: Array.isArray(r.exclude_product_ids) ? r.exclude_product_ids : [],
+  } as PromotionCampaign;
+}
+
 export function usePromotionCampaigns() {
   return useQuery({
     queryKey: ["promotion-campaigns"],
@@ -54,14 +84,7 @@ export function usePromotionCampaigns() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return ((data as any[]) || []).map((r) => ({
-        ...r,
-        product_refs: Array.isArray(r.product_refs) ? r.product_refs : [],
-        visibility:
-          r.visibility && typeof r.visibility === "object"
-            ? r.visibility
-            : { posters: true, productPages: false, homepage: false, collections: false },
-      })) as PromotionCampaign[];
+      return ((data as any[]) || []).map(normalizeRow);
     },
     staleTime: 60_000,
   });
@@ -77,14 +100,7 @@ export function useActivePromotionCampaigns() {
         .eq("is_active", true)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const list = ((data as any[]) || []).map((r) => ({
-        ...r,
-        product_refs: Array.isArray(r.product_refs) ? r.product_refs : [],
-        visibility:
-          r.visibility && typeof r.visibility === "object"
-            ? r.visibility
-            : { posters: true, productPages: false, homepage: false, collections: false },
-      })) as PromotionCampaign[];
+      const list = ((data as any[]) || []).map(normalizeRow);
       return list.filter((c) => deriveStatus(c) === "active");
     },
     staleTime: 60_000,
