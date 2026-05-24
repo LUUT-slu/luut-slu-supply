@@ -48,7 +48,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       product,
       variantId: firstVariant.id,
       variantTitle: firstVariant.title,
-      price: firstVariant.price,
+      price: resolved.hasDiscount
+        ? { amount: resolved.final.toFixed(2), currencyCode: firstVariant.price.currencyCode }
+        : firstVariant.price,
       quantity: 1,
       selectedOptions: firstVariant.selectedOptions,
     });
@@ -110,7 +112,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         
         <div className="flex items-center justify-between mb-2">
           <span className="font-display text-lg text-primary">
-            EC${parseFloat(price.amount).toFixed(2)}
+            <PriceTag resolved={resolved} size="md" showPercentChip />
+            {/* placeholder kept for legacy layout: */}
+            <span className="sr-only">EC${resolved.final.toFixed(2)}</span>
           </span>
           <Button
             size="sm"
