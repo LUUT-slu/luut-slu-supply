@@ -39,10 +39,21 @@ function applyDiscount(price: number, c: PromotionCampaign): number {
 }
 
 function matchRank(p: PriceableProduct, c: PromotionCampaign): number {
+  // Build the set of ids that should match a campaign's product references:
+  // the visible card id, the original (unsplit) product id, and a defensive
+  // fallback that strips the `__variant` suffix used by variantSplitter.
+  const ids = new Set<string>();
+  if (p.id) {
+    ids.add(p.id);
+    const stripped = p.id.split("__")[0];
+    if (stripped && stripped !== p.id) ids.add(stripped);
+  }
+  if (p.originalId) ids.add(p.originalId);
+
   // Excluded explicitly
-  if (Array.isArray(c.exclude_product_ids) && c.exclude_product_ids.includes(p.id)) return -1;
+  if (Array.isArray(c.exclude_product_ids) && c.exclude_product_ids.some((id) => ids.has(id))) return -1;
   // 1) specific product reference always wins
-  if (Array.isArray(c.product_refs) && c.product_refs.some((r) => r.id === p.id)) return 1;
+  if (Array.isArray(c.product_refs) && c.product_refs.some((r) => ids.has(r.id))) return 1;
   const mode = c.target_mode || "products";
   // 2) shopify collection handle match
   if (mode === "collections" && Array.isArray(c.target_collections) && c.target_collections.length && p.collectionHandles?.length) {
