@@ -8,6 +8,8 @@ import { ShoppingCart, MapPin, Wallet, Heart, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
+import { useResolvedPrice } from "@/hooks/useActivePromotions";
+import { PriceTag, SaleRibbon } from "./PriceTag";
 
 interface UnifiedProductCardProps {
   product: UnifiedProduct | VariantListingProduct;
