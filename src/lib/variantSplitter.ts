@@ -17,6 +17,8 @@ export interface VariantListingProduct extends UnifiedProduct {
   visualOptionValue?: string;
   /** The variant ID to pre-select on the product page */
   preselectedVariantId?: string;
+  /** Original (unsplit) product id — used for promo/discount matching. */
+  originalProductId: string;
 }
 
 /**
