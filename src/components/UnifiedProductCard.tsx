@@ -151,7 +151,7 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
         },
         variantId: firstVariant.id,
         variantTitle: firstVariant.title,
-        price: firstVariant.price,
+        price: discountedVariantPrice!,
         quantity: 1,
         selectedOptions: firstVariant.selectedOptions,
       });
@@ -166,7 +166,7 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
         product: product.originalShopifyProduct,
         variantId: firstVariant.id,
         variantTitle: firstVariant.title,
-        price: firstVariant.price,
+        price: discountedVariantPrice!,
         quantity: 1,
         selectedOptions: firstVariant.selectedOptions,
       });
