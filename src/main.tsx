@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { I18nProvider } from "./i18n";
 
 // Clear stale lazy-chunk reload sentinel so a once-broken session can recover
 try {
@@ -26,7 +27,11 @@ if (!rootEl) {
   console.error("[boot] #root element missing");
 } else {
   try {
-    createRoot(rootEl).render(<App />);
+    createRoot(rootEl).render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
     console.info("[boot] React mounted");
   } catch (err) {
     console.error("[boot] React mount failed:", err);

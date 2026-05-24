@@ -14,6 +14,7 @@ import { MobileCategoryDrawer } from "@/components/MobileCategoryDrawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHeader } from "@/components/home/MobileHeader";
 import { MobileMenuDrawer } from "@/components/home/MobileMenuDrawer";
+import { LocaleSelector } from "@/components/locale/LocaleSelector";
 
 // Fallback categories if Shopify collections aren't loaded
 const fallbackCategories = [
@@ -157,11 +158,13 @@ export function Header() {
     );
   }
 
+
   return (
     <>
     <SaleBanner />
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between md:h-20">
+
         {/* Left cluster: logo + Orders (or homepage variant) */}
         <div className="flex-row gap-[14px] flex items-end justify-center">
           {isHomepage ? (
@@ -235,7 +238,8 @@ export function Header() {
         </nav>
 
         {/* Right side actions */}
-        <div className="flex-row flex items-center justify-center gap-px">
+        <div className="flex-row flex items-center justify-center gap-1.5 md:gap-2">
+          <LocaleSelector className="mr-1" />
           <Link to={currentUser ? "/account" : "/login"}>
             <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
               <User className="h-5 w-[20px]" />

@@ -1,64 +1,53 @@
-## Goal
+# Localization Selector — Country / Language / Currency
 
-Make `/` use one shared, responsive homepage on every screen. Mobile already shows: HeroSlider → PROMOS → MarketplaceFeed (Shopify pills + product grid). Desktop currently shows a static hero and the admin's dynamic sections, with no MarketplaceFeed and PROMOS only appearing if a section is configured. The two should be the same component tree, just styled responsively.
+Add a homepage selector so visitors can pick their **country**, **language**, and **currency**. Saint Lucia / XCD / English remain defaults. No checkout changes in this pass.
 
-## Target homepage order (both mobile and desktop)
+## Scope
 
-```text
-┌─────────────────────────────────────┐
-│ Header                              │
-│ HeroSlider (cinematic, responsive)  │
-│ PROMOS (pinned, auto-scan)          │
-│ MarketplaceFeed (pills + grid)      │
-│ Admin sections (Best/Featured/etc.) │
-│ HomepageReviews                     │
-│ Trust + How It Works + CTA          │
-│ Footer / MobileBottomNav            │
-└─────────────────────────────────────┘
-```
+- Selector UI in the header (mobile + desktop) and a visible chip on the homepage hero area.
+- Auto-detect on first visit, persist choice across pages and sessions.
+- Pull available markets/currencies/locales from Shopify Markets via Storefront API so new markets added in Shopify appear automatically.
+- Translations scaffold for **EN / FR / ES** (UI strings only — product copy still comes from Shopify in its own translations later).
 
-## Changes
+## Files
 
-### 1. `src/pages/Index.tsx` — single render tree
-- Remove the `isMobile` branch around the hero. Always render `<HeroSlider />`.
-- Delete the desktop-only `<section className="relative min-h-[90vh]…">` block and its `picture`/CTA markup (HeroSlider already reads the same `hero` settings, so admin hero config keeps working).
-- Always render the pinned `PromoCollectionSection` (current logic stays).
-- Always render `<MarketplaceFeed />` after PROMOS, on both viewports.
-- Always render the admin `sections.map(...)` loop after MarketplaceFeed (currently desktop-only). This is the answer to the second question — sections render on mobile and desktop.
-- Keep `pb-20` only on mobile (for MobileBottomNav clearance).
+**New**
+- `src/lib/localization.ts` — countries list (ISO-3166 + flag emoji + dial code), currencies (ISO-4217 + symbol), languages (EN/FR/ES initial), helpers (`formatPrice`, `getDefaultsForCountry`).
+- `src/stores/localeStore.ts` — Zustand store: `country`, `language`, `currency`, `hasUserOverridden`, persisted to `localStorage` under `luut-locale-v1`.
+- `src/hooks/useShopifyMarkets.ts` — Storefront API query for `localization { availableCountries { isoCode name currency { isoCode } availableLanguages { isoCode endonymName } } }`. Cached 1h.
+- `src/hooks/useGeoDetect.ts` — calls a free IP geo endpoint (`https://ipapi.co/json/`) once, falls back to `navigator.language` country hint, then to LC. Result cached in sessionStorage.
+- `src/components/locale/LocaleSelector.tsx` — popover trigger (flag + country code + currency) → command palette with **search input**, scrollable list (`ScrollArea`), sections for Country / Language / Currency via tabs. Built on existing `Popover` + `Command` + `ScrollArea` shadcn primitives.
+- `src/components/locale/LocaleDetectBanner.tsx` — small dismissible banner shown once when detected country ≠ current (e.g. "Shopping from France? Switch to FR / EUR · [Switch] [Keep XCD]").
+- `src/i18n/index.ts` + `src/i18n/{en,fr,es}.json` — minimal i18n provider (custom lightweight context, no new dep) exposing `t(key)` + `useT()`. Strings limited to header/menu/selector/banner for now.
 
-### 2. `src/components/home/HeroSlider.tsx` — responsive scale-up
-- Adjust slide container so it grows on larger viewports: `h-[70vh] sm:h-[75vh] md:h-[85vh] lg:h-[90vh]` (currently fixed mobile-ish height).
-- Use `<picture>` with `storefrontHeroDesktop` for `md+` and `storefrontHeroMobile` below, both falling back to `hero.imageUrl` when set.
-- Scale typography and CTAs at `md:`/`lg:` (e.g. heading `text-3xl md:text-5xl lg:text-6xl`, wider max-width on the text block, larger button sizing).
-- Keep autoplay + Embla logic unchanged. No new animations (respects the static-hero perf memory: scale only, no extra motion).
+**Edited**
+- `src/components/Header.tsx` — mount `<LocaleSelector />` in the right-action cluster (desktop) just before the User icon.
+- `src/components/home/MobileHeader.tsx` — add a compact `<LocaleSelector compact />` button on the left of the cart icon (flag only on mobile).
+- `src/components/home/MobileMenuDrawer.tsx` — add a "Region & Language" row near the bottom that opens the selector.
+- `src/pages/Index.tsx` — render `<LocaleDetectBanner />` directly under `<Header />` (above hero) so international visitors see it immediately.
+- `src/main.tsx` — wrap app in `<I18nProvider>`.
+- `src/lib/pricing.ts` — extend `formatPrice` to accept a target currency from `localeStore` (display-only conversion uses Shopify's `@inContext` later; for now we show the original XCD price with a "(approx. {currency} {value})" hint when a non-XCD currency is selected, using a static FX table in `localization.ts` clearly marked as approximate). **No cart/checkout math changes.**
 
-### 3. `src/components/home/MarketplaceFeed.tsx` — desktop polish
-- Section padding scales: `py-5 md:py-10`.
-- Grid already responsive (`md:grid-cols-3 lg:grid-cols-4`); bump to `xl:grid-cols-5` for very wide screens.
-- Pills row: keep horizontal scroll on mobile, allow `md:flex-wrap` so all chips show on desktop without scroll.
-- Raise `limit` from 40 → 48 to better fill desktop grids.
+## Behavior
 
-### 4. `src/components/home/PromoCollectionSection.tsx` — responsive grid only
-- No logic changes. Ensure its product grid uses the same responsive classes as MarketplaceFeed (`grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5`) so the pinned PROMOS slot looks consistent on desktop. Header countdown + auto-scan stay as-is.
+1. On first load, `useGeoDetect` resolves country → `localeStore` initialises to detected defaults (or LC/XCD/EN fallback) **only if** `hasUserOverridden` is false.
+2. `LocaleDetectBanner` appears once when detected country ≠ LC and user hasn't chosen yet. Dismiss → sets `hasUserOverridden = true`.
+3. `LocaleSelector` opens a Popover with three tabs: **Country**, **Language**, **Currency**. Each tab has its own search box + scrollable virtualised list.
+   - Country list is the union of `useShopifyMarkets` results and the static fallback (so it still works if Shopify is rate-limited).
+   - Picking a country auto-suggests its primary currency + language but user can override each independently.
+4. All selections persist in `localStorage`; navigations and refresh keep the choice.
+5. `document.documentElement.lang` is updated on language change.
 
-### 5. Admin homepage sections — render on both viewports
-- The `sections.map(...)` block moves out of the `isMobile ? … : …` branch in `Index.tsx` and runs unconditionally below MarketplaceFeed. Existing components (`BestSellersSection`, `HomeFeaturedSection`, `HomeCategorySection`, `HomeNewArrivalsSection`, `WhatPeopleAreBuyingSection`) are already responsive, so no changes inside them.
-- `promo_collection` continues to be skipped here (rendered in the pinned slot).
+## Technical notes
 
-### 6. No changes
-- `useSiteSettings`, `HomepageEditor`, `usePromotionCampaigns`, pricing logic, DB schema, edge functions: all untouched. The admin's existing homepage section controls now drive desktop AND mobile through the unified tree.
+- Uses existing UI primitives (`Popover`, `Command`, `Tabs`, `ScrollArea`, `Input`) — no new deps.
+- Flag rendering via emoji (`🇱🇨`) computed from ISO-2 code — zero asset cost.
+- Shopify Markets query uses the public Storefront API and the existing `storefrontApiRequest` helper; no Admin scopes needed.
+- i18n is intentionally minimal (no `react-i18next` to keep bundle small); structure allows swapping later.
+- All colors via existing semantic tokens (`bg-background`, `border-primary/20`, etc.) — matches LUUT dark theme.
 
-## Files touched
+## Out of scope (next pass)
 
-- `src/pages/Index.tsx` — restructure render tree, remove desktop-only hero, render MarketplaceFeed + sections on both viewports.
-- `src/components/home/HeroSlider.tsx` — responsive sizing + desktop image source.
-- `src/components/home/MarketplaceFeed.tsx` — responsive padding, pill wrap on desktop, xl grid, limit bump.
-- `src/components/home/PromoCollectionSection.tsx` — responsive grid columns only.
-
-## Out of scope
-
-- Visual redesign of any section.
-- Changes to admin Homepage Editor schema or controls.
-- PROMOS auto-scan logic (already shipped in the previous turn).
-- Header / MobileBottomNav.
+- Checkout currency switching and local vs international checkout buttons.
+- Translating product titles/descriptions (handled by Shopify `@inContext` translations later).
+- Admin UI to manage the language strings.

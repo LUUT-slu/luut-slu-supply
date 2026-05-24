@@ -15,6 +15,10 @@ import { useBestSellersUnified } from "@/hooks/useBestSellersUnified";
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
+import { LocaleSelector } from "@/components/locale/LocaleSelector";
+import { useLocaleStore } from "@/stores/localeStore";
+import { flagEmoji, getCurrency, getLanguage } from "@/lib/localization";
+import { Globe } from "lucide-react";
 
 interface MobileMenuDrawerProps {
   open: boolean;
@@ -77,6 +81,9 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [orderCount, setOrderCount] = useState(0);
+  const localeCountry = useLocaleStore((s) => s.country);
+  const localeLanguage = useLocaleStore((s) => s.language);
+  const localeCurrency = useLocaleStore((s) => s.currency);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -291,6 +298,24 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
             <Row to="/meetup-policy" icon={<Truck className="h-4 w-4" />} label="Delivery & Meetups" onClick={close} />
             <Row to="/contact" icon={<HelpCircle className="h-4 w-4" />} label="FAQ" onClick={close} />
             <Row to="/contact" icon={<Mail className="h-4 w-4" />} label="Contact Us" onClick={close} />
+
+            {/* Region & Language */}
+            <SectionLabel>Region & Language</SectionLabel>
+            <div className="flex items-center justify-between gap-3 rounded-xl px-3 py-3 hover:bg-primary/5">
+              <span className="flex items-center gap-3 min-w-0">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
+                  <Globe className="h-4 w-4" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[15px] font-medium text-foreground leading-tight">Region & Language</span>
+                  <span className="block text-[11px] text-muted-foreground truncate mt-0.5">
+                    {flagEmoji(localeCountry)} {localeCountry} · {getLanguage(localeLanguage)?.endonym ?? localeLanguage.toUpperCase()} · {getCurrency(localeCurrency)?.symbol ?? localeCurrency}
+                  </span>
+                </span>
+              </span>
+              <LocaleSelector />
+            </div>
+
 
             {/* Auth */}
             <div className="mt-5 px-3">

@@ -1,0 +1,18 @@
+{
+  "locale.title": "Región e idioma",
+  "locale.subtitle": "Elige desde dónde compras",
+  "locale.tab.country": "País",
+  "locale.tab.language": "Idioma",
+  "locale.tab.currency": "Moneda",
+  "locale.search.country": "Buscar países…",
+  "locale.search.language": "Buscar idiomas…",
+  "locale.search.currency": "Buscar monedas…",
+  "locale.shopify.label": "Mercados de Shopify",
+  "locale.more.label": "Más regiones",
+  "locale.done": "Listo",
+  "locale.banner.title": "¿Comprando desde {country}?",
+  "locale.banner.body": "Cambia a {language} y {currency} para una experiencia local.",
+  "locale.banner.switch": "Cambiar",
+  "locale.banner.keep": "Mantener {currency}",
+  "menu.regionLanguage": "Región e idioma"
+}

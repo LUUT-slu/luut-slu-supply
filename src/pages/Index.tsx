@@ -18,6 +18,7 @@ import { MarketplaceFeed } from "@/components/home/MarketplaceFeed";
 import { MobileBottomNav } from "@/components/home/MobileBottomNav";
 import { PromoCollectionSection } from "@/components/home/PromoCollectionSection";
 import { useActivePromotionCampaigns } from "@/hooks/usePromotionCampaigns";
+import { LocaleDetectBanner } from "@/components/locale/LocaleDetectBanner";
 
 const howItWorks = [
   { step: 1, title: "Browse Products", description: "Explore outfits from verified local sellers on our marketplace", icon: Package },
@@ -63,6 +64,8 @@ export default function Index() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
+      <LocaleDetectBanner />
+
 
       <main className={`flex-1 ${isMobile ? "pb-20" : ""}`}>
         {/* HERO — unified cinematic slider on all viewports */}
