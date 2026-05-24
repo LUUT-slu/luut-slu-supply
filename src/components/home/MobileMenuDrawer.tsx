@@ -81,6 +81,9 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [orderCount, setOrderCount] = useState(0);
+  const localeCountry = useLocaleStore((s) => s.country);
+  const localeLanguage = useLocaleStore((s) => s.language);
+  const localeCurrency = useLocaleStore((s) => s.currency);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
