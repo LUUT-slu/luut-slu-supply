@@ -158,11 +158,21 @@ export function Header() {
     );
   }
 
+  if (isMobile && isHomepage) {
+    return (
+      <>
+        <SaleBanner />
+        <MobileHeader />
+      </>
+    );
+  }
+
   return (
     <>
     <SaleBanner />
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between md:h-20">
+
         {/* Left cluster: logo + Orders (or homepage variant) */}
         <div className="flex-row gap-[14px] flex items-end justify-center">
           {isHomepage ? (
