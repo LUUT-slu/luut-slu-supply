@@ -226,6 +226,11 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
             </span>
           )}
 
+          {/* Sale ribbon (top-left, below sold-out if both) */}
+          {resolved.hasDiscount && !isOutOfStock && (
+            <SaleRibbon resolved={resolved} className="absolute left-2 top-2" />
+          )}
+
           {/* "X left" badge bottom-right when low stock and qty known */}
           {showLeftBadge && (
             <span className="absolute right-2 bottom-2 z-10 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white">
@@ -249,11 +254,8 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
             </span>
           ) : null}
 
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="font-display text-[15px] font-semibold text-primary">
-              EC${price.toFixed(2)}
-            </span>
-          </div>
+          <PriceTag resolved={resolved} size="sm" className="mt-1" showPercentChip />
+
 
           {typeof soldCount === "number" && soldCount > 0 && (
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
@@ -295,6 +297,9 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
         )}
         
         <StockBadge status={product.stockStatus} />
+        {resolved.hasDiscount && !isOutOfStock && (
+          <SaleRibbon resolved={resolved} className="absolute right-2 top-2" />
+        )}
         
         {product.source === 'lovable' && (
           <div className="absolute left-2 top-2">
@@ -337,9 +342,8 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
           </span>
         )}
         <div className="mt-auto flex items-center justify-between">
-          <span className="font-display text-lg">
-            EC${price.toFixed(2)}
-          </span>
+          <PriceTag resolved={resolved} size="md" showPercentChip />
+
           {isOutOfStock && (
             <Button size="sm" disabled variant="outline" className="text-xs">
               Sold Out
