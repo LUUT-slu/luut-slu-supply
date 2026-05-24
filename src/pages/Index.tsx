@@ -121,6 +121,23 @@ export default function Index() {
           </section>
         )}
 
+        {/* PROMOS — pinned slot directly below the hero, above category chip scroll / sections */}
+        {promoSection && (() => {
+          const handle = promoSection.promoCollectionHandle || promoSection.slug || "";
+          return (
+            <PromoCollectionSection
+              slug={handle}
+              label={promoSection.label}
+              subtitle={promoSection.subtitle}
+              limit={promoSection.limit}
+              badgeLabel={promoSection.badgeLabel}
+              matchedCampaign={matchCampaign(handle)}
+              showEmptyState={promoSection.showEmptyState}
+              emptyStateMessage={promoSection.emptyStateMessage}
+            />
+          );
+        })()}
+
         {/* MARKETPLACE FEED — mobile: dynamic Shopify-synced unified feed */}
         {isMobile ? (
           <MarketplaceFeed />
@@ -130,20 +147,9 @@ export default function Index() {
             switch (section.type) {
               case "trending":
                 return <WhatPeopleAreBuyingSection key={section.id} />;
-              case "promo_collection": {
-                const handle = section.promoCollectionHandle || section.slug || "";
-                return (
-                  <PromoCollectionSection
-                    key={section.id}
-                    slug={handle}
-                    label={section.label}
-                    subtitle={section.subtitle}
-                    limit={section.limit}
-                    badgeLabel={section.badgeLabel}
-                    matchedCampaign={matchCampaign(handle)}
-                  />
-                );
-              }
+              case "promo_collection":
+                // Rendered in the pinned slot above — skip here to avoid duplicating
+                return null;
               case "best_sellers":
                 return <BestSellersSection key={section.id} limit={section.limit} />;
               case "new_arrivals":
