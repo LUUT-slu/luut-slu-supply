@@ -67,6 +67,7 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
   const price = parseFloat(product.price.amount);
   const resolved = useResolvedPrice({
     id: product.id,
+    originalId: isVariant ? (product as VariantListingProduct).originalProductId : product.id,
     price,
     collectionHandles: (product as UnifiedProduct).collectionHandles,
     category: product.category,

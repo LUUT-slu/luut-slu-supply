@@ -17,6 +17,8 @@ export interface VariantListingProduct extends UnifiedProduct {
   visualOptionValue?: string;
   /** The variant ID to pre-select on the product page */
   preselectedVariantId?: string;
+  /** Original (unsplit) product id — used for promo/discount matching. */
+  originalProductId: string;
 }
 
 /**
@@ -52,7 +54,7 @@ export function splitByVisualOptions(
 
     if (!visualOptionName) {
       // No visual option — keep as single card
-      result.push({ ...product });
+      result.push({ ...product, originalProductId: product.id });
       continue;
     }
 
@@ -61,7 +63,7 @@ export function splitByVisualOptions(
       o => o.name.toLowerCase() === visualOptionName.toLowerCase()
     );
     if (!visualOption) {
-      result.push({ ...product });
+      result.push({ ...product, originalProductId: product.id });
       continue;
     }
 
@@ -111,6 +113,7 @@ export function splitByVisualOptions(
         ...product,
         // Override with variant-specific data
         id: `${product.id}__${optionValue.replace(/\s+/g, '-').toLowerCase()}`,
+        originalProductId: product.id,
         stockStatus,
         price: {
           amount: lowestPrice.toString(),
