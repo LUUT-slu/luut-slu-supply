@@ -309,7 +309,7 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
                 <span className="flex-1 min-w-0">
                   <span className="block text-[15px] font-medium text-foreground leading-tight">Region & Language</span>
                   <span className="block text-[11px] text-muted-foreground truncate mt-0.5">
-                    {flagEmoji(useLocaleStore.getState().country)} {useLocaleStore.getState().country} · {getLanguage(useLocaleStore.getState().language)?.endonym ?? useLocaleStore.getState().language.toUpperCase()} · {getCurrency(useLocaleStore.getState().currency)?.symbol ?? useLocaleStore.getState().currency}
+                    {flagEmoji(localeCountry)} {localeCountry} · {getLanguage(localeLanguage)?.endonym ?? localeLanguage.toUpperCase()} · {getCurrency(localeCurrency)?.symbol ?? localeCurrency}
                   </span>
                 </span>
               </span>
