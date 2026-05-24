@@ -22,6 +22,8 @@ export interface ResolvedPrice {
   campaignId?: string;
   bannerText?: string;
   ctaUrl?: string;
+  /** ISO end date of the matched campaign, when present. */
+  endDate?: string | null;
 }
 
 function applyDiscount(price: number, c: PromotionCampaign): number {
@@ -119,5 +121,6 @@ export function resolveProductPrice(
     campaignId: c.id,
     bannerText: c.banner_text ?? undefined,
     ctaUrl: c.cta_url ?? undefined,
+    endDate: c.end_date ?? null,
   };
 }
