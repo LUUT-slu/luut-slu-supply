@@ -1,0 +1,18 @@
+{
+  "locale.title": "Region & Language",
+  "locale.subtitle": "Choose where you're shopping from",
+  "locale.tab.country": "Country",
+  "locale.tab.language": "Language",
+  "locale.tab.currency": "Currency",
+  "locale.search.country": "Search countries…",
+  "locale.search.language": "Search languages…",
+  "locale.search.currency": "Search currencies…",
+  "locale.shopify.label": "Shopify Markets",
+  "locale.more.label": "More regions",
+  "locale.done": "Done",
+  "locale.banner.title": "Shopping from {country}?",
+  "locale.banner.body": "Switch to {language} and {currency} for a localized experience.",
+  "locale.banner.switch": "Switch",
+  "locale.banner.keep": "Keep {currency}",
+  "menu.regionLanguage": "Region & Language"
+}
