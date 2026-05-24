@@ -14,6 +14,7 @@ import { useShopifyCollections } from "@/hooks/useShopifyCollections";
 
 const SECTION_TYPES = [
   { value: "category", label: "Shopify Collection" },
+  { value: "promo_collection", label: "Promo / Clearance" },
   { value: "best_sellers", label: "Best Sellers (auto)" },
   { value: "trending", label: "Trending (auto)" },
   { value: "new_arrivals", label: "New Arrivals (auto)" },
