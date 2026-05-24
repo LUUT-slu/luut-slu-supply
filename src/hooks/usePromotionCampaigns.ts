@@ -19,6 +19,8 @@ export interface PromotionVisibility {
   collections: boolean;
 }
 
+export type PromotionTargetMode = "products" | "collections" | "categories" | "sitewide";
+
 export interface PromotionCampaign {
   id: string;
   name: string;
@@ -33,6 +35,15 @@ export interface PromotionCampaign {
   visibility: PromotionVisibility;
   created_at: string;
   updated_at: string;
+  // Extended targeting + presentation fields
+  target_mode: PromotionTargetMode;
+  target_collections: string[];
+  target_categories: string[];
+  badge_text: string | null;
+  banner_text: string | null;
+  cta_url: string | null;
+  priority: number;
+  exclude_product_ids: string[];
 }
 
 export function deriveStatus(c: Pick<PromotionCampaign, "is_active" | "start_date" | "end_date">): CampaignStatus {
