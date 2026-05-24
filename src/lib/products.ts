@@ -13,6 +13,8 @@ export interface UnifiedProduct {
   handle: string;
   vendor: string;
   category: string | null;
+  /** Shopify collection handles this product is in (empty for local products). */
+  collectionHandles?: string[];
   stockStatus: StockStatus;
   quantity?: number;
   price: {
@@ -84,6 +86,7 @@ export function shopifyToUnified(product: ShopifyProduct): UnifiedProduct {
     handle: node.handle,
     vendor: normalizeVendorName(node.vendor),
     category: normalizedCategory,
+    collectionHandles: node.collectionHandles || [],
     stockStatus: deriveStockStatus(undefined, anyAvailable),
     price: {
       amount: node.priceRange.minVariantPrice.amount,
