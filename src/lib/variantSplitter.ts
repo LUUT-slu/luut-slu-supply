@@ -113,6 +113,7 @@ export function splitByVisualOptions(
         ...product,
         // Override with variant-specific data
         id: `${product.id}__${optionValue.replace(/\s+/g, '-').toLowerCase()}`,
+        originalProductId: product.id,
         stockStatus,
         price: {
           amount: lowestPrice.toString(),
