@@ -54,7 +54,7 @@ export function splitByVisualOptions(
 
     if (!visualOptionName) {
       // No visual option — keep as single card
-      result.push({ ...product });
+      result.push({ ...product, originalProductId: product.id });
       continue;
     }
 
@@ -63,7 +63,7 @@ export function splitByVisualOptions(
       o => o.name.toLowerCase() === visualOptionName.toLowerCase()
     );
     if (!visualOption) {
-      result.push({ ...product });
+      result.push({ ...product, originalProductId: product.id });
       continue;
     }
 
