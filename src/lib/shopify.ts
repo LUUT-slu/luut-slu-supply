@@ -15,6 +15,8 @@ export interface ShopifyProduct {
     productType: string;
     tags: string[];
     createdAt: string;
+    /** Collection handles this product belongs to (populated when fetched via list/collection queries). */
+    collectionHandles?: string[];
     priceRange: {
       minVariantPrice: {
         amount: string;
@@ -122,6 +124,13 @@ const PRODUCTS_QUERY = `
           productType
           tags
           createdAt
+          collections(first: 10) {
+            edges {
+              node {
+                handle
+              }
+            }
+          }
           priceRange {
             minVariantPrice {
               amount
