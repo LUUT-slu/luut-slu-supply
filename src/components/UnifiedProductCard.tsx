@@ -268,6 +268,9 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
           ) : null}
 
           <PriceTag resolved={resolved} size="sm" className="mt-1" showPercentChip />
+          {resolved.hasDiscount && resolved.endDate && (
+            <PromoCountdownPill endDate={resolved.endDate} />
+          )}
 
 
           {typeof soldCount === "number" && soldCount > 0 && (
@@ -363,6 +366,11 @@ export function UnifiedProductCard({ product, priority = false, soldCount }: Uni
             </Button>
           )}
         </div>
+        {resolved.hasDiscount && resolved.endDate && (
+          <div className="mt-1.5">
+            <PromoCountdownPill endDate={resolved.endDate} />
+          </div>
+        )}
       </div>
     </Link>
   );
