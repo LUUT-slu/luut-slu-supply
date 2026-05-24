@@ -29,7 +29,6 @@ interface LocalProduct {
   seller_profiles: {
     seller_name: string;
     location: string | null;
-    whatsapp: string | null;
   };
 }
 
@@ -66,7 +65,7 @@ export default function LocalProductDetail() {
         .from('seller_products')
         .select(`
           *,
-          seller_profiles!inner(seller_name, location, whatsapp)
+          seller_profiles!inner(seller_name, location)
         `)
         .eq('id', productId)
         .single();
