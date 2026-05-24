@@ -158,14 +158,6 @@ export function Header() {
     );
   }
 
-  if (isMobile && isHomepage) {
-    return (
-      <>
-        <SaleBanner />
-        <MobileHeader />
-      </>
-    );
-  }
 
   return (
     <>
