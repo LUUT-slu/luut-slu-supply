@@ -41,6 +41,10 @@ export interface HomepageSection {
   autoPrioritize?: boolean;
   /** Promo collection section: optional badge override */
   badgeLabel?: string;
+  /** Promo collection section: render an empty-state message instead of hiding when no promos */
+  showEmptyState?: boolean;
+  /** Promo collection section: copy shown when showEmptyState is true and no promos exist */
+  emptyStateMessage?: string;
 }
 
 export interface HeroConfig {
@@ -70,6 +74,19 @@ export const DEFAULT_HERO: HeroConfig = {
 
 export const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayout = {
   sections: [
+    {
+      id: "sec-promos",
+      type: "promo_collection",
+      label: "PROMOS",
+      subtitle: "Limited time deals",
+      limit: 8,
+      enabled: true,
+      autoPrioritize: true,
+      promoCollectionHandle: "",
+      badgeLabel: "SALE",
+      showEmptyState: false,
+      emptyStateMessage: "No active promos right now.",
+    },
     { id: "sec-trending", type: "trending", label: "What's Trending", limit: 6, enabled: true },
     { id: "sec-1", type: "category", slug: "beanies-tams", label: "Beanies & Tams", limit: 4, enabled: true },
     { id: "sec-2", type: "category", slug: "shoes", label: "Shoes", limit: 4, enabled: true },
@@ -206,6 +223,12 @@ async function fetchSiteSettings(): Promise<SiteSettings> {
     };
   } else {
     homepageLayout = DEFAULT_HOMEPAGE_LAYOUT;
+  }
+
+  // Ensure a PROMOS section exists for stores that saved a layout before promo_collection existed
+  if (!homepageLayout.sections.some((s) => s.type === "promo_collection")) {
+    const promo = DEFAULT_HOMEPAGE_LAYOUT.sections.find((s) => s.type === "promo_collection");
+    if (promo) homepageLayout = { ...homepageLayout, sections: [promo, ...homepageLayout.sections] };
   }
 
   return {

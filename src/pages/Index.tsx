@@ -60,22 +60,12 @@ export default function Index() {
     return matches.sort((a, b) => (Number(b.priority) || 0) - (Number(a.priority) || 0))[0];
   };
 
-  // Auto-prioritize: promo_collection sections with autoPrioritize + matching active campaign
-  // jump to the front, ordered by campaign priority desc. Others keep admin-defined order.
-  const sections = [...enabledSections]
-    .map((s, i) => {
-      const handle = s.promoCollectionHandle || s.slug;
-      const matched =
-        s.type === "promo_collection" && s.autoPrioritize !== false
-          ? matchCampaign(handle)
-          : undefined;
-      return { s, i, boost: matched ? Number(matched.priority) || 1 : 0 };
-    })
-    .sort((a, b) => {
-      if (a.boost !== b.boost) return b.boost - a.boost;
-      return a.i - b.i;
-    })
-    .map(({ s }) => s);
+  // PROMOS is pinned to a fixed slot directly below the hero and above the
+  // category chip scroll / desktop sections. We always render the first
+  // enabled promo_collection section there, and skip it in the regular
+  // sections loop so it never duplicates.
+  const promoSection = enabledSections.find((s) => s.type === "promo_collection");
+  const sections = enabledSections;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -131,6 +121,23 @@ export default function Index() {
           </section>
         )}
 
+        {/* PROMOS — pinned slot directly below the hero, above category chip scroll / sections */}
+        {promoSection && (() => {
+          const handle = promoSection.promoCollectionHandle || promoSection.slug || "";
+          return (
+            <PromoCollectionSection
+              slug={handle}
+              label={promoSection.label}
+              subtitle={promoSection.subtitle}
+              limit={promoSection.limit}
+              badgeLabel={promoSection.badgeLabel}
+              matchedCampaign={matchCampaign(handle)}
+              showEmptyState={promoSection.showEmptyState}
+              emptyStateMessage={promoSection.emptyStateMessage}
+            />
+          );
+        })()}
+
         {/* MARKETPLACE FEED — mobile: dynamic Shopify-synced unified feed */}
         {isMobile ? (
           <MarketplaceFeed />
@@ -140,20 +147,9 @@ export default function Index() {
             switch (section.type) {
               case "trending":
                 return <WhatPeopleAreBuyingSection key={section.id} />;
-              case "promo_collection": {
-                const handle = section.promoCollectionHandle || section.slug || "";
-                return (
-                  <PromoCollectionSection
-                    key={section.id}
-                    slug={handle}
-                    label={section.label}
-                    subtitle={section.subtitle}
-                    limit={section.limit}
-                    badgeLabel={section.badgeLabel}
-                    matchedCampaign={matchCampaign(handle)}
-                  />
-                );
-              }
+              case "promo_collection":
+                // Rendered in the pinned slot above — skip here to avoid duplicating
+                return null;
               case "best_sellers":
                 return <BestSellersSection key={section.id} limit={section.limit} />;
               case "new_arrivals":

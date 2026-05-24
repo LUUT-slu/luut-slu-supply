@@ -18,6 +18,8 @@ interface PromoCollectionSectionProps {
   limit?: number;
   badgeLabel?: string;
   matchedCampaign?: PromotionCampaign;
+  showEmptyState?: boolean;
+  emptyStateMessage?: string;
 }
 
 export function PromoCollectionSection({
@@ -27,6 +29,8 @@ export function PromoCollectionSection({
   limit = 8,
   badgeLabel,
   matchedCampaign,
+  showEmptyState = false,
+  emptyStateMessage = "No active promos right now.",
 }: PromoCollectionSectionProps) {
   // Pull a wider net so we have enough discounted products to fill the section
   const { products, loading } = useHybridProducts({ categorySlug: slug, limit: limit * 3 });
@@ -62,13 +66,15 @@ export function PromoCollectionSection({
   }, [products, siteSettings, activeCampaigns, limit]);
 
   if (loading) return null;
-  if (displayProducts.length === 0) return null;
 
   const badge =
     badgeLabel ||
     matchedCampaign?.badge_text ||
     matchedCampaign?.promo_label ||
     "SALE";
+
+  const isEmpty = displayProducts.length === 0;
+  if (isEmpty && !showEmptyState) return null;
 
   return (
     <section className="border-t border-border/50 bg-gradient-to-b from-destructive/[0.04] to-transparent py-10 md:py-14">
@@ -91,18 +97,26 @@ export function PromoCollectionSection({
               <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
             )}
           </div>
-          <Button asChild variant="ghost" size="sm" className="font-body text-sm shrink-0">
-            <Link to={`/shop/${slug}`}>
-              View All
-              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-            </Link>
-          </Button>
+          {slug && !isEmpty && (
+            <Button asChild variant="ghost" size="sm" className="font-body text-sm shrink-0">
+              <Link to={`/shop/${slug}`}>
+                View All
+                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          )}
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 rounded-sm">
-          {displayProducts.map((product, idx) => (
-            <UnifiedProductCard key={product.id} product={product} priority={idx < 4} />
-          ))}
-        </div>
+        {isEmpty ? (
+          <p className="rounded-lg border border-dashed border-border/60 bg-card/40 py-8 text-center text-sm text-muted-foreground">
+            {emptyStateMessage}
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 rounded-sm">
+            {displayProducts.map((product, idx) => (
+              <UnifiedProductCard key={product.id} product={product} priority={idx < 4} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
