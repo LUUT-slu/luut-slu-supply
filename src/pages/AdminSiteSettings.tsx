@@ -93,14 +93,10 @@ export default function AdminSiteSettings() {
 
             {/* ========== TWO-COLUMN GRID FOR REMAINING SETTINGS ON DESKTOP ========== */}
             <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
+              {/* ========== NOTIFICATIONS & ALERTS ========== */}
+              <NotificationsSection initialSettings={settings?.notifications} />
 
 
-            <Separator />
-
-            {/* ========== NOTIFICATIONS & ALERTS ========== */}
-            <NotificationsSection initialSettings={settings?.notifications} />
-
-            <Separator />
 
             {/* ========== MARKETING STUDIO DEFAULTS ========== */}
             <MarketingDefaultsCard />
