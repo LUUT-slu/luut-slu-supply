@@ -150,7 +150,7 @@ export function PromoCollectionSection({
             {emptyStateMessage}
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 rounded-sm">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 rounded-sm">
             {displayProducts.map((product, idx) => (
               <UnifiedProductCard key={product.id} product={product} priority={idx < 4} />
             ))}

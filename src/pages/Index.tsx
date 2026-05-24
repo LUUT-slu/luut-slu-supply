@@ -1,7 +1,6 @@
-import { lazy, Suspense } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Link } from "react-router-dom";
-import { ArrowRight, MapPin, ShieldCheck, Users, Package, MessageCircle } from "lucide-react";
+import { MapPin, ShieldCheck, Users, Package, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -11,12 +10,9 @@ import { WhatPeopleAreBuyingSection } from "@/components/WhatPeopleAreBuyingSect
 import { HomeCategorySection } from "@/components/HomeCategorySection";
 import { HomeFeaturedSection } from "@/components/HomeFeaturedSection";
 import { HomeNewArrivalsSection } from "@/components/HomeNewArrivalsSection";
-import { useSiteSettings, DEFAULT_HERO } from "@/hooks/useSiteSettings";
-import storefrontHeroDesktop from "@/assets/storefront-hero-desktop.webp";
-import storefrontHeroMobile from "@/assets/storefront-hero-mobile.webp";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { SignupDiscountPopup } from "@/components/SignupDiscountPopup";
 import { HomepageReviews } from "@/components/HomepageReviews";
-import { AIChatWidget } from "@/components/AIChatWidget";
 import { HeroSlider } from "@/components/home/HeroSlider";
 import { MarketplaceFeed } from "@/components/home/MarketplaceFeed";
 import { MobileBottomNav } from "@/components/home/MobileBottomNav";
@@ -40,11 +36,8 @@ export default function Index() {
   const { data: settings } = useSiteSettings();
   const { data: activeCampaigns } = useActivePromotionCampaigns();
   const layout = settings?.homepageLayout;
-  const hero = layout?.hero || DEFAULT_HERO;
-  const customHeroImage = hero.imageUrl;
-  const heroImageDesktop = customHeroImage || storefrontHeroDesktop;
-  const heroImageMobile = customHeroImage || storefrontHeroMobile;
   const enabledSections = layout?.sections?.filter(s => s.enabled) || [];
+
 
   // Find best-matching active campaign for a promo_collection section
   const matchCampaign = (handle?: string) => {
@@ -72,56 +65,10 @@ export default function Index() {
       <Header />
 
       <main className={`flex-1 ${isMobile ? "pb-20" : ""}`}>
-        {/* HERO — mobile uses cinematic slider; desktop keeps existing layout */}
-        {isMobile ? (
-          <HeroSlider />
-        ) : (
-          <section className="relative min-h-[90vh] flex flex-col justify-end overflow-hidden">
-            <div className="absolute inset-0">
-              <picture>
-                <source media="(max-width: 768px)" srcSet={heroImageMobile} />
-                <img
-                  src={heroImageDesktop}
-                  alt="Luut SLU storefront"
-                  className="w-full h-full object-cover opacity-70"
-                  width={1600}
-                  height={1600}
-                  fetchPriority="high"
-                  decoding="async"
-                  sizes="100vw"
-                />
-              </picture>
-            </div>
-            <div className="container relative z-10 px-4 pb-8 md:pb-12" style={{ background: 'linear-gradient(to top, hsl(0 0% 0% / 0.85) 0%, hsl(0 0% 0% / 0.4) 60%, transparent 100%)' }}>
-              <div className="mx-auto max-w-3xl text-center">
-                {hero.heading && <h1 className="mb-3 font-display text-3xl text-white md:text-5xl">{hero.heading}</h1>}
-                {hero.subheading && <p className="mb-5 font-body text-base text-white/70 md:text-lg">{hero.subheading}</p>}
-                <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-                  {hero.buttonText && (
-                    <Button asChild size="default" className="w-auto font-body shadow-lg">
-                      <Link to={hero.buttonLink || "/shop"}>{hero.buttonText}<ArrowRight className="ml-2 h-4 w-4" /></Link>
-                    </Button>
-                  )}
-                  {hero.secondaryButtonText && (
-                    <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10">
-                      <Link to={hero.secondaryButtonLink || "/shop"}>{hero.secondaryButtonText}</Link>
-                    </Button>
-                  )}
-                  <Button asChild variant="ghost" size="sm" className="w-auto font-body text-white/80 hover:text-white hover:bg-white/10">
-                    <Link to="/shop/best-sellers">Best Sellers</Link>
-                  </Button>
-                </div>
-                <div className="mt-5">
-                  <Link to="/sell" className="font-body text-sm text-primary underline-offset-4 hover:underline">
-                    Want to sell? Join as a vendor →
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
+        {/* HERO — unified cinematic slider on all viewports */}
+        <HeroSlider />
 
-        {/* PROMOS — pinned slot directly below the hero, above category chip scroll / sections */}
+        {/* PROMOS — pinned slot directly below the hero, above the marketplace feed */}
         {promoSection && (() => {
           const handle = promoSection.promoCollectionHandle || promoSection.slug || "";
           return (
@@ -139,46 +86,45 @@ export default function Index() {
           );
         })()}
 
-        {/* MARKETPLACE FEED — mobile: dynamic Shopify-synced unified feed */}
-        {isMobile ? (
-          <MarketplaceFeed />
-        ) : (
-          /* Desktop: dynamic sections from admin homepage settings */
-          sections.map((section) => {
-            switch (section.type) {
-              case "trending":
-                return <WhatPeopleAreBuyingSection key={section.id} />;
-              case "promo_collection":
-                // Rendered in the pinned slot above — skip here to avoid duplicating
-                return null;
-              case "best_sellers":
-                return <BestSellersSection key={section.id} limit={section.limit} />;
-              case "new_arrivals":
-                return <HomeNewArrivalsSection key={section.id} label={section.label} limit={section.limit} />;
-              case "featured":
-                return (
-                  <HomeFeaturedSection
-                    key={section.id}
-                    label={section.label}
-                    productIds={section.featuredProductIds || []}
-                    limit={section.limit}
-                  />
-                );
-              case "category":
-                return (
-                  <HomeCategorySection
-                    key={section.id}
-                    slug={section.slug || ""}
-                    label={section.label}
-                    subtitle={section.subtitle}
-                    limit={section.limit}
-                  />
-                );
-              default:
-                return null;
-            }
-          })
-        )}
+        {/* MARKETPLACE FEED — Shopify-synced unified feed on all viewports */}
+        <MarketplaceFeed />
+
+        {/* Dynamic admin-configured sections — render on mobile and desktop */}
+        {sections.map((section) => {
+          switch (section.type) {
+            case "trending":
+              return <WhatPeopleAreBuyingSection key={section.id} />;
+            case "promo_collection":
+              // Rendered in the pinned slot above — skip here to avoid duplicating
+              return null;
+            case "best_sellers":
+              return <BestSellersSection key={section.id} limit={section.limit} />;
+            case "new_arrivals":
+              return <HomeNewArrivalsSection key={section.id} label={section.label} limit={section.limit} />;
+            case "featured":
+              return (
+                <HomeFeaturedSection
+                  key={section.id}
+                  label={section.label}
+                  productIds={section.featuredProductIds || []}
+                  limit={section.limit}
+                />
+              );
+            case "category":
+              return (
+                <HomeCategorySection
+                  key={section.id}
+                  slug={section.slug || ""}
+                  label={section.label}
+                  subtitle={section.subtitle}
+                  limit={section.limit}
+                />
+              );
+            default:
+              return null;
+          }
+        })}
+
 
         {/* Customer Reviews */}
         <HomepageReviews />
