@@ -41,6 +41,10 @@ export interface HomepageSection {
   autoPrioritize?: boolean;
   /** Promo collection section: optional badge override */
   badgeLabel?: string;
+  /** Promo collection section: render an empty-state message instead of hiding when no promos */
+  showEmptyState?: boolean;
+  /** Promo collection section: copy shown when showEmptyState is true and no promos exist */
+  emptyStateMessage?: string;
 }
 
 export interface HeroConfig {
