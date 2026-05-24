@@ -318,8 +318,28 @@ export function HomepageEditor({ initialLayout }: HomepageEditorProps) {
                       </label>
                     </div>
 
+                    <div className="flex flex-col gap-1.5">
+                      <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={section.showEmptyState === true}
+                          onChange={(e) => updateSection(section.id, { showEmptyState: e.target.checked })}
+                          className="h-3 w-3"
+                        />
+                        Show empty-state message when no promos are active
+                      </label>
+                      {section.showEmptyState && (
+                        <Input
+                          value={section.emptyStateMessage || ""}
+                          onChange={(e) => updateSection(section.id, { emptyStateMessage: e.target.value })}
+                          placeholder="No active promos right now."
+                          className="h-7 text-xs w-72"
+                        />
+                      )}
+                    </div>
+
                     <p className="text-[10px] text-muted-foreground italic">
-                      Only displays products with an active discount. Hides automatically when no items are on sale.
+                      PROMOS always renders in the pinned slot directly below the hero, above the category chip scroll. Only shows products with an active discount.
                     </p>
                   </div>
                 )}
