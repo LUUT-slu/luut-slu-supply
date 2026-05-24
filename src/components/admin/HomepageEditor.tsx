@@ -366,7 +366,7 @@ export function HomepageEditor({ initialLayout }: HomepageEditorProps) {
               </Select>
             )}
 
-            {["best_sellers", "trending", "new_arrivals", "featured"].map(type => (
+            {["promo_collection", "best_sellers", "trending", "new_arrivals", "featured"].map(type => (
               <Button
                 key={type}
                 variant="outline"
