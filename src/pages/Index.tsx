@@ -20,6 +20,8 @@ import { AIChatWidget } from "@/components/AIChatWidget";
 import { HeroSlider } from "@/components/home/HeroSlider";
 import { MarketplaceFeed } from "@/components/home/MarketplaceFeed";
 import { MobileBottomNav } from "@/components/home/MobileBottomNav";
+import { PromoCollectionSection } from "@/components/home/PromoCollectionSection";
+import { useActivePromotionCampaigns } from "@/hooks/usePromotionCampaigns";
 
 const howItWorks = [
   { step: 1, title: "Browse Products", description: "Explore outfits from verified local sellers on our marketplace", icon: Package },
