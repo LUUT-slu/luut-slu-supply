@@ -296,6 +296,24 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
             <Row to="/contact" icon={<HelpCircle className="h-4 w-4" />} label="FAQ" onClick={close} />
             <Row to="/contact" icon={<Mail className="h-4 w-4" />} label="Contact Us" onClick={close} />
 
+            {/* Region & Language */}
+            <SectionLabel>Region & Language</SectionLabel>
+            <div className="flex items-center justify-between gap-3 rounded-xl px-3 py-3 hover:bg-primary/5">
+              <span className="flex items-center gap-3 min-w-0">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
+                  <Globe className="h-4 w-4" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[15px] font-medium text-foreground leading-tight">Region & Language</span>
+                  <span className="block text-[11px] text-muted-foreground truncate mt-0.5">
+                    {flagEmoji(useLocaleStore.getState().country)} {useLocaleStore.getState().country} · {getLanguage(useLocaleStore.getState().language)?.endonym ?? useLocaleStore.getState().language.toUpperCase()} · {getCurrency(useLocaleStore.getState().currency)?.symbol ?? useLocaleStore.getState().currency}
+                  </span>
+                </span>
+              </span>
+              <LocaleSelector />
+            </div>
+
+
             {/* Auth */}
             <div className="mt-5 px-3">
               {user ? (
