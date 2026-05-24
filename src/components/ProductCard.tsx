@@ -5,6 +5,8 @@ import { ShopifyProduct, getOptimizedImageUrl, getImageSrcSet, normalizeVendorNa
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
+import { useResolvedPrice } from "@/hooks/useActivePromotions";
+import { PriceTag, SaleRibbon } from "./PriceTag";
 
 interface ProductCardProps {
   product: ShopifyProduct;
