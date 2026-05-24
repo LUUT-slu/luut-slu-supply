@@ -273,32 +273,49 @@ export function HomepageEditor({ initialLayout }: HomepageEditorProps) {
                 {/* Promo collection picker */}
                 {section.type === "promo_collection" && (
                   <div className="pl-7 space-y-2">
-                    <Select
-                      value={section.promoCollectionHandle || ""}
-                      onValueChange={(handle) => {
-                        const col = collections.find(c => c.handle === handle);
-                        updateSection(section.id, {
-                          promoCollectionHandle: handle,
-                          slug: handle,
-                          collectionTitle: col?.title,
-                          label: section.label === "Promo / Clearance" || !section.label
-                            ? `${col?.title || "Promo"} — On Sale`
-                            : section.label,
-                        });
-                      }}
-                    >
-                      <SelectTrigger className="h-7 text-xs w-64">
-                        <SelectValue placeholder={loadingCollections ? "Loading collections..." : "Select promo collection..."} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {collections.map(col => (
-                          <SelectItem key={col.handle} value={col.handle} className="text-xs">
-                            {col.title}
-                            <span className="ml-2 text-muted-foreground">/{col.handle}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <label className="flex items-start gap-1.5 text-[11px] text-foreground cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={section.autoScan !== false}
+                        onChange={(e) => updateSection(section.id, { autoScan: e.target.checked })}
+                        className="h-3 w-3 mt-0.5"
+                      />
+                      <span>
+                        <strong>Auto-include all discounted products</strong>
+                        <span className="block text-[10px] text-muted-foreground">
+                          Scans every active promotion (products, collections, categories, sitewide) and shows the matching discounted items.
+                        </span>
+                      </span>
+                    </label>
+
+                    {section.autoScan === false && (
+                      <Select
+                        value={section.promoCollectionHandle || ""}
+                        onValueChange={(handle) => {
+                          const col = collections.find(c => c.handle === handle);
+                          updateSection(section.id, {
+                            promoCollectionHandle: handle,
+                            slug: handle,
+                            collectionTitle: col?.title,
+                            label: section.label === "Promo / Clearance" || !section.label
+                              ? `${col?.title || "Promo"} — On Sale`
+                              : section.label,
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-xs w-64">
+                          <SelectValue placeholder={loadingCollections ? "Loading collections..." : "Select promo collection..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {collections.map(col => (
+                            <SelectItem key={col.handle} value={col.handle} className="text-xs">
+                              {col.title}
+                              <span className="ml-2 text-muted-foreground">/{col.handle}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
 
                     <div className="flex items-center gap-2">
                       <Input
@@ -339,7 +356,7 @@ export function HomepageEditor({ initialLayout }: HomepageEditorProps) {
                     </div>
 
                     <p className="text-[10px] text-muted-foreground italic">
-                      PROMOS always renders in the pinned slot directly below the hero, above the category chip scroll. Only shows products with an active discount.
+                      PROMOS always renders in the pinned slot directly below the hero, above the category chip scroll. Live countdown shows automatically when an active promotion has an end date.
                     </p>
                   </div>
                 )}
