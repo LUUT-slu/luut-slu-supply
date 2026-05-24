@@ -74,7 +74,7 @@ export default function AdminSiteSettings() {
     <AdminAuth>
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
-        <main className="container flex-1 py-8">
+        <main className="container max-w-screen-2xl flex-1 py-8">
           <div className="mb-8 flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
               <ArrowLeft className="h-5 w-5" />
@@ -85,9 +85,15 @@ export default function AdminSiteSettings() {
             </div>
           </div>
 
-          <div className="space-y-8 max-w-2xl">
-            {/* ========== HOMEPAGE LAYOUT ========== */}
+          <div className="space-y-8">
+            {/* ========== HOMEPAGE LAYOUT (full width on desktop for section manager) ========== */}
             <HomepageEditor initialLayout={settings?.homepageLayout} />
+
+            <Separator />
+
+            {/* ========== TWO-COLUMN GRID FOR REMAINING SETTINGS ON DESKTOP ========== */}
+            <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
+
 
             <Separator />
 
