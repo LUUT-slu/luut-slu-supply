@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ShopifyProduct, fetchProducts, getOptimizedImageUrl, normalizeVendorName } from "@/lib/shopify";
+import { shuffleArray } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
 const BADGES = ["Trending", "Moving Fast", "Popular", "Seen Around Town"] as const;
