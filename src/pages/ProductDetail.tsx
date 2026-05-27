@@ -553,10 +553,24 @@ export default function ProductDetail() {
                         </button>
                       );
                     })}
-                    {hiddenColorCount > 0 && (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-border text-xs text-muted-foreground">
+                    {hiddenColorCount > 0 && !showAllColors && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllColors(true)}
+                        className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-border text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                        aria-label={`Show ${hiddenColorCount} more colors`}
+                      >
                         +{hiddenColorCount}
-                      </div>
+                      </button>
+                    )}
+                    {showAllColors && hiddenColorCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllColors(false)}
+                        className="text-xs text-muted-foreground hover:text-foreground underline"
+                      >
+                        Show less
+                      </button>
                     )}
                   </div>
                 </div>
