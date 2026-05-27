@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ShopifyProduct, fetchProducts, getOptimizedImageUrl, normalizeVendorName } from "@/lib/shopify";
+import { shuffleArray } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
 const BADGES = ["Trending", "Moving Fast", "Popular", "Seen Around Town"] as const;
@@ -126,18 +127,14 @@ export function WhatPeopleAreBuyingSection() {
     loadProducts();
   }, []);
 
-  // Only in-stock items, sorted by most recently updated/added (newest first).
+  // Only in-stock items, shuffled randomly on each reload so customers explore more.
   const displayProducts = useMemo(() => {
     if (products.length === 0) return [];
     const inStock = products.filter(p =>
       p.node.variants.edges.some(v => v.node.availableForSale)
     );
-    const sorted = [...inStock].sort((a, b) => {
-      const aDate = (a.node as any).updatedAt || (a.node as any).publishedAt || (a.node as any).createdAt || '';
-      const bDate = (b.node as any).updatedAt || (b.node as any).publishedAt || (b.node as any).createdAt || '';
-      return bDate.localeCompare(aDate);
-    });
-    return sorted.slice(0, 6);
+    const shuffled = shuffleArray(inStock);
+    return shuffled.slice(0, 6);
   }, [products]);
 
   if (loading) {

@@ -7,6 +7,7 @@ import { useActivePromotionCampaigns } from "@/hooks/usePromotionCampaigns";
 import { resolveProductPrice } from "@/lib/pricing";
 import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
 import { sortByStockStatus } from "@/lib/stockSort";
+import { shuffleArray } from "@/lib/utils";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
 import { useCountdown } from "@/hooks/useCountdown";
 import type { PromotionCampaign } from "@/hooks/usePromotionCampaigns";
@@ -73,6 +74,8 @@ export function PromoCollectionSection({
         return { p, r };
       })
       .filter((x) => x.r.hasDiscount)
+      // Shuffle so customers see different discounted items on each reload.
+      .sort(() => Math.random() - 0.5)
       // Best deals first within each stock bucket
       .sort((a, b) => b.r.percentOff - a.r.percentOff);
 

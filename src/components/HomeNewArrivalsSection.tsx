@@ -5,6 +5,7 @@ import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
 import { sortByStockStatus } from "@/lib/stockSort";
+import { shuffleArray } from "@/lib/utils";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
 import { useMemo } from "react";
 
@@ -26,8 +27,10 @@ export function HomeNewArrivalsSection({ label, limit = 4 }: HomeNewArrivalsSect
     if (siteSettings?.hideSoldOut) {
       list = list.filter(p => p.stockStatus !== 'out_of_stock');
     }
-    // Push sold-out items to the end (stable), then take first N as "newest"
-    const sorted = sortByStockStatus(list as VariantListingProduct[]);
+    // Randomize order on each reload so customers discover different items,
+    // then push sold-out items to the end.
+    const shuffled = shuffleArray(list as VariantListingProduct[]);
+    const sorted = sortByStockStatus(shuffled);
     return sorted.slice(0, limit);
   }, [products, siteSettings?.hideSoldOut, siteSettings?.colorVariantCards, limit]);
 

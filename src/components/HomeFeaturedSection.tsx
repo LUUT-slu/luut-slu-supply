@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
 import { UnifiedProduct } from "@/lib/products";
 import { sortByStockStatus } from "@/lib/stockSort";
+import { shuffleArray } from "@/lib/utils";
 
 interface HomeFeaturedSectionProps {
   label: string;
@@ -44,11 +45,12 @@ export function HomeFeaturedSection({ label, productIds, limit = 4 }: HomeFeatur
         }],
       }));
 
-      // Preserve admin-defined order from productIds, then push sold-out to end (stable).
+      // Preserve admin-defined order from productIds, then shuffle and
+      // push sold-out items to the end.
       const ordered = productIds
         .map((id) => mapped.find((m) => m.id === id))
         .filter((p): p is UnifiedProduct => Boolean(p));
-      setProducts(sortByStockStatus(ordered));
+      setProducts(sortByStockStatus(shuffleArray(ordered)));
       setLoading(false);
     })();
   }, [productIds, limit]);

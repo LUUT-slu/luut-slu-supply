@@ -5,6 +5,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useProductSalesCounts, lookupSoldCount } from "@/hooks/useProductSalesCounts";
 import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
 import { sortByStockStatus } from "@/lib/stockSort";
+import { shuffleArray } from "@/lib/utils";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
 import { cn } from "@/lib/utils";
 
@@ -23,9 +24,10 @@ export function MarketplaceFeed() {
     if (siteSettings?.colorVariantCards?.enabled) {
       list = splitByVisualOptions(list, siteSettings.colorVariantCards.showOnlyInStock);
     }
-    // Sort: in-stock first, then by sold count (best sellers higher) within bucket
-    const sorted = sortByStockStatus(list as VariantListingProduct[]);
-    return sorted.sort((a, b) => {
+    // Shuffle so customers discover different products on each reload,
+    // then keep sold-out items at the end.
+    const shuffled = shuffleArray(list as VariantListingProduct[]);
+    const sorted = sortByStockStatus(shuffled).sort((a, b) => {
       const aStock = a.stockStatus === "out_of_stock" ? 1 : 0;
       const bStock = b.stockStatus === "out_of_stock" ? 1 : 0;
       if (aStock !== bStock) return aStock - bStock;
@@ -33,6 +35,7 @@ export function MarketplaceFeed() {
       const bSold = lookupSoldCount(soldLookup, { handle: b.handle, id: b.id }) || 0;
       return bSold - aSold;
     });
+    return sorted;
   }, [products, siteSettings?.colorVariantCards, soldLookup]);
 
   const pills = useMemo(
