@@ -365,7 +365,9 @@ export default function ProductDetail() {
   const sellerName = normalizeVendorName(product.vendor?.replace(" (Certified Seller)", "") || "Luut SLU");
 
   const MAX_COLOR_SWATCHES = 4;
-  const visibleColors = colorOption ? colorOption.values.slice(0, MAX_COLOR_SWATCHES) : [];
+  const visibleColors = colorOption
+    ? (showAllColors ? colorOption.values : colorOption.values.slice(0, MAX_COLOR_SWATCHES))
+    : [];
   const hiddenColorCount = colorOption ? Math.max(0, colorOption.values.length - MAX_COLOR_SWATCHES) : 0;
 
   return (
