@@ -74,6 +74,8 @@ export function PromoCollectionSection({
         return { p, r };
       })
       .filter((x) => x.r.hasDiscount)
+      // Shuffle so customers see different discounted items on each reload.
+      .sort(() => Math.random() - 0.5)
       // Best deals first within each stock bucket
       .sort((a, b) => b.r.percentOff - a.r.percentOff);
 
