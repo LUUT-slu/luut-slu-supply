@@ -45,6 +45,7 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [showAllColors, setShowAllColors] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const galleryRef = useRef<HTMLDivElement>(null);
@@ -365,7 +366,9 @@ export default function ProductDetail() {
   const sellerName = normalizeVendorName(product.vendor?.replace(" (Certified Seller)", "") || "Luut SLU");
 
   const MAX_COLOR_SWATCHES = 4;
-  const visibleColors = colorOption ? colorOption.values.slice(0, MAX_COLOR_SWATCHES) : [];
+  const visibleColors = colorOption
+    ? (showAllColors ? colorOption.values : colorOption.values.slice(0, MAX_COLOR_SWATCHES))
+    : [];
   const hiddenColorCount = colorOption ? Math.max(0, colorOption.values.length - MAX_COLOR_SWATCHES) : 0;
 
   return (
@@ -550,10 +553,24 @@ export default function ProductDetail() {
                         </button>
                       );
                     })}
-                    {hiddenColorCount > 0 && (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-border text-xs text-muted-foreground">
+                    {hiddenColorCount > 0 && !showAllColors && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllColors(true)}
+                        className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-border text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                        aria-label={`Show ${hiddenColorCount} more colors`}
+                      >
                         +{hiddenColorCount}
-                      </div>
+                      </button>
+                    )}
+                    {showAllColors && hiddenColorCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllColors(false)}
+                        className="text-xs text-muted-foreground hover:text-foreground underline"
+                      >
+                        Show less
+                      </button>
                     )}
                   </div>
                 </div>
