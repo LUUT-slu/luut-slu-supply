@@ -7,6 +7,7 @@ import { useActivePromotionCampaigns } from "@/hooks/usePromotionCampaigns";
 import { resolveProductPrice } from "@/lib/pricing";
 import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
 import { sortByStockStatus } from "@/lib/stockSort";
+import { shuffleArray } from "@/lib/utils";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
 import { useCountdown } from "@/hooks/useCountdown";
 import type { PromotionCampaign } from "@/hooks/usePromotionCampaigns";

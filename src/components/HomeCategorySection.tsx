@@ -5,6 +5,7 @@ import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
 import { sortByStockStatus } from "@/lib/stockSort";
+import { shuffleArray } from "@/lib/utils";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
 import { useMemo } from "react";
 

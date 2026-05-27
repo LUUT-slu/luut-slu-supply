@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
 import { UnifiedProduct } from "@/lib/products";
 import { sortByStockStatus } from "@/lib/stockSort";
+import { shuffleArray } from "@/lib/utils";
 
 interface HomeFeaturedSectionProps {
   label: string;
