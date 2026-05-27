@@ -251,7 +251,7 @@ const COLLECTION_PRODUCTS_QUERY = `
                 currencyCode
               }
             }
-            images(first: 5) {
+            images(first: 40) {
               edges {
                 node {
                   url
@@ -259,7 +259,7 @@ const COLLECTION_PRODUCTS_QUERY = `
                 }
               }
             }
-            variants(first: 10) {
+            variants(first: 50) {
               edges {
                 node {
                   id
