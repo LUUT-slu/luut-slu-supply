@@ -45,6 +45,7 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [showAllColors, setShowAllColors] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const galleryRef = useRef<HTMLDivElement>(null);
