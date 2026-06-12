@@ -3,6 +3,7 @@ import { ArrowLeft, ShoppingBag, Minus, Plus, Trash2, Shield, Wallet, MapPin, St
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cartStore";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { fbqTrack } from "@/lib/metaPixel";
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -170,7 +171,19 @@ export default function Cart() {
                 </div>
               ) : (
                 <Button
-                  onClick={() => navigate('/checkout')}
+                  onClick={() => {
+                    fbqTrack("InitiateCheckout", {
+                      content_ids: items.map((i) => i.variantId),
+                      contents: items.map((i) => ({
+                        id: i.variantId,
+                        quantity: i.quantity,
+                      })),
+                      num_items: totalItems,
+                      value: totalPrice,
+                      currency: items[0]?.price.currencyCode || "XCD",
+                    });
+                    navigate('/checkout');
+                  }}
                   className="w-full"
                   size="lg"
                 >
