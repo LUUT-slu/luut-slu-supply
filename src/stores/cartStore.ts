@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { ShopifyProduct } from '@/lib/shopify';
 import { trackAnalyticsEvent } from '@/hooks/useAnalyticsTracker';
+import { fbqTrack } from '@/lib/metaPixel';
 
 export interface CartItem {
   product: ShopifyProduct;
@@ -69,7 +70,16 @@ export const useCartStore = create<CartStore>()(
           sellerId: item.product.node.vendor || undefined,
           metadata: { variantId: item.variantId, quantity: item.quantity },
         });
-        
+
+        // Meta Pixel: AddToCart
+        fbqTrack("AddToCart", {
+          content_ids: [item.variantId],
+          content_name: item.product.node.title,
+          content_type: "product",
+          value: parseFloat(item.price.amount) * item.quantity,
+          currency: item.price.currencyCode,
+        });
+
         return { success: true };
       },
 
