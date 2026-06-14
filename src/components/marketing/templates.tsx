@@ -1191,8 +1191,8 @@ function PresetLayout(p: TemplateProps) {
         )}
         <div
           style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.12)",
+            background: lightBg ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.07)",
+            border: lightBg ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.15)",
             color: text,
             padding: isAd ? "8px 16px" : "10px 20px",
             borderRadius: 999,
