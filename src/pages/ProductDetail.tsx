@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 import { ProductReviews } from "@/components/ProductReviews";
 import { ReviewPopup } from "@/components/ReviewPopup";
+import { SEO } from "@/components/SEO";
 
 const WHATSAPP_NUMBER = "17587185478";
 const COLOR_OPTION_NAMES = ["color", "colour"];
@@ -371,8 +372,39 @@ export default function ProductDetail() {
     : [];
   const hiddenColorCount = colorOption ? Math.max(0, colorOption.values.length - MAX_COLOR_SWATCHES) : 0;
 
+  const productImages = product.images.edges.map((e) => e.node.url);
+  const productPrice = currentVariant ? parseFloat(currentVariant.price.amount) : undefined;
+  const productCurrency = currentVariant?.price.currencyCode || "XCD";
+  const productAvailable = currentVariant?.availableForSale ?? true;
+  const productDescPlain = (product.description || "").replace(/\s+/g, " ").trim().slice(0, 300);
+  const productPath = `/product/${handle}`;
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO
+        title={`${product.title} — Luut SLU`.slice(0, 60)}
+        description={productDescPlain || `Shop ${product.title} on Luut SLU — Saint Lucia's streetwear marketplace.`}
+        path={productPath}
+        type="product"
+        image={productImages[0]}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.title,
+          description: productDescPlain || product.title,
+          image: productImages,
+          sku: currentVariant?.id,
+          brand: { "@type": "Brand", name: normalizeVendorName(product.vendor) || "Luut SLU" },
+          url: `https://luut-slu-supply.lovable.app${productPath}`,
+          offers: productPrice !== undefined ? {
+            "@type": "Offer",
+            price: productPrice.toFixed(2),
+            priceCurrency: productCurrency,
+            availability: productAvailable ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            url: `https://luut-slu-supply.lovable.app${productPath}`,
+          } : undefined,
+        }}
+      />
       <Header />
 
       <main className="flex-1">

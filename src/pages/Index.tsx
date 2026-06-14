@@ -64,7 +64,32 @@ export default function Index() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <SEO title="Luut SLU — Streetwear & Outfits in Saint Lucia" description="Shop streetwear, footwear and accessories from verified Saint Lucia sellers. Pay on meetup, no card needed." path="/" />
+      <SEO
+        title="Luut SLU — Streetwear & Outfits in Saint Lucia"
+        description="Shop streetwear, footwear and accessories from verified Saint Lucia sellers. Pay on meetup, no card needed."
+        path="/"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Luut SLU",
+            url: "https://luut-slu-supply.lovable.app/",
+            logo: "https://luut-slu-supply.lovable.app/favicon.ico",
+            description: "Saint Lucia's streetwear marketplace connecting local sellers with buyers via pay-on-meetup.",
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "Luut SLU",
+            url: "https://luut-slu-supply.lovable.app/",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: "https://luut-slu-supply.lovable.app/shop?q={search_term_string}",
+              "query-input": "required name=search_term_string",
+            },
+          },
+        ]}
+      />
       <Header />
       <LocaleDetectBanner />
 

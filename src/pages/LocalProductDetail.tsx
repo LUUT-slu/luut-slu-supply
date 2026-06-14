@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 import { ProductReviews } from "@/components/ProductReviews";
 import { ReviewPopup } from "@/components/ReviewPopup";
+import { SEO } from "@/components/SEO";
 
 interface LocalProduct {
   id: string;
@@ -200,8 +201,35 @@ export default function LocalProductDetail() {
   const isAvailable = product.quantity > 0 && product.status === 'active';
   const totalPrice = product.price * quantity;
 
+  const descPlain = (product.description || "").replace(/\s+/g, " ").trim().slice(0, 300);
+  const productPath = `/product/local/${product.id}`;
+
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title={`${product.name} — Luut SLU`.slice(0, 60)}
+        description={descPlain || `Shop ${product.name} on Luut SLU — Saint Lucia's streetwear marketplace.`}
+        path={productPath}
+        type="product"
+        image={images[0]}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.name,
+          description: descPlain || product.name,
+          image: images,
+          sku: product.id,
+          brand: { "@type": "Brand", name: product.seller_profiles?.seller_name || "Luut SLU" },
+          url: `https://luut-slu-supply.lovable.app${productPath}`,
+          offers: {
+            "@type": "Offer",
+            price: product.price.toFixed(2),
+            priceCurrency: "XCD",
+            availability: isAvailable ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            url: `https://luut-slu-supply.lovable.app${productPath}`,
+          },
+        }}
+      />
       <Header />
       <main className="container mx-auto px-4 py-6 pb-32">
         <BackButton />

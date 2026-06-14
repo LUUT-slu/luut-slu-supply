@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { SEO } from '@/components/SEO';
 import { useParams, useSearchParams, Navigate, Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -39,20 +40,7 @@ export default function CategorySub() {
     limit: 100,
   });
 
-  // SEO
-  useEffect(() => {
-    if (!main || !sub) return;
-    const title = `${sub.title} – ${main.title} | Luut SLU`;
-    document.title = title.slice(0, 60);
-    const desc = `Shop ${sub.title.toLowerCase()} in ${main.title.toLowerCase()} from local sellers in Saint Lucia.`;
-    let meta = document.querySelector('meta[name="description"]');
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.setAttribute('name', 'description');
-      document.head.appendChild(meta);
-    }
-    meta.setAttribute('content', desc.slice(0, 160));
-  }, [main, sub]);
+  // SEO handled via <SEO/> in JSX below
 
   const filtered = useMemo(() => applyFilters(products, filterValues), [products, filterValues]);
 
@@ -112,9 +100,27 @@ export default function CategorySub() {
     </aside>
   );
 
+  const path = `/c/${main.slug}/${sub.slug}`;
+  const seoTitle = `${sub.title} – ${main.title} — Luut SLU`.slice(0, 60);
+  const seoDesc = `Shop ${sub.title.toLowerCase()} in ${main.title.toLowerCase()} from local sellers in Saint Lucia.`.slice(0, 160);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO
+        title={seoTitle}
+        description={seoDesc}
+        path={path}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: `${sub.title} – ${main.title}`,
+          description: seoDesc,
+          url: `https://luut-slu-supply.lovable.app${path}`,
+          isPartOf: { "@type": "WebSite", name: "Luut SLU", url: "https://luut-slu-supply.lovable.app/" },
+        }}
+      />
       <Header />
+
 
       <main className="flex-1">
         <section className="border-b border-border bg-card px-4 py-6 md:py-10">

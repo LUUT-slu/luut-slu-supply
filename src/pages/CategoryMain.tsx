@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ChatButton } from '@/components/ChatButton';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { SEO } from '@/components/SEO';
 import { useTaxonomy } from '@/hooks/useTaxonomy';
 import { Loader2 } from 'lucide-react';
 
@@ -12,19 +12,6 @@ export default function CategoryMain() {
   const { taxonomy, loading } = useTaxonomy();
 
   const main = taxonomy?.mains.find((m) => m.slug === mainSlug);
-
-  useEffect(() => {
-    if (!main) return;
-    document.title = `${main.title} | Luut SLU`.slice(0, 60);
-    const desc = `Browse ${main.title.toLowerCase()} from local sellers in Saint Lucia.`;
-    let meta = document.querySelector('meta[name="description"]');
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.setAttribute('name', 'description');
-      document.head.appendChild(meta);
-    }
-    meta.setAttribute('content', desc.slice(0, 160));
-  }, [main]);
 
   if (loading) {
     return (
@@ -35,8 +22,25 @@ export default function CategoryMain() {
   }
   if (!main) return <Navigate to="/shop" replace />;
 
+  const path = `/c/${main.slug}`;
+  const title = `${main.title} — Luut SLU`.slice(0, 60);
+  const desc = (main.description || `Browse ${main.title.toLowerCase()} from local sellers in Saint Lucia.`).slice(0, 160);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO
+        title={title}
+        description={desc}
+        path={path}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: main.title,
+          description: desc,
+          url: `https://luut-slu-supply.lovable.app${path}`,
+          isPartOf: { "@type": "WebSite", name: "Luut SLU", url: "https://luut-slu-supply.lovable.app/" },
+        }}
+      />
       <Header />
 
       <main className="flex-1">
