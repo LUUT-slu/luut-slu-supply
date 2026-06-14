@@ -1018,6 +1018,90 @@ export default function MarketingStudio() {
             </Card>
           )}
 
+          {/* AI Display Image — Replicate flux-kontext-pro */}
+          {selectedProduct && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">AI Display Image</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label className="text-xs mb-1.5 block">Style</Label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(["studio", "lifestyle", "minimal"] as const).map((s) => (
+                      <Button
+                        key={s}
+                        type="button"
+                        size="sm"
+                        variant={displayStyle === s ? "default" : "outline"}
+                        onClick={() => setDisplayStyle(s)}
+                        className="text-xs capitalize"
+                      >
+                        {s}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Format</Label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(["square", "portrait", "landscape"] as const).map((f) => (
+                      <Button
+                        key={f}
+                        type="button"
+                        size="sm"
+                        variant={displayFormat === f ? "default" : "outline"}
+                        onClick={() => setDisplayFormat(f)}
+                        className="text-xs capitalize"
+                      >
+                        {f}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={generateDisplayImage}
+                  disabled={!selectedProduct || displayLoading}
+                >
+                  {displayLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    "Generate Display Image"
+                  )}
+                </Button>
+                {displayResultUrl && (
+                  <div className="space-y-2 rounded-md border p-2">
+                    <img
+                      src={displayResultUrl}
+                      alt="Generated display"
+                      className="w-full rounded"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={downloadDisplayImage}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      Use as Product Image
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+
+
           {/* Image prep — multi-product (applied to every tile, canvas-only) */}
           {isMulti && sourceProducts.length > 0 && (
             <Card className="mb-4">
