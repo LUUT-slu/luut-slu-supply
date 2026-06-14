@@ -1438,7 +1438,7 @@ function VideoStudioPanel({
   selectedProduct,
   posterType,
 }: {
-  selectedProduct: MarketingProduct | undefined;
+  selectedProduct: any;
   posterType: PosterType;
 }) {
   const [motionStyle, setMotionStyle] = useState<MotionStyle>("subtle");
