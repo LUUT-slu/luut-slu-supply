@@ -1446,13 +1446,6 @@ export default function MarketingStudio() {
               )}
             </TabsContent>
 
-            {/* Video tab */}
-            <TabsContent value="video" className="mt-4">
-              <VideoStudioPanel
-                selectedProduct={selectedProduct}
-                posterType={posterType}
-              />
-            </TabsContent>
           </Tabs>
 
           {/* Hidden full-resolution export node */}
@@ -1476,7 +1469,9 @@ export default function MarketingStudio() {
               </div>
             )}
           </div>
+          </>)}
         </main>
+
 
         <ImageEditorModal
           open={!!editorImage}
