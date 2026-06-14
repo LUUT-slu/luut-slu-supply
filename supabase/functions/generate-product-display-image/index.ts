@@ -1,5 +1,7 @@
-// Generate a polished product display/marketing image from an existing product
-// photo using Replicate's flux-kontext-pro (image-to-image with reference).
+// Generate a polished product display/marketing image via Replicate
+// (black-forest-labs/flux-kontext-pro), persist it to the private
+// `marketing-assets` storage bucket, register it in
+// `marketing_generated_images`, and return a long-lived signed URL.
 // Admin-only.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -14,26 +16,37 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN")!;
 const REPLICATE_API = "https://api.replicate.com/v1";
+const BUCKET = "marketing-assets";
+const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10; // ~10 years
 
 type Style = "studio" | "lifestyle" | "minimal";
-type Format = "square" | "portrait" | "landscape";
 
-const ASPECT_RATIO: Record<Format, string> = {
-  square: "1:1",
-  portrait: "4:5",
-  landscape: "16:9",
-};
-
-function buildPrompt(style: Style, productTitle: string): string {
+function buildPrompt(
+  style: Style,
+  productTitle: string,
+  textOverlay?: string | null,
+  customPrompt?: string | null,
+): string {
+  let base: string;
   switch (style) {
     case "lifestyle":
-      return `Lifestyle product photo of ${productTitle} in a modern Caribbean setting. Natural light, clean environment, the product is the clear hero of the shot. Authentic, aspirational, fashion-forward. Same product exactly — same colors, shape, branding.`;
+      base = `Lifestyle product photo of ${productTitle} in a modern Caribbean setting. Natural light, clean environment, the product is the clear hero. Authentic, aspirational, fashion-forward. Exact same product — same colors, shape, branding.`;
+      break;
     case "minimal":
-      return `Minimal product photo of ${productTitle} on a pure white background. Perfect centering, even lighting, no shadows, no props, e-commerce ready. Same product exactly as the reference.`;
+      base = `Minimal product photo of ${productTitle} on a pure white background. Perfect centering, even lighting, no shadows, no props. E-commerce ready. Exact same product as the reference.`;
+      break;
     case "studio":
     default:
-      return `Professional studio product photo of ${productTitle}. Clean white or light grey background, soft box lighting from the left, subtle shadow below the product, sharp focus, high resolution, commercial photography quality. The product must look exactly as in the reference image — same colors, shape, branding. No text, no people, no props.`;
+      base = `Professional studio product photo of ${productTitle}. Clean white or light grey background, soft box lighting, sharp focus, commercial photography quality, e-commerce ready. The product must look exactly as in the reference — same colors, shape, branding, details.`;
+      break;
   }
+  if (textOverlay && textOverlay.trim().length > 0) {
+    base += ` Include the text "${textOverlay.trim()}" rendered cleanly on the image in a modern sans-serif font. Place it in the lower third, clear and legible, not overlapping the product.`;
+  }
+  if (customPrompt && customPrompt.trim().length > 0) {
+    base += ` ${customPrompt.trim()}`;
+  }
+  return base;
 }
 
 async function runReplicate(
@@ -49,14 +62,10 @@ async function runReplicate(
     },
     body: JSON.stringify({ input }),
   });
-
   if (!createRes.ok) {
     const text = await createRes.text().catch(() => "");
-    const err: any = new Error(`Replicate ${createRes.status}: ${text}`);
-    err.status = createRes.status;
-    throw err;
+    throw new Error(`Replicate ${createRes.status}: ${text}`);
   }
-
   let prediction = await createRes.json();
   const start = Date.now();
   while (
@@ -64,8 +73,8 @@ async function runReplicate(
     prediction.status !== "failed" &&
     prediction.status !== "canceled"
   ) {
-    if (Date.now() - start > 180_000) throw new Error("Replicate prediction timed out");
-    await new Promise((r) => setTimeout(r, 1500));
+    if (Date.now() - start > 120_000) throw new Error("Replicate prediction timed out");
+    await new Promise((r) => setTimeout(r, 3000));
     const pollRes = await fetch(`${REPLICATE_API}/predictions/${prediction.id}`, {
       headers: { Authorization: `Token ${REPLICATE_API_TOKEN}` },
     });
@@ -81,15 +90,18 @@ async function runReplicate(
   return prediction.output;
 }
 
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!REPLICATE_API_TOKEN) {
-      return json({ error: "REPLICATE_API_TOKEN not configured" }, 500);
-    }
-
-    // Auth: verify caller is admin
+    // Auth — service-role client + getUser from bearer token, then check user_roles
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace(/^Bearer\s+/i, "");
     if (!token) return json({ error: "Unauthorized" }, 401);
@@ -99,7 +111,10 @@ Deno.serve(async (req) => {
     const userId = userRes?.user?.id;
     if (!userId) return json({ error: "Unauthorized" }, 401);
 
-    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userId);
+    const { data: roles } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
     const isAdmin = roles?.some((r: { role: string }) => r.role === "admin");
     if (!isAdmin) return json({ error: "Admin access required" }, 403);
 
@@ -108,65 +123,94 @@ Deno.serve(async (req) => {
       productImageUrl,
       productTitle,
       productCategory,
-      style = "studio",
-      format = "square",
+      style,
+      aspectRatio,
+      textOverlay,
+      referenceImageUrl,
+      customPrompt,
     } = body as {
       productImageUrl?: string;
       productTitle?: string;
       productCategory?: string;
       style?: Style;
-      format?: Format;
+      aspectRatio?: string;
+      textOverlay?: string | null;
+      referenceImageUrl?: string | null;
+      customPrompt?: string | null;
     };
 
-    if (!productImageUrl || typeof productImageUrl !== "string") {
-      return json({ error: "productImageUrl is required" }, 400);
+    if (!productImageUrl || !productTitle) {
+      return json({ error: "productImageUrl and productTitle are required" }, 400);
     }
-    if (!productTitle || typeof productTitle !== "string") {
-      return json({ error: "productTitle is required" }, 400);
-    }
-    if (!productCategory || typeof productCategory !== "string") {
-      return json({ error: "productCategory is required" }, 400);
-    }
-    if (!["studio", "lifestyle", "minimal"].includes(style)) {
-      return json({ error: "Invalid style" }, 400);
-    }
-    if (!["square", "portrait", "landscape"].includes(format)) {
-      return json({ error: "Invalid format" }, 400);
+    const resolvedStyle: Style =
+      style === "lifestyle" || style === "minimal" ? style : "studio";
+    const resolvedAspect = aspectRatio && /^\d+:\d+$/.test(aspectRatio) ? aspectRatio : "1:1";
+
+    const fullPrompt = buildPrompt(resolvedStyle, productTitle, textOverlay, customPrompt);
+
+    const replicateInput: Record<string, unknown> = {
+      prompt: fullPrompt,
+      input_image: productImageUrl,
+      aspect_ratio: resolvedAspect,
+      output_format: "png",
+      safety_tolerance: 2,
+    };
+    if (referenceImageUrl && referenceImageUrl.length > 0) {
+      replicateInput.reference_image = referenceImageUrl;
     }
 
-    const prompt = buildPrompt(style, productTitle);
+    const output = await runReplicate(
+      "black-forest-labs/flux-kontext-pro",
+      replicateInput,
+    );
+    const replicateUrl = Array.isArray(output) ? String(output[0]) : String(output);
+    if (!replicateUrl || !replicateUrl.startsWith("http")) {
+      throw new Error("Replicate returned no image URL");
+    }
 
-    let output: unknown;
-    try {
-      output = await runReplicate("black-forest-labs/flux-kontext-pro", {
-        prompt,
-        input_image: productImageUrl,
-        aspect_ratio: ASPECT_RATIO[format],
-        output_format: "png",
-        safety_tolerance: 2,
+    // Download and upload to storage
+    const imgRes = await fetch(replicateUrl);
+    if (!imgRes.ok) throw new Error(`Failed to fetch generated image: ${imgRes.status}`);
+    const bytes = new Uint8Array(await imgRes.arrayBuffer());
+    const path = `display-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`;
+
+    const { error: uploadErr } = await admin.storage
+      .from(BUCKET)
+      .upload(path, bytes, {
+        contentType: "image/png",
+        upsert: true,
       });
-    } catch (e: any) {
-      if (e?.status === 429) return json({ error: "Rate limited. Try again shortly." }, 429);
-      console.error("Replicate error", e);
-      return json({ error: "Replicate API error — check your usage at replicate.com" }, 502);
+    if (uploadErr) throw new Error(`Storage upload failed: ${uploadErr.message}`);
+
+    const { data: signed, error: signedErr } = await admin.storage
+      .from(BUCKET)
+      .createSignedUrl(path, SIGNED_URL_TTL);
+    if (signedErr || !signed?.signedUrl) {
+      throw new Error(`Could not create signed URL: ${signedErr?.message || "unknown"}`);
     }
+    const publicUrl = signed.signedUrl;
 
-    const url = Array.isArray(output)
-      ? String(output[0])
-      : typeof output === "string" ? output : null;
+    const { data: inserted, error: insertErr } = await admin
+      .from("marketing_generated_images")
+      .insert({
+        image_url: publicUrl,
+        thumbnail_url: publicUrl,
+        generation_type: "display",
+        product_title: productTitle,
+        style: resolvedStyle,
+        aspect_ratio: resolvedAspect,
+        prompt_used: fullPrompt,
+        reference_image_url: referenceImageUrl || null,
+        created_by: userId,
+      })
+      .select("id")
+      .single();
+    if (insertErr) throw new Error(`DB insert failed: ${insertErr.message}`);
 
-    if (!url) return json({ error: "Replicate did not return an image" }, 502);
-
-    return json({ url, prompt });
+    return json({ url: publicUrl, id: inserted.id, prompt: fullPrompt, path });
   } catch (e) {
-    console.error("generate-product-display-image error", e);
-    return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[generate-product-display-image]", msg);
+    return json({ error: msg }, 500);
   }
 });
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
