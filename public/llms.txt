@@ -1,0 +1,16 @@
+# Luut SLU
+
+> Streetwear marketplace and outfit discovery platform in Saint Lucia. Connects local sellers with buyers for meetup-based purchases.
+
+## Pages
+
+- [Home](/): Browse streetwear, outfits, and new arrivals from local sellers.
+- [Shop](/shop): Full product catalog with category filters and search.
+- [New Arrivals](/shop/new-arrivals): Latest drops and freshly listed items.
+- [Best Sellers](/shop/best-sellers): Top-selling products across all sellers.
+- [Sellers](/sellers): Discover and browse individual seller storefronts.
+- [Sell on Luut](/sell): Learn how to become a seller and list your products.
+- [Contact](/contact): Get in touch with the Luut team.
+- [Meetup Policy](/meetup-policy): Guidelines for safe in-person order exchanges.
+- [Deposit Policy](/deposit-policy): Terms for order deposits and holds.
+- [Refund Policy](/refund-policy): Refund and return conditions.
