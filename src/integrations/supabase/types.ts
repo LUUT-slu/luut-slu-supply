@@ -420,6 +420,57 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_generated_images: {
+        Row: {
+          aspect_ratio: string | null
+          created_at: string
+          created_by: string | null
+          generation_type: string
+          id: string
+          image_url: string
+          logo_applied: boolean | null
+          logo_position: string | null
+          product_handle: string | null
+          product_title: string | null
+          prompt_used: string | null
+          reference_image_url: string | null
+          style: string | null
+          thumbnail_url: string | null
+        }
+        Insert: {
+          aspect_ratio?: string | null
+          created_at?: string
+          created_by?: string | null
+          generation_type: string
+          id?: string
+          image_url: string
+          logo_applied?: boolean | null
+          logo_position?: string | null
+          product_handle?: string | null
+          product_title?: string | null
+          prompt_used?: string | null
+          reference_image_url?: string | null
+          style?: string | null
+          thumbnail_url?: string | null
+        }
+        Update: {
+          aspect_ratio?: string | null
+          created_at?: string
+          created_by?: string | null
+          generation_type?: string
+          id?: string
+          image_url?: string
+          logo_applied?: boolean | null
+          logo_position?: string | null
+          product_handle?: string | null
+          product_title?: string | null
+          prompt_used?: string | null
+          reference_image_url?: string | null
+          style?: string | null
+          thumbnail_url?: string | null
+        }
+        Relationships: []
+      }
       order_assignments: {
         Row: {
           assigned_at: string | null
