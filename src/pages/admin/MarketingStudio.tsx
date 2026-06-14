@@ -904,8 +904,71 @@ export default function MarketingStudio() {
             </div>
           </div>
 
+          {studioMode === 'select' && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <p className="mb-6 text-sm text-muted-foreground text-center">What do you want to create?</p>
+              <div className="grid w-full max-w-3xl gap-4 sm:grid-cols-2">
+                <Card
+                  className="cursor-pointer p-8 transition-colors hover:border-primary"
+                  onClick={() => setStudioMode('images')}
+                >
+                  <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-fuchsia-500/10">
+                    <ImageIcon className="h-12 w-12 text-fuchsia-500" />
+                  </div>
+                  <h2 className="mt-4 text-xl font-semibold">Images</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Create posters, display images, and AI-enhanced product photos for Instagram, TikTok, and your store
+                  </p>
+                </Card>
+                <Card
+                  className="cursor-pointer p-8 transition-colors hover:border-primary"
+                  onClick={() => setStudioMode('videos')}
+                >
+                  <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-blue-500/10">
+                    <Video className="h-12 w-12 text-blue-400" />
+                  </div>
+                  <h2 className="mt-4 text-xl font-semibold">Videos</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Generate short product videos and animated posters for Reels, TikTok, and WhatsApp status
+                  </p>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {studioMode !== 'select' && (
+            <div className="mb-4 flex items-center gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant={studioMode === 'images' ? 'default' : 'outline'}
+                className="h-8 gap-1.5 rounded-full px-3 text-xs"
+                onClick={() => setStudioMode('images')}
+              >
+                <ImageIcon className="h-3.5 w-3.5" />
+                Images
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={studioMode === 'videos' ? 'default' : 'outline'}
+                className="h-8 gap-1.5 rounded-full px-3 text-xs"
+                onClick={() => setStudioMode('videos')}
+              >
+                <Video className="h-3.5 w-3.5" />
+                Videos
+              </Button>
+            </div>
+          )}
+
+          {studioMode === 'videos' && (
+            <VideoStudioPanel selectedProduct={selectedProduct} posterType={posterType} />
+          )}
+
+          {studioMode === 'images' && (<>
           {/* Poster Type chips */}
           <Card className="mb-4">
+
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Poster Type</CardTitle>
             </CardHeader>
