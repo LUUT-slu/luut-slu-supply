@@ -170,6 +170,8 @@ export default function MarketingStudio() {
   const [selectedId, setSelectedId] = useState<string>(initialId);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<TemplateFormat>("story");
+  const [studioMode, setStudioMode] = useState<'select' | 'images' | 'videos'>('select');
+  
   
   const [activePresetId, setActivePresetId] = useState<string>("hype");
   const [presetOverrides, setPresetOverrides] = useState<PresetOverrides>({});
