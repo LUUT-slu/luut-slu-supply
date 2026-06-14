@@ -1,4 +1,5 @@
 import { useIsMobile } from "@/hooks/use-mobile";
+import { SEO } from "@/components/SEO";
 import { Link } from "react-router-dom";
 import { MapPin, ShieldCheck, Users, Package, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ export default function Index() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO title="Luut SLU — Streetwear & Outfits in Saint Lucia" description="Shop streetwear, footwear and accessories from verified Saint Lucia sellers. Pay on meetup, no card needed." path="/" />
       <Header />
       <LocaleDetectBanner />
 

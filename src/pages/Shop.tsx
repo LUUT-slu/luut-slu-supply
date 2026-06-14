@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { SEO } from "@/components/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
@@ -38,6 +39,7 @@ export default function Shop() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO title="Shop All — Luut SLU Streetwear Marketplace" description="Browse every category — hats, hoodies, shoes, bags and more — from local Saint Lucia sellers on Luut SLU." path="/shop" />
       <Header />
 
       <main className="flex-1">

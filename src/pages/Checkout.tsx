@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { SEO } from "@/components/SEO";
 import { format } from "date-fns";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -93,6 +94,7 @@ interface ChecklistItemProps {
 function ChecklistItem({ completed, label, children }: ChecklistItemProps) {
   return (
     <div className="space-y-3">
+      <SEO title="Checkout — Luut SLU" description="Complete your Luut SLU order — confirm contact details and pickup time, then pay sellers on meetup." />
       <div className="flex items-center gap-2">
         {completed ? (
           <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary">

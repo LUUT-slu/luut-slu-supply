@@ -1,4 +1,5 @@
 import { Header } from "@/components/Header";
+import { SEO } from "@/components/SEO";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
 import { ChatButton } from "@/components/ChatButton";
@@ -7,6 +8,7 @@ import { MapPin, MessageCircle, Instagram, Facebook } from "lucide-react";
 export default function Contact() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO title="Contact Luut SLU — Saint Lucia Streetwear Support" description="Reach the Luut SLU team for help with orders, seller applications, or platform questions." path="/contact" />
       <Header />
 
       <main className="flex-1">

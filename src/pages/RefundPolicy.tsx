@@ -1,4 +1,5 @@
 import { Header } from "@/components/Header";
+import { SEO } from "@/components/SEO";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
 import { ChatButton } from "@/components/ChatButton";
@@ -7,6 +8,7 @@ import { XCircle, AlertTriangle } from "lucide-react";
 export default function RefundPolicy() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO title="Refund Policy — Luut SLU" description="Luut SLU's refund policy for marketplace orders fulfilled by Saint Lucia sellers on meetup." path="/refund-policy" />
       <Header />
 
       <main className="flex-1">

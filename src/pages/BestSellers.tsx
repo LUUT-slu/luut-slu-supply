@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { SEO } from "@/components/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ChatButton } from "@/components/ChatButton";
@@ -54,6 +55,7 @@ export default function BestSellers() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO title="Best Sellers — Luut SLU" description="Top-selling streetwear, footwear and accessories on Luut SLU, ranked by what Saint Lucia shoppers are buying." path="/shop/best-sellers" />
       <Header />
 
       <main className="flex-1">

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SEO } from "@/components/SEO";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -38,6 +39,7 @@ export default function Sellers() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO title="Sellers — Luut SLU Marketplace" description="Discover verified Saint Lucia sellers on Luut SLU and browse their full streetwear catalogues." path="/sellers" />
       <Header />
 
       <main className="flex-1">
