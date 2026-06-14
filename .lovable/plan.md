@@ -1,69 +1,58 @@
-# Video Studio for Marketing Studio
+## Summary
+Change `/admin/marketing-studio` so it opens to a two-card mode selector (Images / Videos) instead of immediately showing the poster interface. Once a mode is picked, a compact pill toggle at the top lets users switch back. Only `MarketingStudio.tsx` is modified.
 
-Add image-to-video generation to `/admin/marketing-studio` without altering any existing poster flow. Powered by Replicate (Kling v2.1 for product clips, Wan 2.2 I2V Fast for poster animation), using the existing `REPLICATE_API_TOKEN` edge function secret.
+## What already exists
+- `VideoStudioPanel` is declared inline at the bottom of the file and currently rendered as a `TabsContent value="video"` inside the existing `Tabs` block.
+- The lucide import on line 30 has `Image as ImageIcon` but not `Video`.
 
-## 1. New edge function: `generate-product-video`
+## Changes to `src/pages/admin/MarketingStudio.tsx`
 
-Path: `supabase/functions/generate-product-video/index.ts`
+### 1. State
+Add near the other `useState` declarations (around line 170–200):
+```tsx
+const [studioMode, setStudioMode] = useState<'select' | 'images' | 'videos'>('select');
+```
 
-- CORS preflight + permissive headers (same pattern as `generate-category-image`).
-- Admin auth: Service-role Supabase client, `getUser` from `Authorization` header, check `user_roles.role = 'admin'`, return 403 otherwise.
-- Input: `{ productImageUrl, productTitle, productCategory, motionStyle: "subtle"|"dynamic"|"cinematic" = "subtle", duration: 5|10 = 5 }`.
-- Build prompt from `motionStyle` using the three templates specified (interpolating `productTitle`).
-- POST `https://api.replicate.com/v1/models/kwaiyeij/kling-v2.1/predictions` with `Authorization: Token ${REPLICATE_API_TOKEN}`, `Prefer: wait`, body:
-  ```
-  { input: { image, prompt, duration, aspect_ratio: "9:16", negative_prompt: "blurry, distorted, watermark, text, logo, people, faces, hands, low quality, artifacts" } }
-  ```
-- Poll `GET /v1/predictions/{id}` every 3s, max 40 polls (120s). On `succeeded` return `{ videoUrl: output[0], prompt }`. On `failed` return `{ error }`. On timeout return `{ error: "Generation timed out" }`.
+### 2. Import
+Add `Video` to the existing `lucide-react` import on line 30.
 
-## 2. New edge function: `generate-product-poster-video`
+### 3. Mode Selector (shown when `studioMode === 'select'`)
+Immediately after the existing page header block (`<div className="mb-5 ...">` at line 892), insert a conditional block:
+- If `studioMode === 'select'`: render a centered, full-width section containing:
+  - Label: "What do you want to create?" (`text-sm text-muted-foreground`, centered)
+  - Two side-by-side responsive cards (stack on mobile, side-by-side on tablet+). Each uses the existing `Card` component with:
+    - `cursor-pointer`, `p-8`, `hover:border-primary`
+    - Icon in a rounded square with subtle tinted background:
+      - Images: fuchsia tint (`bg-fuchsia-500/10`, `text-fuchsia-500`), `ImageIcon`, h-12 w-12
+      - Videos: blue tint (`bg-blue-500/10`, `text-blue-400`), `Video`, h-12 w-12
+    - Title: "Images" / "Videos" (`text-xl font-semibold mt-4`)
+    - Description text (`text-sm text-muted-foreground mt-2`)
+    - On click: `setStudioMode('images')` / `setStudioMode('videos')`
+- After rendering the selector, return early so none of the existing poster/video interface renders.
 
-Path: `supabase/functions/generate-product-poster-video/index.ts`
+### 4. Mode Switcher Strip (shown when `studioMode === 'images'` or `'videos'`)
+Just below the page header (and above the Poster Type selector), render a compact horizontal pill group:
+- Two buttons: `[ImageIcon] Images` and `[Video] Videos`
+- Active pill uses the primary/gold style (`variant="default"`)
+- Inactive uses `variant="outline"`
+- Clicking switches mode via `setStudioMode(...)`
+- Layout: left-aligned, `mb-4`, small rounded pill buttons
 
-- Same CORS + admin auth pattern.
-- Input: `{ posterImageUrl (URL or data URL), posterType }`.
-- Fixed prompt (as specified in the request).
-- POST `https://api.replicate.com/v1/models/wan-video/wan-2.2-i2v-480p/predictions` with body:
-  ```
-  { input: { image: posterImageUrl, prompt, num_frames: 81, aspect_ratio: "9:16", fast_mode: true } }
-  ```
-- Same 3s / 120s polling logic.
-- Response: `{ videoUrl }` on success, `{ error }` otherwise.
+### 5. Images mode (`studioMode === 'images'`)
+Render **exactly** the current JSX that renders by default. No changes to the poster type selector, product picker, image prep, format tabs, preview, controls, copy tab, export, hidden export node, or image editor modal.
 
-Both functions reference only `REPLICATE_API_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (no `LOVABLE_API_KEY`).
+### 6. Videos mode (`studioMode === 'videos'`)
+Render the existing `VideoStudioPanel` as the entire page content, passing `selectedProduct` and `posterType`. Remove the `TabsTrigger` for Video and the `TabsContent value="video"` from inside the `Tabs` block — the video UI moves from being a tab to being the full videos-mode page.
 
-## 3. UI: add "Video" tab to `src/pages/admin/MarketingStudio.tsx`
+The `Tabs` block and everything inside it (format tabs, copy tab, preview, controls, export node) should only render when `studioMode === 'images'`.
 
-Only this file is modified. The existing FORMATS tabs + Copy tab stay untouched.
+### 7. Edge cases
+- The `exportRef` hidden node and `ImageEditorModal` should still mount when in videos mode because `VideoStudioPanel` does not need them, but they are harmless. However, to keep the DOM clean, they can be wrapped inside the images-mode conditional along with the rest of the poster interface.
+- `tab` state and all poster-related state remain untouched.
 
-- Add a `<TabsTrigger value="video">Video</TabsTrigger>` next to the existing `Copy` trigger in the `TabsList` at line 1136.
-- Add a sibling `<TabsContent value="video">` rendering a new `VideoStudioPanel` component declared inline in the same file (keeps scope locked to one file). When the Video tab is active, none of the existing poster `TabsContent` renders — the tab switch handles the show/hide.
-
-`VideoStudioPanel` contains two stacked cards using the same Card/Button styling already in the file (gold accent matches existing Download JPEG button).
-
-### Section A — Product Video
-- Subtitle line.
-- Pill group "Motion Style": Subtle / Dynamic / Cinematic (default Subtle).
-- Pill group "Duration": 5s / 10s (default 5s).
-- "Generate Product Video" button, disabled when `!selectedProduct` or while loading. Loading label: "Generating video... this takes ~30–60s" with spinner.
-- On success: render `<video controls autoPlay muted loop>` and a gold "Download MP4" button (fetches the URL and triggers a download).
-- Calls `supabase.functions.invoke("generate-product-video", { body: { productImageUrl: selectedProduct.images[0].url, productTitle: selectedProduct.title, productCategory: selectedProduct.category || "", motionStyle, duration } })`.
-- Errors surfaced via existing `toast.error`.
-
-### Section B — Animate This Poster
-- Subtitle line.
-- File `<input type="file" accept="image/png,image/jpeg">` wrapped in a styled "Upload Poster Image" button. On change, convert to base64 data URL via `FileReader.readAsDataURL` and store in local state; show a small thumbnail preview.
-- "Animate Poster" button, disabled until an image is uploaded.
-- Same loading/success/error UX and Download MP4 button as Section A.
-- Calls `supabase.functions.invoke("generate-product-poster-video", { body: { posterImageUrl: dataUrl, posterType } })` using current `posterType` state already in the component.
-
-## Scope lock
-
-Files created:
-- `supabase/functions/generate-product-video/index.ts`
-- `supabase/functions/generate-product-poster-video/index.ts`
-
-Files modified:
-- `src/pages/admin/MarketingStudio.tsx` (add Video tab trigger + TabsContent + inline VideoStudioPanel; no other changes)
-
-No other files, no changes to existing presets/templates/export/copy logic, no new secrets.
+## Confirmation criteria
+1. `/admin/marketing-studio` opens to the two-card mode selector.
+2. Clicking Images loads the existing full poster interface unchanged.
+3. Clicking Videos loads the video generation panel (existing `VideoStudioPanel`).
+4. The pill toggle appears at the top when either mode is active.
+5. Only `MarketingStudio.tsx` is modified.
