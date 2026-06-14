@@ -202,7 +202,7 @@ export default function LocalProductDetail() {
   const totalPrice = product.price * quantity;
 
   const descPlain = (product.description || "").replace(/\s+/g, " ").trim().slice(0, 300);
-  const productPath = `/p/${product.id}`;
+  const productPath = `/product/local/${product.id}`;
 
   return (
     <div className="min-h-screen bg-background">
