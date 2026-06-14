@@ -1142,6 +1142,9 @@ export default function MarketingStudio() {
                 <TabsTrigger value="copy" className="text-xs">
                   Copy
                 </TabsTrigger>
+                <TabsTrigger value="video" className="text-xs">
+                  Video
+                </TabsTrigger>
               </TabsList>
             </div>
 
