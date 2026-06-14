@@ -153,6 +153,22 @@ function contrastText(bg: string): string {
   return yiq >= 160 ? "#0a0a0a" : "#ffffff";
 }
 
+function isLightBg(bgColor: string): boolean {
+  if (bgColor.startsWith("#")) {
+    const rgb = hexToRgb(bgColor);
+    if (!rgb) return false;
+    const yiq = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
+    return yiq >= 140;
+  }
+  return false;
+}
+
+function getOpaqueColor(color: string, fallback: string): string {
+  const rgbaMatch = color.match(/rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/);
+  if (rgbaMatch && parseFloat(rgbaMatch[1]) < 0.3) return fallback;
+  return color;
+}
+
 // Theme palette per poster intent. Picked from `urgencyText`/`headline` keywords
 // so the reference's "green glow" / "red glow" aesthetic auto-applies.
 interface PosterTheme {
@@ -728,6 +744,7 @@ function ProductGrid({
                   theme={theme}
                   shape={badgeShape}
                   fill={badgeFill}
+                  accentColor={preset?.palette?.accent ?? "#000000"}
                 />
               )}
 
@@ -815,11 +832,13 @@ function PresetBadge({
   theme,
   shape,
   fill,
+  accentColor = "#000000",
 }: {
   text: string;
   theme: PosterTheme;
   shape: "pill" | "ribbon" | "chip";
   fill: "glow" | "solid" | "outline";
+  accentColor?: string;
 }) {
   const isOutline = fill === "outline";
   const radius = shape === "pill" ? 999 : shape === "chip" ? 6 : 4;
@@ -830,8 +849,9 @@ function PresetBadge({
       ? "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)"
       : undefined;
   const bg = isOutline ? "transparent" : theme.badge;
-  const border = isOutline ? `2px solid ${theme.glow}` : "none";
-  const color = isOutline ? theme.glow : contrastTextSafe(theme.badge);
+  const outlineColor = getOpaqueColor(theme.glow, accentColor);
+  const border = isOutline ? `2px solid ${outlineColor}` : "none";
+  const color = isOutline ? outlineColor : contrastTextSafe(theme.badge);
   return (
     <div
       style={{
@@ -905,6 +925,7 @@ function PresetLayout(p: TemplateProps) {
   const text = preset.palette.text;
   const muted = preset.palette.muted;
   const accent = preset.palette.accent;
+  const lightBg = isLightBg(preset.palette.bg);
 
   const headlineSize = Math.round(
     (isStory ? 110 : isAd ? 60 : isPortrait ? 96 : 86) * tScale,
@@ -985,6 +1006,7 @@ function PresetLayout(p: TemplateProps) {
               theme={theme}
               shape={preset.badge.shape}
               fill={preset.badge.fill}
+              accentColor={preset.palette.accent}
             />
           )}
         </div>
@@ -1002,7 +1024,8 @@ function PresetLayout(p: TemplateProps) {
                 fontSize: isAd ? 18 : 24,
                 fontWeight: 600,
                 letterSpacing: 1,
-                color: muted,
+                color: text,
+                opacity: 0.65,
               }}
             >
               {p.brandName}
@@ -1082,7 +1105,7 @@ function PresetLayout(p: TemplateProps) {
                 }}
               />
             ) : (
-              <div style={{ color: muted, fontSize: 22 }}>No image</div>
+              <div style={{ color: text, fontSize: 22, opacity: 0.5 }}>No image</div>
             )}
           </div>
         )}
@@ -1112,7 +1135,8 @@ function PresetLayout(p: TemplateProps) {
             position: "relative",
             zIndex: 2,
             fontSize: isStory ? 28 : isAd ? 18 : 22,
-            color: muted,
+            color: text,
+            opacity: 0.75,
             fontWeight: 600,
             marginBottom: Math.round(gap * 0.7),
           }}
@@ -1158,8 +1182,8 @@ function PresetLayout(p: TemplateProps) {
         {stockPillText && (
           <div
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.12)",
+              background: lightBg ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.07)",
+              border: lightBg ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.15)",
               color: text,
               padding: isAd ? "8px 16px" : "10px 20px",
               borderRadius: 999,
@@ -1172,8 +1196,8 @@ function PresetLayout(p: TemplateProps) {
         )}
         <div
           style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.12)",
+            background: lightBg ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.07)",
+            border: lightBg ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.15)",
             color: text,
             padding: isAd ? "8px 16px" : "10px 20px",
             borderRadius: 999,
@@ -1199,6 +1223,7 @@ function PresetLayout(p: TemplateProps) {
           fontSize={ctaFontSize}
           padY={isStory ? 32 : isAd ? 18 : 26}
           radius={Math.max(12, radius - 8)}
+          accentColor={preset.palette.accent}
         />
       </div>
     </div>
@@ -1214,6 +1239,7 @@ function FullWidthCTA({
   fontSize,
   padY,
   radius,
+  accentColor = "#ffffff",
 }: {
   text: string;
   theme: PosterTheme;
@@ -1222,12 +1248,14 @@ function FullWidthCTA({
   fontSize: number;
   padY: number;
   radius: number;
+  accentColor?: string;
 }) {
   const isOutline = fill === "outline" || shape === "outline";
   const r = shape === "pill" ? 999 : shape === "block" ? radius : radius;
   const bg = isOutline ? "transparent" : theme.cta;
-  const border = isOutline ? `3px solid ${theme.glow}` : "none";
-  const color = isOutline ? theme.glow : theme.ctaText;
+  const outlineColor = getOpaqueColor(theme.glow, accentColor);
+  const border = isOutline ? `3px solid ${outlineColor}` : "none";
+  const color = isOutline ? outlineColor : theme.ctaText;
   const shadow =
     fill === "glow" && !isOutline
       ? `0 0 32px ${theme.glowSoft}, inset 0 -4px 0 rgba(0,0,0,0.2)`
@@ -1261,11 +1289,13 @@ function PresetInlineBadge({
   theme,
   shape,
   fill,
+  accentColor = "#000000",
 }: {
   text: string;
   theme: PosterTheme;
   shape: "pill" | "ribbon" | "chip";
   fill: "glow" | "solid" | "outline";
+  accentColor?: string;
 }) {
   const isOutline = fill === "outline";
   const radius = shape === "pill" ? 999 : shape === "chip" ? 6 : 4;
@@ -1276,8 +1306,9 @@ function PresetInlineBadge({
       ? "polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%)"
       : undefined;
   const bg = isOutline ? "transparent" : theme.badge;
-  const border = isOutline ? `2px solid ${theme.glow}` : "none";
-  const color = isOutline ? theme.glow : "#ffffff";
+  const outlineColor = getOpaqueColor(theme.glow, accentColor);
+  const border = isOutline ? `2px solid ${outlineColor}` : "none";
+  const color = isOutline ? outlineColor : contrastTextSafe(theme.badge);
   return (
     <div
       style={{
