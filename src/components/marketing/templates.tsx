@@ -744,6 +744,7 @@ function ProductGrid({
                   theme={theme}
                   shape={badgeShape}
                   fill={badgeFill}
+                  accentColor={preset?.palette?.accent ?? "#000000"}
                 />
               )}
 
