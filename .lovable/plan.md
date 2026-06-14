@@ -1,55 +1,58 @@
-## Summary
-Add a Content Library feature: a new storage bucket + table for saved AI marketing images, an upgraded edge function that persists generated display images, an expanded AI Display Image panel in Marketing Studio (style/aspect ratio/text/reference image/custom prompt/logo overlay), a new `/admin/content-library` page, an AdminHub card, and a "Recently Saved" strip at the bottom of the studio.
+# Marketing Studio: Preset Redesign + AI Poster Tab
 
-## 1. Migration: `supabase/migrations/{ts}_marketing_assets.sql`
-- Create public `marketing-assets` storage bucket (via INSERT into `storage.buckets` — note: codebase convention requires `storage_create_bucket` tool; will use that tool instead of SQL for the bucket itself, then add policies via migration).
-- Storage policies on `storage.objects`: public SELECT for bucket, admin INSERT/DELETE via `public.has_role`.
-- Table `public.marketing_generated_images` with fields: `image_url`, `thumbnail_url`, `generation_type`, `product_title`, `product_handle`, `style`, `aspect_ratio`, `prompt_used`, `reference_image_url`, `logo_applied`, `logo_position`, `created_by` (FK auth.users), plus `id`/`created_at`.
-- GRANT SELECT/INSERT/UPDATE/DELETE to authenticated, ALL to service_role.
-- ENABLE RLS + single admin-only ALL policy using `public.has_role(auth.uid(), 'admin')`.
+Two independent changes, executed in order.
 
-## 2. Edge function: `supabase/functions/generate-product-display-image/index.ts`
-Overwrite the existing thin version. Pattern copied from `generate-category-image`:
-- CORS, admin auth via service-role client + `user_roles` check.
-- Input body: `productImageUrl`, `productTitle`, `productCategory`, `style`, `aspectRatio`, `textOverlay?`, `referenceImageUrl?`, `customPrompt?`.
-- Build prompt per style (studio/lifestyle/minimal) using exact wording from spec; append text overlay clause; append customPrompt verbatim.
-- Call `black-forest-labs/flux-kontext-pro` with `prompt`, `input_image: productImageUrl`, `aspect_ratio`, `output_format: "png"`, `safety_tolerance: 2`, and `reference_image` if provided. Poll for up to 120s.
-- Fetch result bytes, upload to `marketing-assets` as `display-{Date.now()}.png` with `upsert: true`, get public URL.
-- Insert into `marketing_generated_images` (`generation_type: 'display'`, etc.), return `{ url, id, prompt }`. Error returns `{ error }`.
-- Only `REPLICATE_API_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` used.
+---
 
-## 3. MarketingStudio.tsx — Replace AI Display Image section (lines ~1021–1101)
-Keep visibility gated on `selectedProduct`. New controls:
-- **A. Style pills** — Studio | Lifestyle | Minimal (default Studio).
-- **B. Aspect Ratio pills** — `1:1`, `4:5`, `9:16`, `3:4`, `16:9`, `4:3` (default `1:1`), with pixel dims as `text-[10px] text-muted-foreground` under each.
-- **C. Text overlay textarea** (3 rows) — label "Text on image (optional)", placeholder + helper text.
-- **D. Reference image upload** — file input (image/*), converted to data URL via `FileReader`, thumbnail preview ≤80px with × remove button.
-- **E. Custom prompt notes textarea** (2 rows).
-- **F. Logo overlay** — read `settings?.marketingStudio?.brandLogoUrl` from `useSiteSettings()`; if present, show "Add logo to image" `Switch` (default off). When on, show 3×2 grid of position buttons (default Bottom-Right).
-- **G. Generate button** — disabled when no product or loading; spinner + "Generating... ~20–40s".
-- **H. Result** — preview image; if logo applied, run client-side canvas compositing (load generated image + logo, scale logo to 15% width, draw at chosen position with 8px margin, export PNG data URL/blob). Action buttons: "Save to Library" (only when logo was applied client-side — uploads composited blob to `marketing-assets`, inserts row with `logo_applied: true, logo_position`) OR "Saved ✓" indicator (when no logo). Always show "Download PNG".
+## Change 1 — Redesign builtin presets
 
-All wiring uses `supabase.functions.invoke("generate-product-display-image", { body: {...} })`.
+**File:** `src/lib/marketingPresets.ts` (only)
 
-## 4. New page: `src/pages/admin/ContentLibrary.tsx`
-- AdminAuth wrapper + Header + BackButton, title "Content Library", subtitle.
-- Filter pills: All / Display Images / Posters / Videos → maps to `generation_type` filter.
-- Top "Recent" strip: first 6 newest rows as larger cards with "Use in Studio" button → `navigate('/admin/marketing-studio')`.
-- Main grid: 1/2/3 columns responsive cards from `marketing_generated_images` ordered desc, limit 50. Each card shows image, hover overlay with `product_title`, aspect badge, style badge, formatted date ("MMM d"), and Download/Delete icon buttons.
-- Delete flow: confirm dialog → derive storage path from `image_url` (split on `/marketing-assets/`), call `supabase.storage.from('marketing-assets').remove([path])` + `delete()` row, refetch.
-- Empty state with CTA back to studio.
+Replace the entire `BUILTIN_PRESETS` array with the 7 redesigned presets supplied in the spec. All IDs preserved (`clean`, `hype`, `minimal`, `sale`, `urgency`, `luxury`, `grid-showcase`). Every `surface` is now opaque so the `PresetChip` thumbnail (`bg | surface | accent`) renders three visually distinct swatches per preset. Nothing else in the file changes (helpers, custom-preset functions, validators all kept).
 
-## 5. Wiring
-- **`src/App.tsx`**: lazy import `ContentLibrary`, add `<Route path="/admin/content-library" element={<RouteGuard requiredRole="admin"><ContentLibrary /></RouteGuard>} />` near the marketing-studio route.
-- **`src/pages/AdminHub.tsx`**: add module card "Content Library" (icon `Images` from lucide), href `/admin/content-library`, placed right after Marketing Studio card.
+---
 
-## 6. MarketingStudio.tsx — "Recently Saved" strip
-At the bottom of `<main>` (above closing `</main>`), add a new inline component:
-- Fetches last 6 rows from `marketing_generated_images` once on mount.
-- If 0 rows, render nothing.
-- Otherwise show a Card titled "Recently Saved" with a horizontal scroll row of 80×80 rounded thumbnails. Clicking opens a `<Dialog>` lightbox showing full image + `product_title`, `style`, `aspect_ratio`, formatted date, and a Download button. Card header includes "View all →" link to `/admin/content-library`.
+## Change 2 — AI Poster generator (Ideogram v3)
+
+A new, separate generation surface alongside the DOM-rendered templates. The existing template system is untouched.
+
+### 2A. New edge function — `supabase/functions/generate-ai-poster/index.ts`
+
+- **Auth:** copies `generate-category-image/index.ts` pattern exactly — service-role client, `auth.getUser(token)` from `Authorization` header, check `user_roles` for `admin`, return 403 otherwise.
+- **Input:** `productTitle`, `productPrice`, `productImageUrl`, `ctaText`, `brandName`, `meetupText`, `urgencyText`, `tagline`, `posterStyle` (`hype`|`clean`|`luxury`|`bold`), `aspectRatio` (`9:16`|`1:1`|`4:5`|`16:9`), `customInstructions`.
+- **Prompt builder:** one of 4 style templates from the spec, with all literal text wrapped in straight quotes for Ideogram text rendering, plus the fixed Saint Lucia / Caribbean brand suffix, plus `customInstructions` appended if non-empty.
+- **Aspect ratio map:** `9:16→portrait_9_16`, `1:1→square_hd`, `4:5→portrait_4_5`, `16:9→landscape_16_9`.
+- **Replicate call:** `POST /v1/models/ideogram-ai/ideogram-v3-turbo/predictions`, headers `Authorization: Token ${REPLICATE_API_TOKEN}`. Body uses `prompt`, `aspect_ratio`, `style_type: "DESIGN"`, plus the spec's `negative_prompt`.
+- **Polling:** every 3s, max 40 polls (120s). Success → `output[0]`. Failure / timeout → `{ error }`.
+- **Storage:** `fetch` → bytes → upload `ai-poster-${Date.now()}.png` to `marketing-assets` (upsert), return `getPublicUrl`. Bucket-not-found returns the explicit "Storage not configured" message.
+- **DB insert:** `marketing_generated_images` row (`generation_type: 'poster'`, style, aspect_ratio, prompt_used, created_by). Skip gracefully if missing.
+- **Response:** `{ url, prompt }` or `{ error }`. Standard CORS / OPTIONS preflight. Uses only `REPLICATE_API_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — no `LOVABLE_API_KEY`.
+
+### 2B. Studio UI — `src/pages/admin/MarketingStudio.tsx`
+
+- Add 6 state vars (`aiPosterStyle`, `aiPosterAspectRatio`, `aiPosterCustom`, `aiPosterGenerating`, `aiPosterResult`, `aiPosterPrompt`) plus `showAiPoster`.
+- Add `handleGenerateAiPoster` calling `supabase.functions.invoke("generate-ai-poster", …)` with the studio's current product + copy fields.
+- Add a tab-styled `<button>` with `Sparkles` icon at the end of the existing `TabsList`. Clicking it sets `showAiPoster(true)`. Wrap the existing `Tabs.onValueChange` so any format tab change sets `showAiPoster(false)`.
+- Render the AI Poster panel **conditionally** (`showAiPoster && …`) outside the format `TabsContent` blocks: product summary card, 4 style cards (Hype / Clean / Luxury / Bold), 4 format pills (9:16, 1:1, 4:5, 16:9), extra-instructions textarea, Generate button (disabled when no product or generating), result image with Download PNG + Clear + collapsible "View prompt used".
+- Import `Sparkles` from `lucide-react` (added to the existing import line — no duplicate).
+
+### Multi-product poster types — per your answer
+
+The "Use first product only" behavior is implicit in how the panel is wired: `productPayload` is the single hero product already shown in the studio. For multi-product poster types (Best Sellers / New Arrivals / Restocked / Almost Gone / Promotions), the panel automatically uses the first product from the active list as `productPayload` — which is exactly what the studio already exposes via the existing `productPayload` derivation. No additional plumbing is needed: the AI Poster tab works for every poster type, always taking the first product as the hero. The poster type's headline (e.g. "JUST DROPPED") is not injected into the AI prompt — the AI style templates own the headline language.
+
+---
 
 ## Scope lock
-Created: migration, edge function, ContentLibrary page.
-Modified: MarketingStudio.tsx, App.tsx, AdminHub.tsx.
-Untouched: poster templates, presets, copy panel, export logic, other edge functions, all non-admin code.
+
+**Create:** `supabase/functions/generate-ai-poster/index.ts`
+**Modify:** `src/lib/marketingPresets.ts`, `src/pages/admin/MarketingStudio.tsx`
+**Do not touch:** `templates.tsx`, `PresetPicker.tsx`, any other edge function, any other page/hook/component.
+
+## Verification after build
+
+1. PresetPicker thumbnails show 7 visibly distinct presets.
+2. `generate-ai-poster` deploys and uses `REPLICATE_API_TOKEN` only.
+3. "AI Poster" tab with Sparkles icon appears in the studio.
+4. Switching format tabs hides the AI panel; clicking AI Poster shows it.
+5. Generate disabled until a product is selected; works for single + multi-product poster types using the first product as hero.
+6. Result shows image + Download PNG + Clear + prompt details.
