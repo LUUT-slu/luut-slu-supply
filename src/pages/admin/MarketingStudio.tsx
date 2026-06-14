@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Megaphone, Download, Loader2, Image as ImageIcon, Share2, Undo2, Redo2, RotateCcw, Video } from "lucide-react";
+import { Megaphone, Download, Loader2, Image as ImageIcon, Share2, Undo2, Redo2, RotateCcw, Video, Sparkles } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
