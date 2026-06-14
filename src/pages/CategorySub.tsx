@@ -100,9 +100,27 @@ export default function CategorySub() {
     </aside>
   );
 
+  const path = `/c/${main.slug}/${sub.slug}`;
+  const seoTitle = `${sub.title} – ${main.title} — Luut SLU`.slice(0, 60);
+  const seoDesc = `Shop ${sub.title.toLowerCase()} in ${main.title.toLowerCase()} from local sellers in Saint Lucia.`.slice(0, 160);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO
+        title={seoTitle}
+        description={seoDesc}
+        path={path}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: `${sub.title} – ${main.title}`,
+          description: seoDesc,
+          url: `https://luut-slu-supply.lovable.app${path}`,
+          isPartOf: { "@type": "WebSite", name: "Luut SLU", url: "https://luut-slu-supply.lovable.app/" },
+        }}
+      />
       <Header />
+
 
       <main className="flex-1">
         <section className="border-b border-border bg-card px-4 py-6 md:py-10">
