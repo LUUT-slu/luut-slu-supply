@@ -30,7 +30,7 @@ export function HeroSlider() {
     {
       image: hero.imageUrl || storefrontHeroMobile,
       imageDesktop: hero.imageUrl || storefrontHeroDesktop,
-      heading: hero.heading || "WELCOME TO LUUT SLU",
+      heading: hero.heading || "LUUT SLU — Streetwear Marketplace in Saint Lucia",
       subheading: hero.subheading || "Premium streetwear, delivered island-wide",
       cta: hero.buttonText || "Shop Outfits",
       link: hero.buttonLink || "/shop",
