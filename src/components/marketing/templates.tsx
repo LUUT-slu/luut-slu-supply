@@ -1130,7 +1130,8 @@ function PresetLayout(p: TemplateProps) {
             position: "relative",
             zIndex: 2,
             fontSize: isStory ? 28 : isAd ? 18 : 22,
-            color: muted,
+            color: text,
+            opacity: 0.75,
             fontWeight: 600,
             marginBottom: Math.round(gap * 0.7),
           }}
