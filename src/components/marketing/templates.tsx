@@ -921,6 +921,7 @@ function PresetLayout(p: TemplateProps) {
   const text = preset.palette.text;
   const muted = preset.palette.muted;
   const accent = preset.palette.accent;
+  const lightBg = isLightBg(preset.palette.bg);
 
   const headlineSize = Math.round(
     (isStory ? 110 : isAd ? 60 : isPortrait ? 96 : 86) * tScale,
