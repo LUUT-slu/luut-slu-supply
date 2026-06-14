@@ -1730,6 +1730,9 @@ export default function MarketingStudio() {
             )}
           </div>
           </>)}
+
+          {/* Recently Saved strip — always visible (hides itself when empty) */}
+          <RecentlySavedStrip />
         </main>
 
 
