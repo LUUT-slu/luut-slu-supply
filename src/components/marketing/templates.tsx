@@ -831,11 +831,13 @@ function PresetBadge({
   theme,
   shape,
   fill,
+  accentColor = "#000000",
 }: {
   text: string;
   theme: PosterTheme;
   shape: "pill" | "ribbon" | "chip";
   fill: "glow" | "solid" | "outline";
+  accentColor?: string;
 }) {
   const isOutline = fill === "outline";
   const radius = shape === "pill" ? 999 : shape === "chip" ? 6 : 4;
@@ -846,8 +848,9 @@ function PresetBadge({
       ? "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)"
       : undefined;
   const bg = isOutline ? "transparent" : theme.badge;
-  const border = isOutline ? `2px solid ${theme.glow}` : "none";
-  const color = isOutline ? theme.glow : contrastTextSafe(theme.badge);
+  const outlineColor = getOpaqueColor(theme.glow, accentColor);
+  const border = isOutline ? `2px solid ${outlineColor}` : "none";
+  const color = isOutline ? outlineColor : contrastTextSafe(theme.badge);
   return (
     <div
       style={{
