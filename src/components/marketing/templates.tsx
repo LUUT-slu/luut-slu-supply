@@ -1218,6 +1218,7 @@ function PresetLayout(p: TemplateProps) {
           fontSize={ctaFontSize}
           padY={isStory ? 32 : isAd ? 18 : 26}
           radius={Math.max(12, radius - 8)}
+          accentColor={preset.palette.accent}
         />
       </div>
     </div>
