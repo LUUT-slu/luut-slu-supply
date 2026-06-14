@@ -1383,6 +1383,14 @@ export default function MarketingStudio() {
                 </Card>
               )}
             </TabsContent>
+
+            {/* Video tab */}
+            <TabsContent value="video" className="mt-4">
+              <VideoStudioPanel
+                selectedProduct={selectedProduct}
+                posterType={posterType}
+              />
+            </TabsContent>
           </Tabs>
 
           {/* Hidden full-resolution export node */}
