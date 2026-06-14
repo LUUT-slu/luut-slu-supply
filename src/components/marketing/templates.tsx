@@ -1100,7 +1100,7 @@ function PresetLayout(p: TemplateProps) {
                 }}
               />
             ) : (
-              <div style={{ color: muted, fontSize: 22 }}>No image</div>
+              <div style={{ color: text, fontSize: 22, opacity: 0.5 }}>No image</div>
             )}
           </div>
         )}
