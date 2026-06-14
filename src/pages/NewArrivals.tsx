@@ -1,4 +1,5 @@
 import { Header } from "@/components/Header";
+import { SEO } from "@/components/SEO";
 import { Footer } from "@/components/Footer";
 import { ChatButton } from "@/components/ChatButton";
 import { BackButton } from "@/components/BackButton";
@@ -7,6 +8,7 @@ import { ProductGrid } from "@/components/ProductGrid";
 export default function NewArrivals() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO title="New Arrivals — Luut SLU" description="The latest streetwear drops added to the Luut SLU marketplace from sellers across Saint Lucia." path="/shop/new-arrivals" />
       <Header />
 
       <main className="flex-1">

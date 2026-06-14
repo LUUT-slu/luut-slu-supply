@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SEO } from "@/components/SEO";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
@@ -132,6 +133,7 @@ export default function SellOnLuut() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO title="Sell on Luut SLU — Apply as a Seller" description="Apply to sell on Luut SLU. Reach Saint Lucia shoppers, keep your own brand, fulfill orders directly on meetup." path="/sell" />
       <Header />
 
       <main className="flex-1">

@@ -1,4 +1,5 @@
 import { Header } from "@/components/Header";
+import { SEO } from "@/components/SEO";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
 import { ChatButton } from "@/components/ChatButton";
@@ -7,6 +8,7 @@ import { AlertCircle, CreditCard, Clock } from "lucide-react";
 export default function DepositPolicy() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO title="Deposit & Pre-Order Policy — Luut SLU" description="How deposits and pre-orders work on Luut SLU, including refund and cancellation rules." path="/deposit-policy" />
       <Header />
 
       <main className="flex-1">

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import { SEO } from "@/components/SEO";
 import { ArrowLeft, ShoppingBag, Minus, Plus, Trash2, Shield, Wallet, MapPin, Store, Tag, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cartStore";
@@ -23,6 +24,7 @@ export default function Cart() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO title="Your Cart — Luut SLU" description="Review the items in your Luut SLU cart and continue to checkout to arrange meetup with sellers in Saint Lucia." />
       {/* Header */}
       <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border bg-background px-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>

@@ -1,4 +1,5 @@
 import { Header } from "@/components/Header";
+import { SEO } from "@/components/SEO";
 import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
 import { ChatButton } from "@/components/ChatButton";
@@ -7,6 +8,7 @@ import { MapPin, MessageCircle } from "lucide-react";
 export default function MeetupPolicy() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO title="Meet-Up Policy — Luut SLU" description="Approved Saint Lucia meet-up locations and safety guidance for buyers and sellers on Luut SLU." path="/meetup-policy" />
       <Header />
 
       <main className="flex-1">
