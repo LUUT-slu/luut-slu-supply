@@ -17,7 +17,7 @@ interface Slide {
 }
 
 const FALLBACK_SLIDES: Slide[] = [
-  { image: storefrontHeroMobile, imageDesktop: storefrontHeroDesktop, heading: "WELCOME TO LUUT SLU", subheading: "Premium streetwear, delivered island-wide", cta: "Shop Outfits", link: "/shop" },
+  { image: storefrontHeroMobile, imageDesktop: storefrontHeroDesktop, heading: "LUUT SLU — Streetwear Marketplace in Saint Lucia", subheading: "Premium streetwear, delivered island-wide", cta: "Shop Outfits", link: "/shop" },
   { image: storefrontHeroMobile, imageDesktop: storefrontHeroDesktop, heading: "NEW DROPS WEEKLY", subheading: "Be first on the freshest styles", cta: "New Arrivals", link: "/shop?filter=new" },
   { image: storefrontHeroMobile, imageDesktop: storefrontHeroDesktop, heading: "BEST SELLERS", subheading: "Trending across Saint Lucia", cta: "Shop Best Sellers", link: "/shop?filter=best" },
 ];
