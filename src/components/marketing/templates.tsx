@@ -1019,7 +1019,8 @@ function PresetLayout(p: TemplateProps) {
                 fontSize: isAd ? 18 : 24,
                 fontWeight: 600,
                 letterSpacing: 1,
-                color: muted,
+                color: text,
+                opacity: 0.65,
               }}
             >
               {p.brandName}
