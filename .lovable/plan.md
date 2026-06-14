@@ -1,49 +1,69 @@
-# Migrate Marketing Studio AI to Replicate
+# Video Studio for Marketing Studio
 
-## Scope
-Modify 3 files, create 1 file. No other files touched.
+Add image-to-video generation to `/admin/marketing-studio` without altering any existing poster flow. Powered by Replicate (Kling v2.1 for product clips, Wan 2.2 I2V Fast for poster animation), using the existing `REPLICATE_API_TOKEN` edge function secret.
 
-## 1. `supabase/functions/ai-image-prep/index.ts` (rewrite)
-- Remove all `LOVABLE_API_KEY` / `ai.gateway.lovable.dev` references.
-- Read `REPLICATE_API_TOKEN` from env. Add helper `runReplicate(model, input)` that POSTs to `https://api.replicate.com/v1/models/{model}/predictions` with `Authorization: Token ...`, then polls `GET /v1/predictions/{id}` until `succeeded` / `failed` / `canceled`.
-- Mode `remove-bg` → `851-labs/background-remover`, input `{ image: imageUrl }`, return `{ url: output }` (string).
-- Mode `expand` → `black-forest-labs/flux-fill-pro`, input `{ image, prompt, aspect_ratio }` where aspect_ratio maps story→9:16, post→1:1, ad→16:9, portrait→4:5. Return `{ url: output[0] }`.
-- Keep CORS, request shape, validation. Replace 402 message with "Replicate API error — check your usage at replicate.com".
+## 1. New edge function: `generate-product-video`
 
-## 2. `supabase/functions/generate-category-image/index.ts` (edit)
-- Remove `LOVABLE_API_KEY` and gateway URL.
-- Replace AI call with Replicate `black-forest-labs/flux-1.1-pro`, input `{ prompt: buildPrompt(...), aspect_ratio: "1:1", output_format: "png", output_quality: 90 }`. Poll until `succeeded`.
-- Take `output[0]` (URL), fetch it → `arrayBuffer` → `Uint8Array`. Use `contentType = "image/png"`, `ext = "png"`.
-- Drop `dataUrlToBytes` usage (helper can stay or be removed; will remove since unused).
-- Keep auth check, prompt logic, storage upload, DB upsert identical.
+Path: `supabase/functions/generate-product-video/index.ts`
 
-## 3. `supabase/functions/generate-product-display-image/index.ts` (new)
-- Admin-only: service-role client, `auth.getUser(token)`, check `user_roles` for `admin` (same pattern as generate-category-image).
-- Validate body: `productImageUrl` (required string), `productTitle` (required), `productCategory` (required), `style` ∈ {studio, lifestyle, minimal} default `studio`, `format` ∈ {square, portrait, landscape} default `square`.
-- Build prompt per style using the three templates in the spec, interpolating `productTitle`.
-- Aspect map: square→1:1, portrait→4:5, landscape→16:9.
-- Replicate `black-forest-labs/flux-kontext-pro` with input `{ prompt, input_image: productImageUrl, aspect_ratio, output_format: "png", safety_tolerance: 2 }`. Poll to succeed.
-- Return `{ url: output, prompt }` on success, `{ error }` on failure (handle 429/402 with Replicate-specific message).
-- CORS headers on every response.
-- Note: `verify_jwt` for this function — admin check uses bearer token from Authorization header (same as generate-category-image). Will NOT add a config.toml entry (defaults are fine; current generate-category-image works without one).
+- CORS preflight + permissive headers (same pattern as `generate-category-image`).
+- Admin auth: Service-role Supabase client, `getUser` from `Authorization` header, check `user_roles.role = 'admin'`, return 403 otherwise.
+- Input: `{ productImageUrl, productTitle, productCategory, motionStyle: "subtle"|"dynamic"|"cinematic" = "subtle", duration: 5|10 = 5 }`.
+- Build prompt from `motionStyle` using the three templates specified (interpolating `productTitle`).
+- POST `https://api.replicate.com/v1/models/kwaiyeij/kling-v2.1/predictions` with `Authorization: Token ${REPLICATE_API_TOKEN}`, `Prefer: wait`, body:
+  ```
+  { input: { image, prompt, duration, aspect_ratio: "9:16", negative_prompt: "blurry, distorted, watermark, text, logo, people, faces, hands, low quality, artifacts" } }
+  ```
+- Poll `GET /v1/predictions/{id}` every 3s, max 40 polls (120s). On `succeeded` return `{ videoUrl: output[0], prompt }`. On `failed` return `{ error }`. On timeout return `{ error: "Generation timed out" }`.
 
-## 4. `src/pages/admin/MarketingStudio.tsx` (edit)
-- Add a new section/card in the left panel near the existing Image Prep area: heading "AI Display Image".
-- Visible only when a product is selected (reuse existing product-selected condition).
-- Local state: `displayStyle` ("studio" | "lifestyle" | "minimal", default "studio"), `displayFormat` ("square" | "portrait" | "landscape", default "square"), `displayLoading` boolean, `displayResultUrl` string|null.
-- 3 style buttons + 3 format buttons (toggle-style, highlight active).
-- "Generate Display Image" button: disabled if no product or loading; on click call `supabase.functions.invoke("generate-product-display-image", { body: { productImageUrl, productTitle, productCategory, style, format } })`. Pull product fields from the existing selected-product object in the studio.
-- Loading: spinner + "Generating…" text.
-- Result: preview card with the image, a Download button (anchor with `download` attr fetching the URL as blob), and small note "Use as Product Image".
-- Errors: `toast.error(error.message || "Generation failed")` via sonner (already used in studio).
-- No other layout, preset, copy, or export changes.
+## 2. New edge function: `generate-product-poster-video`
 
-## Technical notes
-- All Replicate polling: backoff 1.5s, max ~120s; surface clear error on timeout.
-- `REPLICATE_API_TOKEN` is already configured in Supabase secrets per user; no secret tooling needed.
-- After edits, edge functions auto-deploy.
+Path: `supabase/functions/generate-product-poster-video/index.ts`
 
-## Verification
-1. `rg "LOVABLE_API_KEY|ai.gateway.lovable.dev" supabase/functions/ai-image-prep supabase/functions/generate-category-image` → no matches.
-2. New function file exists and references `REPLICATE_API_TOKEN`.
-3. Manually open Marketing Studio with a product selected → new "AI Display Image" section renders with style/format selectors and Generate button.
+- Same CORS + admin auth pattern.
+- Input: `{ posterImageUrl (URL or data URL), posterType }`.
+- Fixed prompt (as specified in the request).
+- POST `https://api.replicate.com/v1/models/wan-video/wan-2.2-i2v-480p/predictions` with body:
+  ```
+  { input: { image: posterImageUrl, prompt, num_frames: 81, aspect_ratio: "9:16", fast_mode: true } }
+  ```
+- Same 3s / 120s polling logic.
+- Response: `{ videoUrl }` on success, `{ error }` otherwise.
+
+Both functions reference only `REPLICATE_API_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (no `LOVABLE_API_KEY`).
+
+## 3. UI: add "Video" tab to `src/pages/admin/MarketingStudio.tsx`
+
+Only this file is modified. The existing FORMATS tabs + Copy tab stay untouched.
+
+- Add a `<TabsTrigger value="video">Video</TabsTrigger>` next to the existing `Copy` trigger in the `TabsList` at line 1136.
+- Add a sibling `<TabsContent value="video">` rendering a new `VideoStudioPanel` component declared inline in the same file (keeps scope locked to one file). When the Video tab is active, none of the existing poster `TabsContent` renders — the tab switch handles the show/hide.
+
+`VideoStudioPanel` contains two stacked cards using the same Card/Button styling already in the file (gold accent matches existing Download JPEG button).
+
+### Section A — Product Video
+- Subtitle line.
+- Pill group "Motion Style": Subtle / Dynamic / Cinematic (default Subtle).
+- Pill group "Duration": 5s / 10s (default 5s).
+- "Generate Product Video" button, disabled when `!selectedProduct` or while loading. Loading label: "Generating video... this takes ~30–60s" with spinner.
+- On success: render `<video controls autoPlay muted loop>` and a gold "Download MP4" button (fetches the URL and triggers a download).
+- Calls `supabase.functions.invoke("generate-product-video", { body: { productImageUrl: selectedProduct.images[0].url, productTitle: selectedProduct.title, productCategory: selectedProduct.category || "", motionStyle, duration } })`.
+- Errors surfaced via existing `toast.error`.
+
+### Section B — Animate This Poster
+- Subtitle line.
+- File `<input type="file" accept="image/png,image/jpeg">` wrapped in a styled "Upload Poster Image" button. On change, convert to base64 data URL via `FileReader.readAsDataURL` and store in local state; show a small thumbnail preview.
+- "Animate Poster" button, disabled until an image is uploaded.
+- Same loading/success/error UX and Download MP4 button as Section A.
+- Calls `supabase.functions.invoke("generate-product-poster-video", { body: { posterImageUrl: dataUrl, posterType } })` using current `posterType` state already in the component.
+
+## Scope lock
+
+Files created:
+- `supabase/functions/generate-product-video/index.ts`
+- `supabase/functions/generate-product-poster-video/index.ts`
+
+Files modified:
+- `src/pages/admin/MarketingStudio.tsx` (add Video tab trigger + TabsContent + inline VideoStudioPanel; no other changes)
+
+No other files, no changes to existing presets/templates/export/copy logic, no new secrets.
