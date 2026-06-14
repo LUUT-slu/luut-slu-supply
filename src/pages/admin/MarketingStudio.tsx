@@ -316,6 +316,60 @@ export default function MarketingStudio() {
   // ---- AI-assisted image prep (single-product hero image) ----
   const singlePrep = useImagePrep(productPayload?.productImage, tab);
 
+  // ---- AI Display Image generator (Replicate flux-kontext-pro) ----
+  const [displayStyle, setDisplayStyle] = useState<"studio" | "lifestyle" | "minimal">("studio");
+  const [displayFormat, setDisplayFormat] = useState<"square" | "portrait" | "landscape">("square");
+  const [displayLoading, setDisplayLoading] = useState(false);
+  const [displayResultUrl, setDisplayResultUrl] = useState<string | null>(null);
+
+  const generateDisplayImage = async () => {
+    if (!selectedProduct) return;
+    const imageUrl = selectedProduct.images?.[0]?.url;
+    if (!imageUrl) {
+      toast.error("Selected product has no image to use as reference");
+      return;
+    }
+    setDisplayLoading(true);
+    setDisplayResultUrl(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-product-display-image", {
+        body: {
+          productImageUrl: imageUrl,
+          productTitle: selectedProduct.title,
+          productCategory: selectedProduct.category || "product",
+          style: displayStyle,
+          format: displayFormat,
+        },
+      });
+      if (error) throw new Error(error.message || "Generation failed");
+      if (!data?.url) throw new Error(data?.error || "No image returned");
+      setDisplayResultUrl(data.url as string);
+      toast.success("Display image generated");
+    } catch (e: any) {
+      toast.error(e?.message || "Generation failed");
+    } finally {
+      setDisplayLoading(false);
+    }
+  };
+
+  const downloadDisplayImage = async () => {
+    if (!displayResultUrl) return;
+    try {
+      const res = await fetch(displayResultUrl);
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = `display-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      toast.error("Download failed");
+    }
+  };
+
   // ---- AI-assisted image prep (multi-product, applied to all tiles) ----
   const [multiPrepMode, setMultiPrepMode] = useState<
     import("@/hooks/useImagePrep").PrepMode
