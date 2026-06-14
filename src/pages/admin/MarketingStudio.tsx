@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Megaphone, Download, Loader2, Image as ImageIcon, Share2, Undo2, Redo2, RotateCcw } from "lucide-react";
+import { Megaphone, Download, Loader2, Image as ImageIcon, Share2, Undo2, Redo2, RotateCcw, Video } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -170,6 +170,8 @@ export default function MarketingStudio() {
   const [selectedId, setSelectedId] = useState<string>(initialId);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<TemplateFormat>("story");
+  const [studioMode, setStudioMode] = useState<'select' | 'images' | 'videos'>('select');
+  
   
   const [activePresetId, setActivePresetId] = useState<string>("hype");
   const [presetOverrides, setPresetOverrides] = useState<PresetOverrides>({});
@@ -902,8 +904,71 @@ export default function MarketingStudio() {
             </div>
           </div>
 
+          {studioMode === 'select' && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <p className="mb-6 text-sm text-muted-foreground text-center">What do you want to create?</p>
+              <div className="grid w-full max-w-3xl gap-4 sm:grid-cols-2">
+                <Card
+                  className="cursor-pointer p-8 transition-colors hover:border-primary"
+                  onClick={() => setStudioMode('images')}
+                >
+                  <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-fuchsia-500/10">
+                    <ImageIcon className="h-12 w-12 text-fuchsia-500" />
+                  </div>
+                  <h2 className="mt-4 text-xl font-semibold">Images</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Create posters, display images, and AI-enhanced product photos for Instagram, TikTok, and your store
+                  </p>
+                </Card>
+                <Card
+                  className="cursor-pointer p-8 transition-colors hover:border-primary"
+                  onClick={() => setStudioMode('videos')}
+                >
+                  <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-blue-500/10">
+                    <Video className="h-12 w-12 text-blue-400" />
+                  </div>
+                  <h2 className="mt-4 text-xl font-semibold">Videos</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Generate short product videos and animated posters for Reels, TikTok, and WhatsApp status
+                  </p>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {studioMode !== 'select' && (
+            <div className="mb-4 flex items-center gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant={studioMode === 'images' ? 'default' : 'outline'}
+                className="h-8 gap-1.5 rounded-full px-3 text-xs"
+                onClick={() => setStudioMode('images')}
+              >
+                <ImageIcon className="h-3.5 w-3.5" />
+                Images
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={studioMode === 'videos' ? 'default' : 'outline'}
+                className="h-8 gap-1.5 rounded-full px-3 text-xs"
+                onClick={() => setStudioMode('videos')}
+              >
+                <Video className="h-3.5 w-3.5" />
+                Videos
+              </Button>
+            </div>
+          )}
+
+          {studioMode === 'videos' && (
+            <VideoStudioPanel selectedProduct={selectedProduct} posterType={posterType} />
+          )}
+
+          {studioMode === 'images' && (<>
           {/* Poster Type chips */}
           <Card className="mb-4">
+
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Poster Type</CardTitle>
             </CardHeader>
@@ -1141,9 +1206,6 @@ export default function MarketingStudio() {
                 ))}
                 <TabsTrigger value="copy" className="text-xs">
                   Copy
-                </TabsTrigger>
-                <TabsTrigger value="video" className="text-xs">
-                  Video
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -1384,13 +1446,6 @@ export default function MarketingStudio() {
               )}
             </TabsContent>
 
-            {/* Video tab */}
-            <TabsContent value="video" className="mt-4">
-              <VideoStudioPanel
-                selectedProduct={selectedProduct}
-                posterType={posterType}
-              />
-            </TabsContent>
           </Tabs>
 
           {/* Hidden full-resolution export node */}
@@ -1414,7 +1469,9 @@ export default function MarketingStudio() {
               </div>
             )}
           </div>
+          </>)}
         </main>
+
 
         <ImageEditorModal
           open={!!editorImage}
