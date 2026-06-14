@@ -39,7 +39,19 @@ export default function Shop() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <SEO title="Shop All — Luut SLU Streetwear Marketplace" description="Browse every category — hats, hoodies, shoes, bags and more — from local Saint Lucia sellers on Luut SLU." path="/shop" />
+      <SEO
+        title="Shop All — Luut SLU Streetwear Marketplace"
+        description="Browse every category — hats, hoodies, shoes, bags and more — from local Saint Lucia sellers on Luut SLU."
+        path="/shop"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Shop All — Luut SLU",
+          url: "https://luut-slu-supply.lovable.app/shop",
+          description: "Browse all categories from local Saint Lucia sellers on Luut SLU.",
+          isPartOf: { "@type": "WebSite", name: "Luut SLU", url: "https://luut-slu-supply.lovable.app/" },
+        }}
+      />
       <Header />
 
       <main className="flex-1">
