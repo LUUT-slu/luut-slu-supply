@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import "./index.css";
 import { I18nProvider } from "./i18n";
@@ -28,9 +29,11 @@ if (!rootEl) {
 } else {
   try {
     createRoot(rootEl).render(
-      <I18nProvider>
-        <App />
-      </I18nProvider>,
+      <HelmetProvider>
+        <I18nProvider>
+          <App />
+        </I18nProvider>
+      </HelmetProvider>,
     );
     console.info("[boot] React mounted");
   } catch (err) {
