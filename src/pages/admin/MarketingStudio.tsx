@@ -30,6 +30,7 @@ import {
 import { Megaphone, Download, Loader2, Image as ImageIcon, Share2, Undo2, Redo2, RotateCcw } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useHybridProducts } from "@/hooks/useHybridProducts";
 import { useSiteSettings, DEFAULT_MARKETING_STUDIO } from "@/hooks/useSiteSettings";
 import {
@@ -314,6 +315,60 @@ export default function MarketingStudio() {
 
   // ---- AI-assisted image prep (single-product hero image) ----
   const singlePrep = useImagePrep(productPayload?.productImage, tab);
+
+  // ---- AI Display Image generator (Replicate flux-kontext-pro) ----
+  const [displayStyle, setDisplayStyle] = useState<"studio" | "lifestyle" | "minimal">("studio");
+  const [displayFormat, setDisplayFormat] = useState<"square" | "portrait" | "landscape">("square");
+  const [displayLoading, setDisplayLoading] = useState(false);
+  const [displayResultUrl, setDisplayResultUrl] = useState<string | null>(null);
+
+  const generateDisplayImage = async () => {
+    if (!selectedProduct) return;
+    const imageUrl = selectedProduct.images?.[0]?.url;
+    if (!imageUrl) {
+      toast.error("Selected product has no image to use as reference");
+      return;
+    }
+    setDisplayLoading(true);
+    setDisplayResultUrl(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-product-display-image", {
+        body: {
+          productImageUrl: imageUrl,
+          productTitle: selectedProduct.title,
+          productCategory: selectedProduct.category || "product",
+          style: displayStyle,
+          format: displayFormat,
+        },
+      });
+      if (error) throw new Error(error.message || "Generation failed");
+      if (!data?.url) throw new Error(data?.error || "No image returned");
+      setDisplayResultUrl(data.url as string);
+      toast.success("Display image generated");
+    } catch (e: any) {
+      toast.error(e?.message || "Generation failed");
+    } finally {
+      setDisplayLoading(false);
+    }
+  };
+
+  const downloadDisplayImage = async () => {
+    if (!displayResultUrl) return;
+    try {
+      const res = await fetch(displayResultUrl);
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = `display-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      toast.error("Download failed");
+    }
+  };
 
   // ---- AI-assisted image prep (multi-product, applied to all tiles) ----
   const [multiPrepMode, setMultiPrepMode] = useState<
@@ -962,6 +1017,90 @@ export default function MarketingStudio() {
               </CardContent>
             </Card>
           )}
+
+          {/* AI Display Image — Replicate flux-kontext-pro */}
+          {selectedProduct && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">AI Display Image</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label className="text-xs mb-1.5 block">Style</Label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(["studio", "lifestyle", "minimal"] as const).map((s) => (
+                      <Button
+                        key={s}
+                        type="button"
+                        size="sm"
+                        variant={displayStyle === s ? "default" : "outline"}
+                        onClick={() => setDisplayStyle(s)}
+                        className="text-xs capitalize"
+                      >
+                        {s}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5 block">Format</Label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(["square", "portrait", "landscape"] as const).map((f) => (
+                      <Button
+                        key={f}
+                        type="button"
+                        size="sm"
+                        variant={displayFormat === f ? "default" : "outline"}
+                        onClick={() => setDisplayFormat(f)}
+                        className="text-xs capitalize"
+                      >
+                        {f}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={generateDisplayImage}
+                  disabled={!selectedProduct || displayLoading}
+                >
+                  {displayLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    "Generate Display Image"
+                  )}
+                </Button>
+                {displayResultUrl && (
+                  <div className="space-y-2 rounded-md border p-2">
+                    <img
+                      src={displayResultUrl}
+                      alt="Generated display"
+                      className="w-full rounded"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={downloadDisplayImage}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      Use as Product Image
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+
 
           {/* Image prep — multi-product (applied to every tile, canvas-only) */}
           {isMulti && sourceProducts.length > 0 && (

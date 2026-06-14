@@ -1,5 +1,5 @@
-// Generate a category/subcategory image via Lovable AI Gateway and store it
-// in the `category-images` Storage bucket. Admin-only.
+// Generate a category/subcategory image via Replicate (flux-1.1-pro) and store
+// it in the `category-images` Storage bucket. Admin-only.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -11,8 +11,9 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN")!;
 const BUCKET = "category-images";
+const REPLICATE_API = "https://api.replicate.com/v1";
 
 function buildPrompt(displayName: string, parentName: string | null, samples: string[]): string {
   const subject = displayName;
@@ -29,15 +30,49 @@ function buildPrompt(displayName: string, parentName: string | null, samples: st
   ].join(" ");
 }
 
-function dataUrlToBytes(dataUrl: string): { bytes: Uint8Array; contentType: string } {
-  const match = dataUrl.match(/^data:(.+?);base64,(.*)$/);
-  if (!match) throw new Error("Invalid data URL");
-  const contentType = match[1];
-  const b64 = match[2];
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return { bytes, contentType };
+async function runReplicate(
+  model: string,
+  input: Record<string, unknown>,
+): Promise<unknown> {
+  const createRes = await fetch(`${REPLICATE_API}/models/${model}/predictions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Token ${REPLICATE_API_TOKEN}`,
+      "Content-Type": "application/json",
+      Prefer: "wait",
+    },
+    body: JSON.stringify({ input }),
+  });
+
+  if (!createRes.ok) {
+    const text = await createRes.text().catch(() => "");
+    const err: any = new Error(`Replicate ${createRes.status}: ${text}`);
+    err.status = createRes.status;
+    throw err;
+  }
+
+  let prediction = await createRes.json();
+  const start = Date.now();
+  while (
+    prediction.status !== "succeeded" &&
+    prediction.status !== "failed" &&
+    prediction.status !== "canceled"
+  ) {
+    if (Date.now() - start > 120_000) throw new Error("Replicate prediction timed out");
+    await new Promise((r) => setTimeout(r, 1500));
+    const pollRes = await fetch(`${REPLICATE_API}/predictions/${prediction.id}`, {
+      headers: { Authorization: `Token ${REPLICATE_API_TOKEN}` },
+    });
+    if (!pollRes.ok) {
+      const text = await pollRes.text().catch(() => "");
+      throw new Error(`Replicate poll ${pollRes.status}: ${text}`);
+    }
+    prediction = await pollRes.json();
+  }
+  if (prediction.status !== "succeeded") {
+    throw new Error(prediction.error || `Prediction ${prediction.status}`);
+  }
+  return prediction.output;
 }
 
 Deno.serve(async (req) => {
@@ -47,9 +82,7 @@ Deno.serve(async (req) => {
     // Auth: verify caller is admin
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace(/^Bearer\s+/i, "");
-    if (!token) {
-      return json({ error: "Unauthorized" }, 401);
-    }
+    if (!token) return json({ error: "Unauthorized" }, 401);
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
     const { data: userRes } = await admin.auth.getUser(token);
@@ -90,34 +123,35 @@ Deno.serve(async (req) => {
       ? promptOverride
       : buildPrompt(displayName, parentName ?? null, samples);
 
-    // Call Lovable AI Gateway image model
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
-        modalities: ["image", "text"],
-      }),
-    });
-
-    if (!aiResp.ok) {
-      const errText = await aiResp.text().catch(() => "");
-      console.error("AI gateway error", aiResp.status, errText);
-      if (aiResp.status === 429) return json({ error: "Rate limited. Try again shortly." }, 429);
-      if (aiResp.status === 402) return json({ error: "AI credits exhausted. Top up your Lovable AI workspace." }, 402);
-      return json({ error: "AI gateway request failed" }, 502);
+    let output: unknown;
+    try {
+      output = await runReplicate("black-forest-labs/flux-1.1-pro", {
+        prompt,
+        aspect_ratio: "1:1",
+        output_format: "png",
+        output_quality: 90,
+      });
+    } catch (e: any) {
+      if (e?.status === 429) return json({ error: "Rate limited. Try again shortly." }, 429);
+      console.error("Replicate error", e);
+      return json({ error: "Replicate API error — check your usage at replicate.com" }, 502);
     }
 
-    const data = await aiResp.json();
-    const dataUrl: string | undefined = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    if (!dataUrl) return json({ error: "AI did not return an image" }, 502);
+    const imageRemoteUrl = Array.isArray(output)
+      ? String(output[0])
+      : typeof output === "string" ? output : null;
 
-    const { bytes, contentType } = dataUrlToBytes(dataUrl);
-    const ext = contentType.includes("jpeg") ? "jpg" : "png";
+    if (!imageRemoteUrl) return json({ error: "Replicate did not return an image" }, 502);
+
+    // Fetch the generated image and persist to our storage bucket.
+    const imgRes = await fetch(imageRemoteUrl);
+    if (!imgRes.ok) {
+      return json({ error: "Failed to fetch generated image" }, 502);
+    }
+    const buffer = await imgRes.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const contentType = "image/png";
+    const ext = "png";
     const path = `${categoryKey.replace(/[^a-z0-9_:-]/gi, "_")}-${Date.now()}.${ext}`;
 
     const upload = await admin.storage.from(BUCKET).upload(path, bytes, {
