@@ -2048,3 +2048,121 @@ function VideoStudioPanel({
   );
 }
 
+
+// ============================================================
+// Recently Saved strip — shows last 6 marketing_generated_images
+// ============================================================
+function RecentlySavedStrip() {
+  const navigate = useNavigate();
+  const [items, setItems] = useState<Array<{
+    id: string;
+    image_url: string;
+    product_title: string | null;
+    style: string | null;
+    aspect_ratio: string | null;
+    created_at: string;
+    generation_type: string;
+  }>>([]);
+  const [preview, setPreview] = useState<typeof items[number] | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("marketing_generated_images" as any)
+        .select("id, image_url, product_title, style, aspect_ratio, created_at, generation_type")
+        .order("created_at", { ascending: false })
+        .limit(6);
+      setItems((data as any) || []);
+    })();
+  }, []);
+
+  if (items.length === 0) return null;
+
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    } catch {
+      return "";
+    }
+  };
+
+  const download = async (url: string, id: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const obj = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = obj;
+      a.download = `image-${id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(obj);
+    } catch {
+      toast.error("Download failed");
+    }
+  };
+
+  return (
+    <Card className="mt-6">
+      <CardHeader className="pb-2 flex flex-row items-center justify-between">
+        <CardTitle className="text-sm">Recently Saved</CardTitle>
+        <button
+          type="button"
+          onClick={() => navigate("/admin/content-library")}
+          className="text-xs text-primary hover:underline"
+        >
+          View all →
+        </button>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {items.map((it) => (
+            <button
+              key={it.id}
+              type="button"
+              onClick={() => setPreview(it)}
+              className="flex-shrink-0 rounded-lg overflow-hidden border hover:opacity-80 transition-opacity"
+              style={{ width: 80, height: 80 }}
+            >
+              <img
+                src={it.image_url}
+                alt={it.product_title || "Saved"}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </button>
+          ))}
+        </div>
+      </CardContent>
+
+      <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm">
+              {preview?.product_title || "Image"}
+            </DialogTitle>
+          </DialogHeader>
+          {preview && (
+            <div className="space-y-3">
+              <img src={preview.image_url} alt={preview.product_title || "Image"} className="w-full rounded" />
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {preview.style && (
+                  <Badge variant="secondary" className="capitalize">{preview.style}</Badge>
+                )}
+                {preview.aspect_ratio && (
+                  <Badge variant="secondary">{preview.aspect_ratio}</Badge>
+                )}
+                <span>{formatDate(preview.created_at)}</span>
+              </div>
+              <Button onClick={() => download(preview.image_url, preview.id)} className="w-full">
+                <Download className="h-4 w-4 mr-2" />
+                Download PNG
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
