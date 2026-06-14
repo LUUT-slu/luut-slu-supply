@@ -1233,6 +1233,7 @@ function FullWidthCTA({
   fontSize,
   padY,
   radius,
+  accentColor = "#ffffff",
 }: {
   text: string;
   theme: PosterTheme;
@@ -1241,12 +1242,14 @@ function FullWidthCTA({
   fontSize: number;
   padY: number;
   radius: number;
+  accentColor?: string;
 }) {
   const isOutline = fill === "outline" || shape === "outline";
   const r = shape === "pill" ? 999 : shape === "block" ? radius : radius;
   const bg = isOutline ? "transparent" : theme.cta;
-  const border = isOutline ? `3px solid ${theme.glow}` : "none";
-  const color = isOutline ? theme.glow : theme.ctaText;
+  const outlineColor = getOpaqueColor(theme.glow, accentColor);
+  const border = isOutline ? `3px solid ${outlineColor}` : "none";
+  const color = isOutline ? outlineColor : theme.ctaText;
   const shadow =
     fill === "glow" && !isOutline
       ? `0 0 32px ${theme.glowSoft}, inset 0 -4px 0 rgba(0,0,0,0.2)`
