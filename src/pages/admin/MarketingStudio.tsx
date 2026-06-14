@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Megaphone, Download, Loader2, Image as ImageIcon, Share2, Undo2, Redo2, RotateCcw, Video } from "lucide-react";
+import { Megaphone, Download, Loader2, Image as ImageIcon, Share2, Undo2, Redo2, RotateCcw, Video, Sparkles } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -344,6 +344,15 @@ export default function MarketingStudio() {
   const [displayComposite, setDisplayComposite] = useState<string | null>(null);
   const [displayCompositing, setDisplayCompositing] = useState(false);
   const [displayCompositeSaved, setDisplayCompositeSaved] = useState(false);
+
+  // AI Poster (Ideogram v3) — separate generation surface
+  const [showAiPoster, setShowAiPoster] = useState(false);
+  const [aiPosterStyle, setAiPosterStyle] = useState<"hype" | "clean" | "luxury" | "bold">("hype");
+  const [aiPosterAspectRatio, setAiPosterAspectRatio] = useState("9:16");
+  const [aiPosterCustom, setAiPosterCustom] = useState("");
+  const [aiPosterGenerating, setAiPosterGenerating] = useState(false);
+  const [aiPosterResult, setAiPosterResult] = useState<string | null>(null);
+  const [aiPosterPrompt, setAiPosterPrompt] = useState("");
 
   const handleRefImageFile = (file: File | null) => {
     if (!file) {
@@ -1456,7 +1465,7 @@ export default function MarketingStudio() {
             </Card>
           )}
 
-          <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)} className="w-full min-w-0">
+          <Tabs value={tab} onValueChange={(v) => { setTab(v as TemplateFormat); setShowAiPoster(false); }} className="w-full min-w-0">
             <div className="w-full overflow-x-auto">
               <TabsList className="inline-flex w-auto min-w-full justify-start">
                 {FORMATS.map((f) => (
@@ -1467,12 +1476,25 @@ export default function MarketingStudio() {
                 <TabsTrigger value="copy" className="text-xs">
                   Copy
                 </TabsTrigger>
+                <button
+                  type="button"
+                  onClick={() => setShowAiPoster(true)}
+                  className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                    showAiPoster
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Sparkles className="h-3 w-3" />
+                  AI Poster
+                </button>
               </TabsList>
             </div>
 
             {/* Image tabs */}
             {FORMATS.map((f) => (
               <TabsContent key={f.key} value={f.key} className="mt-4">
+
                 <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_320px] [&>*]:min-w-0">
                   {/* Preview */}
                   <Card>
@@ -1706,7 +1728,208 @@ export default function MarketingStudio() {
               )}
             </TabsContent>
 
+            {showAiPoster && (
+              <div className="mt-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-fuchsia-400" />
+                      AI Poster Generator
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      The AI generates a complete poster from scratch — no templates, full creative control
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {productPayload ? (
+                      <div className="rounded-lg border p-3 flex items-center gap-3">
+                        {productPayload.productImage && (
+                          <img
+                            src={productPayload.productImage}
+                            className="h-12 w-12 rounded object-cover flex-shrink-0"
+                            alt=""
+                          />
+                        )}
+                        <div>
+                          <div className="text-sm font-semibold">{productPayload.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {productPayload.price ? `EC$${Math.round(Number(productPayload.price))}` : ""}
+                            {" · "}{brandName}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground text-center py-4 rounded-lg border border-dashed">
+                        Pick a product above first
+                      </div>
+                    )}
+
+                    <div>
+                      <Label className="text-xs">Poster Style</Label>
+                      <div className="mt-1.5 grid grid-cols-2 gap-2">
+                        {([
+                          { key: "hype", label: "Hype", desc: "Dark neon, streetwear energy" },
+                          { key: "clean", label: "Clean", desc: "White minimal, editorial" },
+                          { key: "luxury", label: "Luxury", desc: "Navy gold, premium fashion" },
+                          { key: "bold", label: "Bold", desc: "High contrast, loud colours" },
+                        ] as const).map((s) => (
+                          <button
+                            key={s.key}
+                            type="button"
+                            onClick={() => setAiPosterStyle(s.key)}
+                            className={`rounded-lg border p-3 text-left transition-colors ${
+                              aiPosterStyle === s.key
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border hover:border-primary/50"
+                            }`}
+                          >
+                            <div className="text-xs font-semibold">{s.label}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">{s.desc}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Format</Label>
+                      <div className="mt-1.5 flex flex-wrap gap-2">
+                        {[
+                          { ratio: "9:16", dims: "1080×1920" },
+                          { ratio: "1:1", dims: "1080×1080" },
+                          { ratio: "4:5", dims: "1080×1350" },
+                          { ratio: "16:9", dims: "1920×1080" },
+                        ].map((f) => (
+                          <button
+                            key={f.ratio}
+                            type="button"
+                            onClick={() => setAiPosterAspectRatio(f.ratio)}
+                            className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
+                              aiPosterAspectRatio === f.ratio
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border text-muted-foreground hover:border-primary/50"
+                            }`}
+                          >
+                            <span className="font-semibold">{f.ratio}</span>
+                            <span className="ml-1 text-[10px] opacity-60">{f.dims}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Extra instructions (optional)</Label>
+                      <textarea
+                        className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                        rows={3}
+                        placeholder="e.g. tropical beach background, make the price huge, add a fire emoji..."
+                        value={aiPosterCustom}
+                        onChange={(e) => setAiPosterCustom(e.target.value)}
+                      />
+                    </div>
+
+                    <Button
+                      className="w-full gap-2"
+                      disabled={!productPayload || aiPosterGenerating}
+                      onClick={async () => {
+                        if (!productPayload) return;
+                        setAiPosterGenerating(true);
+                        setAiPosterResult(null);
+                        try {
+                          const { data: { session } } = await supabase.auth.getSession();
+                          const { data, error } = await supabase.functions.invoke(
+                            "generate-ai-poster",
+                            {
+                              body: {
+                                productTitle: productPayload.name,
+                                productPrice: productPayload.price
+                                  ? `EC$${Math.round(Number(productPayload.price))}`
+                                  : "",
+                                productImageUrl: productPayload.productImage || "",
+                                ctaText,
+                                brandName,
+                                meetupText,
+                                urgencyText,
+                                tagline: tagline || null,
+                                posterStyle: aiPosterStyle,
+                                aspectRatio: aiPosterAspectRatio,
+                                customInstructions: aiPosterCustom || null,
+                              },
+                              headers: { Authorization: `Bearer ${session?.access_token}` },
+                            },
+                          );
+                          if (error || (data as any)?.error) {
+                            toast.error((data as any)?.error || "Generation failed");
+                          } else {
+                            setAiPosterResult((data as any).url);
+                            setAiPosterPrompt((data as any).prompt || "");
+                            toast.success("AI poster generated!");
+                          }
+                        } catch (e: any) {
+                          toast.error(e?.message || "Generation failed");
+                        } finally {
+                          setAiPosterGenerating(false);
+                        }
+                      }}
+                    >
+                      {aiPosterGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Generating poster... ~20–40s
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4" />
+                          Generate AI Poster
+                        </>
+                      )}
+                    </Button>
+
+                    {aiPosterResult && !aiPosterGenerating && (
+                      <div className="space-y-3">
+                        <img
+                          src={aiPosterResult}
+                          alt="AI generated poster"
+                          className="w-full rounded-lg border border-border"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            className="flex-1 gap-2"
+                            onClick={() => {
+                              const a = document.createElement("a");
+                              a.href = aiPosterResult!;
+                              a.download = `luut-ai-poster-${Date.now()}.png`;
+                              a.click();
+                            }}
+                          >
+                            <Download className="h-4 w-4" />
+                            Download PNG
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="px-3"
+                            onClick={() => {
+                              setAiPosterResult(null);
+                              setAiPosterPrompt("");
+                            }}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                        {aiPosterPrompt && (
+                          <details className="text-[10px] text-muted-foreground">
+                            <summary className="cursor-pointer select-none">View prompt used</summary>
+                            <p className="mt-1 whitespace-pre-wrap leading-relaxed">{aiPosterPrompt}</p>
+                          </details>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
           </Tabs>
+
 
           {/* Hidden full-resolution export node */}
           <div
