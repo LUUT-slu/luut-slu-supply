@@ -240,7 +240,7 @@ export function Header() {
         {/* Right side actions */}
         <div className="flex-row flex items-center justify-center gap-1.5 md:gap-2">
           <LocaleSelector className="mr-1" />
-          <Link to={currentUser ? "/account" : "/login"}>
+          <Link to={currentUser ? "/account" : "/login"} aria-label="Account">
             <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
               <User className="h-5 w-[20px]" />
             </Button>
