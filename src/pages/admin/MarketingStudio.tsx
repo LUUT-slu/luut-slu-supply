@@ -1465,7 +1465,7 @@ export default function MarketingStudio() {
             </Card>
           )}
 
-          <Tabs value={tab} onValueChange={(v) => setTab(v as TemplateFormat)} className="w-full min-w-0">
+          <Tabs value={tab} onValueChange={(v) => { setTab(v as TemplateFormat); setShowAiPoster(false); }} className="w-full min-w-0">
             <div className="w-full overflow-x-auto">
               <TabsList className="inline-flex w-auto min-w-full justify-start">
                 {FORMATS.map((f) => (
@@ -1476,12 +1476,25 @@ export default function MarketingStudio() {
                 <TabsTrigger value="copy" className="text-xs">
                   Copy
                 </TabsTrigger>
+                <button
+                  type="button"
+                  onClick={() => setShowAiPoster(true)}
+                  className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                    showAiPoster
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Sparkles className="h-3 w-3" />
+                  AI Poster
+                </button>
               </TabsList>
             </div>
 
             {/* Image tabs */}
             {FORMATS.map((f) => (
               <TabsContent key={f.key} value={f.key} className="mt-4">
+
                 <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_320px] [&>*]:min-w-0">
                   {/* Preview */}
                   <Card>
