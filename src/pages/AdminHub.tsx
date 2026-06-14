@@ -21,6 +21,7 @@ import {
   BarChart3,
   Megaphone,
   Tag,
+  Images,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -180,6 +181,15 @@ export default function AdminHub() {
       stat: "Promote",
       color: "text-fuchsia-500",
       bgColor: "bg-fuchsia-500/10",
+    },
+    {
+      title: "Content Library",
+      description: "Browse and manage your saved AI-generated images",
+      icon: Images,
+      href: "/admin/content-library",
+      stat: "Browse",
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10",
     },
     {
       title: "Promotions Manager",

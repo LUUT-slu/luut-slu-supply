@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -319,10 +321,39 @@ export default function MarketingStudio() {
   const singlePrep = useImagePrep(productPayload?.productImage, tab);
 
   // ---- AI Display Image generator (Replicate flux-kontext-pro) ----
+  type DisplayAspect = "1:1" | "4:5" | "9:16" | "3:4" | "16:9" | "4:3";
+  type LogoPos = "top-left" | "top-center" | "top-right" | "bottom-left" | "bottom-center" | "bottom-right";
+  const DISPLAY_ASPECTS: { key: DisplayAspect; size: string }[] = [
+    { key: "1:1", size: "1080×1080" },
+    { key: "4:5", size: "1080×1350" },
+    { key: "9:16", size: "1080×1920" },
+    { key: "3:4", size: "1080×1440" },
+    { key: "16:9", size: "1920×1080" },
+    { key: "4:3", size: "1440×1080" },
+  ];
   const [displayStyle, setDisplayStyle] = useState<"studio" | "lifestyle" | "minimal">("studio");
-  const [displayFormat, setDisplayFormat] = useState<"square" | "portrait" | "landscape">("square");
+  const [displayAspect, setDisplayAspect] = useState<DisplayAspect>("1:1");
+  const [displayTextOverlay, setDisplayTextOverlay] = useState("");
+  const [displayCustomPrompt, setDisplayCustomPrompt] = useState("");
+  const [displayRefImage, setDisplayRefImage] = useState<string | null>(null);
+  const [displayAddLogo, setDisplayAddLogo] = useState(false);
+  const [displayLogoPos, setDisplayLogoPos] = useState<LogoPos>("bottom-right");
   const [displayLoading, setDisplayLoading] = useState(false);
   const [displayResultUrl, setDisplayResultUrl] = useState<string | null>(null);
+  const [displayResultId, setDisplayResultId] = useState<string | null>(null);
+  const [displayComposite, setDisplayComposite] = useState<string | null>(null);
+  const [displayCompositing, setDisplayCompositing] = useState(false);
+  const [displayCompositeSaved, setDisplayCompositeSaved] = useState(false);
+
+  const handleRefImageFile = (file: File | null) => {
+    if (!file) {
+      setDisplayRefImage(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setDisplayRefImage(typeof reader.result === "string" ? reader.result : null);
+    reader.readAsDataURL(file);
+  };
 
   const generateDisplayImage = async () => {
     if (!selectedProduct) return;
@@ -333,6 +364,9 @@ export default function MarketingStudio() {
     }
     setDisplayLoading(true);
     setDisplayResultUrl(null);
+    setDisplayResultId(null);
+    setDisplayComposite(null);
+    setDisplayCompositeSaved(false);
     try {
       const { data, error } = await supabase.functions.invoke("generate-product-display-image", {
         body: {
@@ -340,12 +374,16 @@ export default function MarketingStudio() {
           productTitle: selectedProduct.title,
           productCategory: selectedProduct.category || "product",
           style: displayStyle,
-          format: displayFormat,
+          aspectRatio: displayAspect,
+          textOverlay: displayTextOverlay.trim() || null,
+          referenceImageUrl: displayRefImage,
+          customPrompt: displayCustomPrompt.trim() || null,
         },
       });
       if (error) throw new Error(error.message || "Generation failed");
       if (!data?.url) throw new Error(data?.error || "No image returned");
       setDisplayResultUrl(data.url as string);
+      setDisplayResultId((data.id as string) || null);
       toast.success("Display image generated");
     } catch (e: any) {
       toast.error(e?.message || "Generation failed");
@@ -354,10 +392,97 @@ export default function MarketingStudio() {
     }
   };
 
-  const downloadDisplayImage = async () => {
-    if (!displayResultUrl) return;
+  // Client-side compositing: overlay brand logo on the generated image
+  const compositeLogoOnImage = async () => {
+    if (!displayResultUrl) return null;
+    const logoUrl = brandLogoUrl;
+    if (!logoUrl) return null;
+    setDisplayCompositing(true);
     try {
-      const res = await fetch(displayResultUrl);
+      const loadImg = (src: string) =>
+        new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("Could not load image"));
+          img.src = src;
+        });
+      const [baseImg, logoImg] = await Promise.all([loadImg(displayResultUrl), loadImg(logoUrl)]);
+      const canvas = document.createElement("canvas");
+      canvas.width = baseImg.naturalWidth;
+      canvas.height = baseImg.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas not supported");
+      ctx.drawImage(baseImg, 0, 0);
+      const logoW = canvas.width * 0.15;
+      const logoH = (logoImg.naturalHeight / logoImg.naturalWidth) * logoW;
+      const margin = 8;
+      let x = margin;
+      let y = margin;
+      if (displayLogoPos.endsWith("right")) x = canvas.width - logoW - margin;
+      else if (displayLogoPos.endsWith("center")) x = (canvas.width - logoW) / 2;
+      if (displayLogoPos.startsWith("bottom")) y = canvas.height - logoH - margin;
+      ctx.drawImage(logoImg, x, y, logoW, logoH);
+      const dataUrl = canvas.toDataURL("image/png");
+      setDisplayComposite(dataUrl);
+      return dataUrl;
+    } catch (e: any) {
+      toast.error(e?.message || "Could not apply logo");
+      return null;
+    } finally {
+      setDisplayCompositing(false);
+    }
+  };
+
+  // Re-composite whenever the toggle/position changes (after we have a result)
+  useEffect(() => {
+    if (displayAddLogo && displayResultUrl && brandLogoUrl) {
+      compositeLogoOnImage();
+      setDisplayCompositeSaved(false);
+    } else {
+      setDisplayComposite(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayAddLogo, displayLogoPos, displayResultUrl, brandLogoUrl]);
+
+  const saveCompositeToLibrary = async () => {
+    if (!displayComposite || !selectedProduct) return;
+    try {
+      const blob = await (await fetch(displayComposite)).blob();
+      const path = `display-composite-${Date.now()}.png`;
+      const { error: upErr } = await supabase.storage
+        .from("marketing-assets")
+        .upload(path, blob, { contentType: "image/png", upsert: true });
+      if (upErr) throw upErr;
+      const { data: signed, error: sErr } = await supabase.storage
+        .from("marketing-assets")
+        .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+      if (sErr || !signed?.signedUrl) throw sErr || new Error("Signed URL failed");
+      const { error: insErr } = await supabase
+        .from("marketing_generated_images" as any)
+        .insert({
+          image_url: signed.signedUrl,
+          thumbnail_url: signed.signedUrl,
+          generation_type: "display",
+          product_title: selectedProduct.title,
+          style: displayStyle,
+          aspect_ratio: displayAspect,
+          logo_applied: true,
+          logo_position: displayLogoPos,
+        } as any);
+      if (insErr) throw insErr;
+      setDisplayCompositeSaved(true);
+      toast.success("Saved to library");
+    } catch (e: any) {
+      toast.error(e?.message || "Save failed");
+    }
+  };
+
+  const downloadDisplayImage = async () => {
+    const target = displayComposite || displayResultUrl;
+    if (!target) return;
+    try {
+      const res = await fetch(target);
       const blob = await res.blob();
       const objUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -371,6 +496,7 @@ export default function MarketingStudio() {
       toast.error("Download failed");
     }
   };
+
 
   // ---- AI-assisted image prep (multi-product, applied to all tiles) ----
   const [multiPrepMode, setMultiPrepMode] = useState<
@@ -1090,6 +1216,7 @@ export default function MarketingStudio() {
                 <CardTitle className="text-sm">AI Display Image</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* A. Style */}
                 <div>
                   <Label className="text-xs mb-1.5 block">Style</Label>
                   <div className="grid grid-cols-3 gap-1.5">
@@ -1107,23 +1234,128 @@ export default function MarketingStudio() {
                     ))}
                   </div>
                 </div>
+
+                {/* B. Aspect ratio */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Format</Label>
+                  <Label className="text-xs mb-1.5 block">Aspect Ratio</Label>
                   <div className="grid grid-cols-3 gap-1.5">
-                    {(["square", "portrait", "landscape"] as const).map((f) => (
-                      <Button
-                        key={f}
-                        type="button"
-                        size="sm"
-                        variant={displayFormat === f ? "default" : "outline"}
-                        onClick={() => setDisplayFormat(f)}
-                        className="text-xs capitalize"
-                      >
-                        {f}
-                      </Button>
+                    {DISPLAY_ASPECTS.map((a) => (
+                      <div key={a.key} className="space-y-0.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={displayAspect === a.key ? "default" : "outline"}
+                          onClick={() => setDisplayAspect(a.key)}
+                          className="text-xs w-full"
+                        >
+                          {a.key}
+                        </Button>
+                        <div className="text-[10px] text-muted-foreground text-center">
+                          {a.size}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
+
+                {/* C. Text overlay */}
+                <div>
+                  <Label className="text-xs mb-1.5 block">Text on image (optional)</Label>
+                  <Textarea
+                    rows={3}
+                    value={displayTextOverlay}
+                    onChange={(e) => setDisplayTextOverlay(e.target.value)}
+                    placeholder="e.g. EC$60 · DM to buy · New arrival · Limited drop"
+                    className="text-xs"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    This text will be baked into the generated image
+                  </p>
+                </div>
+
+                {/* D. Reference image */}
+                <div>
+                  <Label className="text-xs mb-1.5 block">Reference image (optional)</Label>
+                  <p className="text-[10px] text-muted-foreground mb-1.5">
+                    Show the AI a style, background, or composition you want
+                  </p>
+                  {displayRefImage ? (
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={displayRefImage}
+                        alt="Reference"
+                        className="max-h-20 rounded border"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDisplayRefImage(null)}
+                        className="text-xs"
+                      >
+                        × Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleRefImageFile(e.target.files?.[0] || null)}
+                      className="text-xs"
+                    />
+                  )}
+                </div>
+
+                {/* E. Custom prompt */}
+                <div>
+                  <Label className="text-xs mb-1.5 block">
+                    Additional prompt notes (optional)
+                  </Label>
+                  <Textarea
+                    rows={2}
+                    value={displayCustomPrompt}
+                    onChange={(e) => setDisplayCustomPrompt(e.target.value)}
+                    placeholder="e.g. dark moody background, golden hour lighting, Caribbean beach setting..."
+                    className="text-xs"
+                  />
+                </div>
+
+                {/* F. Logo overlay (only when result + brand logo exist) */}
+                {displayResultUrl && brandLogoUrl && (
+                  <div className="rounded-md border p-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Add logo to image</Label>
+                      <Switch checked={displayAddLogo} onCheckedChange={setDisplayAddLogo} />
+                    </div>
+                    {displayAddLogo && (
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(
+                          [
+                            ["top-left", "Top-Left"],
+                            ["top-center", "Top-Center"],
+                            ["top-right", "Top-Right"],
+                            ["bottom-left", "Bot-Left"],
+                            ["bottom-center", "Bot-Center"],
+                            ["bottom-right", "Bot-Right"],
+                          ] as [LogoPos, string][]
+                        ).map(([pos, label]) => (
+                          <Button
+                            key={pos}
+                            type="button"
+                            size="sm"
+                            variant={displayLogoPos === pos ? "default" : "outline"}
+                            onClick={() => setDisplayLogoPos(pos)}
+                            className="text-[11px]"
+                          >
+                            {label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* G. Generate */}
                 <Button
                   type="button"
                   className="w-full"
@@ -1133,37 +1365,65 @@ export default function MarketingStudio() {
                   {displayLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
+                      Generating... ~20–40s
                     </>
                   ) : (
-                    "Generate Display Image"
+                    "Generate Image"
                   )}
                 </Button>
+
+                {/* H. Result */}
                 {displayResultUrl && (
                   <div className="space-y-2 rounded-md border p-2">
-                    <img
-                      src={displayResultUrl}
-                      alt="Generated display"
-                      className="w-full rounded"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={downloadDisplayImage}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Download
-                    </Button>
-                    <p className="text-[11px] text-muted-foreground text-center">
-                      Use as Product Image
-                    </p>
+                    {displayCompositing ? (
+                      <div className="flex items-center justify-center h-32 text-xs text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" /> Applying logo…
+                      </div>
+                    ) : (
+                      <img
+                        src={displayComposite || displayResultUrl}
+                        alt="Generated display"
+                        className="w-full rounded"
+                      />
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      {displayAddLogo && displayComposite ? (
+                        displayCompositeSaved ? (
+                          <div className="flex items-center justify-center text-xs text-muted-foreground border rounded h-9">
+                            Saved ✓
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={saveCompositeToLibrary}
+                            className="w-full"
+                          >
+                            Save to Library
+                          </Button>
+                        )
+                      ) : (
+                        <div className="flex items-center justify-center text-xs text-muted-foreground border rounded h-9">
+                          Saved ✓
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={downloadDisplayImage}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download PNG
+                      </Button>
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
           )}
+
 
 
 
@@ -1470,6 +1730,9 @@ export default function MarketingStudio() {
             )}
           </div>
           </>)}
+
+          {/* Recently Saved strip — always visible (hides itself when empty) */}
+          <RecentlySavedStrip />
         </main>
 
 
@@ -1785,3 +2048,121 @@ function VideoStudioPanel({
   );
 }
 
+
+// ============================================================
+// Recently Saved strip — shows last 6 marketing_generated_images
+// ============================================================
+function RecentlySavedStrip() {
+  const navigate = useNavigate();
+  const [items, setItems] = useState<Array<{
+    id: string;
+    image_url: string;
+    product_title: string | null;
+    style: string | null;
+    aspect_ratio: string | null;
+    created_at: string;
+    generation_type: string;
+  }>>([]);
+  const [preview, setPreview] = useState<typeof items[number] | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("marketing_generated_images" as any)
+        .select("id, image_url, product_title, style, aspect_ratio, created_at, generation_type")
+        .order("created_at", { ascending: false })
+        .limit(6);
+      setItems((data as any) || []);
+    })();
+  }, []);
+
+  if (items.length === 0) return null;
+
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    } catch {
+      return "";
+    }
+  };
+
+  const download = async (url: string, id: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const obj = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = obj;
+      a.download = `image-${id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(obj);
+    } catch {
+      toast.error("Download failed");
+    }
+  };
+
+  return (
+    <Card className="mt-6">
+      <CardHeader className="pb-2 flex flex-row items-center justify-between">
+        <CardTitle className="text-sm">Recently Saved</CardTitle>
+        <button
+          type="button"
+          onClick={() => navigate("/admin/content-library")}
+          className="text-xs text-primary hover:underline"
+        >
+          View all →
+        </button>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {items.map((it) => (
+            <button
+              key={it.id}
+              type="button"
+              onClick={() => setPreview(it)}
+              className="flex-shrink-0 rounded-lg overflow-hidden border hover:opacity-80 transition-opacity"
+              style={{ width: 80, height: 80 }}
+            >
+              <img
+                src={it.image_url}
+                alt={it.product_title || "Saved"}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </button>
+          ))}
+        </div>
+      </CardContent>
+
+      <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm">
+              {preview?.product_title || "Image"}
+            </DialogTitle>
+          </DialogHeader>
+          {preview && (
+            <div className="space-y-3">
+              <img src={preview.image_url} alt={preview.product_title || "Image"} className="w-full rounded" />
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {preview.style && (
+                  <Badge variant="secondary" className="capitalize">{preview.style}</Badge>
+                )}
+                {preview.aspect_ratio && (
+                  <Badge variant="secondary">{preview.aspect_ratio}</Badge>
+                )}
+                <span>{formatDate(preview.created_at)}</span>
+              </div>
+              <Button onClick={() => download(preview.image_url, preview.id)} className="w-full">
+                <Download className="h-4 w-4 mr-2" />
+                Download PNG
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}

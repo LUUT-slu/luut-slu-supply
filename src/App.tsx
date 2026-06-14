@@ -83,6 +83,7 @@ const DiscountRedirect = lazyRetry(() => import("./pages/DiscountRedirect"));
 const AdminAnalytics = lazyRetry(() => import("./pages/admin/AdminAnalytics"));
 const AdminReviews = lazyRetry(() => import("./pages/admin/AdminReviews"));
 const MarketingStudio = lazyRetry(() => import("./pages/admin/MarketingStudio"));
+const ContentLibrary = lazyRetry(() => import("./pages/admin/ContentLibrary"));
 const PromotionsManager = lazyRetry(() => import("./pages/admin/PromotionsManager"));
 const AdminCustomers = lazyRetry(() => import("./pages/admin/AdminCustomers"));
 const AdminCustomerDetail = lazyRetry(() => import("./pages/admin/AdminCustomerDetail"));
@@ -297,6 +298,11 @@ const App = () => (
             <Route path="/admin/marketing-studio" element={
               <RouteGuard requiredRole="admin">
                 <MarketingStudio />
+              </RouteGuard>
+            } />
+            <Route path="/admin/content-library" element={
+              <RouteGuard requiredRole="admin">
+                <ContentLibrary />
               </RouteGuard>
             } />
             <Route path="/admin/promotions" element={
