@@ -252,7 +252,7 @@ export function Header() {
               </Button>
             </Link>
           }
-          <Link to="/cart">
+          <Link to="/cart" aria-label="Cart">
             <Button variant="ghost" size="icon" className="relative text-foreground hover:text-primary">
               <ShoppingBag className="h-5 w-5" />
               {totalItems > 0 &&
