@@ -1216,6 +1216,7 @@ export default function MarketingStudio() {
                 <CardTitle className="text-sm">AI Display Image</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* A. Style */}
                 <div>
                   <Label className="text-xs mb-1.5 block">Style</Label>
                   <div className="grid grid-cols-3 gap-1.5">
@@ -1233,23 +1234,128 @@ export default function MarketingStudio() {
                     ))}
                   </div>
                 </div>
+
+                {/* B. Aspect ratio */}
                 <div>
-                  <Label className="text-xs mb-1.5 block">Format</Label>
+                  <Label className="text-xs mb-1.5 block">Aspect Ratio</Label>
                   <div className="grid grid-cols-3 gap-1.5">
-                    {(["square", "portrait", "landscape"] as const).map((f) => (
-                      <Button
-                        key={f}
-                        type="button"
-                        size="sm"
-                        variant={displayFormat === f ? "default" : "outline"}
-                        onClick={() => setDisplayFormat(f)}
-                        className="text-xs capitalize"
-                      >
-                        {f}
-                      </Button>
+                    {DISPLAY_ASPECTS.map((a) => (
+                      <div key={a.key} className="space-y-0.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={displayAspect === a.key ? "default" : "outline"}
+                          onClick={() => setDisplayAspect(a.key)}
+                          className="text-xs w-full"
+                        >
+                          {a.key}
+                        </Button>
+                        <div className="text-[10px] text-muted-foreground text-center">
+                          {a.size}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
+
+                {/* C. Text overlay */}
+                <div>
+                  <Label className="text-xs mb-1.5 block">Text on image (optional)</Label>
+                  <Textarea
+                    rows={3}
+                    value={displayTextOverlay}
+                    onChange={(e) => setDisplayTextOverlay(e.target.value)}
+                    placeholder="e.g. EC$60 · DM to buy · New arrival · Limited drop"
+                    className="text-xs"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    This text will be baked into the generated image
+                  </p>
+                </div>
+
+                {/* D. Reference image */}
+                <div>
+                  <Label className="text-xs mb-1.5 block">Reference image (optional)</Label>
+                  <p className="text-[10px] text-muted-foreground mb-1.5">
+                    Show the AI a style, background, or composition you want
+                  </p>
+                  {displayRefImage ? (
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={displayRefImage}
+                        alt="Reference"
+                        className="max-h-20 rounded border"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDisplayRefImage(null)}
+                        className="text-xs"
+                      >
+                        × Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleRefImageFile(e.target.files?.[0] || null)}
+                      className="text-xs"
+                    />
+                  )}
+                </div>
+
+                {/* E. Custom prompt */}
+                <div>
+                  <Label className="text-xs mb-1.5 block">
+                    Additional prompt notes (optional)
+                  </Label>
+                  <Textarea
+                    rows={2}
+                    value={displayCustomPrompt}
+                    onChange={(e) => setDisplayCustomPrompt(e.target.value)}
+                    placeholder="e.g. dark moody background, golden hour lighting, Caribbean beach setting..."
+                    className="text-xs"
+                  />
+                </div>
+
+                {/* F. Logo overlay (only when result + brand logo exist) */}
+                {displayResultUrl && brandLogoUrl && (
+                  <div className="rounded-md border p-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Add logo to image</Label>
+                      <Switch checked={displayAddLogo} onCheckedChange={setDisplayAddLogo} />
+                    </div>
+                    {displayAddLogo && (
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(
+                          [
+                            ["top-left", "Top-Left"],
+                            ["top-center", "Top-Center"],
+                            ["top-right", "Top-Right"],
+                            ["bottom-left", "Bot-Left"],
+                            ["bottom-center", "Bot-Center"],
+                            ["bottom-right", "Bot-Right"],
+                          ] as [LogoPos, string][]
+                        ).map(([pos, label]) => (
+                          <Button
+                            key={pos}
+                            type="button"
+                            size="sm"
+                            variant={displayLogoPos === pos ? "default" : "outline"}
+                            onClick={() => setDisplayLogoPos(pos)}
+                            className="text-[11px]"
+                          >
+                            {label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* G. Generate */}
                 <Button
                   type="button"
                   className="w-full"
@@ -1259,37 +1365,65 @@ export default function MarketingStudio() {
                   {displayLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
+                      Generating... ~20–40s
                     </>
                   ) : (
-                    "Generate Display Image"
+                    "Generate Image"
                   )}
                 </Button>
+
+                {/* H. Result */}
                 {displayResultUrl && (
                   <div className="space-y-2 rounded-md border p-2">
-                    <img
-                      src={displayResultUrl}
-                      alt="Generated display"
-                      className="w-full rounded"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={downloadDisplayImage}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Download
-                    </Button>
-                    <p className="text-[11px] text-muted-foreground text-center">
-                      Use as Product Image
-                    </p>
+                    {displayCompositing ? (
+                      <div className="flex items-center justify-center h-32 text-xs text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" /> Applying logo…
+                      </div>
+                    ) : (
+                      <img
+                        src={displayComposite || displayResultUrl}
+                        alt="Generated display"
+                        className="w-full rounded"
+                      />
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      {displayAddLogo && displayComposite ? (
+                        displayCompositeSaved ? (
+                          <div className="flex items-center justify-center text-xs text-muted-foreground border rounded h-9">
+                            Saved ✓
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={saveCompositeToLibrary}
+                            className="w-full"
+                          >
+                            Save to Library
+                          </Button>
+                        )
+                      ) : (
+                        <div className="flex items-center justify-center text-xs text-muted-foreground border rounded h-9">
+                          Saved ✓
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={downloadDisplayImage}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download PNG
+                      </Button>
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
           )}
+
 
 
 
