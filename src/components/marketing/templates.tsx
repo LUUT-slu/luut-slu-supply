@@ -1002,6 +1002,7 @@ function PresetLayout(p: TemplateProps) {
               theme={theme}
               shape={preset.badge.shape}
               fill={preset.badge.fill}
+              accentColor={preset.palette.accent}
             />
           )}
         </div>
