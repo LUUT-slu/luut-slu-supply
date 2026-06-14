@@ -153,6 +153,22 @@ function contrastText(bg: string): string {
   return yiq >= 160 ? "#0a0a0a" : "#ffffff";
 }
 
+function isLightBg(bgColor: string): boolean {
+  if (bgColor.startsWith("#")) {
+    const rgb = hexToRgb(bgColor);
+    if (!rgb) return false;
+    const yiq = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
+    return yiq >= 140;
+  }
+  return false;
+}
+
+function getOpaqueColor(color: string, fallback: string): string {
+  const rgbaMatch = color.match(/rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/);
+  if (rgbaMatch && parseFloat(rgbaMatch[1]) < 0.3) return fallback;
+  return color;
+}
+
 // Theme palette per poster intent. Picked from `urgencyText`/`headline` keywords
 // so the reference's "green glow" / "red glow" aesthetic auto-applies.
 interface PosterTheme {
