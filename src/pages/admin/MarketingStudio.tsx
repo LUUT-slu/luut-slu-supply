@@ -345,6 +345,15 @@ export default function MarketingStudio() {
   const [displayCompositing, setDisplayCompositing] = useState(false);
   const [displayCompositeSaved, setDisplayCompositeSaved] = useState(false);
 
+  // AI Poster (Ideogram v3) — separate generation surface
+  const [showAiPoster, setShowAiPoster] = useState(false);
+  const [aiPosterStyle, setAiPosterStyle] = useState<"hype" | "clean" | "luxury" | "bold">("hype");
+  const [aiPosterAspectRatio, setAiPosterAspectRatio] = useState("9:16");
+  const [aiPosterCustom, setAiPosterCustom] = useState("");
+  const [aiPosterGenerating, setAiPosterGenerating] = useState(false);
+  const [aiPosterResult, setAiPosterResult] = useState<string | null>(null);
+  const [aiPosterPrompt, setAiPosterPrompt] = useState("");
+
   const handleRefImageFile = (file: File | null) => {
     if (!file) {
       setDisplayRefImage(null);
