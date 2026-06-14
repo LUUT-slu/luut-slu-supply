@@ -1142,6 +1142,9 @@ export default function MarketingStudio() {
                 <TabsTrigger value="copy" className="text-xs">
                   Copy
                 </TabsTrigger>
+                <TabsTrigger value="video" className="text-xs">
+                  Video
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -1380,6 +1383,14 @@ export default function MarketingStudio() {
                 </Card>
               )}
             </TabsContent>
+
+            {/* Video tab */}
+            <TabsContent value="video" className="mt-4">
+              <VideoStudioPanel
+                selectedProduct={selectedProduct}
+                posterType={posterType}
+              />
+            </TabsContent>
           </Tabs>
 
           {/* Hidden full-resolution export node */}
@@ -1417,3 +1428,303 @@ export default function MarketingStudio() {
     </AdminAuth>
   );
 }
+
+// ============================================================
+// Video Studio Panel — image-to-video generation via Replicate
+// ============================================================
+type MotionStyle = "subtle" | "dynamic" | "cinematic";
+
+function VideoStudioPanel({
+  selectedProduct,
+  posterType,
+}: {
+  selectedProduct: any;
+  posterType: PosterType;
+}) {
+  const [motionStyle, setMotionStyle] = useState<MotionStyle>("subtle");
+  const [duration, setDuration] = useState<5 | 10>(5);
+  const [productLoading, setProductLoading] = useState(false);
+  const [productVideoUrl, setProductVideoUrl] = useState<string | null>(null);
+
+  const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
+  const [posterLoading, setPosterLoading] = useState(false);
+  const [posterVideoUrl, setPosterVideoUrl] = useState<string | null>(null);
+  const posterFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function handleGenerateProductVideo() {
+    if (!selectedProduct) return;
+    const imageUrl = selectedProduct.images?.[0]?.url;
+    if (!imageUrl) {
+      toast.error("Selected product has no image");
+      return;
+    }
+    setProductLoading(true);
+    setProductVideoUrl(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-product-video", {
+        body: {
+          productImageUrl: imageUrl,
+          productTitle: selectedProduct.title,
+          productCategory: selectedProduct.category || "",
+          motionStyle,
+          duration,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const url = (data as any)?.videoUrl;
+      if (!url) throw new Error("No video returned");
+      setProductVideoUrl(url);
+      toast.success("Product video ready");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to generate video");
+    } finally {
+      setProductLoading(false);
+    }
+  }
+
+  function handlePosterFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPosterDataUrl(typeof reader.result === "string" ? reader.result : null);
+      setPosterVideoUrl(null);
+    };
+    reader.onerror = () => toast.error("Failed to read file");
+    reader.readAsDataURL(file);
+  }
+
+  async function handleAnimatePoster() {
+    if (!posterDataUrl) return;
+    setPosterLoading(true);
+    setPosterVideoUrl(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-product-poster-video", {
+        body: { posterImageUrl: posterDataUrl, posterType },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const url = (data as any)?.videoUrl;
+      if (!url) throw new Error("No video returned");
+      setPosterVideoUrl(url);
+      toast.success("Poster animated");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to animate poster");
+    } finally {
+      setPosterLoading(false);
+    }
+  }
+
+  async function downloadVideo(url: string, filename: string) {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      toast.error("Failed to download video");
+    }
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {/* Section A — Product Video */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Product Video</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Animate your product photo into a short marketing clip
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!selectedProduct ? (
+            <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
+              Select a product to generate a video
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                {selectedProduct.images?.[0]?.url && (
+                  <img
+                    src={selectedProduct.images[0].url}
+                    alt={selectedProduct.title}
+                    className="h-12 w-12 rounded object-cover"
+                  />
+                )}
+                <div className="min-w-0 text-xs">
+                  <div className="truncate font-medium">{selectedProduct.title}</div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">Motion Style</Label>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {(["subtle", "dynamic", "cinematic"] as MotionStyle[]).map((s) => (
+                    <Button
+                      key={s}
+                      type="button"
+                      size="sm"
+                      variant={motionStyle === s ? "default" : "outline"}
+                      className="h-7 rounded-full px-3 text-[11px] capitalize"
+                      onClick={() => setMotionStyle(s)}
+                      disabled={productLoading}
+                    >
+                      {s}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">Duration</Label>
+                <div className="mt-1.5 flex gap-1.5">
+                  {([5, 10] as const).map((d) => (
+                    <Button
+                      key={d}
+                      type="button"
+                      size="sm"
+                      variant={duration === d ? "default" : "outline"}
+                      className="h-7 rounded-full px-3 text-[11px]"
+                      onClick={() => setDuration(d)}
+                      disabled={productLoading}
+                    >
+                      {d}s
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <Button
+                className="w-full gap-2"
+                onClick={handleGenerateProductVideo}
+                disabled={!selectedProduct || productLoading}
+              >
+                {productLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating video... this takes ~30–60s
+                  </>
+                ) : (
+                  <>
+                    <Megaphone className="h-4 w-4" />
+                    Generate Product Video
+                  </>
+                )}
+              </Button>
+
+              {productVideoUrl && (
+                <div className="space-y-2">
+                  <video
+                    src={productVideoUrl}
+                    controls
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="w-full rounded-md border"
+                  />
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() =>
+                      downloadVideo(
+                        productVideoUrl,
+                        `luutslu-${(selectedProduct.title || "product").replace(/\s+/g, "-").toLowerCase()}-video.mp4`,
+                      )
+                    }
+                  >
+                    <Download className="h-4 w-4" />
+                    Download MP4
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Section B — Animate This Poster */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Animate This Poster</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Turn your finished poster into a video for Reels &amp; TikTok
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <input
+            ref={posterFileInputRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            className="hidden"
+            onChange={handlePosterFileChange}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => posterFileInputRef.current?.click()}
+            disabled={posterLoading}
+          >
+            <ImageIcon className="h-4 w-4" />
+            {posterDataUrl ? "Replace Poster Image" : "Upload Poster Image"}
+          </Button>
+
+          {posterDataUrl && (
+            <img
+              src={posterDataUrl}
+              alt="Poster preview"
+              className="mx-auto max-h-48 rounded-md border object-contain"
+            />
+          )}
+
+          <Button
+            className="w-full gap-2"
+            onClick={handleAnimatePoster}
+            disabled={!posterDataUrl || posterLoading}
+          >
+            {posterLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Animating poster... ~30s
+              </>
+            ) : (
+              <>
+                <Megaphone className="h-4 w-4" />
+                Animate Poster
+              </>
+            )}
+          </Button>
+
+          {posterVideoUrl && (
+            <div className="space-y-2">
+              <video
+                src={posterVideoUrl}
+                controls
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="w-full rounded-md border"
+              />
+              <Button
+                className="w-full gap-2"
+                onClick={() => downloadVideo(posterVideoUrl, `luutslu-${posterType}-poster-video.mp4`)}
+              >
+                <Download className="h-4 w-4" />
+                Download MP4
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
