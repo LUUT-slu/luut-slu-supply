@@ -40,20 +40,7 @@ export default function CategorySub() {
     limit: 100,
   });
 
-  // SEO
-  useEffect(() => {
-    if (!main || !sub) return;
-    const title = `${sub.title} – ${main.title} | Luut SLU`;
-    document.title = title.slice(0, 60);
-    const desc = `Shop ${sub.title.toLowerCase()} in ${main.title.toLowerCase()} from local sellers in Saint Lucia.`;
-    let meta = document.querySelector('meta[name="description"]');
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.setAttribute('name', 'description');
-      document.head.appendChild(meta);
-    }
-    meta.setAttribute('content', desc.slice(0, 160));
-  }, [main, sub]);
+  // SEO handled via <SEO/> in JSX below
 
   const filtered = useMemo(() => applyFilters(products, filterValues), [products, filterValues]);
 
