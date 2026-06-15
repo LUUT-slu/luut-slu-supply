@@ -295,6 +295,7 @@ export type Database = {
         Row: {
           auth_provider: string | null
           avatar_url: string | null
+          calendar_connected: boolean
           created_at: string
           document_url: string | null
           email: string | null
@@ -316,6 +317,7 @@ export type Database = {
         Insert: {
           auth_provider?: string | null
           avatar_url?: string | null
+          calendar_connected?: boolean
           created_at?: string
           document_url?: string | null
           email?: string | null
@@ -337,6 +339,7 @@ export type Database = {
         Update: {
           auth_provider?: string | null
           avatar_url?: string | null
+          calendar_connected?: boolean
           created_at?: string
           document_url?: string | null
           email?: string | null
@@ -416,6 +419,24 @@ export type Database = {
           id?: string
           tag?: string
           tag_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      google_tokens: {
+        Row: {
+          refresh_token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          refresh_token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          refresh_token?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
