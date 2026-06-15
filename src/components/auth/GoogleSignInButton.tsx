@@ -20,6 +20,10 @@ export function GoogleSignInButton({ nextUrl, label = "Continue with Google", cl
       }`;
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: callbackUrl,
+        extraParams: {
+          scope: "openid email profile https://www.googleapis.com/auth/calendar.events",
+          access_type: "offline",
+        },
       });
 
       if (result.error) {

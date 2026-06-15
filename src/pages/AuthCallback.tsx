@@ -15,6 +15,17 @@ export default function AuthCallback() {
         navigate("/login", { replace: true });
         return;
       }
+
+      // If Google returned a refresh token (calendar scope was granted), store it
+      // server-side immediately. Fire-and-forget — never blocks navigation.
+      if (session.provider_refresh_token) {
+        supabase.functions
+          .invoke("store-calendar-token", {
+            body: { refresh_token: session.provider_refresh_token },
+          })
+          .catch((e) => console.warn("[calendar-token] store failed (non-blocking)", e));
+      }
+
       // Small delay to let useEnsureCustomerProfile handle the upsert
       setTimeout(() => navigate(next, { replace: true }), 250);
     };
