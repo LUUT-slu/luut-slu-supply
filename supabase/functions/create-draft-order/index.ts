@@ -441,8 +441,13 @@ serve(async (req) => {
 
     let draftOrder = null;
 
-    // Only create Shopify draft order if there are Shopify products AND admin token
-    if (shopifyAdminToken && shopifyItems.length > 0) {
+    // Create Shopify draft order when:
+    // - Admin token is configured AND
+    // - There are Shopify items, OR the order originates from the seller dashboard
+    //   (seller-dashboard orders always create a draft; Lovable products go in as custom line items)
+    const isSellerCreated = orderSource === 'seller_dashboard';
+    const shouldCreateDraft = !!shopifyAdminToken && (shopifyItems.length > 0 || (isSellerCreated && lineItems.length > 0));
+    if (shouldCreateDraft) {
       try {
         const firstName = customerName.split(' ')[0];
         const lastName = customerName.split(' ').slice(1).join(' ') || '';
@@ -454,7 +459,6 @@ serve(async (req) => {
         );
 
         // ========== BUILD NOTE (per spec, source-aware) ==========
-        const isSellerCreated = orderSource === 'seller_dashboard';
         const intro = isSellerCreated
           ? 'Created by seller from Luut SLU seller dashboard. Awaiting customer confirmation.'
           : 'Created from Luut SLU website checkout. Awaiting WhatsApp confirmation.';
@@ -474,7 +478,7 @@ serve(async (req) => {
         if (note) shopifyNote += `\n📝 Note: ${note}`;
         if (discountCode) shopifyNote += `\n🏷️ Discount Code: ${discountCode}`;
         shopifyNote += `\n💳 Payment: Pay on pickup`;
-        if (lovableItems.length > 0) {
+        if (lovableItems.length > 0 && !isSellerCreated) {
           shopifyNote += `\n\n⚠️ This order also contains ${lovableItems.length} local seller product(s) not in Shopify.`;
         }
 
@@ -495,11 +499,29 @@ serve(async (req) => {
         if (discountCode) tagSet.add(`discount-${discountCode.toLowerCase()}`);
 
         // ========== LINE ITEMS ==========
-        const shopifyLineItems = shopifyItems.map(item => {
+        // Shopify products → variant_id line items
+        const shopifyLineItems: any[] = shopifyItems.map(item => {
           const variantIdMatch = item.variant_id.match(/\/(\d+)$/);
           const variantId = variantIdMatch ? variantIdMatch[1] : item.variant_id;
           return { variant_id: parseInt(variantId), quantity: item.quantity };
         });
+        // For seller-dashboard orders, include Lovable products as CUSTOM line items
+        // (title + price, no variant_id) so they appear on the draft.
+        if (isSellerCreated && lovableItems.length > 0) {
+          for (const item of lovableItems) {
+            shopifyLineItems.push({
+              title: item.title,
+              price: item.price,
+              quantity: item.quantity,
+              requires_shipping: false,
+              taxable: false,
+              properties: [
+                { name: "Source", value: "Luut SLU local seller product" },
+                ...(item.vendor ? [{ name: "Vendor", value: item.vendor }] : []),
+              ],
+            });
+          }
+        }
 
         // ========== BUILD PAYLOAD ==========
         const draftOrderPayload: any = {
@@ -670,7 +692,7 @@ serve(async (req) => {
         localOrderId: localOrder.id,
         localOrderToken: localOrder.order_token,
         orderSource,
-        shopifySyncStatus: draftOrder ? (localOrder.shopify_draft_order_id ? 'draft_updated' : 'draft_created') : (shopifyAdminToken && shopifyItems.length > 0 ? 'draft_failed' : 'not_synced'),
+        shopifySyncStatus: draftOrder ? (localOrder.shopify_draft_order_id ? 'draft_updated' : 'draft_created') : (shopifyAdminToken && (shopifyItems.length > 0 || orderSource === 'seller_dashboard') ? 'draft_failed' : 'not_synced'),
         merchantWhatsAppUrl,
         customerMessage: merchantMessage,
         hasShopifyProducts: shopifyItems.length > 0,
