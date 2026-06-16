@@ -11,7 +11,7 @@ const SHOPIFY_API_VERSION = "2025-01";
 
 interface Body {
   orderId: string;
-  paymentPending?: boolean; // when true, mark order as pending payment
+  paymentPending?: boolean; // when true, mark order as pending payment; default false = paid
 }
 
 serve(async (req) => {
@@ -22,7 +22,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify caller is admin via JWT
+    // Verify caller is authenticated (admin, partner, or seller for the order)
     const authHeader = req.headers.get("Authorization") || "";
     const jwt = authHeader.replace(/^Bearer\s+/i, "");
     if (!jwt) {
@@ -41,15 +41,8 @@ serve(async (req) => {
       });
     }
     const supabase = createClient(supabaseUrl, serviceKey);
-    const { data: roleRow } = await supabase
-      .from("user_roles").select("role").eq("user_id", uid).eq("role", "admin").maybeSingle();
-    if (!roleRow) {
-      return new Response(JSON.stringify({ error: "Admin only" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
-    const { orderId, paymentPending = true } = (await req.json()) as Body;
+    const { orderId, paymentPending = false } = (await req.json()) as Body;
     if (!orderId) {
       return new Response(JSON.stringify({ error: "orderId required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -62,10 +55,25 @@ serve(async (req) => {
     }
 
     const { data: order, error } = await supabase
-      .from("orders").select("shopify_draft_order_id").eq("id", orderId).single();
+      .from("orders").select("shopify_draft_order_id, assigned_partner_id, created_by_seller_id").eq("id", orderId).single();
     if (error || !order?.shopify_draft_order_id) {
       return new Response(JSON.stringify({ error: "No Shopify draft order linked" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Authorization: admin OR assigned partner OR seller for the order
+    const { data: isAdminRow } = await supabase
+      .from("user_roles").select("role").eq("user_id", uid).eq("role", "admin").maybeSingle();
+    let authorized = !!isAdminRow;
+    if (!authorized && order.assigned_partner_id && order.assigned_partner_id === uid) authorized = true;
+    if (!authorized) {
+      const { data: sellerCheck } = await supabase.rpc("is_seller_for_order", { p_order_id: orderId });
+      if (sellerCheck === true) authorized = true;
+    }
+    if (!authorized) {
+      return new Response(JSON.stringify({ error: "Not authorized" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 

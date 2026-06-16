@@ -124,6 +124,21 @@ export const usePartnerOperations = () => {
     const commissionEarned = result?.commission_earned as number | undefined;
     toast.success(`Order completed! Commission: EC$${commissionEarned?.toFixed(2) || '0'}`);
 
+    // Fire-and-forget: mark the linked Shopify draft order as completed/paid
+    (async () => {
+      try {
+        const { data: ord } = await supabase
+          .from('orders').select('shopify_draft_order_id').eq('id', orderId).maybeSingle();
+        if (ord?.shopify_draft_order_id) {
+          await supabase.functions.invoke('complete-draft-order', {
+            body: { orderId, paymentPending: false },
+          });
+        }
+      } catch (e) {
+        console.warn('Shopify completion sync failed:', e);
+      }
+    })();
+
     // Fire-and-forget low-stock check + admin alert
     (async () => {
       try {

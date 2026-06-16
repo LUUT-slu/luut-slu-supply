@@ -83,14 +83,20 @@ export function OrderShopifyActions({ order, isAdmin = false, onChanged }: Props
     const reason = window.prompt("Cancellation reason?") || "";
     const { error } = await supabase.rpc("rpc_cancel_order", { p_order_id: order.id, p_reason: reason });
     if (error) throw error;
+    // Also delete the Shopify draft order if one exists
+    if (order.shopify_draft_order_id) {
+      await supabase.functions.invoke("cancel-draft-order", {
+        body: { draftOrderId: order.shopify_draft_order_id, localOrderId: order.id },
+      }).catch((e) => console.warn("Shopify draft cancel failed:", e));
+    }
   }, "Order cancelled");
 
   const complete = () => run("complete", async () => {
     const { error } = await supabase.functions.invoke("complete-draft-order", {
-      body: { orderId: order.id, paymentPending: true },
+      body: { orderId: order.id, paymentPending: false },
     });
     if (error) throw error;
-  }, "Shopify draft completed");
+  }, "Shopify order completed (paid)");
 
   const requestCompletion = () => run("reqcomplete", async () => {
     const { data: u } = await supabase.auth.getUser();
