@@ -443,10 +443,9 @@ serve(async (req) => {
 
     // Create Shopify draft order when:
     // - Admin token is configured AND
-    // - There are Shopify items, OR the order originates from the seller dashboard
-    //   (seller-dashboard orders always create a draft; Lovable products go in as custom line items)
+    // - There are Shopify items, OR the order originates from the seller dashboard with lovable items
     const isSellerCreated = orderSource === 'seller_dashboard';
-    const shouldCreateDraft = !!shopifyAdminToken && (shopifyItems.length > 0 || (isSellerCreated && lineItems.length > 0));
+    const shouldCreateDraft = !!shopifyAdminToken && (shopifyItems.length > 0 || (isSellerCreated && lovableItems.length > 0));
     if (shouldCreateDraft) {
       try {
         const firstName = customerName.split(' ')[0];
