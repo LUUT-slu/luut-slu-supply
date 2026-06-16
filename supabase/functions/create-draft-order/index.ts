@@ -692,7 +692,7 @@ serve(async (req) => {
         localOrderId: localOrder.id,
         localOrderToken: localOrder.order_token,
         orderSource,
-        shopifySyncStatus: draftOrder ? (localOrder.shopify_draft_order_id ? 'draft_updated' : 'draft_created') : (shopifyAdminToken && shopifyItems.length > 0 ? 'draft_failed' : 'not_synced'),
+        shopifySyncStatus: draftOrder ? (localOrder.shopify_draft_order_id ? 'draft_updated' : 'draft_created') : (shopifyAdminToken && (shopifyItems.length > 0 || orderSource === 'seller_dashboard') ? 'draft_failed' : 'not_synced'),
         merchantWhatsAppUrl,
         customerMessage: merchantMessage,
         hasShopifyProducts: shopifyItems.length > 0,
