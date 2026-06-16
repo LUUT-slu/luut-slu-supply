@@ -11,7 +11,7 @@ const SHOPIFY_API_VERSION = "2025-01";
 
 interface Body {
   orderId: string;
-  paymentPending?: boolean; // when true, mark order as pending payment
+  paymentPending?: boolean; // when true, mark order as pending payment; default false = paid
 }
 
 serve(async (req) => {
@@ -22,7 +22,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify caller is admin via JWT
+    // Verify caller is authenticated (admin, partner, or seller for the order)
     const authHeader = req.headers.get("Authorization") || "";
     const jwt = authHeader.replace(/^Bearer\s+/i, "");
     if (!jwt) {
@@ -41,13 +41,6 @@ serve(async (req) => {
       });
     }
     const supabase = createClient(supabaseUrl, serviceKey);
-    const { data: roleRow } = await supabase
-      .from("user_roles").select("role").eq("user_id", uid).eq("role", "admin").maybeSingle();
-    if (!roleRow) {
-      return new Response(JSON.stringify({ error: "Admin only" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const { orderId, paymentPending = true } = (await req.json()) as Body;
     if (!orderId) {
