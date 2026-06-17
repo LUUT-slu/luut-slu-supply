@@ -16,6 +16,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
+import PosterLightbox from "./PosterLightbox";
 
 type StudioMode = "select" | "images" | "videos";
 type AiStyle = "hype" | "clean" | "luxury" | "bold";
