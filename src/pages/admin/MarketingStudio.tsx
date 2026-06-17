@@ -17,7 +17,7 @@ import { useHybridProducts } from "@/hooks/useHybridProducts";
 
 export default function MarketingStudio() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"poster" | "display" | "video" | "library">("poster");
+  const [tab, setTab] = useState<"poster" | "text-overlay" | "display" | "video" | "library">("poster");
   const [brandStyle, setBrandStyle] = useState<BrandStyle>("default");
 
   // VideoModule still uses a selected product directly; reuse the hook lightly.
