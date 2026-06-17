@@ -286,8 +286,10 @@ Deno.serve(async (req) => {
       return json({ error: "productImageUrl must be an http(s) URL or data URL" }, 400);
     }
 
+    const { key: styleKey, preset } = resolveStyle(body.posterStyle);
+
     // -------- Step 1: Flux Kontext -- styled scene around the real product
-    const scenePrompt = buildScenePrompt(body.productTitle);
+    const scenePrompt = buildScenePrompt(body.productTitle, preset);
     const fluxOutput = await runReplicate(FLUX_MODEL, {
       prompt: scenePrompt,
       input_image: sourceImageUrl,
@@ -298,8 +300,8 @@ Deno.serve(async (req) => {
     const sceneUrl = pickUrl(fluxOutput);
     if (!sceneUrl) return json({ error: "Flux Kontext returned no image" }, 502);
 
-    // -------- Step 2: Ideogram v3 Turbo -- add LUUT-styled text overlay
-    const overlayPrompt = buildOverlayPrompt(body);
+    // -------- Step 2: Ideogram v3 Turbo -- add styled text overlay
+    const overlayPrompt = buildOverlayPrompt(body, preset);
     const ideogramOutput = await runReplicate(IDEOGRAM_MODEL, {
       prompt: overlayPrompt,
       aspect_ratio: "1:1",
