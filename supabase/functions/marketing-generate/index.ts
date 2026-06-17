@@ -180,7 +180,9 @@ function buildModelInput(
   if (styleRef) enhancedPrompt += STYLE_REF_INSTRUCTION;
 
   switch (model) {
-    case "ideogram-ai/ideogram-v3-turbo": {
+    case "ideogram-ai/ideogram-v3-turbo":
+    case "ideogram-ai/ideogram-v3-balanced":
+    case "ideogram-ai/ideogram-v3-quality": {
       const input: Record<string, unknown> = {
         prompt: enhancedPrompt,
         aspect_ratio: aspect,
@@ -192,6 +194,7 @@ function buildModelInput(
       if (combined.length) input.style_reference_images = combined.slice(0, 4);
       return input;
     }
+
     case "sourceful/riverflow-2.0-pro": {
       // Riverflow only accepts a single image. Prefer the product ref;
       // the style donor only contributes via the prompt clause.
