@@ -405,7 +405,12 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
           </CardContent>
         </Card>
 
-        <PromptPreview prompt={prompt} value={promptOverride} onChange={setPromptOverride} />
+        <PromptPreview
+          prompt={textPrompt}
+          value={promptOverride}
+          onChange={setPromptOverride}
+          secondaryPrompt={{ label: "Background prompt (Gemini)", value: backgroundPrompt }}
+        />
 
         <div className="space-y-2">
           <Button onClick={() => generate()} disabled={generating || !product} size="lg" className="w-full">
