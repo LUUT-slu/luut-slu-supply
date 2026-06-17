@@ -200,11 +200,12 @@ export default function MobileShell(props: MobileShellProps) {
   };
 
   // Default to Poster mode on mobile
-  if (studioMode === "select") {
-    // Open Poster by default
-    setStudioMode("images");
-    setShowAiPoster(true);
-  }
+  useEffect(() => {
+    if (studioMode === "select") {
+      setStudioMode("images");
+      setShowAiPoster(true);
+    }
+  }, [studioMode, setStudioMode, setShowAiPoster]);
 
   const priceStr = productPrice ? `EC$${Math.round(Number(productPrice))}` : "";
 
