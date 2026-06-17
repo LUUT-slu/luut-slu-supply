@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
     } = body;
 
     if (!task || (task !== "poster" && task !== "display")) {
-      return json({ error: "task must be poster or political" }, 400);
+      return json({ error: "task must be poster or display" }, 400);
     }
     if (!model || !SUPPORTED_MODELS.has(model)) {
       return json({ error: `Unsupported model: ${model}` }, 400);
