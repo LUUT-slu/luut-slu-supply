@@ -41,7 +41,7 @@ import {
   TemplateFormat,
 } from "@/components/marketing/templates";
 import { CopyPanel } from "@/components/marketing/CopyPanel";
-import { VariantSelector, VariantMode, VariantOption } from "@/components/marketing/VariantSelector";
+import { VariantMode, VariantOption } from "@/components/marketing/VariantSelector";
 import { PosterTypeSelector } from "@/components/marketing/PosterTypeSelector";
 import { ProductSourceCard } from "@/components/marketing/ProductSourceCard";
 import { ImagePrepPanel } from "@/components/marketing/ImagePrepPanel";
