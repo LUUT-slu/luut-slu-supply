@@ -15,7 +15,7 @@ export interface ModelChoice {
 export const MODEL_REGISTRY: Record<ModelKey, ModelChoice> = {
   poster: {
     key: "poster",
-    model: "ideogram-ai/ideogram-v3-quality",
+    model: "ideogram-ai/ideogram-v3-turbo",
     provider: "replicate",
     reason: "best typography, posters, flyers, social marketing graphics",
   },

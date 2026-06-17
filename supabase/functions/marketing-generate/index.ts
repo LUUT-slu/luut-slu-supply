@@ -4,7 +4,7 @@
 // register it in `marketing_generated_images`.
 //
 // Supported models (all via Replicate, all image-to-image capable):
-//   - ideogram-ai/ideogram-v3-quality
+//   - ideogram-ai/ideogram-v3-turbo
 //   - sourceful/riverflow-2.0-pro
 //   - google/nano-banana-pro
 //
@@ -26,7 +26,7 @@ const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
 const SUPPORTED_MODELS = new Set([
-  "ideogram-ai/ideogram-v3-quality",
+  "ideogram-ai/ideogram-v3-turbo",
   "sourceful/riverflow-2.0-pro",
   "google/nano-banana-pro",
 ]);
@@ -177,11 +177,12 @@ function buildModelInput(
   if (styleRef) enhancedPrompt += STYLE_REF_INSTRUCTION;
 
   switch (model) {
-    case "ideogram-ai/ideogram-v3-quality": {
+    case "ideogram-ai/ideogram-v3-turbo": {
       const input: Record<string, unknown> = {
         prompt: enhancedPrompt,
         aspect_ratio: aspect,
         magic_prompt_option: "Auto",
+        style_type: "DESIGN",
       };
       // Ideogram's style_reference_images is style-only by design, so the
       // brand-style donor fits naturally alongside the product refs here.
