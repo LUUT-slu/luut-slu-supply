@@ -226,12 +226,22 @@ export interface DisplayControls {
 // ---------- Routing ----------
 
 export function routeForPoster(c: PosterControls): ModelChoice {
-  // When a reference image is provided, prefer nano-banana-pro which actually
-  // preserves the product identity (image-to-image). Ideogram's style_reference
-  // only transfers aesthetic, not product identity.
-  if (c.hasReference) return MODEL_REGISTRY.display;
-  return MODEL_REGISTRY.poster;
+  // All posters always route through Ideogram v3. The variant is picked from
+  // the realism setting. Reference images (when present) are passed to
+  // Ideogram as style_reference_images by the edge function.
+  const pick = IDEOGRAM_BY_REALREALISM_SAFE(c.realism);
+  return {
+    key: "poster",
+    model: pick.model,
+    provider: "replicate",
+    reason: pick.reason,
+  };
 }
+
+function IDEOGRAM_BY_REALREALISM_SAFE(r: DisplayRealism) {
+  return IDEOGRAM_BY_REALISM[r] || IDEOGRAM_BY_REALISM.standard;
+}
+
 
 export function routeForDisplay(c: DisplayControls): ModelChoice {
   // With a reference image, always use nano-banana-pro for true product-identity
