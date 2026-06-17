@@ -358,6 +358,44 @@ export default function MarketingStudio() {
   const [aiPosterGenerating, setAiPosterGenerating] = useState(false);
   const [aiPosterResult, setAiPosterResult] = useState<string | null>(null);
   const [aiPosterPrompt, setAiPosterPrompt] = useState("");
+  const [aiPosterLastAt, setAiPosterLastAt] = useState<number | null>(null);
+
+  const generateAiPoster = async () => {
+    if (!productPayload) return;
+    setAiPosterGenerating(true);
+    setAiPosterResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke("generate-ai-poster", {
+        body: {
+          productTitle: productPayload.name,
+          productPrice: productPayload.price ? `EC$${Math.round(Number(productPayload.price))}` : "",
+          productImageUrl: productPayload.productImage || "",
+          ctaText,
+          brandName,
+          meetupText,
+          urgencyText,
+          tagline: tagline || null,
+          posterStyle: aiPosterStyle,
+          aspectRatio: aiPosterAspectRatio,
+          customInstructions: aiPosterCustom || null,
+        },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (error || (data as any)?.error) {
+        toast.error((data as any)?.error || "Generation failed");
+      } else {
+        setAiPosterResult((data as any).url);
+        setAiPosterPrompt((data as any).prompt || "");
+        setAiPosterLastAt(Date.now());
+        toast.success("AI poster generated!");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Generation failed");
+    } finally {
+      setAiPosterGenerating(false);
+    }
+  };
 
   const handleRefImageFile = (file: File | null) => {
     if (!file) {
