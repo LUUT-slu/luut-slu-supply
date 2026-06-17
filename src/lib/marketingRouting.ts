@@ -48,6 +48,8 @@ export interface BrandStyleDef {
   label: string;
   description: string;
   snippet: string;
+  /** Optional reference image (data URL) used purely as a visual-style donor. */
+  referenceImage?: string;
   custom?: boolean;
 }
 
@@ -92,14 +94,32 @@ export function getAllBrandStyles(): BrandStyleDef[] {
   return [...BUILTIN_BRAND_STYLES, ...loadCustomBrandStyles()];
 }
 
+export function getBrandStyleDef(b: BrandStyle): BrandStyleDef | undefined {
+  return getAllBrandStyles().find((s) => s.key === b);
+}
+
 // Backwards-compatible label list used by older selectors.
 export const BRAND_STYLES: { key: BrandStyle; label: string }[] =
   BUILTIN_BRAND_STYLES.map((b) => ({ key: b.key, label: b.label }));
 
 export function buildBrandStyleSnippet(b: BrandStyle): string {
-  const all = getAllBrandStyles();
-  const match = all.find((s) => s.key === b);
-  return match?.snippet || "";
+  return getBrandStyleDef(b)?.snippet || "";
+}
+
+/**
+ * When a custom brand style has a reference image attached, return a coherent
+ * sentence that folds its visual DNA into the unified scene prompt. The sentence
+ * is explicit that the reference is style-only — no content carries over.
+ */
+export function buildBrandStyleReferenceClause(b: BrandStyle): string {
+  const def = getBrandStyleDef(b);
+  if (!def?.referenceImage) return "";
+  const name = def.label || "the saved brand style";
+  return `Channel the visual DNA of the attached "${name}" brand-style reference — its color palette, lighting mood, composition rhythm, background treatment, typography feel, and how the subject is positioned — so this same scene looks like it belongs to that campaign. Treat that reference strictly as a style donor: do not copy, reproduce, or borrow any object, product, person, logo, or text from it; only its aesthetic carries over. The product in this image remains the one currently selected, unchanged in identity.`;
+}
+
+export function getBrandStyleReferenceImage(b: BrandStyle): string | undefined {
+  return getBrandStyleDef(b)?.referenceImage;
 }
 
 
@@ -430,6 +450,8 @@ export function buildPosterPrompt(c: PosterControls, brand: BrandStyle): string 
 
   const brandSnippet = buildBrandStyleSnippet(brand);
   if (brandSnippet) parts.push(brandSnippet + ".");
+  const brandRefClause = buildBrandStyleReferenceClause(brand);
+  if (brandRefClause) parts.push(brandRefClause);
 
   if (c.hasReference) parts.push(REF_PRESERVATION);
   if (c.notes && c.notes.trim()) parts.push(c.notes.trim());
@@ -453,6 +475,8 @@ export function buildDisplayPrompt(c: DisplayControls, brand: BrandStyle): strin
 
   const brandSnippet = buildBrandStyleSnippet(brand);
   if (brandSnippet) parts.push(brandSnippet + ".");
+  const brandRefClause = buildBrandStyleReferenceClause(brand);
+  if (brandRefClause) parts.push(brandRefClause);
 
   if (c.hasReference) parts.push(REF_PRESERVATION);
   if (c.notes && c.notes.trim()) parts.push(c.notes.trim());

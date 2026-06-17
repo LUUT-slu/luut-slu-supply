@@ -36,7 +36,8 @@ interface ReqBody {
   model: string;
   prompt: string;
   aspectRatio?: string;
-  referenceImages?: string[]; // http(s) URL or data: URL
+  referenceImages?: string[]; // product refs — http(s) URL or data: URL
+  styleReferenceImage?: string; // brand-style donor ref — http(s) URL or data: URL
   // Bookkeeping for the library row:
   productTitle?: string;
   productHandle?: string;
@@ -154,17 +155,27 @@ async function normalizeRef(admin: ReturnType<typeof createClient>, url: string)
 }
 
 const PRESERVE_INSTRUCTION =
-  " IMPORTANT: Use the provided reference image(s) as the EXACT product. Preserve the product's identity, shape, color, branding, logos, materials, labels, and proportions precisely as shown. Do not redesign, restyle, or alter the product itself. Only change the surrounding scene, lighting, background, and composition.";
+  " IMPORTANT: The FIRST reference image is the EXACT product — preserve its identity, shape, color, branding, logos, materials, labels, and proportions precisely. Do not redesign, restyle, or alter the product itself. Only change the surrounding scene, lighting, background, and composition.";
+
+const STYLE_REF_INSTRUCTION =
+  " The LAST reference image is a STYLE DONOR ONLY — adopt its color palette, lighting mood, composition rhythm, background treatment, and typography feel, but DO NOT copy, reproduce, or borrow any object, product, person, logo, or text from it.";
 
 // Per-model input shape.
 function buildModelInput(
   model: string,
   prompt: string,
   aspect: string,
-  refs: string[],
+  productRefs: string[],
+  styleRef: string | null,
 ): Record<string, unknown> {
-  const primaryRef = refs[0];
-  const enhancedPrompt = refs.length ? `${prompt}${PRESERVE_INSTRUCTION}` : prompt;
+  // Combined ref list: product refs first, style donor last.
+  const combined = [...productRefs];
+  if (styleRef) combined.push(styleRef);
+
+  let enhancedPrompt = prompt;
+  if (productRefs.length) enhancedPrompt += PRESERVE_INSTRUCTION;
+  if (styleRef) enhancedPrompt += STYLE_REF_INSTRUCTION;
+
   switch (model) {
     case "ideogram-ai/ideogram-v3-quality": {
       const input: Record<string, unknown> = {
@@ -172,19 +183,20 @@ function buildModelInput(
         aspect_ratio: aspect,
         magic_prompt_option: "Auto",
       };
-      if (primaryRef) {
-        // Ideogram's `image` field triggers inpainting (requires a mask).
-        // Use style_reference_images instead to preserve product look without inpainting.
-        input.style_reference_images = refs.slice(0, 4);
-      }
+      // Ideogram's style_reference_images is style-only by design, so the
+      // brand-style donor fits naturally alongside the product refs here.
+      if (combined.length) input.style_reference_images = combined.slice(0, 4);
       return input;
     }
     case "sourceful/riverflow-2.0-pro": {
+      // Riverflow only accepts a single image. Prefer the product ref;
+      // the style donor only contributes via the prompt clause.
       const input: Record<string, unknown> = {
         instruction: enhancedPrompt,
         aspect_ratio: aspect,
       };
-      if (primaryRef) input.image = primaryRef;
+      const primary = productRefs[0] || styleRef;
+      if (primary) input.image = primary;
       return input;
     }
     case "google/nano-banana-pro": {
@@ -193,7 +205,7 @@ function buildModelInput(
         aspect_ratio: aspect,
         output_format: "png",
       };
-      if (refs.length) input.image_input = refs.slice(0, 4);
+      if (combined.length) input.image_input = combined.slice(0, 4);
       return input;
     }
     default:
@@ -231,6 +243,7 @@ Deno.serve(async (req) => {
       prompt,
       aspectRatio = "1:1",
       referenceImages = [],
+      styleReferenceImage,
       productTitle,
       productHandle,
       campaignType,
@@ -247,15 +260,20 @@ Deno.serve(async (req) => {
       return json({ error: "prompt is required" }, 400);
     }
 
-    // Normalize refs (uploads data: refs to storage).
+    // Normalize product refs (uploads data: refs to storage).
     const hostedRefs: string[] = [];
     for (const r of referenceImages.slice(0, 4)) {
       if (!r) continue;
       hostedRefs.push(await normalizeRef(admin, r));
     }
+    // Normalize the brand-style donor ref, if any.
+    let hostedStyleRef: string | null = null;
+    if (styleReferenceImage) {
+      hostedStyleRef = await normalizeRef(admin, styleReferenceImage);
+    }
 
     const effectiveModel = resolveModel(model, hostedRefs);
-    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs);
+    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef);
     const output = await runReplicate(effectiveModel, input);
     const srcUrl = pickUrl(output);
     if (!srcUrl) throw new Error("Replicate returned no image URL");
