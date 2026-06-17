@@ -50,7 +50,7 @@ interface StylePreset {
 const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
   default: {
     sceneBackground:
-      "deep matte-black studio background with subtle neon green (#39FF14) rim lighting and soft volumetric haze",
+      "a deep matte-black studio backdrop with subtle neon green (#39FF14) glow CONFINED to the background wall behind and around the product, plus soft volumetric haze in the far background — the coloured glow must stay BEHIND the product and never wrap onto it or tint it",
     paletteText:
       "pitch-black background, neon green accent color (#39FF14), white headline text",
     headlineColor: "large white condensed uppercase headline",
@@ -63,7 +63,7 @@ const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
   },
   hype: {
     sceneBackground:
-      "gritty dark concrete / asphalt urban backdrop with aggressive neon green (#39FF14) rim lighting, smoke haze and graffiti energy",
+      "a gritty dark concrete / asphalt urban backdrop with aggressive neon green (#39FF14) glow RESTRICTED to the background wall behind the product, plus smoke haze and graffiti energy in the far background — coloured light must stay BEHIND the product and never tint or recolour the product itself",
     paletteText:
       "near-black background with neon green (#39FF14) accents, off-white headline text, subtle spray-paint texture",
     headlineColor: "huge off-white condensed uppercase headline with slight grunge edge",
@@ -76,7 +76,7 @@ const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
   },
   clean: {
     sceneBackground:
-      "bright neutral off-white seamless studio backdrop with soft diffused lighting and gentle long shadow",
+      "a bright neutral off-white seamless studio backdrop with soft diffused neutral daylight and a gentle long shadow",
     paletteText:
       "clean white (#FAFAFA) background, charcoal grey (#1F1F1F) text, a single thin black hairline accent — absolutely no neon green",
     headlineColor: "large charcoal (#1F1F1F) modern sans-serif headline, normal case",
@@ -89,7 +89,7 @@ const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
   },
   luxury: {
     sceneBackground:
-      "warm champagne-gold gradient backdrop with soft golden rim light, subtle marble or velvet surface, refined product photography",
+      "a warm champagne-gold gradient backdrop with soft golden glow CONTAINED to the background only, subtle marble or velvet surface beneath the product — keep the key light on the product itself NEUTRAL white so the product's true colours, materials and branding are preserved exactly",
     paletteText:
       "deep ivory / warm cream background, metallic gold (#C9A24B) accents, dark espresso (#2A1E14) headline text — no neon green anywhere",
     headlineColor: "elegant dark espresso (#2A1E14) serif headline",
@@ -102,7 +102,7 @@ const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
   },
   bold: {
     sceneBackground:
-      "stark editorial backdrop with dramatic single-source lighting, deep crisp shadows, no fixed colour cast — let the product colours lead",
+      "a stark editorial backdrop with dramatic single-source NEUTRAL white lighting, deep crisp shadows, absolutely no colour cast on the product — let the product's real colours lead",
     paletteText:
       "pure black (#000) and pure white (#FFF) palette with a single high-impact red (#E5251D) accent — no neon green",
     headlineColor: "massive black-on-white (or white-on-black) condensed headline with extreme scale contrast",
