@@ -33,12 +33,14 @@ interface PosterInput {
 }
 
 function mapAspect(r: AspectRatio): string {
+  // Ideogram v3 Turbo accepts plain ratio strings.
+  // Valid: "1:1","16:9","9:16","4:3","3:4","3:2","2:3","16:10","10:16","1:3","3:1".
   switch (r) {
-    case "9:16": return "ASPECT_9_16";
-    case "1:1": return "ASPECT_1_1";
-    case "4:5": return "ASPECT_3_4"; // 4:5 not supported by Ideogram; closest valid portrait ratio
-    case "16:9": return "ASPECT_16_9";
-    default: return "ASPECT_1_1";
+    case "9:16": return "9:16";
+    case "1:1": return "1:1";
+    case "4:5": return "3:4"; // 4:5 not supported by Ideogram v3; closest valid portrait ratio
+    case "16:9": return "16:9";
+    default: return "1:1";
   }
 }
 
@@ -114,9 +116,8 @@ async function createPrediction(prompt: string, aspectRatio: string): Promise<st
       input: {
         prompt,
         aspect_ratio: aspectRatio,
-        style_type: "DESIGN",
-        negative_prompt:
-          "blurry, low quality, distorted text, misspelled, watermark, extra limbs, bad composition, cluttered background",
+        style_type: "Design",
+        magic_prompt_option: "On",
       },
     }),
   });
