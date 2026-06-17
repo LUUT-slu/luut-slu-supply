@@ -14,7 +14,7 @@ CRITICAL RULES:
 - Do NOT describe what the image shows.
 - Do NOT include any product names, brand names, headlines, or text from the reference.
 - Only extract abstract design tokens: colors, layout density, badge shape, CTA shape, background type.
-- Output via the provided tool call.
+- Output only the JSON object.
 
 Color tokens must be hex (#RRGGBB) or rgba(...). Pick one dominant accent color. Glow should be a translucent rgba derived from accent.
 
