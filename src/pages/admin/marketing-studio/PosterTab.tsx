@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadImage } from "@/lib/downloadImage";
 import { toast } from "sonner";
 import { Loader2, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
