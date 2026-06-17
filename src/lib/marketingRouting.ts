@@ -184,53 +184,171 @@ export function routeForDisplay(c: DisplayControls): ModelChoice {
   }
 }
 
-// ---------- Prompt enhancement ----------
+// ---------- Scene composition ----------
+//
+// Rule: every selected option modifies ONE coherent scene. We never concatenate
+// option labels. We resolve clauses in priority order
+// (product > interaction > human model > environment > style modifiers),
+// then suppress clauses that contradict a higher-priority clause.
 
-const ENHANCE_REALISM: Record<DisplayRealism, string> = {
+type RealismKey = DisplayRealism;
+
+const REALISM_QUALIFIER: Record<RealismKey, string> = {
+  standard: "Photograph",
+  premium: "Premium commercial photograph",
+  hyper: "Hyper-realistic photograph",
+  luxury: "Luxury campaign photograph",
+};
+
+const REALISM_TRAILER: Record<RealismKey, string> = {
   standard: "",
-  premium: "premium commercial photography, refined lighting, polished finish",
+  premium:
+    "Refined commercial lighting, polished finish, accurate materials, real shadows.",
   hyper:
-    "hyper realistic product photography, commercial advertising quality, ultra detailed textures, premium lighting, professional product photography, realistic reflections, 8k detail, studio lighting",
+    "Natural lighting, real camera depth of field, real textures, real shadows, real materials. No CGI look, no floating objects, no exaggerated textures, no secondary focal points.",
   luxury:
-    "luxury advertising campaign, premium brand aesthetic, high-end commercial photography, minimal composition, elegant lighting, luxury product presentation",
+    "High-end editorial lighting, refined palette, restrained composition, premium materials, accurate reflections.",
 };
 
-const ENHANCE_GOAL: Record<DisplayGoal, string> = {
-  product_display: "",
-  product_hero: "hero product composition, dramatic framing, marketing campaign hero image",
-  lifestyle_product:
-    "real world environment, natural lighting, lifestyle photography, authentic scene",
-  packaging_showcase:
-    "premium packaging presentation, accurate label rendering, retail packshot quality",
-  human_model:
-    "commercial lifestyle photography, realistic human interaction, professional model, authentic product usage",
-  product_closeup:
-    "macro photography, product detail focus, texture preservation, ultra sharp detail, close-up composition",
-};
+interface SceneContext {
+  goal: DisplayGoal;
+  style: DisplayStyle;
+  background: DisplayBackground;
+  realism: DisplayRealism;
+  focus: DisplayFocus;
+  productTitle: string;
+  productCategory?: string;
+}
 
-const ENHANCE_STYLE: Record<DisplayStyle, string> = {
-  studio: "commercial studio photography, seamless backdrop, premium product presentation",
-  lifestyle: "lifestyle environment, natural light, authentic context",
-  minimal: "minimalist composition, luxury product display, premium negative space",
-  human: "real human model, professional fashion lighting, editorial composition",
-};
+interface SceneInteraction {
+  isHuman: boolean;
+  isCloseup: boolean;
+  // The main "what is happening" clause, placed right after the realism qualifier.
+  clause: string;
+}
 
-const ENHANCE_BG: Record<DisplayBackground, string> = {
-  solid: "clean solid color background",
-  gradient: "soft gradient background",
-  studio: "professional studio backdrop with controlled lighting",
-  lifestyle: "lifestyle scene background that complements the product",
-  transparent: "pure white background suitable for transparent cut-out",
-};
+function resolveInteraction(c: SceneContext): SceneInteraction {
+  const product = `the ${c.productTitle}`;
+  const human = c.goal === "human_model" || c.style === "human";
+  const inUse = c.focus === "in_use" || human;
+  const closeup =
+    c.goal === "product_closeup" || c.focus === "detail" || c.focus === "texture";
 
-const ENHANCE_FOCUS: Record<DisplayFocus, string> = {
-  full: "full product visible in frame",
-  detail: "detail-focused crop on the most distinctive feature",
-  texture: "texture-emphasis composition revealing material surface",
-  packaging: "packaging-led composition",
-  in_use: "product shown in use",
-  hero_angle: "dramatic hero angle, slightly low camera",
-};
+  if (human && inUse) {
+    return {
+      isHuman: true,
+      isCloseup: closeup,
+      clause: `${closeup ? "tight close-up of " : ""}a person actively wearing, holding, or using ${product}, captured from a distance close enough to keep the product as the primary focus. The model exists only to demonstrate real-world use of ${product} and never becomes the focal point. ${product} must be physically interacted with — never floating, never placed beside the person, never disconnected from the body.`,
+    };
+  }
+
+  if (closeup) {
+    return {
+      isHuman: false,
+      isCloseup: true,
+      clause: `extreme close-up of ${product}, filling 60–80% of the frame, camera close enough to reveal materials, stitching, and surface detail. No wide angle, no secondary subjects.`,
+    };
+  }
+
+  if (c.goal === "product_hero") {
+    return {
+      isHuman: false,
+      isCloseup: false,
+      clause: `hero composition centered on ${product} with dramatic framing. ${product} is the single focal point and occupies most of the frame.`,
+    };
+  }
+
+  if (c.goal === "lifestyle_product" || c.style === "lifestyle") {
+    return {
+      isHuman: false,
+      isCloseup: false,
+      clause: `${product} shown in realistic everyday use within a supporting environment. ${product} remains the primary subject and the environment never competes for attention.`,
+    };
+  }
+
+  if (c.goal === "packaging_showcase" || c.focus === "packaging") {
+    return {
+      isHuman: false,
+      isCloseup: false,
+      clause: `retail packshot of ${product}, packaging filling most of the frame with the label cleanly legible. No distractions.`,
+    };
+  }
+
+  // Default: product_display / full / hero_angle
+  return {
+    isHuman: false,
+    isCloseup: false,
+    clause: `${product} isolated as the sole main subject, occupying most of the frame${c.focus === "hero_angle" ? " from a slightly low dramatic hero angle" : ""}. No distractions, no secondary objects.`,
+  };
+}
+
+function resolveStyleClause(c: SceneContext, i: SceneInteraction): string {
+  // "human" style is already folded into the interaction clause.
+  if (c.style === "human") return "";
+  switch (c.style) {
+    case "studio":
+      // Suppress if interaction is already a lifestyle/in-use scene — studio would contradict.
+      if (i.isHuman || c.goal === "lifestyle_product") return "";
+      return "Professional commercial studio photography setup with controlled lighting and a clean backdrop. The product remains the focal point.";
+    case "lifestyle":
+      // Already covered if interaction is the lifestyle clause; avoid duplication.
+      if (c.goal === "lifestyle_product") return "";
+      return "Realistic everyday environment with natural light supporting — never competing with — the product.";
+    case "minimal":
+      return "Minimalist composition with generous negative space; the product remains the focal point.";
+    default:
+      return "";
+  }
+}
+
+function resolveBackgroundClause(c: SceneContext, i: SceneInteraction): string {
+  // Suppress backgrounds that contradict the interaction.
+  if (i.isHuman) return ""; // human/in-use scenes carry their own environment
+  if (c.goal === "lifestyle_product" && (c.background === "solid" || c.background === "gradient" || c.background === "studio")) return "";
+  if (c.style === "studio" && c.background === "lifestyle") return "";
+
+  switch (c.background) {
+    case "solid":
+      return "Clean solid color background.";
+    case "gradient":
+      return "Soft gradient background.";
+    case "studio":
+      return "Professional studio backdrop with controlled lighting.";
+    case "lifestyle":
+      return "Lifestyle scene background that complements the product.";
+    case "transparent":
+      return "Pure white background suitable for transparent cut-out.";
+    default:
+      return "";
+  }
+}
+
+/**
+ * composeScene assembles ONE coherent scene paragraph from all selections.
+ * Order: realism qualifier + interaction clause -> style clause -> background
+ * clause -> realism trailer. Contradictory clauses are suppressed.
+ */
+function composeScene(c: SceneContext): string {
+  const interaction = resolveInteraction(c);
+  const qualifier = REALISM_QUALIFIER[c.realism];
+  const productSuffix = c.productCategory ? ` (${c.productCategory})` : "";
+
+  // Lead sentence: realism + interaction + product identity.
+  const lead = `${qualifier} — ${interaction.clause.replace(
+    `the ${c.productTitle}`,
+    `the ${c.productTitle}${productSuffix}`,
+  )}`;
+
+  const parts: string[] = [lead];
+  const styleClause = resolveStyleClause(c, interaction);
+  if (styleClause) parts.push(styleClause);
+  const bgClause = resolveBackgroundClause(c, interaction);
+  if (bgClause) parts.push(bgClause);
+  const trailer = REALISM_TRAILER[c.realism];
+  if (trailer) parts.push(trailer);
+
+  return parts.join(" ");
+}
 
 const POSTER_CAMPAIGN_LABEL: Record<PosterCampaign, string> = {
   sale: "retail sale poster",
@@ -261,6 +379,18 @@ export function buildPosterPrompt(c: PosterControls, brand: BrandStyle): string 
   parts.push(
     `${POSTER_CAMPAIGN_LABEL[c.campaign]} for "${c.productTitle}", ${POSTER_STYLE_HINT[c.style]}.`,
   );
+
+  // Product scene on the poster — composed coherently, product as primary subject.
+  const scene = composeScene({
+    goal: "product_hero",
+    style: "studio",
+    background: "gradient",
+    realism: "hyper",
+    focus: "hero_angle",
+    productTitle: c.productTitle,
+  });
+  parts.push(`Product imagery on the poster: ${scene}`);
+
   parts.push(`Compose strictly in a ${c.aspectRatio} aspect ratio frame.`);
 
   const textBits: string[] = [];
@@ -286,26 +416,28 @@ export function buildPosterPrompt(c: PosterControls, brand: BrandStyle): string 
 }
 
 export function buildDisplayPrompt(c: DisplayControls, brand: BrandStyle): string {
-  const parts: string[] = [];
-  parts.push(
-    `Commercial product image of ${c.productTitle}${c.productCategory ? ` (${c.productCategory})` : ""}.`,
-  );
-  parts.push(ENHANCE_GOAL[c.goal]);
-  parts.push(ENHANCE_STYLE[c.style]);
-  parts.push(ENHANCE_BG[c.background]);
-  parts.push(ENHANCE_FOCUS[c.focus]);
-  const realism = ENHANCE_REALISM[c.realism];
-  if (realism) parts.push(realism);
+  const scene = composeScene({
+    goal: c.goal,
+    style: c.style,
+    background: c.background,
+    realism: c.realism,
+    focus: c.focus,
+    productTitle: c.productTitle,
+    productCategory: c.productCategory,
+  });
+
+  const parts: string[] = [scene];
   parts.push(`Compose strictly in a ${c.aspectRatio} aspect ratio frame.`);
 
   const brandSnippet = buildBrandStyleSnippet(brand);
-  if (brandSnippet) parts.push(brandSnippet);
+  if (brandSnippet) parts.push(brandSnippet + ".");
 
   if (c.hasReference) parts.push(REF_PRESERVATION);
   if (c.notes && c.notes.trim()) parts.push(c.notes.trim());
 
   return parts.filter(Boolean).join(" ");
 }
+
 
 // ---------- Presets ----------
 
