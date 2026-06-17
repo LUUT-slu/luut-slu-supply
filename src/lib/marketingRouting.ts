@@ -463,9 +463,18 @@ export function buildPosterPrompt(c: PosterControls, brand: BrandStyle): string 
   if (c.meetupText) parts.push(`Footer detail: "${c.meetupText}".`);
 
   const brandSnippet = buildBrandStyleSnippet(brand);
-  if (brandSnippet) parts.push(brandSnippet + ".");
+  if (brandSnippet) {
+    parts.push(
+      `Brand mood overlay (apply ONLY to color palette, lighting temperature, contrast, and atmosphere — do NOT change the selected scene, background, composition, framing, or product focus): ${brandSnippet}.`,
+    );
+  }
   const brandRefClause = buildBrandStyleReferenceClause(brand, "poster");
   if (brandRefClause) parts.push(brandRefClause);
+  if (brandSnippet || brandRefClause) {
+    parts.push(
+      `Hard constraint: the selected campaign, style, aspect ratio, and product scene above define the final structure and must be preserved exactly; the brand style only influences color palette, lighting mood, and atmosphere.`,
+    );
+  }
 
   if (c.hasReference) parts.push(REF_PRESERVATION);
   if (c.notes && c.notes.trim()) parts.push(c.notes.trim());
