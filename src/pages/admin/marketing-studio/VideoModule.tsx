@@ -60,7 +60,17 @@ export interface VideoModuleProps {
 export default function VideoModule({ selectedProduct, activeImageUrl, onOpenProductPicker }: VideoModuleProps) {
   const productImageUrl: string | null = activeImageUrl ?? selectedProduct?.images?.[0]?.url ?? null;
   const productTitle: string = selectedProduct?.title ?? "Select a product";
-  const productPrice: number | null = selectedProduct?.price ?? null;
+  // selectedProduct.price can be either a number or a Shopify `{ amount, currencyCode }`
+  // object — normalise to a number so the badge doesn't render "EC$NaN".
+  const rawPrice = selectedProduct?.price;
+  const priceNum =
+    typeof rawPrice === "number"
+      ? rawPrice
+      : rawPrice && typeof rawPrice === "object" && "amount" in rawPrice
+        ? Number((rawPrice as { amount: unknown }).amount)
+        : Number(rawPrice);
+  const productPrice: number | null =
+    Number.isFinite(priceNum) && priceNum > 0 ? priceNum : null;
 
   const [videoType, setVideoType] = useState<VideoType>("product");
   const [motionStyle, setMotionStyle] = useState<MotionStyleV>("subtle");
