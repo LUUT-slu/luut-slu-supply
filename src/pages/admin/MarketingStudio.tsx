@@ -71,6 +71,7 @@ import {
 import DesktopChrome from "./marketing-studio/DesktopChrome";
 import MobileShell from "./marketing-studio/MobileShell";
 import VideoModule from "./marketing-studio/VideoModule";
+import CreditsPanel from "./marketing-studio/CreditsPanel";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
@@ -1373,6 +1374,16 @@ export default function MarketingStudio() {
 
   return (
     <AdminAuth>
+      {/* Credits / status — visible on all viewports */}
+      <details className="border-b border-[#1c1c1c] bg-[#0a0a0a]">
+        <summary className="cursor-pointer select-none px-4 py-2 text-[11px] uppercase tracking-wider text-[#666] hover:text-[#aaa]">
+          Credits & Status
+        </summary>
+        <div className="mx-auto max-w-2xl px-4 pb-4 pt-2">
+          <CreditsPanel />
+        </div>
+      </details>
+
       {/* Desktop chrome (lg+) — DesktopChrome handles its own 3-col layout */}
       <div className="hidden lg:block">
         <DesktopChrome
