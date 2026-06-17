@@ -21,7 +21,9 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN")!;
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const REPLICATE_API = "https://api.replicate.com/v1";
+const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
@@ -39,6 +41,9 @@ interface ReqBody {
   referenceImages?: string[]; // product refs — http(s) URL or data: URL
   styleReferenceImage?: string; // brand-style donor ref — http(s) URL or data: URL
   seed?: number; // optional deterministic seed for reproducible generations
+  // Two-stage poster (Gemini background → Ideogram text overlay):
+  backgroundPrompt?: string;
+  textPrompt?: string;
   // Bookkeeping for the library row:
   productTitle?: string;
   productHandle?: string;
@@ -221,6 +226,114 @@ function resolveModel(model: string, _refs: string[]): string {
   return model;
 }
 
+// ---------- Two-stage poster helpers ----------
+
+async function uploadBytesAndSign(
+  admin: ReturnType<typeof createClient>,
+  bytes: Uint8Array,
+  contentType: string,
+  prefix: string,
+): Promise<string> {
+  const ext = contentType.includes("jpeg") ? "jpg" : contentType.includes("webp") ? "webp" : "png";
+  const path = `${prefix}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+  const up = await admin.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: true });
+  if (up.error) throw new Error(`Storage upload failed: ${up.error.message}`);
+  const { data: signed, error } = await admin.storage
+    .from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
+  if (error || !signed?.signedUrl) {
+    throw new Error(`Signed URL failed: ${error?.message || "unknown"}`);
+  }
+  return signed.signedUrl;
+}
+
+async function runGeminiImage(
+  geminiModel: string,
+  promptText: string,
+  refUrls: string[],
+): Promise<{ bytes: Uint8Array; contentType: string }> {
+  const content: Array<Record<string, unknown>> = [{ type: "text", text: promptText }];
+  for (const u of refUrls.slice(0, 4)) {
+    content.push({ type: "image_url", image_url: { url: u } });
+  }
+
+  const res = await fetch(LOVABLE_AI_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: geminiModel,
+      messages: [{ role: "user", content }],
+      modalities: ["image", "text"],
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Gemini ${res.status}: ${text}`);
+  }
+  const data = await res.json();
+  const msg = data?.choices?.[0]?.message;
+  const images: Array<{ image_url?: { url?: string } }> = msg?.images || [];
+  const imgUrl = images[0]?.image_url?.url;
+  if (!imgUrl) {
+    throw new Error("Gemini returned no image");
+  }
+  // Data URL: data:<ct>;base64,<b64>
+  const m = imgUrl.match(/^data:([^;,]+);base64,(.+)$/);
+  if (m) {
+    const contentType = m[1] || "image/png";
+    const bin = atob(m[2]);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { bytes, contentType };
+  }
+  // Remote URL fallback
+  const r = await fetch(imgUrl);
+  if (!r.ok) throw new Error(`Could not fetch Gemini image (${r.status})`);
+  const contentType = r.headers.get("content-type") || "image/png";
+  return { bytes: new Uint8Array(await r.arrayBuffer()), contentType };
+}
+
+async function runPosterTwoStage(
+  admin: ReturnType<typeof createClient>,
+  backgroundPrompt: string,
+  textPrompt: string,
+  aspectRatio: string,
+  productRefs: string[],
+  seed?: number,
+): Promise<{ finalUrl: string; geminiUrl: string; modelLabel: string }> {
+  // Stage 1: Gemini background (try Pro, fall back to Flash image).
+  let gemini: { bytes: Uint8Array; contentType: string } | null = null;
+  let geminiModelUsed = "google/gemini-3-pro-image-preview";
+  try {
+    gemini = await runGeminiImage(geminiModelUsed, backgroundPrompt, productRefs);
+  } catch (e) {
+    console.warn("[poster-two-stage] Pro failed, falling back to Flash:", (e as Error).message);
+    geminiModelUsed = "google/gemini-2.5-flash-image";
+    gemini = await runGeminiImage(geminiModelUsed, backgroundPrompt, productRefs);
+  }
+  const geminiUrl = await uploadBytesAndSign(admin, gemini.bytes, gemini.contentType, "poster-bg");
+
+  // Stage 2: Ideogram v3 Turbo with text overlay, base image = geminiUrl.
+  const ideogramInput: Record<string, unknown> = {
+    prompt: textPrompt,
+    aspect_ratio: aspectRatio,
+    style_type: "DESIGN",
+    magic_prompt_option: "Off",
+    image: geminiUrl,
+    style_reference_images: [geminiUrl],
+  };
+  if (typeof seed === "number" && Number.isFinite(seed)) ideogramInput.seed = seed;
+
+  const output = await runReplicate("ideogram-ai/ideogram-v3-turbo", ideogramInput);
+  const finalUrl = pickUrl(output);
+  if (!finalUrl) throw new Error("Ideogram returned no image URL");
+
+  return { finalUrl, geminiUrl, modelLabel: `${geminiModelUsed} -> ideogram-v3-turbo` };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -248,6 +361,8 @@ Deno.serve(async (req) => {
       referenceImages = [],
       styleReferenceImage,
       seed,
+      backgroundPrompt,
+      textPrompt,
       productTitle,
       productHandle,
       campaignType,
@@ -257,11 +372,19 @@ Deno.serve(async (req) => {
     if (!task || (task !== "poster" && task !== "display")) {
       return json({ error: "task must be poster or display" }, 400);
     }
-    if (!model || !SUPPORTED_MODELS.has(model)) {
-      return json({ error: `Unsupported model: ${model}` }, 400);
-    }
-    if (!prompt || prompt.trim().length < 4) {
-      return json({ error: "prompt is required" }, 400);
+
+    const isTwoStagePoster =
+      task === "poster" &&
+      typeof backgroundPrompt === "string" && backgroundPrompt.trim().length >= 4 &&
+      typeof textPrompt === "string" && textPrompt.trim().length >= 4;
+
+    if (!isTwoStagePoster) {
+      if (!model || !SUPPORTED_MODELS.has(model)) {
+        return json({ error: `Unsupported model: ${model}` }, 400);
+      }
+      if (!prompt || prompt.trim().length < 4) {
+        return json({ error: "prompt is required" }, 400);
+      }
     }
 
     // Normalize product refs (uploads data: refs to storage).
@@ -276,11 +399,32 @@ Deno.serve(async (req) => {
       hostedStyleRef = await normalizeRef(admin, styleReferenceImage);
     }
 
-    const effectiveModel = resolveModel(model, hostedRefs);
-    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef, seed);
-    const output = await runReplicate(effectiveModel, input);
-    const srcUrl = pickUrl(output);
-    if (!srcUrl) throw new Error("Replicate returned no image URL");
+    let srcUrl: string | null = null;
+    let effectiveModel: string;
+    let promptForLog: string;
+
+    if (isTwoStagePoster) {
+      const refsForGemini = [...hostedRefs];
+      if (hostedStyleRef) refsForGemini.push(hostedStyleRef);
+      const stage = await runPosterTwoStage(
+        admin,
+        backgroundPrompt!,
+        textPrompt!,
+        aspectRatio,
+        refsForGemini,
+        seed,
+      );
+      srcUrl = stage.finalUrl;
+      effectiveModel = stage.modelLabel;
+      promptForLog = `[BACKGROUND]\n${backgroundPrompt}\n\n[TEXT]\n${textPrompt}`;
+    } else {
+      effectiveModel = resolveModel(model, hostedRefs);
+      const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef, seed);
+      const output = await runReplicate(effectiveModel, input);
+      srcUrl = pickUrl(output);
+      promptForLog = prompt;
+    }
+    if (!srcUrl) throw new Error("Generator returned no image URL");
 
     // Persist the result to our bucket so it doesn't expire.
     const imgRes = await fetch(srcUrl);
@@ -308,7 +452,7 @@ Deno.serve(async (req) => {
         product_handle: productHandle || null,
         style: style || null,
         aspect_ratio: aspectRatio,
-        prompt_used: prompt,
+        prompt_used: promptForLog,
         model_used: effectiveModel,
 
         reference_image_url: hostedRefs[0] || null,
@@ -324,7 +468,7 @@ Deno.serve(async (req) => {
       id: inserted.id,
       model: effectiveModel,
       task,
-      prompt,
+      prompt: promptForLog,
       aspectRatio,
       seed: seed ?? null,
     });
@@ -332,10 +476,12 @@ Deno.serve(async (req) => {
     const raw = e instanceof Error ? e.message : String(e);
     console.error("[marketing-generate]", raw);
     const friendly = /insufficient credit/i.test(raw)
-      ? "The image provider (Replicate) has insufficient credit. Top up billing and try again."
+      ? "The image provider has insufficient credit. Top up billing and try again."
       : /timed out|timeout/i.test(raw)
         ? "The image provider took too long to respond. Please try again."
-        : raw;
+        : /Gemini\s+4\d\d/i.test(raw)
+          ? "Background generation failed. Please try again."
+          : raw;
     return json({ error: friendly }, 500);
   }
 });

@@ -637,6 +637,90 @@ export function previewPosterFinal(c: PosterControls, brand: BrandStyle) {
   return { route, prompt };
 }
 
+// ---------- Two-stage poster (Gemini background → Ideogram text overlay) ----------
+
+export function buildPosterBackgroundPrompt(c: PosterControls, brand: BrandStyle): string {
+  const parts: string[] = [];
+  const styleMood = POSTER_STYLE_HINT[c.style];
+  const realismTrailer = REALISM_TRAILER[c.realism] || "";
+
+  parts.push(
+    `Cinematic studio product photograph of "${c.productTitle}" for use as the BACKGROUND PLATE of a marketing poster.`,
+  );
+  parts.push(
+    `Deep matte black studio background, premium dramatic directional lighting with crisp rim light and soft falloff, product razor sharp, perfectly centered, hero composition with generous negative space around the product for text overlays to be added later.`,
+  );
+  parts.push(`Mood: ${styleMood}.`);
+  if (realismTrailer) parts.push(realismTrailer);
+
+  const brandSnippet = buildBrandStyleSnippet(brand);
+  if (brandSnippet) {
+    parts.push(
+      `Brand atmosphere (apply ONLY to color palette, lighting temperature, contrast, and atmosphere — do NOT add objects, props, people, or change the deep black studio background): ${brandSnippet}.`,
+    );
+  }
+  const brandRefClause = buildBrandStyleReferenceClause(brand, "poster");
+  if (brandRefClause) parts.push(brandRefClause);
+
+  parts.push(`Compose strictly in a ${c.aspectRatio} aspect ratio frame.`);
+
+  if (c.hasReference) parts.push(REF_PRESERVATION);
+  if (c.notes && c.notes.trim()) parts.push(c.notes.trim());
+
+  parts.push(
+    `ABSOLUTE HARD CONSTRAINT: render NO text, NO typography, NO letters, NO numbers, NO words, NO captions, NO logos, NO watermarks, NO badges, NO overlays, NO labels, NO price tags, NO call-to-action buttons. The output must be a pure, clean product scene only — text will be composited on top in a later stage.`,
+  );
+
+  return parts.join(" ");
+}
+
+export function buildPosterTextPrompt(c: PosterControls): string {
+  const productName = (c.productTitle || "").trim();
+  const price = (c.priceText || "").trim();
+  const cta = "DM to Buy";
+  const locations = "Castries · Gros Islet · Vieux Fort";
+  const brandWordmark = (c.brandName || "LUUT SLU").trim();
+
+  const styleLayout: Record<PosterStyle, string> = {
+    clean:   "clean modern editorial typography, bold sans-serif headline, generous breathing room, left-aligned text blocks",
+    luxury:  "elegant high-end typography, refined serif headline with small caps subheading, centered symmetrical layout",
+    bold:    "oversized bold condensed sans-serif headline, ultra high contrast, strong type hierarchy, flush edge-to-edge text blocks",
+    hype:    "streetwear stencil display typography, bold uppercase headline, gritty edge, ticker-style price",
+    modern:  "modern geometric sans-serif, tight kerning, asymmetric placement, clean rectangular CTA block",
+    minimal: "minimalist typography, single weight sans-serif, restrained scale, lots of whitespace",
+  };
+
+  const blocks: string[] = [];
+  blocks.push(`PRODUCT NAME headline (largest, top section): "${productName}"`);
+  if (price) blocks.push(`PRICE (prominent, near the product): "${price}"`);
+  blocks.push(`CTA pill / button (mid-lower area): "${cta}"`);
+  blocks.push(`LOCATIONS line (small, above the wordmark): "${locations}"`);
+  blocks.push(`BRAND WORDMARK (bottom, centered): "${brandWordmark}"`);
+
+  const parts: string[] = [];
+  parts.push(
+    `Add a bold, clean typographic overlay to the supplied base image to turn it into a finished marketing poster. DO NOT regenerate, repaint, or alter the underlying image — preserve the product photograph exactly as provided. Only add text on top.`,
+  );
+  parts.push(`Typography style: ${styleLayout[c.style]}.`);
+  parts.push(
+    `Render the following text blocks with strict hierarchy, all spelled exactly as written, no extra words, no hallucinated copy: ${blocks.join("; ")}.`,
+  );
+  parts.push(
+    `Place text in the negative-space regions of the image (around the centered product), never overlapping the product itself. Maintain readable contrast against the deep black background — use clean white or off-white type, with a single optional accent color for the price or CTA. Strict ${c.aspectRatio} aspect ratio. No additional decorations, no badges except where naturally part of the hierarchy, no background changes.`,
+  );
+
+  return parts.join(" ");
+}
+
+export function previewPosterTwoStage(c: PosterControls, brand: BrandStyle) {
+  const route = routeForPoster(c);
+  return {
+    route,
+    backgroundPrompt: buildPosterBackgroundPrompt(c, brand),
+    textPrompt: buildPosterTextPrompt(c),
+  };
+}
+
 export function previewDisplayFinal(c: DisplayControls, brand: BrandStyle) {
   const route = routeForDisplay(c);
   const prompt = buildDisplayPrompt(c, brand);
