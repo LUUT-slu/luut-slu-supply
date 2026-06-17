@@ -173,6 +173,9 @@ function buildModelInput(
         magic_prompt_option: "Auto",
       };
       if (primaryRef) {
+        // Use reference as the source image for product-identity preservation,
+        // plus style references so the look stays on-brand.
+        input.image = primaryRef;
         input.style_reference_images = refs.slice(0, 4);
       }
       return input;
