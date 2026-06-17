@@ -34,7 +34,7 @@ const SUPPORTED_MODELS = new Set([
 ]);
 
 interface ReqBody {
-  task: "poster" | "display";
+  task: "poster" | "display" | "text-overlay";
   model: string;
   prompt: string;
   aspectRatio?: string;
@@ -44,6 +44,9 @@ interface ReqBody {
   // Two-stage poster (Gemini background → Ideogram text overlay):
   backgroundPrompt?: string;
   textPrompt?: string;
+  // Text-overlay (Ideogram inpainting on a locked uploaded image):
+  baseImage?: string; // http(s) URL or data: URL — the uploaded display image
+  maskImage?: string; // http(s) URL or data: URL — white=paint, black=preserve
   // Bookkeeping for the library row:
   productTitle?: string;
   productHandle?: string;
