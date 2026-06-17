@@ -277,7 +277,7 @@ Deno.serve(async (req) => {
     }
 
     const effectiveModel = resolveModel(model, hostedRefs);
-    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef);
+    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef, seed);
     const output = await runReplicate(effectiveModel, input);
     const srcUrl = pickUrl(output);
     if (!srcUrl) throw new Error("Replicate returned no image URL");
