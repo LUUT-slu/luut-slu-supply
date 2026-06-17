@@ -316,20 +316,37 @@ async function runPosterTwoStage(
   }
   const geminiUrl = await uploadBytesAndSign(admin, gemini.bytes, gemini.contentType, "poster-bg");
 
-  // Stage 2: Ideogram v3 Turbo with text overlay, base image = geminiUrl.
+  // Stage 2: Ideogram v3 Turbo — text overlay, guided by the Gemini plate
+  // as a style reference. NOTE: ideogram-v3-turbo's `image` input is for
+  // inpainting and requires a `mask`; passing `image` without a mask causes
+  // the model to either error or echo the input back without text. Using
+  // `style_reference_images` lets Ideogram render the typography while
+  // matching the Gemini background's palette, lighting, and composition.
   const ideogramInput: Record<string, unknown> = {
     prompt: textPrompt,
     aspect_ratio: aspectRatio,
     style_type: "DESIGN",
     magic_prompt_option: "Off",
-    image: geminiUrl,
     style_reference_images: [geminiUrl],
   };
   if (typeof seed === "number" && Number.isFinite(seed)) ideogramInput.seed = seed;
 
-  const output = await runReplicate("ideogram-ai/ideogram-v3-turbo", ideogramInput);
+  console.log("[poster-two-stage] Stage 1 (Gemini) complete:", geminiUrl);
+  console.log("[poster-two-stage] Stage 2 (Ideogram) starting with input:", JSON.stringify(ideogramInput));
+
+  let output: unknown;
+  try {
+    output = await runReplicate("ideogram-ai/ideogram-v3-turbo", ideogramInput);
+  } catch (e) {
+    console.error("[poster-two-stage] Ideogram failed:", (e as Error).message);
+    throw new Error(`Ideogram text overlay step failed: ${(e as Error).message}`);
+  }
   const finalUrl = pickUrl(output);
-  if (!finalUrl) throw new Error("Ideogram returned no image URL");
+  if (!finalUrl) {
+    console.error("[poster-two-stage] Ideogram output had no URL:", JSON.stringify(output));
+    throw new Error("Ideogram returned no image URL");
+  }
+  console.log("[poster-two-stage] Stage 2 (Ideogram) complete:", finalUrl);
 
   return { finalUrl, geminiUrl, modelLabel: `${geminiModelUsed} -> ideogram-v3-turbo` };
 }
