@@ -1,6 +1,6 @@
 // Extract design tokens (palette, layout, badge, cta, background) from a
 // reference image. Returns ONLY structured tokens — never image content,
-// never product/brand text. Uses Lovable AI gateway with vision + tool calling.
+// never product/brand text. Uses Claude vision.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,81 +14,32 @@ CRITICAL RULES:
 - Do NOT describe what the image shows.
 - Do NOT include any product names, brand names, headlines, or text from the reference.
 - Only extract abstract design tokens: colors, layout density, badge shape, CTA shape, background type.
-- Output via the provided tool call.
+- Output only the JSON object.
 
-Color tokens must be hex (#RRGGBB) or rgba(...). Pick one dominant accent color. Glow should be a translucent rgba derived from accent.`;
+Color tokens must be hex (#RRGGBB) or rgba(...). Pick one dominant accent color. Glow should be a translucent rgba derived from accent.
 
-const PRESET_TOOL = {
-  type: "function",
-  function: {
-    name: "save_preset",
-    description: "Save the extracted design tokens as a reusable preset.",
-    parameters: {
-      type: "object",
-      properties: {
-        palette: {
-          type: "object",
-          properties: {
-            bg: { type: "string", description: "Base background hex color" },
-            surface: { type: "string", description: "Card/tile background color (hex or rgba)" },
-            accent: { type: "string", description: "Dominant accent hex color" },
-            glow: { type: "string", description: "Translucent glow rgba color derived from accent" },
-            text: { type: "string", description: "Primary text hex color" },
-            muted: { type: "string", description: "Muted/secondary text hex color" },
-          },
-          required: ["bg", "surface", "accent", "glow", "text", "muted"],
-        },
-        layout: {
-          type: "object",
-          properties: {
-            density: { type: "string", enum: ["tight", "normal", "spaced"] },
-            radius: { type: "number", description: "Corner radius in pixels (0-48)" },
-            gridGap: { type: "number", description: "Grid gap in pixels (0-40)" },
-          },
-          required: ["density", "radius", "gridGap"],
-        },
-        typography: {
-          type: "object",
-          properties: {
-            headlineWeight: {
-              type: "string",
-              enum: ["700", "800", "900"],
-              description: "Headline font weight as a string: 700, 800, or 900",
-            },
-            headlineCase: { type: "string", enum: ["upper", "title"] },
-            scale: { type: "number", description: "Headline scale 0.85..1.15" },
-          },
-          required: ["headlineWeight", "headlineCase", "scale"],
-        },
-        badge: {
-          type: "object",
-          properties: {
-            shape: { type: "string", enum: ["pill", "ribbon", "chip"] },
-            fill: { type: "string", enum: ["glow", "solid", "outline"] },
-          },
-          required: ["shape", "fill"],
-        },
-        cta: {
-          type: "object",
-          properties: {
-            shape: { type: "string", enum: ["pill", "block", "outline"] },
-            fill: { type: "string", enum: ["glow", "solid", "outline"] },
-          },
-          required: ["shape", "fill"],
-        },
-        background: {
-          type: "object",
-          properties: {
-            type: { type: "string", enum: ["dark", "gradient", "glow", "minimal"] },
-            noise: { type: "boolean" },
-          },
-          required: ["type", "noise"],
-        },
-      },
-      required: ["palette", "layout", "typography", "badge", "cta", "background"],
-    },
-  },
-};
+Return ONLY valid JSON with this exact shape:
+{"palette":{"bg":"#000000","surface":"#111111","accent":"#39ff7a","glow":"rgba(57,255,122,0.5)","text":"#ffffff","muted":"#cccccc"},"layout":{"density":"normal","radius":16,"gridGap":16},"typography":{"headlineWeight":"900","headlineCase":"upper","scale":1},"badge":{"shape":"pill","fill":"glow"},"cta":{"shape":"pill","fill":"glow"},"background":{"type":"glow","noise":false}}`;
+
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const CLAUDE_MODEL = "claude-sonnet-4-6";
+
+function parseDataUrl(dataUrl: string): { mediaType: string; data: string } | null {
+  const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mediaType: match[1], data: match[2] };
+}
+
+function extractJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) return JSON.parse(text.slice(start, end + 1));
+    throw new Error("AI returned invalid JSON");
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -104,55 +55,61 @@ Deno.serve(async (req) => {
       });
     }
 
-    const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN");
-    if (!REPLICATE_API_TOKEN) {
+    const image = parseDataUrl(imageDataUrl);
+    if (!image) {
+      return new Response(JSON.stringify({ error: "imageDataUrl must be a base64 image data URL" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_KEY");
+    if (!ANTHROPIC_KEY) {
       return new Response(JSON.stringify({ error: "AI not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const response = await fetch("https://openai-compat.replicate.com/v1/chat/completions", {
+    const response = await fetch(ANTHROPIC_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
+        "x-api-key": ANTHROPIC_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "meta/llama-3.2-90b-vision-instruct",
+        model: CLAUDE_MODEL,
+        max_tokens: 1200,
+        temperature: 0.1,
+        system: SYSTEM_PROMPT,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
             content: [
-              {
-                type: "text",
-                text: "Extract the design tokens from this reference poster. Output ONLY tokens via the save_preset tool.",
-              },
-              { type: "image_url", image_url: { url: imageDataUrl } },
+              { type: "text", text: "Extract reusable poster design tokens from this reference. Return only the JSON object." },
+              { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } },
             ],
           },
         ],
-        tools: [PRESET_TOOL],
-        tool_choice: { type: "function", function: { name: "save_preset" } },
       }),
     });
 
     if (response.status === 429) {
       return new Response(
         JSON.stringify({ error: "Rate limited — please try again in a moment." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
     if (response.status === 402) {
       return new Response(
-        JSON.stringify({ error: "AI credits exhausted — top up in Settings → Workspace → Usage." }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "Claude API credit balance is too low to extract this preset right now." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
     if (!response.ok) {
       const text = await response.text();
-      console.error("AI gateway error", response.status, text);
+      console.error("Claude preset extraction error", response.status, text);
       return new Response(JSON.stringify({ error: "AI extraction failed" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -160,8 +117,12 @@ Deno.serve(async (req) => {
     }
 
     const data = await response.json();
-    const toolCall = data?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
+    const text = data?.content
+      ?.filter((part: { type?: string; text?: string }) => part?.type === "text" && part.text)
+      .map((part: { text: string }) => part.text)
+      .join("\n")
+      .trim();
+    if (!text) {
       return new Response(JSON.stringify({ error: "AI did not return preset tokens" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -170,8 +131,8 @@ Deno.serve(async (req) => {
 
     let tokens: unknown;
     try {
-      tokens = JSON.parse(toolCall.function.arguments);
-    } catch {
+      tokens = extractJson(text);
+    } catch (e) {
       return new Response(JSON.stringify({ error: "AI returned invalid JSON" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

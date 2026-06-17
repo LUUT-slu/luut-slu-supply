@@ -76,6 +76,8 @@ const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "portrait", label: "Portrait", size: "1080×1350" },
 ];
 
+type StudioTab = TemplateFormat | "copy";
+
 
 const PREVIEW_DIMS: Record<TemplateFormat, { w: number; h: number }> = {
   story: { w: 1080, h: 1920 },
@@ -171,7 +173,9 @@ export default function MarketingStudio() {
 
   const [selectedId, setSelectedId] = useState<string>(initialId);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<TemplateFormat>("story");
+  const [tab, setTab] = useState<StudioTab>("story");
+  const activeTemplateFormat: TemplateFormat =
+    tab === "story" || tab === "post" || tab === "ad" || tab === "portrait" ? tab : "story";
   const [studioMode, setStudioMode] = useState<'select' | 'images' | 'videos'>('select');
   
   
@@ -318,7 +322,7 @@ export default function MarketingStudio() {
   }, [selectedProduct, variantMode, variantImages]);
 
   // ---- AI-assisted image prep (single-product hero image) ----
-  const singlePrep = useImagePrep(productPayload?.productImage, tab);
+  const singlePrep = useImagePrep(productPayload?.productImage, activeTemplateFormat);
 
   // ---- AI Display Image generator (Replicate flux-kontext-pro) ----
   type DisplayAspect = "1:1" | "4:5" | "9:16" | "3:4" | "16:9" | "4:3";
@@ -513,7 +517,7 @@ export default function MarketingStudio() {
   >("original");
   // Show prep preview against the first tile so admin sees what will apply.
   const firstSourceImage = sourceProducts[0]?.imageUrl;
-  const multiPrepPreview = useImagePrep(firstSourceImage, tab);
+  const multiPrepPreview = useImagePrep(firstSourceImage, activeTemplateFormat);
   // Keep the preview hook in sync with the global multi mode.
   useEffect(() => {
     if (multiPrepPreview.mode !== multiPrepMode) {
@@ -623,7 +627,7 @@ export default function MarketingStudio() {
       const typeSlug = slugify(meta.label);
       core = `${typeSlug}-${today}`;
     }
-    return `luutslu-${core}-${tab}.jpeg`;
+    return `luutslu-${core}-${activeTemplateFormat}.jpeg`;
   };
 
   const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
@@ -906,7 +910,7 @@ export default function MarketingStudio() {
   // PresetLayout so Style & Branding controls always take effect.
   const templateProps = productPayload
     ? {
-        format: tab,
+        format: activeTemplateFormat,
         style: "hype" as const,
         productName: productPayload.name,
         productImage: singlePrep.preparedUrl || productPayload.productImage,
@@ -967,8 +971,8 @@ export default function MarketingStudio() {
           if (!p.imageUrl) return;
           try {
             let r: string;
-            if (multiPrepMode === "auto-fit") r = await autoFitProduct(p.imageUrl, tab);
-            else if (multiPrepMode === "reframe") r = await smartReframe(p.imageUrl, tab);
+            if (multiPrepMode === "auto-fit") r = await autoFitProduct(p.imageUrl, activeTemplateFormat);
+            else if (multiPrepMode === "reframe") r = await smartReframe(p.imageUrl, activeTemplateFormat);
             else r = await enhanceImage(p.imageUrl);
             next[p.id] = r;
           } catch (e) {
@@ -981,11 +985,11 @@ export default function MarketingStudio() {
     return () => {
       cancelled = true;
     };
-  }, [isMulti, multiPrepMode, tab, sourceProducts]);
+  }, [isMulti, multiPrepMode, activeTemplateFormat, sourceProducts]);
 
   const multiTemplateProps = isMulti
     ? {
-        format: tab,
+        format: activeTemplateFormat,
         headline: meta.headline,
         subhead: tagline || undefined,
         products: preparedTiles.map((p) => ({
@@ -1465,7 +1469,7 @@ export default function MarketingStudio() {
             </Card>
           )}
 
-          <Tabs value={tab} onValueChange={(v) => { setTab(v as TemplateFormat); setShowAiPoster(false); }} className="w-full min-w-0">
+          <Tabs value={tab} onValueChange={(v) => { setTab(v as StudioTab); setShowAiPoster(false); }} className="w-full min-w-0">
             <div className="w-full overflow-x-auto">
               <TabsList className="inline-flex w-auto min-w-full justify-start">
                 {FORMATS.map((f) => (
@@ -1897,7 +1901,7 @@ export default function MarketingStudio() {
                             onClick={() => {
                               const a = document.createElement("a");
                               a.href = aiPosterResult!;
-                              a.download = `luut-ai-poster-${Date.now()}.png`;
+                              a.download = `luut-ai-poster-${Date.now()}.svg`;
                               a.click();
                             }}
                           >
@@ -1962,7 +1966,7 @@ export default function MarketingStudio() {
         <ImageEditorModal
           open={!!editorImage}
           imageUrl={editorImage}
-          format={tab}
+          format={activeTemplateFormat}
           initialCrop={editorImage ? cropMap[editorImage] : undefined}
           onSave={handleEditorSave}
           onClose={() => setEditorImage(null)}

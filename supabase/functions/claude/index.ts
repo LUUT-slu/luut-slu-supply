@@ -1,11 +1,11 @@
 // Shared Claude (Anthropic) proxy edge function.
 // All AI features in this app MUST route through this function.
-// Model: claude-sonnet-4-5 (latest Sonnet). Override per-request via `model`.
+// Model: claude-sonnet-4-6. Override per-request via `model`.
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const DEFAULT_MODEL = "claude-sonnet-4-5";
+const DEFAULT_MODEL = "claude-sonnet-4-6";
 
 interface ClaudeRequest {
   system?: string;
