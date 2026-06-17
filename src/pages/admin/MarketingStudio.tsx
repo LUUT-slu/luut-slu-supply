@@ -337,19 +337,27 @@ export default function MarketingStudio() {
     { key: "16:9", size: "1920×1080" },
     { key: "4:3", size: "1440×1080" },
   ];
-  const [displayStyle, setDisplayStyle] = useState<"studio" | "lifestyle" | "minimal">("studio");
+  type DisplayStyle = "studio" | "lifestyle" | "minimal" | "human";
+  type ModelGender = "male" | "female" | "unspecified";
+  type SkinTone = "light" | "medium-light" | "medium" | "medium-dark" | "dark";
+  type DisplayBackground = "solid" | "gradient" | "studio" | "lifestyle" | "transparent";
+  const [displayStyle, setDisplayStyle] = useState<DisplayStyle>("studio");
   const [displayAspect, setDisplayAspect] = useState<DisplayAspect>("1:1");
   const [displayTextOverlay, setDisplayTextOverlay] = useState("");
   const [displayCustomPrompt, setDisplayCustomPrompt] = useState("");
   const [displayRefImage, setDisplayRefImage] = useState<string | null>(null);
   const [displayAddLogo, setDisplayAddLogo] = useState(false);
   const [displayLogoPos, setDisplayLogoPos] = useState<LogoPos>("bottom-right");
+  const [displayBackground, setDisplayBackground] = useState<DisplayBackground>("studio");
+  const [modelGender, setModelGender] = useState<ModelGender>("unspecified");
+  const [skinTone, setSkinTone] = useState<SkinTone>("medium");
   const [displayLoading, setDisplayLoading] = useState(false);
   const [displayResultUrl, setDisplayResultUrl] = useState<string | null>(null);
   const [displayResultId, setDisplayResultId] = useState<string | null>(null);
   const [displayComposite, setDisplayComposite] = useState<string | null>(null);
   const [displayCompositing, setDisplayCompositing] = useState(false);
   const [displayCompositeSaved, setDisplayCompositeSaved] = useState(false);
+  const [displayPrompt, setDisplayPrompt] = useState<string>("");
 
   // AI Poster (Ideogram v3) — separate generation surface
   const [showAiPoster, setShowAiPoster] = useState(false);
