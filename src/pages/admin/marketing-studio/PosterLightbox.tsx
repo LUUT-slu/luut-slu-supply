@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { X, Download } from "lucide-react";
+import { downloadImage } from "@/lib/downloadImage";
 
 interface Props {
   open: boolean;
@@ -7,29 +8,6 @@ interface Props {
   onClose: () => void;
   showDownload?: boolean;
   filename?: string;
-}
-
-async function downloadOrShare(url: string, filename = "luut-poster.png") {
-  try {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const file = new File([blob], filename, { type: blob.type || "image/png" });
-    const navAny: any = navigator;
-    if (navAny.canShare && navAny.canShare({ files: [file] })) {
-      await navAny.share({ files: [file], title: "LUUT Poster" });
-      return;
-    }
-    const objUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = objUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
-  } catch {
-    window.open(url, "_blank");
-  }
 }
 
 export default function PosterLightbox({ open, src, onClose, showDownload, filename }: Props) {
@@ -94,7 +72,7 @@ export default function PosterLightbox({ open, src, onClose, showDownload, filen
         <button
           onClick={(e) => {
             e.stopPropagation();
-            downloadOrShare(src, filename);
+            downloadImage(src, filename || "luut-poster.png");
           }}
           className="fixed left-1/2 -translate-x-1/2"
           style={{

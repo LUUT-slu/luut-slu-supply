@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import PosterLightbox from "./PosterLightbox";
 import { prepareMarketingSourceImages } from "@/lib/marketingSourceImages";
+import { downloadImage } from "@/lib/downloadImage";
 
 type StudioMode = "select" | "images" | "videos";
 type AiStyle = "default" | "hype" | "clean" | "luxury" | "bold";
@@ -213,18 +214,9 @@ export default function MobileShell(props: MobileShellProps) {
   const handleDownload = async () => {
     if (!aiPosterResult) return;
     try {
-      const res = await fetch(aiPosterResult);
-      const blob = await res.blob();
-      const file = new File([blob], "luut-poster.png", { type: blob.type || "image/png" });
-      const navAny: any = navigator;
-      if (navAny.canShare && navAny.canShare({ files: [file] })) {
-        await navAny.share({ files: [file], title: "LUUT Poster" });
-        return;
-      }
-      // fallback: open in new tab
-      window.open(aiPosterResult, "_blank");
-    } catch (e: any) {
-      window.open(aiPosterResult, "_blank");
+      await downloadImage(aiPosterResult, "luut-poster.png");
+    } catch {
+      toast.error("Download failed");
     }
   };
 
@@ -257,17 +249,9 @@ export default function MobileShell(props: MobileShellProps) {
   const handleDisplayDownload = async () => {
     if (!displayResultUrl) return;
     try {
-      const res = await fetch(displayResultUrl);
-      const blob = await res.blob();
-      const file = new File([blob], "luut-display.png", { type: blob.type || "image/png" });
-      const navAny: any = navigator;
-      if (navAny.canShare && navAny.canShare({ files: [file] })) {
-        await navAny.share({ files: [file], title: "LUUT Display" });
-        return;
-      }
-      window.open(displayResultUrl, "_blank");
+      await downloadImage(displayResultUrl, "luut-display.png");
     } catch {
-      window.open(displayResultUrl, "_blank");
+      toast.error("Download failed");
     }
   };
 

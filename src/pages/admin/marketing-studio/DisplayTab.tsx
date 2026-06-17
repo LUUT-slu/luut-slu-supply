@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadImage } from "@/lib/downloadImage";
 import { toast } from "sonner";
 import { Loader2, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -374,10 +375,8 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
             {resultUrl ? (
               <div className="space-y-3">
                 <img src={resultUrl} alt="Generated display" className="w-full rounded" />
-                <Button asChild variant="outline" className="w-full">
-                  <a href={resultUrl} download target="_blank" rel="noopener noreferrer">
-                    <Download className="mr-2 h-4 w-4" /> Download
-                  </a>
+                <Button variant="outline" className="w-full" onClick={() => downloadImage(resultUrl, "luut-display.png")}>
+                  <Download className="mr-2 h-4 w-4" /> Download
                 </Button>
               </div>
             ) : (

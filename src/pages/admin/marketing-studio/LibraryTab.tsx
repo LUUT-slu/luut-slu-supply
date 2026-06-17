@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadImage } from "@/lib/downloadImage";
 import { toast } from "sonner";
 import { Copy, Download, Heart, Info, Loader2, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -136,16 +137,7 @@ export default function LibraryTab() {
 
   const handleDownload = async (r: Row) => {
     try {
-      const res = await fetch(r.image_url);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${r.product_title || "asset"}-${r.id.slice(0, 6)}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadImage(r.image_url, `${r.product_title || "asset"}-${r.id.slice(0, 6)}.png`);
       await supabase
         .from("marketing_generated_images")
         .update({ download_count: r.download_count + 1 })
