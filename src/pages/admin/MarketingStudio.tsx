@@ -2064,8 +2064,8 @@ export default function MarketingStudio() {
           onClose={() => setEditorImage(null)}
         />
       </div>
-      </div>
     </AdminAuth>
+
   );
 }
 
