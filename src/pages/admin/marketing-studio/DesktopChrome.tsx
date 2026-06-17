@@ -5,7 +5,7 @@ import PosterLightbox from "./PosterLightbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-type PosterStyle = "hype" | "clean" | "luxury" | "bold";
+type PosterStyle = "default" | "hype" | "clean" | "luxury" | "bold";
 type DesktopTab = "poster" | "display" | "video" | "library";
 type DisplayStyle = "studio" | "lifestyle" | "minimal" | "human";
 type DisplayAspect = "1:1" | "4:5" | "9:16" | "3:4" | "16:9" | "4:3";
@@ -82,6 +82,7 @@ export interface DesktopChromeProps {
 }
 
 const STYLES: { key: PosterStyle; label: string }[] = [
+  { key: "default", label: "Default" },
   { key: "hype", label: "Hype" },
   { key: "clean", label: "Clean" },
   { key: "luxury", label: "Luxury" },

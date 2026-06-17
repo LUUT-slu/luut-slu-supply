@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import PosterLightbox from "./PosterLightbox";
 
 type StudioMode = "select" | "images" | "videos";
-type AiStyle = "hype" | "clean" | "luxury" | "bold";
+type AiStyle = "default" | "hype" | "clean" | "luxury" | "bold";
 type DisplayStyle = "studio" | "lifestyle" | "minimal" | "human";
 type DisplayAspect = "1:1" | "4:5" | "9:16" | "3:4" | "16:9" | "4:3";
 type DisplayBackground = "solid" | "gradient" | "studio" | "lifestyle" | "transparent";
@@ -87,9 +87,10 @@ export interface MobileShellProps {
 
 const FORMATS = ["9:16", "1:1", "4:5", "16:9"];
 const STYLES: { key: AiStyle; label: string; desc: string }[] = [
+  { key: "default", label: "Default", desc: "LUUT brand" },
   { key: "hype", label: "Hype", desc: "Dark streetwear" },
   { key: "clean", label: "Clean", desc: "White minimal" },
-  { key: "luxury", label: "Luxury", desc: "Dark gold" },
+  { key: "luxury", label: "Luxury", desc: "Warm gold" },
   { key: "bold", label: "Bold", desc: "High contrast" },
 ];
 

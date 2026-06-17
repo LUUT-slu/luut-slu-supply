@@ -23,6 +23,8 @@ const IDEOGRAM_MODEL = "ideogram-ai/ideogram-v3-turbo";
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
+type PosterStyleKey = "default" | "hype" | "clean" | "luxury" | "bold";
+
 interface PosterInput {
   productTitle: string;
   productPrice: string;
@@ -31,6 +33,91 @@ interface PosterInput {
   brandName?: string;
   meetupText?: string;
   customInstructions?: string | null;
+  posterStyle?: PosterStyleKey;
+}
+
+interface StylePreset {
+  sceneBackground: string;
+  paletteText: string;
+  headlineColor: string;
+  priceChip: string;
+  ctaRibbon: string;
+  brandText: string;
+  typography: string;
+  aesthetic: string;
+}
+
+const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
+  default: {
+    sceneBackground:
+      "deep matte-black studio background with subtle neon green (#39FF14) rim lighting and soft volumetric haze",
+    paletteText:
+      "pitch-black background, neon green accent color (#39FF14), white headline text",
+    headlineColor: "large white condensed uppercase headline",
+    priceChip: "solid neon green (#39FF14) pill with black text",
+    ctaRibbon: "bold neon green (#39FF14) ribbon with black text",
+    brandText: "neon green (#39FF14), condensed uppercase, slightly wider letter spacing",
+    typography:
+      "heavy condensed sans-serif typography in the style of Bebas Neue, sharp uppercase, tight letter spacing",
+    aesthetic: "LUUT SLU brand canonical: premium Caribbean streetwear resale",
+  },
+  hype: {
+    sceneBackground:
+      "gritty dark concrete / asphalt urban backdrop with aggressive neon green (#39FF14) rim lighting, smoke haze and graffiti energy",
+    paletteText:
+      "near-black background with neon green (#39FF14) accents, off-white headline text, subtle spray-paint texture",
+    headlineColor: "huge off-white condensed uppercase headline with slight grunge edge",
+    priceChip: "solid neon green (#39FF14) pill with black text, slightly tilted sticker feel",
+    ctaRibbon: "bold neon green (#39FF14) ribbon with black text, stencil-style",
+    brandText: "neon green (#39FF14), condensed uppercase, graffiti-tag energy",
+    typography:
+      "heavy condensed display type (Bebas Neue / Druk), sharp uppercase, tight tracking, streetwear poster energy",
+    aesthetic: "streetwear hype-drop flyer, raw, high-energy",
+  },
+  clean: {
+    sceneBackground:
+      "bright neutral off-white seamless studio backdrop with soft diffused lighting and gentle long shadow",
+    paletteText:
+      "clean white (#FAFAFA) background, charcoal grey (#1F1F1F) text, a single thin black hairline accent — absolutely no neon green",
+    headlineColor: "large charcoal (#1F1F1F) modern sans-serif headline, normal case",
+    priceChip: "thin black outlined chip with charcoal text on white",
+    ctaRibbon: "slim charcoal underline beneath the CTA text — no coloured ribbon",
+    brandText: "charcoal (#1F1F1F), modern sans-serif, generous letter spacing",
+    typography:
+      "refined modern sans-serif (Inter / Söhne / Helvetica Neue), mixed case, calm hierarchy",
+    aesthetic: "minimal editorial product page, lots of negative space",
+  },
+  luxury: {
+    sceneBackground:
+      "warm champagne-gold gradient backdrop with soft golden rim light, subtle marble or velvet surface, refined product photography",
+    paletteText:
+      "deep ivory / warm cream background, metallic gold (#C9A24B) accents, dark espresso (#2A1E14) headline text — no neon green anywhere",
+    headlineColor: "elegant dark espresso (#2A1E14) serif headline",
+    priceChip: "thin gold (#C9A24B) outlined chip with espresso text on cream",
+    ctaRibbon: "slim gold (#C9A24B) underline / wordmark — no bold ribbon",
+    brandText: "metallic gold (#C9A24B) refined serif, wide letter spacing",
+    typography:
+      "elegant high-contrast serif headlines (Playfair Display / Didone) paired with a fine sans-serif for small text",
+    aesthetic: "premium boutique / luxury fashion campaign",
+  },
+  bold: {
+    sceneBackground:
+      "stark editorial backdrop with dramatic single-source lighting, deep crisp shadows, no fixed colour cast — let the product colours lead",
+    paletteText:
+      "pure black (#000) and pure white (#FFF) palette with a single high-impact red (#E5251D) accent — no neon green",
+    headlineColor: "massive black-on-white (or white-on-black) condensed headline with extreme scale contrast",
+    priceChip: "solid red (#E5251D) block with white text",
+    ctaRibbon: "solid red (#E5251D) bar with white text, full bleed across the bottom",
+    brandText: "black or white depending on background, condensed uppercase, maximum weight",
+    typography:
+      "ultra-bold condensed display type, brutalist scale contrast, maximum visual punch",
+    aesthetic: "high-contrast editorial poster, brutalist fashion campaign",
+  },
+};
+
+function resolveStyle(key?: PosterStyleKey): { key: PosterStyleKey; preset: StylePreset } {
+  const k: PosterStyleKey = key && STYLE_PRESETS[key] ? key : "default";
+  return { key: k, preset: STYLE_PRESETS[k] };
 }
 
 function json(body: unknown, status = 200) {
@@ -138,33 +225,35 @@ async function dataUrlToHostedUrl(
   return uploadBytesToBucket(admin, bytes, contentType, "poster-src");
 }
 
-function buildScenePrompt(title: string): string {
+function buildScenePrompt(title: string, preset: StylePreset): string {
   return [
-    `Premium streetwear marketing scene featuring the exact product shown in the reference image: ${title}.`,
+    `Premium marketing scene featuring the exact product shown in the reference image: ${title}.`,
     `Keep the product 100% accurate — same colors, shape, branding, logos, materials, proportions. Do NOT modify, restyle, or replace the product.`,
-    `Place the product as the dramatic hero against a deep black studio background with subtle neon green rim lighting and soft volumetric haze.`,
-    `Cinematic moody product photography, high contrast, glossy reflections on the floor, sharp focus on the product, shallow depth of field.`,
+    `Place the product as the dramatic hero against ${preset.sceneBackground}.`,
+    `Aesthetic: ${preset.aesthetic}. Cinematic product photography, sharp focus on the product, shallow depth of field.`,
     `No text, no logos other than what's on the product, no watermarks, no humans. Square 1:1 framing with generous negative space for typography overlays around the product.`,
   ].join(" ");
 }
 
-function buildOverlayPrompt(i: PosterInput): string {
+function buildOverlayPrompt(i: PosterInput, preset: StylePreset): string {
   const brand = (i.brandName || "LUUT SLU").toUpperCase();
   const cta = (i.ctaText || "DM TO COP").toUpperCase();
   const pickup = i.meetupText || "Castries · Gros Islet · Vieux Fort";
   return [
-    `Marketing poster using the reference image as the background scene — preserve the product, lighting, composition, and dark background exactly as shown.`,
-    `Add bold text overlays in the LUUT SLU visual identity: pitch-black background, neon green accent color (#39FF14), heavy condensed sans-serif typography in the style of Bebas Neue, sharp uppercase, tight letter spacing.`,
-    `Top of poster: large product name "${i.productTitle.toUpperCase()}" in big white condensed uppercase headline.`,
-    `Just below the headline: price chip "${i.productPrice}" in a solid neon green pill with black text.`,
-    `Center-bottom CTA in a bold neon green ribbon: "${cta}".`,
-    `Small uppercase line above the brand: "${pickup}" in light grey.`,
-    `Bottom of poster: brand name "${brand}" centered in neon green, condensed uppercase, slightly wider letter spacing.`,
+    `Marketing poster using the reference image as the background scene — preserve the product, lighting, composition, and background exactly as shown.`,
+    `Visual identity: ${preset.paletteText}. Typography: ${preset.typography}.`,
+    `Top of poster: product name "${i.productTitle.toUpperCase()}" as ${preset.headlineColor}.`,
+    `Just below the headline: price "${i.productPrice}" as ${preset.priceChip}.`,
+    `Center-bottom CTA "${cta}" as ${preset.ctaRibbon}.`,
+    `Small uppercase line above the brand: "${pickup}" in a muted tone consistent with the palette.`,
+    `Bottom of poster: brand name "${brand}" centered in ${preset.brandText}.`,
+    `Stay strictly within the stated palette — do NOT introduce colours outside it (in particular, do not add neon green unless the palette specifies it).`,
     `All text crisp, perfectly spelled, legible, contained inside the poster bounds. No extra captions, no lorem ipsum, no duplicate text.`,
-    `Square 1:1 poster, premium streetwear / Caribbean resale aesthetic.`,
+    `Square 1:1 poster. Aesthetic: ${preset.aesthetic}.`,
     i.customInstructions?.trim() ? i.customInstructions.trim() : "",
   ].filter(Boolean).join(" ");
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -197,8 +286,10 @@ Deno.serve(async (req) => {
       return json({ error: "productImageUrl must be an http(s) URL or data URL" }, 400);
     }
 
+    const { key: styleKey, preset } = resolveStyle(body.posterStyle);
+
     // -------- Step 1: Flux Kontext -- styled scene around the real product
-    const scenePrompt = buildScenePrompt(body.productTitle);
+    const scenePrompt = buildScenePrompt(body.productTitle, preset);
     const fluxOutput = await runReplicate(FLUX_MODEL, {
       prompt: scenePrompt,
       input_image: sourceImageUrl,
@@ -209,8 +300,8 @@ Deno.serve(async (req) => {
     const sceneUrl = pickUrl(fluxOutput);
     if (!sceneUrl) return json({ error: "Flux Kontext returned no image" }, 502);
 
-    // -------- Step 2: Ideogram v3 Turbo -- add LUUT-styled text overlay
-    const overlayPrompt = buildOverlayPrompt(body);
+    // -------- Step 2: Ideogram v3 Turbo -- add styled text overlay
+    const overlayPrompt = buildOverlayPrompt(body, preset);
     const ideogramOutput = await runReplicate(IDEOGRAM_MODEL, {
       prompt: overlayPrompt,
       aspect_ratio: "1:1",
@@ -234,7 +325,7 @@ Deno.serve(async (req) => {
         thumbnail_url: publicUrl,
         generation_type: "poster",
         product_title: body.productTitle,
-        style: "flux-kontext+ideogram",
+        style: `${styleKey}|flux-kontext+ideogram`,
         aspect_ratio: "1:1",
         prompt_used: `[scene] ${scenePrompt}\n[overlay] ${overlayPrompt}`,
         created_by: userId,
