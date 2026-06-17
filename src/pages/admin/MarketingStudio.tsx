@@ -58,6 +58,7 @@ export default function MarketingStudio() {
           <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
             <TabsList className="mb-4">
               <TabsTrigger value="poster">Poster</TabsTrigger>
+              <TabsTrigger value="text-overlay">Text on Image</TabsTrigger>
               <TabsTrigger value="display">Display</TabsTrigger>
               <TabsTrigger value="video">Video</TabsTrigger>
               <TabsTrigger value="library">Library</TabsTrigger>
@@ -65,6 +66,10 @@ export default function MarketingStudio() {
 
             <TabsContent value="poster">
               <PosterTab brandStyle={brandStyle} />
+            </TabsContent>
+
+            <TabsContent value="text-overlay">
+              <TextOverlayTab />
             </TabsContent>
 
             <TabsContent value="display">
