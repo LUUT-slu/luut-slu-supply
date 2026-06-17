@@ -36,7 +36,8 @@ interface ReqBody {
   model: string;
   prompt: string;
   aspectRatio?: string;
-  referenceImages?: string[]; // http(s) URL or data: URL
+  referenceImages?: string[]; // product refs — http(s) URL or data: URL
+  styleReferenceImage?: string; // brand-style donor ref — http(s) URL or data: URL
   // Bookkeeping for the library row:
   productTitle?: string;
   productHandle?: string;
