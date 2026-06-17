@@ -58,6 +58,8 @@ export interface MobileShellProps {
   aiPosterResult: string | null;
   onGenerate: () => void;
   onOpenProductPicker: () => void;
+  customProductImage?: string | null;
+  setCustomProductImage?: (v: string | null) => void;
   displaySlot?: React.ReactNode;
   videoSlot?: React.ReactNode;
 
