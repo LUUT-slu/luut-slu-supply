@@ -474,11 +474,46 @@ const REF_PRESERVATION =
 
 // ---------- Prompt builders ----------
 
+function buildPosterLayoutBlueprint(c: PosterControls): string {
+  const isPortrait = c.aspectRatio === "4:5" || c.aspectRatio === "9:16" || c.aspectRatio === "3:4";
+  const isSquare = c.aspectRatio === "1:1";
+  const productZone = isPortrait
+    ? "the product image anchors the center of the poster, occupying roughly the middle 55–65% of the canvas, with clear breathing room above and below"
+    : isSquare
+      ? "the product image sits slightly right of center, occupying roughly 55% of the canvas, with text stacked on the left third"
+      : "the product image dominates the right two-thirds of the canvas, with the text block aligned along the left third";
+
+  const styleLayout: Record<PosterStyle, string> = {
+    clean:    "grid-aligned editorial layout: small brand wordmark top-left, thin horizontal divider, headline set in clean modern sans-serif at the top, subheadline directly beneath in a lighter weight, price and CTA pill anchored bottom-left, generous whitespace throughout",
+    luxury:   "centered symmetrical luxury layout: small serif brand wordmark top-center, headline set in an elegant serif centered above the product, subheadline in small caps beneath, thin gold or metallic divider lines, price and CTA centered at the bottom with refined spacing",
+    bold:     "high-impact poster grid: oversized condensed headline filling the top third edge-to-edge, product image centered beneath, price as an oversized number bottom-right, CTA pill bottom-left, brand wordmark top-left, strong solid color blocks dividing the composition",
+    hype:     "streetwear flyer layout: stencil/graffiti-style headline rotated or skewed across the top, product centered with halo glow, price ticker-tape along the bottom edge, CTA stamped lower-right, gritty texture overlay, brand wordmark small in a corner",
+    modern:   "asymmetric geometric layout: headline set diagonally or in a vertical stack along one edge, product floating with a colored geometric shape behind it, subheadline and price in a small information block bottom-corner, CTA as a clean rectangular button, brand wordmark opposite corner",
+    minimal:  "minimal poster layout: a single small headline at the top, the product centered with maximum negative space around it, price and CTA reduced to one small line at the bottom, brand wordmark tiny in a corner, restrained two-color palette",
+  };
+
+  const campaignAccent: Record<PosterCampaign, string> = {
+    sale:            "include a prominent percent-off badge or 'SALE' tag near the price",
+    promotion:       "include a small promotional badge near the CTA",
+    new_arrival:     "include a small 'NEW' or 'JUST IN' tag near the headline",
+    limited_drop:    "include a 'LIMITED' or numbered-drop stamp near the product",
+    clearance:       "include a bold 'CLEARANCE' or 'FINAL SALE' tag near the price",
+    brand_awareness: "no badges; keep the layout pure and brand-led",
+    event:           "include a date/time block near the CTA",
+  };
+
+  return `Poster layout blueprint (the generated image MUST follow this composition exactly): ${productZone}. ${styleLayout[c.style]}. ${campaignAccent[c.campaign]}. Text and product never overlap; each text element has its own designated zone; alignment is consistent; readable hierarchy from headline → subheadline → price → CTA → brand.`;
+}
+
 export function buildPosterPrompt(c: PosterControls, brand: BrandStyle): string {
   const parts: string[] = [];
   parts.push(
     `${POSTER_CAMPAIGN_LABEL[c.campaign]} for "${c.productTitle}", ${POSTER_STYLE_HINT[c.style]}.`,
   );
+
+  // Explicit layout blueprint — tells the model where every element goes so
+  // the poster is actually designed, not randomly composed.
+  parts.push(buildPosterLayoutBlueprint(c));
 
   // Product scene on the poster — composed coherently, product as primary subject.
   const scene = composeScene({
