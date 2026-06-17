@@ -379,19 +379,25 @@ export default function MarketingStudio() {
     );
   }, [productPayload?.price]);
 
-  // Optional user-uploaded photo that overrides the default listing image for
-  // the poster pipeline. Stored as a data URL; the edge function uploads it
-  // to storage before passing it to Replicate.
-  const [customProductImage, setCustomProductImage] = useState<string | null>(null);
-  // Reset the override when the user switches products.
+  // Optional user-uploaded reference photos that override / supplement the
+  // default listing image for the poster pipeline. Stored as data URLs;
+  // the edge function uploads them to storage before passing to Replicate.
+  // Up to 4 reference images supported.
+  const [customProductImages, setCustomProductImages] = useState<string[]>([]);
+  // Reset the overrides when the user switches products.
   useEffect(() => {
-    setCustomProductImage(null);
+    setCustomProductImages([]);
   }, [productPayload?.productImage]);
 
   const generateAiPoster = async () => {
     if (!productPayload) return;
-    const sourceImage = customProductImage || productPayload.productImage || "";
-    if (!sourceImage) {
+    const sourceImages =
+      customProductImages.length > 0
+        ? customProductImages
+        : productPayload.productImage
+        ? [productPayload.productImage]
+        : [];
+    if (sourceImages.length === 0) {
       toast.error("This product has no image — upload one to continue");
       return;
     }
@@ -405,7 +411,8 @@ export default function MarketingStudio() {
           productPrice:
             posterPrice ||
             (productPayload.price ? `EC$${Math.round(Number(productPayload.price))}` : ""),
-          productImageUrl: sourceImage,
+          productImageUrl: sourceImages[0],
+          productImageUrls: sourceImages,
           ctaText,
           brandName,
           meetupText,
