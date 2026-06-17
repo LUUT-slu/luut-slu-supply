@@ -1540,197 +1540,203 @@ function VideoStudioPanel({
     }
   }
 
+  const pillClass = (active: boolean) =>
+    `h-7 rounded-full border px-3 text-[11px] capitalize transition-colors ${
+      active
+        ? "border-[#e8e8e8] bg-[#e8e8e8] text-[#080808]"
+        : "border-[#1c1c1c] bg-[#111] text-[#aaa] hover:border-[#3a3a3a]"
+    }`;
+  const primaryBtnClass =
+    "flex w-full items-center justify-center gap-2 rounded-md bg-[#e8e8e8] px-4 py-2.5 text-[12px] font-bold text-[#080808] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40";
+  const outlineBtnClass =
+    "flex w-full items-center justify-center gap-2 rounded-md border border-[#1c1c1c] bg-[#111] px-4 py-2.5 text-[12px] text-[#e8e8e8] transition-colors hover:bg-[#181818] disabled:cursor-not-allowed disabled:opacity-40";
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {/* Section A — Product Video */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Product Video</CardTitle>
-          <p className="text-xs text-muted-foreground">
+      <div className="rounded-lg border border-[#1c1c1c] bg-[#0c0c0c] p-5 space-y-3">
+        <div>
+          <div className="text-[13px] font-semibold text-[#e8e8e8]">Product Video</div>
+          <p className="text-[11px] text-[#666] mt-0.5">
             Animate your product photo into a short marketing clip
           </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {!selectedProduct ? (
-            <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
-              Select a product to generate a video
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                {selectedProduct.images?.[0]?.url && (
-                  <img
-                    src={selectedProduct.images[0].url}
-                    alt={selectedProduct.title}
-                    className="h-12 w-12 rounded object-cover"
-                  />
-                )}
-                <div className="min-w-0 text-xs">
-                  <div className="truncate font-medium">{selectedProduct.title}</div>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs">Motion Style</Label>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {(["subtle", "dynamic", "cinematic"] as MotionStyle[]).map((s) => (
-                    <Button
-                      key={s}
-                      type="button"
-                      size="sm"
-                      variant={motionStyle === s ? "default" : "outline"}
-                      className="h-7 rounded-full px-3 text-[11px] capitalize"
-                      onClick={() => setMotionStyle(s)}
-                      disabled={productLoading}
-                    >
-                      {s}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs">Duration</Label>
-                <div className="mt-1.5 flex gap-1.5">
-                  {([5, 10] as const).map((d) => (
-                    <Button
-                      key={d}
-                      type="button"
-                      size="sm"
-                      variant={duration === d ? "default" : "outline"}
-                      className="h-7 rounded-full px-3 text-[11px]"
-                      onClick={() => setDuration(d)}
-                      disabled={productLoading}
-                    >
-                      {d}s
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <Button
-                className="w-full gap-2"
-                onClick={handleGenerateProductVideo}
-                disabled={!selectedProduct || productLoading}
-              >
-                {productLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating video... this takes ~30–60s
-                  </>
-                ) : (
-                  <>
-                    <Megaphone className="h-4 w-4" />
-                    Generate Product Video
-                  </>
-                )}
-              </Button>
-
-              {productVideoUrl && (
-                <div className="space-y-2">
-                  <video
-                    src={productVideoUrl}
-                    controls
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    className="w-full rounded-md border"
-                  />
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() =>
-                      downloadVideo(
-                        productVideoUrl,
-                        `luutslu-${(selectedProduct.title || "product").replace(/\s+/g, "-").toLowerCase()}-video.mp4`,
-                      )
-                    }
-                  >
-                    <Download className="h-4 w-4" />
-                    Download MP4
-                  </Button>
-                </div>
+        </div>
+        {!selectedProduct ? (
+          <div className="rounded-md border border-dashed border-[#1c1c1c] p-6 text-center text-[11px] text-[#555]">
+            Select a product to generate a video
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              {selectedProduct.images?.[0]?.url && (
+                <img
+                  src={selectedProduct.images[0].url}
+                  alt={selectedProduct.title}
+                  className="h-12 w-12 rounded object-cover"
+                />
               )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+              <div className="min-w-0 text-[12px]">
+                <div className="truncate font-medium text-[#e8e8e8]">{selectedProduct.title}</div>
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-1.5 text-[10px] uppercase tracking-[0.18em] text-[#555]">Motion Style</div>
+              <div className="flex flex-wrap gap-1.5">
+                {(["subtle", "dynamic", "cinematic"] as MotionStyle[]).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={pillClass(motionStyle === s)}
+                    onClick={() => setMotionStyle(s)}
+                    disabled={productLoading}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-1.5 text-[10px] uppercase tracking-[0.18em] text-[#555]">Duration</div>
+              <div className="flex gap-1.5">
+                {([5, 10] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={pillClass(duration === d)}
+                    onClick={() => setDuration(d)}
+                    disabled={productLoading}
+                  >
+                    {d}s
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className={primaryBtnClass}
+              onClick={handleGenerateProductVideo}
+              disabled={!selectedProduct || productLoading}
+            >
+              {productLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating video... ~30–60s
+                </>
+              ) : (
+                <>
+                  <Megaphone className="h-4 w-4" />
+                  Generate Product Video
+                </>
+              )}
+            </button>
+
+            {productVideoUrl && (
+              <div className="space-y-2">
+                <video
+                  src={productVideoUrl}
+                  controls
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="w-full rounded-md border border-[#1c1c1c]"
+                />
+                <button
+                  type="button"
+                  className={primaryBtnClass}
+                  onClick={() =>
+                    downloadVideo(
+                      productVideoUrl,
+                      `luutslu-${(selectedProduct.title || "product").replace(/\s+/g, "-").toLowerCase()}-video.mp4`,
+                    )
+                  }
+                >
+                  <Download className="h-4 w-4" />
+                  Download MP4
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Section B — Animate This Poster */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Animate This Poster</CardTitle>
-          <p className="text-xs text-muted-foreground">
+      <div className="rounded-lg border border-[#1c1c1c] bg-[#0c0c0c] p-5 space-y-3">
+        <div>
+          <div className="text-[13px] font-semibold text-[#e8e8e8]">Animate This Poster</div>
+          <p className="text-[11px] text-[#666] mt-0.5">
             Turn your finished poster into a video for Reels &amp; TikTok
           </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <input
-            ref={posterFileInputRef}
-            type="file"
-            accept="image/png,image/jpeg"
-            className="hidden"
-            onChange={handlePosterFileChange}
+        </div>
+        <input
+          ref={posterFileInputRef}
+          type="file"
+          accept="image/png,image/jpeg"
+          className="hidden"
+          onChange={handlePosterFileChange}
+        />
+        <button
+          type="button"
+          className={outlineBtnClass}
+          onClick={() => posterFileInputRef.current?.click()}
+          disabled={posterLoading}
+        >
+          <ImageIcon className="h-4 w-4" />
+          {posterDataUrl ? "Replace Poster Image" : "Upload Poster Image"}
+        </button>
+
+        {posterDataUrl && (
+          <img
+            src={posterDataUrl}
+            alt="Poster preview"
+            className="mx-auto max-h-48 rounded-md border border-[#1c1c1c] object-contain"
           />
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full gap-2"
-            onClick={() => posterFileInputRef.current?.click()}
-            disabled={posterLoading}
-          >
-            <ImageIcon className="h-4 w-4" />
-            {posterDataUrl ? "Replace Poster Image" : "Upload Poster Image"}
-          </Button>
+        )}
 
-          {posterDataUrl && (
-            <img
-              src={posterDataUrl}
-              alt="Poster preview"
-              className="mx-auto max-h-48 rounded-md border object-contain"
+        <button
+          type="button"
+          className={primaryBtnClass}
+          onClick={handleAnimatePoster}
+          disabled={!posterDataUrl || posterLoading}
+        >
+          {posterLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Animating poster... ~30s
+            </>
+          ) : (
+            <>
+              <Megaphone className="h-4 w-4" />
+              Animate Poster
+            </>
+          )}
+        </button>
+
+        {posterVideoUrl && (
+          <div className="space-y-2">
+            <video
+              src={posterVideoUrl}
+              controls
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full rounded-md border border-[#1c1c1c]"
             />
-          )}
-
-          <Button
-            className="w-full gap-2"
-            onClick={handleAnimatePoster}
-            disabled={!posterDataUrl || posterLoading}
-          >
-            {posterLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Animating poster... ~30s
-              </>
-            ) : (
-              <>
-                <Megaphone className="h-4 w-4" />
-                Animate Poster
-              </>
-            )}
-          </Button>
-
-          {posterVideoUrl && (
-            <div className="space-y-2">
-              <video
-                src={posterVideoUrl}
-                controls
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="w-full rounded-md border"
-              />
-              <Button
-                className="w-full gap-2"
-                onClick={() => downloadVideo(posterVideoUrl, `luutslu-${posterType}-poster-video.mp4`)}
-              >
-                <Download className="h-4 w-4" />
-                Download MP4
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            <button
+              type="button"
+              className={primaryBtnClass}
+              onClick={() => downloadVideo(posterVideoUrl, `luutslu-${posterType}-poster-video.mp4`)}
+            >
+              <Download className="h-4 w-4" />
+              Download MP4
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
