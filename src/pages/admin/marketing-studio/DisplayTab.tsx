@@ -103,7 +103,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
     focus,
     aspectRatio: aspect,
     notes,
-    hasReference: refs.length > 0 || Boolean(product?.images?.[0]?.url),
+    hasReference: refs.length > 0 || Boolean(variantImage),
   };
 
   const { route, prompt } = previewDisplayFinal(controls, brandStyle);
