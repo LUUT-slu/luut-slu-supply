@@ -101,6 +101,7 @@ export default function MobileShell(props: MobileShellProps) {
   } = props;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // Determine current "mode" for the nav
   const currentNav: "poster" | "display" | "video" | "library" =
