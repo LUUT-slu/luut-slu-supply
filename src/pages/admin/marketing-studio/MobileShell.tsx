@@ -249,17 +249,9 @@ export default function MobileShell(props: MobileShellProps) {
   const handleDisplayDownload = async () => {
     if (!displayResultUrl) return;
     try {
-      const res = await fetch(displayResultUrl);
-      const blob = await res.blob();
-      const file = new File([blob], "luut-display.png", { type: blob.type || "image/png" });
-      const navAny: any = navigator;
-      if (navAny.canShare && navAny.canShare({ files: [file] })) {
-        await navAny.share({ files: [file], title: "LUUT Display" });
-        return;
-      }
-      window.open(displayResultUrl, "_blank");
+      await downloadImage(displayResultUrl, "luut-display.png");
     } catch {
-      window.open(displayResultUrl, "_blank");
+      toast.error("Download failed");
     }
   };
 
