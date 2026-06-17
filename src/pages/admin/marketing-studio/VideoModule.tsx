@@ -212,10 +212,17 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
     MOTION_STYLES.find((m) => m.id === motionStyle)?.label
   } · Kling v2.1`;
 
+  // Compute preview dimensions from aspect ratio
+  const [rw, rh] = ratioToWH(aspectRatio);
+  const previewMax = 380;
+  const previewW = rw >= rh ? previewMax : Math.round((previewMax * rw) / rh);
+  const previewH = rh > rw ? previewMax : Math.round((previewMax * rh) / rw);
+
   return (
-    <div className="flex flex-1 overflow-hidden bg-[#080808] text-[#e8e8e8]">
+    <div className="flex flex-1 flex-col overflow-hidden bg-[#080808] text-[#e8e8e8] lg:flex-row">
       {/* ===== Sidebar ===== */}
-      <aside className="w-[300px] shrink-0 overflow-y-auto border-r border-[#1c1c1c] bg-[#0c0c0c] p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <aside className="w-full shrink-0 overflow-y-auto border-b border-[#1c1c1c] bg-[#0c0c0c] p-4 lg:w-[300px] lg:border-b-0 lg:border-r [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+
         <div className="flex flex-col gap-3.5 pb-6">
           {/* Product */}
           <div>
