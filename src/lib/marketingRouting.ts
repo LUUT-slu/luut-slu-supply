@@ -131,6 +131,7 @@ export interface PosterControls {
   productPrice?: string;
   campaign: PosterCampaign;
   style: PosterStyle;
+  realism: DisplayRealism;
   aspectRatio: AspectRatio;
   headline?: string;
   subheadline?: string;
@@ -141,6 +142,7 @@ export interface PosterControls {
   notes?: string;
   hasReference: boolean;
 }
+
 
 export interface DisplayControls {
   productTitle: string;
