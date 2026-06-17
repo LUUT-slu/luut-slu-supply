@@ -49,9 +49,30 @@ export interface DesktopChromeProps {
   onGenerate: () => void;
   onClear: () => void;
 
-  // Optional slots for non-poster tabs
+  // Optional slots for non-poster tabs (fallback)
   displaySlot?: React.ReactNode;
   videoSlot?: React.ReactNode;
+
+  // Display generator (optional — when provided, the Display tab uses the 3-col shell)
+  displayStyle?: DisplayStyle;
+  setDisplayStyle?: (s: DisplayStyle) => void;
+  displayAspect?: DisplayAspect;
+  setDisplayAspect?: (a: DisplayAspect) => void;
+  displayTextOverlay?: string;
+  setDisplayTextOverlay?: (s: string) => void;
+  displayBackground?: DisplayBackground;
+  setDisplayBackground?: (b: DisplayBackground) => void;
+  displayCustomPrompt?: string;
+  setDisplayCustomPrompt?: (s: string) => void;
+  modelGender?: ModelGender;
+  setModelGender?: (g: ModelGender) => void;
+  skinTone?: SkinTone;
+  setSkinTone?: (t: SkinTone) => void;
+  displayLoading?: boolean;
+  displayResultUrl?: string | null;
+  displayPrompt?: string;
+  onGenerateDisplay?: () => void;
+  onClearDisplay?: () => void;
 }
 
 const STYLES: { key: PosterStyle; label: string }[] = [
