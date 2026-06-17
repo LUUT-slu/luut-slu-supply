@@ -1,6 +1,10 @@
-// Generate a full AI marketing poster via Replicate (ideogram-v3-turbo),
-// store it in the `marketing-assets` Storage bucket, register it in
-// `marketing_generated_images`, and return a long-lived signed URL. Admin-only.
+// Two-step poster pipeline:
+//   1) Flux Kontext Pro — wraps the real product image in a premium dark scene
+//      while keeping the product accurate.
+//   2) Ideogram v3 Turbo — overlays LUUT SLU branded text (title, price, CTA,
+//      pickup locations, brand) on the styled scene.
+//
+// Square 1:1 only for now. Admin-only.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -14,98 +18,26 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN")!;
 const REPLICATE_API = "https://api.replicate.com/v1";
-const REPLICATE_MODEL = "ideogram-ai/ideogram-v3-turbo";
+const FLUX_MODEL = "black-forest-labs/flux-kontext-pro";
+const IDEOGRAM_MODEL = "ideogram-ai/ideogram-v3-turbo";
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
-
-type PosterStyle = "hype" | "clean" | "luxury" | "bold";
-type AspectRatio = "9:16" | "1:1" | "4:5" | "16:9";
 
 interface PosterInput {
   productTitle: string;
   productPrice: string;
-  productImageUrl: string;
-  ctaText: string;
-  brandName: string;
-  meetupText: string;
-  urgencyText: string;
-  tagline: string | null;
-  posterStyle: PosterStyle;
-  aspectRatio: AspectRatio;
-  customInstructions: string | null;
+  productImageUrl: string;       // http(s) URL OR data: URL (user override)
+  ctaText?: string;
+  brandName?: string;
+  meetupText?: string;
+  customInstructions?: string | null;
 }
 
-function mapAspect(r: AspectRatio): string {
-  // Ideogram v3 Turbo accepts plain ratio strings. 4:5 isn't supported -> fall back to 3:4.
-  switch (r) {
-    case "9:16": return "9:16";
-    case "1:1": return "1:1";
-    case "4:5": return "3:4";
-    case "16:9": return "16:9";
-    default: return "1:1";
-  }
-}
-
-function buildPrompt(i: PosterInput): string {
-  const {
-    productTitle, productPrice, ctaText, brandName,
-    meetupText, urgencyText, tagline, posterStyle, customInstructions,
-  } = i;
-
-  let base = "";
-  if (posterStyle === "hype") {
-    base = `Dark moody fashion marketing poster for ${brandName}.
-Black background with vivid neon green accent glow effects.
-Large bold product photo of ${productTitle} as the hero, dramatically lit from below.
-Top-left badge reads "${urgencyText}".
-Top-right brand mark reads "${brandName}".
-Large headline text "${productTitle}" in heavy white uppercase font.
-Price badge "${productPrice}" in solid neon green box with dark text.
-Bottom row small pills showing "In Stock" and "${meetupText}".
-Full-width rounded button at bottom reads "${ctaText}".
-${tagline ? `Tagline text "${tagline}" in small muted text below headline.` : ""}
-Style: streetwear brand, Gen Z energy, high contrast, premium dark aesthetic.`;
-  } else if (posterStyle === "clean") {
-    base = `Clean minimal product poster with white background for ${brandName}.
-Professional product photo of ${productTitle} centered with generous white space around it.
-Top-right corner text "${brandName}" in small dark grey sans-serif.
-Large headline "${productTitle}" in bold dark uppercase text below product.
-Price "${productPrice}" in a solid dark chip.
-Small text "${meetupText}" in light grey.
-Rounded button "${ctaText}" in solid dark color.
-${tagline ? `Tagline "${tagline}" in italic grey below headline.` : ""}
-Style: modern luxury minimal, lots of breathing room, editorial.`;
-  } else if (posterStyle === "luxury") {
-    base = `Premium luxury fashion poster for ${brandName}.
-Deep navy background with subtle gold gradient accents.
-Product ${productTitle} photographed with gold-toned lighting.
-Brand name "${brandName}" in elegant spaced gold serif letters at top.
-Product title "${productTitle}" in refined uppercase with wide letter spacing.
-Price "${productPrice}" in gold outlined chip.
-Location text "${meetupText}" in small gold text.
-CTA button "${ctaText}" with gold outline.
-${tagline ? `Tagline "${tagline}" in italic gold script.` : ""}
-Style: high-end fashion house, aspirational, Caribbean luxury.`;
-  } else {
-    base = `High impact bold marketing poster for ${brandName}.
-Vibrant gradient background, maximum contrast.
-Product ${productTitle} shown large, punchy angles.
-Massive headline "${productTitle}" taking up the upper half.
-Price badge "${productPrice}" in giant bold accent color chip.
-"${urgencyText}" in a bright ribbon banner.
-Meetup info "${meetupText}" in white text.
-Big loud button "${ctaText}" at the bottom.
-${tagline ? `"${tagline}" in bold supporting text.` : ""}
-Style: attention-grabbing street market energy, Caribbean hustle aesthetic.`;
-  }
-
-  const anchor = `Use the provided reference image as the exact product to feature in this poster. Do not invent or replace the product appearance. Reproduce the product accurately including its colors, shape, branding, and logo.`;
-  let full = `${anchor} ${base} This is a marketing poster for a Caribbean fashion resale brand based in Saint Lucia. All text must be clearly legible, correctly spelled, and placed inside the poster bounds.`;
-
-  if (customInstructions && customInstructions.trim()) {
-    full += ` ${customInstructions.trim()}`;
-  }
-  return full;
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
 async function runReplicate(
@@ -126,8 +58,8 @@ async function runReplicate(
       body: JSON.stringify({ input }),
     });
     if (createRes.status !== 429) break;
-    const retryAfterHeader = createRes.headers.get("retry-after");
     lastText = await createRes.text().catch(() => "");
+    const retryAfterHeader = createRes.headers.get("retry-after");
     let waitMs = 0;
     if (retryAfterHeader) waitMs = parseInt(retryAfterHeader, 10) * 1000;
     if (!waitMs) {
@@ -140,9 +72,8 @@ async function runReplicate(
 
   if (!createRes || !createRes.ok) {
     const text = createRes ? await createRes.text().catch(() => lastText) : lastText;
-    const status = createRes?.status ?? 0;
-    const err: any = new Error(`Replicate ${status}: ${text}`);
-    err.status = status;
+    const err: any = new Error(`Replicate ${createRes?.status ?? 0}: ${text}`);
+    err.status = createRes?.status ?? 0;
     throw err;
   }
 
@@ -153,14 +84,13 @@ async function runReplicate(
     prediction.status !== "failed" &&
     prediction.status !== "canceled"
   ) {
-    if (Date.now() - start > 120_000) throw new Error("Replicate prediction timed out");
+    if (Date.now() - start > 180_000) throw new Error("Replicate prediction timed out");
     await new Promise((r) => setTimeout(r, 1500));
     const pollRes = await fetch(`${REPLICATE_API}/predictions/${prediction.id}`, {
       headers: { Authorization: `Token ${REPLICATE_API_TOKEN}` },
     });
     if (!pollRes.ok) {
-      const text = await pollRes.text().catch(() => "");
-      throw new Error(`Replicate poll ${pollRes.status}: ${text}`);
+      throw new Error(`Replicate poll ${pollRes.status}: ${await pollRes.text().catch(() => "")}`);
     }
     prediction = await pollRes.json();
   }
@@ -170,11 +100,76 @@ async function runReplicate(
   return prediction.output;
 }
 
+function pickUrl(output: unknown): string | null {
+  if (Array.isArray(output)) return output[0] ? String(output[0]) : null;
+  if (typeof output === "string") return output;
+  return null;
+}
+
+async function uploadBytesToBucket(
+  admin: ReturnType<typeof createClient>,
+  bytes: Uint8Array,
+  contentType: string,
+  prefix: string,
+): Promise<string> {
+  const ext = contentType.includes("jpeg") ? "jpg" : contentType.includes("webp") ? "webp" : "png";
+  const path = `${prefix}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+  const up = await admin.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: true });
+  if (up.error) throw new Error(`Storage upload failed: ${up.error.message}`);
+  const { data: signed, error: signedErr } = await admin.storage
+    .from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
+  if (signedErr || !signed?.signedUrl) {
+    throw new Error(`Could not create signed URL: ${signedErr?.message || "unknown"}`);
+  }
+  return signed.signedUrl;
+}
+
+async function dataUrlToHostedUrl(
+  admin: ReturnType<typeof createClient>,
+  dataUrl: string,
+): Promise<string> {
+  const m = dataUrl.match(/^data:([^;,]+);base64,(.+)$/);
+  if (!m) throw new Error("Invalid data URL for product image override");
+  const contentType = m[1] || "image/png";
+  const b64 = m[2];
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return uploadBytesToBucket(admin, bytes, contentType, "poster-src");
+}
+
+function buildScenePrompt(title: string): string {
+  return [
+    `Premium streetwear marketing scene featuring the exact product shown in the reference image: ${title}.`,
+    `Keep the product 100% accurate — same colors, shape, branding, logos, materials, proportions. Do NOT modify, restyle, or replace the product.`,
+    `Place the product as the dramatic hero against a deep black studio background with subtle neon green rim lighting and soft volumetric haze.`,
+    `Cinematic moody product photography, high contrast, glossy reflections on the floor, sharp focus on the product, shallow depth of field.`,
+    `No text, no logos other than what's on the product, no watermarks, no humans. Square 1:1 framing with generous negative space for typography overlays around the product.`,
+  ].join(" ");
+}
+
+function buildOverlayPrompt(i: PosterInput): string {
+  const brand = (i.brandName || "LUUT SLU").toUpperCase();
+  const cta = (i.ctaText || "DM TO COP").toUpperCase();
+  const pickup = i.meetupText || "Castries · Gros Islet · Vieux Fort";
+  return [
+    `Marketing poster using the reference image as the background scene — preserve the product, lighting, composition, and dark background exactly as shown.`,
+    `Add bold text overlays in the LUUT SLU visual identity: pitch-black background, neon green accent color (#39FF14), heavy condensed sans-serif typography in the style of Bebas Neue, sharp uppercase, tight letter spacing.`,
+    `Top of poster: large product name "${i.productTitle.toUpperCase()}" in big white condensed uppercase headline.`,
+    `Just below the headline: price chip "${i.productPrice}" in a solid neon green pill with black text.`,
+    `Center-bottom CTA in a bold neon green ribbon: "${cta}".`,
+    `Small uppercase line above the brand: "${pickup}" in light grey.`,
+    `Bottom of poster: brand name "${brand}" centered in neon green, condensed uppercase, slightly wider letter spacing.`,
+    `All text crisp, perfectly spelled, legible, contained inside the poster bounds. No extra captions, no lorem ipsum, no duplicate text.`,
+    `Square 1:1 poster, premium streetwear / Caribbean resale aesthetic.`,
+    i.customInstructions?.trim() ? i.customInstructions.trim() : "",
+  ].filter(Boolean).join(" ");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Auth: caller must be admin
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace(/^Bearer\s+/i, "");
     if (!token) return json({ error: "Unauthorized" }, 401);
@@ -185,67 +180,53 @@ Deno.serve(async (req) => {
     if (!userId) return json({ error: "Unauthorized" }, 401);
 
     const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userId);
-    const isAdmin = roles?.some((r: { role: string }) => r.role === "admin");
-    if (!isAdmin) return json({ error: "Admin access required" }, 403);
+    if (!roles?.some((r: { role: string }) => r.role === "admin")) {
+      return json({ error: "Admin access required" }, 403);
+    }
 
     const body = (await req.json().catch(() => ({}))) as PosterInput;
-    const required: (keyof PosterInput)[] = [
-      "productTitle", "ctaText", "brandName", "posterStyle", "aspectRatio",
-    ];
-    for (const k of required) {
-      if (!body[k]) return json({ error: `Missing required field: ${k}` }, 400);
+    if (!body.productTitle) return json({ error: "Missing productTitle" }, 400);
+    if (!body.productImageUrl) return json({ error: "Missing productImageUrl" }, 400);
+    if (!body.productPrice) return json({ error: "Missing productPrice" }, 400);
+
+    // Normalize product image into a hosted URL Replicate can fetch.
+    let sourceImageUrl = body.productImageUrl;
+    if (sourceImageUrl.startsWith("data:")) {
+      sourceImageUrl = await dataUrlToHostedUrl(admin, sourceImageUrl);
+    } else if (!/^https?:\/\//i.test(sourceImageUrl)) {
+      return json({ error: "productImageUrl must be an http(s) URL or data URL" }, 400);
     }
 
-    const fullPrompt = buildPrompt(body);
-    const aspect_ratio = mapAspect(body.aspectRatio);
+    // -------- Step 1: Flux Kontext -- styled scene around the real product
+    const scenePrompt = buildScenePrompt(body.productTitle);
+    const fluxOutput = await runReplicate(FLUX_MODEL, {
+      prompt: scenePrompt,
+      input_image: sourceImageUrl,
+      aspect_ratio: "1:1",
+      output_format: "png",
+      safety_tolerance: 2,
+    });
+    const sceneUrl = pickUrl(fluxOutput);
+    if (!sceneUrl) return json({ error: "Flux Kontext returned no image" }, 502);
 
-    const replicateInput: Record<string, unknown> = {
-      prompt: fullPrompt,
-      aspect_ratio,
+    // -------- Step 2: Ideogram v3 Turbo -- add LUUT-styled text overlay
+    const overlayPrompt = buildOverlayPrompt(body);
+    const ideogramOutput = await runReplicate(IDEOGRAM_MODEL, {
+      prompt: overlayPrompt,
+      aspect_ratio: "1:1",
       style_type: "Auto",
       magic_prompt_option: "On",
-    };
-    if (body.productImageUrl && /^https?:\/\//i.test(body.productImageUrl)) {
-      replicateInput.style_reference_images = [body.productImageUrl];
-    }
+      style_reference_images: [sceneUrl],
+    });
+    const finalUrl = pickUrl(ideogramOutput);
+    if (!finalUrl) return json({ error: "Ideogram returned no image" }, 502);
 
-    const output = await runReplicate(REPLICATE_MODEL, replicateInput);
-
-    // Ideogram returns either a string URL or an array of URLs.
-    const imageUrl = Array.isArray(output)
-      ? String(output[0])
-      : typeof output === "string"
-        ? output
-        : null;
-    if (!imageUrl) return json({ error: "Replicate returned no image" }, 502);
-
-    const imgRes = await fetch(imageUrl);
+    // -------- Persist the final poster in our bucket
+    const imgRes = await fetch(finalUrl);
     if (!imgRes.ok) return json({ error: `Failed to download generated image: ${imgRes.status}` }, 502);
     const contentType = imgRes.headers.get("content-type") || "image/png";
-    const ext = contentType.includes("jpeg") ? "jpg" : contentType.includes("webp") ? "webp" : "png";
     const bytes = new Uint8Array(await imgRes.arrayBuffer());
-    const path = `ai-poster-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
-
-    const upload = await admin.storage.from(BUCKET).upload(path, bytes, {
-      contentType,
-      upsert: true,
-    });
-    if (upload.error) {
-      const msg = upload.error.message || "";
-      if (/not.?found/i.test(msg) || /bucket/i.test(msg)) {
-        return json({ error: "Storage not configured — run the marketing_assets migration first" }, 500);
-      }
-      console.error("Storage upload error", upload.error);
-      return json({ error: "Failed to store image" }, 500);
-    }
-
-    const { data: signed, error: signedErr } = await admin.storage
-      .from(BUCKET)
-      .createSignedUrl(path, SIGNED_URL_TTL);
-    if (signedErr || !signed?.signedUrl) {
-      return json({ error: `Could not create signed URL: ${signedErr?.message || "unknown"}` }, 500);
-    }
-    const publicUrl = signed.signedUrl;
+    const publicUrl = await uploadBytesToBucket(admin, bytes, contentType, "ai-poster");
 
     try {
       await admin.from("marketing_generated_images").insert({
@@ -253,16 +234,20 @@ Deno.serve(async (req) => {
         thumbnail_url: publicUrl,
         generation_type: "poster",
         product_title: body.productTitle,
-        style: body.posterStyle,
-        aspect_ratio: body.aspectRatio,
-        prompt_used: fullPrompt,
+        style: "flux-kontext+ideogram",
+        aspect_ratio: "1:1",
+        prompt_used: `[scene] ${scenePrompt}\n[overlay] ${overlayPrompt}`,
         created_by: userId,
       });
     } catch (e) {
       console.warn("marketing_generated_images insert skipped", e);
     }
 
-    return json({ url: publicUrl, prompt: fullPrompt });
+    return json({
+      url: publicUrl,
+      sceneUrl,
+      prompt: overlayPrompt,
+    });
   } catch (e: any) {
     console.error("generate-ai-poster error", e);
     const message = e instanceof Error ? e.message : "Unknown error";
@@ -272,10 +257,3 @@ Deno.serve(async (req) => {
     return json({ error: message }, 500);
   }
 });
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
