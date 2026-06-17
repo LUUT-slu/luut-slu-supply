@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import PosterLightbox from "./PosterLightbox";
 import { prepareMarketingSourceImages } from "@/lib/marketingSourceImages";
+import { downloadImage } from "@/lib/downloadImage";
 
 type StudioMode = "select" | "images" | "videos";
 type AiStyle = "default" | "hype" | "clean" | "luxury" | "bold";
