@@ -503,14 +503,27 @@ export default function DesktopChrome(props: DesktopChromeProps) {
             </div>
           </aside>
         </div>
+      ) : activeTab === "display" ? (
+        <div className="flex flex-1 overflow-auto bg-[#080808]">
+          <div className="mx-auto w-full max-w-5xl p-8">
+            {displaySlot ?? (
+              <div className="text-center text-[12px] text-[#555]">Display generator unavailable.</div>
+            )}
+          </div>
+        </div>
+      ) : activeTab === "video" ? (
+        <div className="flex flex-1 overflow-auto bg-[#080808]">
+          <div className="mx-auto w-full max-w-5xl p-8">
+            {videoSlot ?? (
+              <div className="text-center text-[12px] text-[#555]">Video generator unavailable.</div>
+            )}
+          </div>
+        </div>
       ) : (
-        // Non-poster tabs: render placeholder that hands control back to mobile tree below.
-        // We unmount the desktop chrome at lg by not applying lg:hidden externally;
-        // instead, when switching tabs the parent will toggle showAiPoster.
         <div className="flex flex-1 items-center justify-center bg-[#080808] p-12 text-center text-[#aaa]">
           <div className="max-w-md space-y-3">
             <div className="text-[11px] uppercase tracking-[0.2em] text-[#555]">{activeTab}</div>
-            <div className="text-[14px] text-[#e8e8e8]">Switching view…</div>
+            <div className="text-[14px] text-[#e8e8e8]">Opening…</div>
           </div>
         </div>
       )}
