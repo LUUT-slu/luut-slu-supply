@@ -345,7 +345,7 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
             <div className="flex-1">
               <div className={sLabel}>Ratio</div>
               <div className="flex flex-wrap gap-1.5">
-                {(["9:16", "1:1", "16:9"] as RatioV[]).map((r) => (
+                {RATIOS.map((r) => (
                   <button
                     key={r}
                     type="button"
