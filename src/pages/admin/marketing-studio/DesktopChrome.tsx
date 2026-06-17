@@ -521,6 +521,11 @@ export default function DesktopChrome(props: DesktopChromeProps) {
         </div>
         <span className="rounded-full border border-[#1c1c1c] bg-[#111] px-3 py-1 text-[#aaa]">Replicate</span>
       </footer>
+      <PosterLightbox
+        open={lightboxOpen}
+        src={aiPosterResult}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   );
 }
