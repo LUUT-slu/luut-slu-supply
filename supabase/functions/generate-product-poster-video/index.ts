@@ -13,7 +13,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN");
 const REPLICATE_API = "https://api.replicate.com/v1";
-const MODEL = "wan-video/wan-2.2-i2v-480p";
+const MODEL = "wan-video/wan-2.2-i2v-fast";
 
 const POSTER_PROMPT =
   "The marketing poster animates to life. Text elements fade in sequentially. Product image pulses with a subtle glow. Background has a slow, smooth gradient shift. Professional, eye-catching social media motion graphic. No camera shake, no distortion.";
