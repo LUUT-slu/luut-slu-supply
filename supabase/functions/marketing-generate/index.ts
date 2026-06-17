@@ -187,7 +187,7 @@ function buildModelInput(
         prompt: enhancedPrompt,
         aspect_ratio: aspect,
         magic_prompt_option: "Auto",
-        style_type: "DESIGN",
+        style_type: "Design",
       };
       // Ideogram's style_reference_images is style-only by design, so the
       // brand-style donor fits naturally alongside the product refs here.
