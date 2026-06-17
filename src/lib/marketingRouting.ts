@@ -117,15 +117,24 @@ export function buildBrandStyleSnippet(b: BrandStyle): string {
  * sentence that folds its visual DNA into the unified scene prompt. The sentence
  * is explicit that the reference is style-only — no content carries over.
  */
-export function buildBrandStyleReferenceClause(b: BrandStyle): string {
+export function getBrandStyleReferenceImage(
+  b: BrandStyle,
+  surface: BrandSurface,
+): string | undefined {
   const def = getBrandStyleDef(b);
-  if (!def?.referenceImage) return "";
-  const name = def.label || "the saved brand style";
-  return `Channel the visual DNA of the attached "${name}" brand-style reference — its color palette, lighting mood, composition rhythm, background treatment, typography feel, and how the subject is positioned — so this same scene looks like it belongs to that campaign. Treat that reference strictly as a style donor: do not copy, reproduce, or borrow any object, product, person, logo, or text from it; only its aesthetic carries over. The product in this image remains the one currently selected, unchanged in identity.`;
+  if (!def) return undefined;
+  if (surface === "poster") return def.referenceImagePoster || def.referenceImage;
+  return def.referenceImageDisplay || def.referenceImage;
 }
 
-export function getBrandStyleReferenceImage(b: BrandStyle): string | undefined {
-  return getBrandStyleDef(b)?.referenceImage;
+export function buildBrandStyleReferenceClause(b: BrandStyle, surface: BrandSurface): string {
+  const def = getBrandStyleDef(b);
+  if (!def) return "";
+  const ref = getBrandStyleReferenceImage(b, surface);
+  if (!ref) return "";
+  const name = def.label || "the saved brand style";
+  const surfaceWord = surface === "poster" ? "poster" : "display image";
+  return `Channel the visual DNA of the attached "${name}" brand-style ${surfaceWord} reference — its color palette, lighting mood, composition rhythm, background treatment, typography feel, and how the subject is positioned — so this same scene looks like it belongs to that campaign. Treat that reference strictly as a style donor: do not copy, reproduce, or borrow any object, product, person, logo, or text from it; only its aesthetic carries over. The product in this image remains the one currently selected, unchanged in identity.`;
 }
 
 
