@@ -410,6 +410,7 @@ export default function MarketingStudio() {
           brandName,
           meetupText,
           customInstructions: aiPosterCustom || null,
+          posterStyle: aiPosterStyle,
         },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
