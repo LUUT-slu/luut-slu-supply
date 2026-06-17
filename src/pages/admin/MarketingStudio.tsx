@@ -1901,7 +1901,7 @@ export default function MarketingStudio() {
                             onClick={() => {
                               const a = document.createElement("a");
                               a.href = aiPosterResult!;
-                              a.download = `luut-ai-poster-${Date.now()}.png`;
+                              a.download = `luut-ai-poster-${Date.now()}.svg`;
                               a.click();
                             }}
                           >
