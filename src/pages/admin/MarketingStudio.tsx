@@ -2406,10 +2406,7 @@ function RecentlySavedStrip() {
                 )}
                 <span>{formatDate(preview.created_at)}</span>
               </div>
-              <Button onClick={() => download(preview.image_url, preview.id)} className="w-full">
-                <Download className="h-4 w-4 mr-2" />
-                Download PNG
-              </Button>
+              const isMobileDevice = /Mobi|Android/i.test(navigator.userAgent);
             </div>
           )}
         </DialogContent>
