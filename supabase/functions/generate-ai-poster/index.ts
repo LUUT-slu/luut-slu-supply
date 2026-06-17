@@ -117,8 +117,19 @@ Style: attention-grabbing street market energy, Caribbean hustle aesthetic.`;
   return full;
 }
 
-async function refinePromptWithClaude(prompt: string): Promise<string> {
+async function planPosterWithClaude(input: PosterInput, prompt: string): Promise<{ prompt: string; plan: PosterPlan }> {
   if (!ANTHROPIC_KEY) throw new Error("Claude is not configured");
+
+  const aspect = mapAspect(input.aspectRatio);
+  const fallbackPlan: PosterPlan = {
+    background: input.posterStyle === "clean" ? "#f8fafc" : input.posterStyle === "luxury" ? "#07111f" : "#050505",
+    accent: input.posterStyle === "luxury" ? "#c9a84c" : input.posterStyle === "bold" ? "#ff2d78" : "#39ff7a",
+    text: input.posterStyle === "clean" ? "#111827" : "#ffffff",
+    muted: input.posterStyle === "clean" ? "#6b7280" : "#d1d5db",
+    surface: input.posterStyle === "clean" ? "#ffffff" : "#111111",
+    mood: input.posterStyle,
+    layout: aspect.ratio === "16:9" ? "wide" : aspect.ratio === "1:1" ? "square" : "portrait",
+  };
 
   const res = await fetch(ANTHROPIC_URL, {
     method: "POST",
@@ -129,10 +140,10 @@ async function refinePromptWithClaude(prompt: string): Promise<string> {
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 900,
+      max_tokens: 1000,
       temperature: 0.3,
       system:
-        "You are the marketing design brain for Luut SLU. Rewrite the user's poster brief into one concise image-generation prompt. Preserve every required text string exactly. Return only the final prompt, no markdown.",
+        "You are the only AI brain for Luut SLU marketing automation. Convert poster requests into a concrete design plan. Return only valid JSON with keys prompt and plan. plan must include background, accent, text, muted, surface, mood, and layout. Use hex colors. Preserve required text exactly.",
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -149,53 +160,91 @@ async function refinePromptWithClaude(prompt: string): Promise<string> {
     .join("\n")
     .trim();
 
-  return text || prompt;
+  if (!text) return { prompt, plan: fallbackPlan };
+
+  try {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    const parsed = JSON.parse(start >= 0 && end > start ? text.slice(start, end + 1) : text);
+    return {
+      prompt: typeof parsed.prompt === "string" ? parsed.prompt : prompt,
+      plan: { ...fallbackPlan, ...(parsed.plan || {}) },
+    };
+  } catch {
+    return { prompt: text || prompt, plan: fallbackPlan };
+  }
 }
 
-async function generateViaGateway(prompt: string, productImageUrl?: string): Promise<Uint8Array> {
-  if (!LOVABLE_API_KEY) throw new Error("AI image generation is not configured");
-
-  const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
-  if (productImageUrl) {
-    content.push({ type: "image_url", image_url: { url: productImageUrl } });
+async function fetchProductDataUrl(productImageUrl?: string): Promise<string | null> {
+  if (!productImageUrl) return null;
+  try {
+    const res = await fetch(productImageUrl);
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") || "image/png";
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return `data:${contentType};base64,${btoa(binary)}`;
+  } catch {
+    return null;
   }
+}
 
-  const res = await fetch(AI_GATEWAY, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash-image",
-      messages: [{ role: "user", content }],
-      modalities: ["image", "text"],
-    }),
-  });
+function escapeXml(value: string | null | undefined): string {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`AI Gateway ${res.status}: ${text}`);
-  }
+function generatePosterSvg(input: PosterInput, plan: PosterPlan, productDataUrl: string | null): string {
+  const aspect = mapAspect(input.aspectRatio);
+  const [width, height] = aspect.dimensions.split("×").map((n) => Number(n));
+  const isWide = width > height;
+  const pad = isWide ? 72 : 86;
+  const heroSize = isWide ? Math.min(width * 0.42, height * 0.74) : Math.min(width * 0.72, height * 0.44);
+  const titleSize = isWide ? 78 : input.aspectRatio === "1:1" ? 82 : 104;
+  const titleY = isWide ? pad + 92 : pad + 132;
+  const heroX = isWide ? width - pad - heroSize : (width - heroSize) / 2;
+  const heroY = isWide ? (height - heroSize) / 2 : height * 0.34;
+  const textWidth = isWide ? width * 0.48 : width - pad * 2;
+  const ctaY = height - pad - 86;
 
-  const data = await res.json();
-  const first = data?.data?.[0];
-  const b64 = first?.b64_json ?? first?.image?.b64_json;
-  if (b64 && typeof b64 === "string") {
-    const bin = atob(b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return bytes;
-  }
+  const bg = escapeXml(plan.background);
+  const accent = escapeXml(plan.accent);
+  const text = escapeXml(plan.text);
+  const muted = escapeXml(plan.muted);
+  const surface = escapeXml(plan.surface);
+  const title = escapeXml(input.productTitle);
+  const brand = escapeXml(input.brandName);
+  const price = escapeXml(input.productPrice);
+  const cta = escapeXml(input.ctaText);
+  const meetup = escapeXml(input.meetupText);
+  const urgency = escapeXml(input.urgencyText);
+  const tagline = escapeXml(input.tagline || "");
 
-  const outputUrl = first?.url ?? first?.image_url ?? (Array.isArray(data?.output) ? data.output[0] : data?.output);
-  if (typeof outputUrl === "string") {
-    const imgRes = await fetch(outputUrl);
-    if (!imgRes.ok) throw new Error("Failed to fetch generated image");
-    return new Uint8Array(await imgRes.arrayBuffer());
-  }
-
-  throw new Error("AI Gateway returned no image data");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="70%"><stop offset="0%" stop-color="${accent}" stop-opacity="0.35"/><stop offset="48%" stop-color="${bg}" stop-opacity="0.88"/><stop offset="100%" stop-color="${bg}"/></radialGradient>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="28" stdDeviation="28" flood-color="#000000" flood-opacity="0.42"/></filter>
+  </defs>
+  <rect width="${width}" height="${height}" fill="${bg}"/>
+  <rect width="${width}" height="${height}" fill="url(#glow)"/>
+  <text x="${pad}" y="${pad}" fill="${text}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="900" letter-spacing="4">${brand.toUpperCase()}</text>
+  <rect x="${width - pad - 285}" y="${pad - 34}" width="285" height="58" rx="29" fill="${accent}"/>
+  <text x="${width - pad - 142}" y="${pad + 5}" text-anchor="middle" fill="${bg}" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="900">${urgency.toUpperCase()}</text>
+  <foreignObject x="${pad}" y="${titleY}" width="${textWidth}" height="${isWide ? 230 : 330}"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Inter,Arial,sans-serif;color:${text};font-size:${titleSize}px;line-height:.92;font-weight:900;text-transform:uppercase;letter-spacing:0;word-break:break-word;">${title}</div></foreignObject>
+  ${tagline ? `<text x="${pad}" y="${titleY + (isWide ? 260 : 360)}" fill="${muted}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700">${tagline}</text>` : ""}
+  <circle cx="${heroX + heroSize / 2}" cy="${heroY + heroSize / 2}" r="${heroSize / 1.9}" fill="${accent}" opacity="0.18"/>
+  <rect x="${heroX}" y="${heroY}" width="${heroSize}" height="${heroSize}" rx="${Math.round(heroSize * 0.08)}" fill="${surface}" filter="url(#shadow)"/>
+  ${productDataUrl ? `<image href="${productDataUrl}" x="${heroX + 26}" y="${heroY + 26}" width="${heroSize - 52}" height="${heroSize - 52}" preserveAspectRatio="xMidYMid meet"/>` : `<text x="${heroX + heroSize / 2}" y="${heroY + heroSize / 2}" text-anchor="middle" fill="${muted}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="800">${title}</text>`}
+  <rect x="${pad}" y="${ctaY - 108}" width="${Math.min(350, textWidth)}" height="76" rx="20" fill="${accent}"/>
+  <text x="${pad + Math.min(350, textWidth) / 2}" y="${ctaY - 58}" text-anchor="middle" fill="${bg}" font-family="Inter,Arial,sans-serif" font-size="42" font-weight="900">${price}</text>
+  <text x="${pad}" y="${ctaY - 4}" fill="${muted}" font-family="Inter,Arial,sans-serif" font-size="28" font-weight="700">${meetup}</text>
+  <rect x="${pad}" y="${ctaY + 20}" width="${width - pad * 2}" height="86" rx="43" fill="${accent}"/>
+  <text x="${width / 2}" y="${ctaY + 75}" text-anchor="middle" fill="${bg}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="900">${cta.toUpperCase()}</text>
+</svg>`;
 }
 
 Deno.serve(async (req) => {
