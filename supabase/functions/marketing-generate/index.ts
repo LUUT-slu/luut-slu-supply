@@ -243,6 +243,7 @@ Deno.serve(async (req) => {
       prompt,
       aspectRatio = "1:1",
       referenceImages = [],
+      styleReferenceImage,
       productTitle,
       productHandle,
       campaignType,
@@ -250,7 +251,7 @@ Deno.serve(async (req) => {
     } = body;
 
     if (!task || (task !== "poster" && task !== "display")) {
-      return json({ error: "task must be poster or display" }, 400);
+      return json({ error: "task must be poster or political" }, 400);
     }
     if (!model || !SUPPORTED_MODELS.has(model)) {
       return json({ error: `Unsupported model: ${model}` }, 400);
@@ -259,15 +260,20 @@ Deno.serve(async (req) => {
       return json({ error: "prompt is required" }, 400);
     }
 
-    // Normalize refs (uploads data: refs to storage).
+    // Normalize product refs (uploads data: refs to storage).
     const hostedRefs: string[] = [];
     for (const r of referenceImages.slice(0, 4)) {
       if (!r) continue;
       hostedRefs.push(await normalizeRef(admin, r));
     }
+    // Normalize the brand-style donor ref, if any.
+    let hostedStyleRef: string | null = null;
+    if (styleReferenceImage) {
+      hostedStyleRef = await normalizeRef(admin, styleReferenceImage);
+    }
 
     const effectiveModel = resolveModel(model, hostedRefs);
-    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs);
+    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef);
     const output = await runReplicate(effectiveModel, input);
     const srcUrl = pickUrl(output);
     if (!srcUrl) throw new Error("Replicate returned no image URL");
