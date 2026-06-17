@@ -120,7 +120,7 @@ export default function BrandStyleSelector({
       toast.error("Name is required");
       return;
     }
-    if (!snippet && !draft.referenceImage) {
+    if (!snippet && !draft.referenceImagePoster && !draft.referenceImageDisplay) {
       toast.error("Add a style description or a reference image");
       return;
     }
@@ -134,7 +134,9 @@ export default function BrandStyleSelector({
               label,
               description: draft.description.trim() || "Custom brand style",
               snippet,
-              referenceImage: draft.referenceImage,
+              referenceImage: undefined, // drop legacy field once edited
+              referenceImagePoster: draft.referenceImagePoster,
+              referenceImageDisplay: draft.referenceImageDisplay,
             }
           : s,
       );
@@ -147,7 +149,8 @@ export default function BrandStyleSelector({
           label,
           description: draft.description.trim() || "Custom brand style",
           snippet,
-          referenceImage: draft.referenceImage,
+          referenceImagePoster: draft.referenceImagePoster,
+          referenceImageDisplay: draft.referenceImageDisplay,
           custom: true,
         },
       ];
