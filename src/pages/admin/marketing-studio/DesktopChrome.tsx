@@ -43,6 +43,10 @@ export interface DesktopChromeProps {
   lastGeneratedAt: number | null;
   onGenerate: () => void;
   onClear: () => void;
+
+  // Optional slots for non-poster tabs
+  displaySlot?: React.ReactNode;
+  videoSlot?: React.ReactNode;
 }
 
 const STYLES: { key: PosterStyle; label: string }[] = [
@@ -148,6 +152,8 @@ export default function DesktopChrome(props: DesktopChromeProps) {
     lastGeneratedAt,
     onGenerate,
     onClear,
+    displaySlot,
+    videoSlot,
   } = props;
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -185,13 +191,13 @@ export default function DesktopChrome(props: DesktopChromeProps) {
           </div>
         </div>
 
-        <nav className="flex items-center gap-1 rounded-full border border-[#1c1c1c] bg-[#111] p-1">
+        <nav className="flex shrink-0 items-center gap-1 rounded-full border border-[#1c1c1c] bg-[#111] p-1">
           {(["poster", "display", "video", "library"] as DesktopTab[]).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => onTabChange(t)}
-              className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.14em] transition-colors ${
+              className={`whitespace-nowrap rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.14em] transition-colors ${
                 activeTab === t
                   ? "bg-[#e8e8e8] text-[#080808]"
                   : "text-[#aaa] hover:text-[#e8e8e8]"
@@ -497,14 +503,27 @@ export default function DesktopChrome(props: DesktopChromeProps) {
             </div>
           </aside>
         </div>
+      ) : activeTab === "display" ? (
+        <div className="flex flex-1 overflow-auto bg-[#080808]">
+          <div className="mx-auto w-full max-w-5xl p-8">
+            {displaySlot ?? (
+              <div className="text-center text-[12px] text-[#555]">Display generator unavailable.</div>
+            )}
+          </div>
+        </div>
+      ) : activeTab === "video" ? (
+        <div className="flex flex-1 overflow-auto bg-[#080808]">
+          <div className="mx-auto w-full max-w-5xl p-8">
+            {videoSlot ?? (
+              <div className="text-center text-[12px] text-[#555]">Video generator unavailable.</div>
+            )}
+          </div>
+        </div>
       ) : (
-        // Non-poster tabs: render placeholder that hands control back to mobile tree below.
-        // We unmount the desktop chrome at lg by not applying lg:hidden externally;
-        // instead, when switching tabs the parent will toggle showAiPoster.
         <div className="flex flex-1 items-center justify-center bg-[#080808] p-12 text-center text-[#aaa]">
           <div className="max-w-md space-y-3">
             <div className="text-[11px] uppercase tracking-[0.2em] text-[#555]">{activeTab}</div>
-            <div className="text-[14px] text-[#e8e8e8]">Switching view…</div>
+            <div className="text-[14px] text-[#e8e8e8]">Opening…</div>
           </div>
         </div>
       )}

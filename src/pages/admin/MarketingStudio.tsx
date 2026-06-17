@@ -1066,14 +1066,173 @@ export default function MarketingStudio() {
   }, [brandLogoUrl, isMulti, singlePrep.preparedUrl, productPayload?.productImage, variantImages, multiTemplateProps]);
   const imagesReady = useImagesReady(exportImageUrls);
 
-  const desktopChromeActive = true;
+  const activeDesktopTab: "poster" | "display" | "video" | "library" =
+    studioMode === "videos"
+      ? "video"
+      : studioMode === "images" && !showAiPoster
+        ? "display"
+        : "poster";
+
+  const displayPanel = (
+    <div className="space-y-5 rounded-lg border border-[#1c1c1c] bg-[#0c0c0c] p-5 text-[#e8e8e8]">
+      <div>
+        <div className="text-[14px] font-semibold">Display Image Generator</div>
+        <div className="mt-1 text-[11px] text-[#666]">
+          AI product display shots for storefronts &amp; ads
+        </div>
+      </div>
+
+      {selectedProduct ? (
+        <div className="flex items-center gap-3 rounded border border-[#1c1c1c] bg-[#111] p-3">
+          {selectedProduct.images?.[0]?.url && (
+            <img
+              src={selectedProduct.images[0].url}
+              alt=""
+              className="h-12 w-12 rounded object-cover"
+            />
+          )}
+          <div className="min-w-0">
+            <div className="truncate text-[12px]">{selectedProduct.title}</div>
+            <div className="text-[10px] text-[#555]">Reference image</div>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded border border-dashed border-[#1c1c1c] p-4 text-center text-[11px] text-[#555]">
+          Pick a product first
+        </div>
+      )}
+
+      <div>
+        <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#555]">Style</div>
+        <div className="grid grid-cols-3 gap-2">
+          {(["studio", "lifestyle", "minimal"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setDisplayStyle(s)}
+              className={`rounded border p-2 text-[11px] capitalize transition-colors ${
+                displayStyle === s
+                  ? "border-[#e8e8e8] bg-[#161616] text-[#e8e8e8]"
+                  : "border-[#1c1c1c] bg-[#111] text-[#aaa] hover:border-[#3a3a3a]"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#555]">Aspect ratio</div>
+        <div className="flex flex-wrap gap-1.5">
+          {DISPLAY_ASPECTS.map((a) => (
+            <button
+              key={a.key}
+              type="button"
+              onClick={() => setDisplayAspect(a.key)}
+              className={`rounded-full border px-3 py-1 text-[11px] transition-colors ${
+                displayAspect === a.key
+                  ? "border-[#e8e8e8] bg-[#e8e8e8] text-[#080808]"
+                  : "border-[#1c1c1c] bg-[#111] text-[#aaa]"
+              }`}
+            >
+              {a.key}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#555]">Text on image</div>
+        <Input
+          value={displayTextOverlay}
+          onChange={(e) => setDisplayTextOverlay(e.target.value)}
+          placeholder="e.g. SUMMER DROP"
+          className="bg-[#111] border-[#1c1c1c] text-[#e8e8e8] text-xs"
+        />
+      </div>
+
+      <div>
+        <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#555]">Reference image (optional)</div>
+        <div className="flex items-center gap-3">
+          <label className="flex-1 cursor-pointer rounded border border-dashed border-[#1c1c1c] bg-[#111] px-3 py-2 text-[11px] text-[#aaa] hover:border-[#3a3a3a]">
+            {displayRefImage ? "Replace reference" : "Upload reference"}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleRefImageFile(e.target.files?.[0] || null)}
+            />
+          </label>
+          {displayRefImage && (
+            <img src={displayRefImage} alt="" className="h-12 w-12 rounded border border-[#1c1c1c] object-cover" />
+          )}
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#555]">Additional prompt notes</div>
+        <textarea
+          value={displayCustomPrompt}
+          onChange={(e) => setDisplayCustomPrompt(e.target.value)}
+          rows={3}
+          placeholder="e.g. sunlit countertop, soft shadows, magazine photography"
+          className="w-full resize-none rounded border border-[#1c1c1c] bg-[#111] px-3 py-2 text-[12px] text-[#e8e8e8] placeholder:text-[#555] focus:border-[#3a3a3a] focus:outline-none"
+        />
+      </div>
+
+      <Button
+        className="w-full gap-2 bg-[#e8e8e8] text-[#080808] hover:bg-[#d8d8d8]"
+        onClick={generateDisplayImage}
+        disabled={!selectedProduct || displayLoading}
+      >
+        {displayLoading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Generating image…
+          </>
+        ) : (
+          <>
+            <ImageIcon className="h-4 w-4" />
+            Generate Image
+          </>
+        )}
+      </Button>
+
+      {displayResultUrl && (
+        <div className="space-y-2">
+          <img
+            src={displayComposite || displayResultUrl}
+            alt="Generated display"
+            className="w-full rounded border border-[#1c1c1c]"
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 gap-2 border-[#1c1c1c] bg-[#111] text-[#e8e8e8] hover:bg-[#181818]"
+              onClick={downloadDisplayImage}
+            >
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const videoPanel = (
+    <div className="rounded-lg border border-[#1c1c1c] bg-[#0c0c0c] p-5">
+      <VideoStudioPanel selectedProduct={selectedProduct} posterType={posterType} />
+    </div>
+  );
 
   return (
     <AdminAuth>
       {/* Desktop chrome (lg+) — DesktopChrome handles its own 3-col layout */}
       <div className="hidden lg:block">
         <DesktopChrome
-          activeTab="poster"
+          activeTab={activeDesktopTab}
           onTabChange={(t) => {
             if (t === "poster") {
               setStudioMode("images");
@@ -1116,6 +1275,8 @@ export default function MarketingStudio() {
             setAiPosterResult(null);
             setAiPosterPrompt("");
           }}
+          displaySlot={displayPanel}
+          videoSlot={videoPanel}
         />
       </div>
 
@@ -1146,6 +1307,8 @@ export default function MarketingStudio() {
         aiPosterResult={aiPosterResult}
         onGenerate={generateAiPoster}
         onOpenProductPicker={() => setMobileProductPickerOpen(true)}
+        displaySlot={displayPanel}
+        videoSlot={videoPanel}
       />
 
       <Dialog open={mobileProductPickerOpen} onOpenChange={setMobileProductPickerOpen}>

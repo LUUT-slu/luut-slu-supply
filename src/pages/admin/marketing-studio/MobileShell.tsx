@@ -50,6 +50,8 @@ export interface MobileShellProps {
   aiPosterResult: string | null;
   onGenerate: () => void;
   onOpenProductPicker: () => void;
+  displaySlot?: React.ReactNode;
+  videoSlot?: React.ReactNode;
 }
 
 const FORMATS = ["9:16", "1:1", "4:5", "16:9"];
@@ -99,6 +101,8 @@ export default function MobileShell(props: MobileShellProps) {
     aiPosterResult,
     onGenerate,
     onOpenProductPicker,
+    displaySlot,
+    videoSlot,
   } = props;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -627,33 +631,19 @@ export default function MobileShell(props: MobileShellProps) {
               </div>
             )}
           </>
-        ) : (
-          <div
-            className="flex flex-col items-center justify-center text-center"
-            style={{ padding: "60px 20px", color: "#555", fontSize: 12, gap: 10 }}
-          >
-            <Sparkles size={28} color="#333" />
-            <div style={{ color: "#888", fontSize: 14, fontWeight: 500 }}>
-              {modeLabel} mode
-            </div>
-            <div>Open this mode on desktop for the full editor, or stay here for the AI Poster.</div>
-            <button
-              onClick={() => selectMode("poster")}
-              style={{
-                marginTop: 12,
-                padding: "10px 18px",
-                background: "#e8e8e8",
-                color: "#080808",
-                borderRadius: 7,
-                fontSize: 12,
-                fontWeight: 700,
-                border: "none",
-              }}
-            >
-              Back to Poster
-            </button>
+        ) : currentNav === "display" ? (
+          <div className="text-[#e8e8e8]">
+            {displaySlot ?? (
+              <div className="text-center text-xs text-[#555] py-12">Display generator unavailable.</div>
+            )}
           </div>
-        )}
+        ) : currentNav === "video" ? (
+          <div className="text-[#e8e8e8]">
+            {videoSlot ?? (
+              <div className="text-center text-xs text-[#555] py-12">Video generator unavailable.</div>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {/* Sticky generate */}
