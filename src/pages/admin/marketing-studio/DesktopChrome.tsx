@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Loader2, Sparkles, Download, Share2, Link2, Save, RotateCw, Pencil, Plug, ZoomIn, User, Image as ImageIcon } from "lucide-react";
 import PosterLightbox from "./PosterLightbox";
 import { toast } from "sonner";
+import { downloadImage } from "@/lib/downloadImage";
 import { supabase } from "@/integrations/supabase/client";
 import { prepareMarketingSourceImages } from "@/lib/marketingSourceImages";
 
