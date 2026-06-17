@@ -182,12 +182,18 @@ Deno.serve(async (req) => {
     const fullPrompt = buildPrompt(body);
     const aspect_ratio = mapAspect(body.aspectRatio);
 
-    const output = await runReplicate(REPLICATE_MODEL, {
+    const replicateInput: Record<string, unknown> = {
       prompt: fullPrompt,
       aspect_ratio,
       style_type: "Design",
       magic_prompt_option: "On",
-    });
+    };
+    if (body.productImageUrl && /^https?:\/\//i.test(body.productImageUrl)) {
+      replicateInput.image = body.productImageUrl;
+      replicateInput.image_weight = 0.85;
+    }
+
+    const output = await runReplicate(REPLICATE_MODEL, replicateInput);
 
     // Ideogram returns either a string URL or an array of URLs.
     const imageUrl = Array.isArray(output)
