@@ -381,11 +381,24 @@ export default function DesktopChrome(props: DesktopChromeProps) {
                 </div>
               ) : aiPosterResult ? (
                 <div className="flex flex-col items-center gap-3">
-                  <img
-                    src={aiPosterResult}
-                    alt="AI poster"
-                    className="max-h-[calc(100vh-200px)] max-w-full rounded-sm border border-[#1c1c1c] object-contain shadow-2xl"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setLightboxOpen(true)}
+                    aria-label="Zoom poster"
+                    className="group relative block cursor-zoom-in border-0 bg-transparent p-0"
+                  >
+                    <img
+                      src={aiPosterResult}
+                      alt="AI poster"
+                      className="max-h-[calc(100vh-200px)] max-w-full rounded-sm border border-[#1c1c1c] object-contain shadow-2xl transition-transform group-hover:scale-[1.01]"
+                    />
+                    <span
+                      className="pointer-events-none absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+                      style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}
+                    >
+                      <ZoomIn size={18} />
+                    </span>
+                  </button>
                   <div className="text-[10px] uppercase tracking-[0.18em] text-[#3a3a3a]">
                     {aiPosterAspectRatio} · {MODEL_LABEL}
                   </div>
