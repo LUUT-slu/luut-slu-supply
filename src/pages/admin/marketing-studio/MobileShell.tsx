@@ -521,6 +521,90 @@ export default function MobileShell(props: MobileShellProps) {
         </div>
       )}
 
+      {/* Fixed preview panel — Display mode */}
+      {currentNav === "display" && displayWired && (
+        <div
+          className="flex-shrink-0"
+          style={{ background: "#0c0c0c", borderBottom: "0.5px solid #1c1c1c", padding: "12px 14px" }}
+        >
+          <div className="flex items-stretch">
+            <div className="w-1/2 pr-[10px] flex items-center justify-center">
+              <div
+                className="w-full relative overflow-hidden flex items-center justify-center"
+                style={{
+                  aspectRatio: "1 / 1",
+                  maxHeight: 200,
+                  borderRadius: 8,
+                  background: "#111",
+                  border: "0.5px solid #1c1c1c",
+                }}
+              >
+                {displayResultUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => setDisplayLightboxOpen(true)}
+                    aria-label="View display image full screen"
+                    className="absolute inset-0 p-0 border-0 bg-transparent cursor-zoom-in"
+                  >
+                    <img
+                      src={displayResultUrl}
+                      alt="Generated display"
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-center px-2">
+                    <ImageIcon size={20} color="#3a3a3a" />
+                    <span style={{ fontSize: 9, color: "#555" }}>No image yet</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div
+              className="w-1/2 pl-[10px] flex flex-col justify-center"
+              style={{ gap: 5, borderLeft: "0.5px solid #1c1c1c" }}
+            >
+              <div style={{ marginBottom: 4 }}>
+                <div style={{ fontSize: 9, color: "#3a3a3a", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  Style
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: "#888", marginTop: 1 }}>
+                  {DISPLAY_STYLES_M.find((s) => s.key === displayStyle)?.label} · {displayAspect}
+                </div>
+              </div>
+              {[
+                { icon: Download, label: "Download", primary: true, onClick: handleDisplayDownload },
+                { icon: RefreshCw, label: "Regenerate", onClick: () => onGenerateDisplay?.() },
+                { icon: Share2, label: "Share", onClick: handleDisplayShare },
+                { icon: MessageCircle, label: "WhatsApp", onClick: handleDisplayWhatsApp },
+              ].map(({ icon: Icon, label, primary, onClick }) => (
+                <button
+                  key={label}
+                  onClick={onClick}
+                  disabled={!displayResultUrl && label !== "Regenerate"}
+                  style={{
+                    padding: "5px 8px",
+                    borderRadius: 5,
+                    border: primary ? "0.5px solid #888" : "0.5px solid #1c1c1c",
+                    background: primary ? "#161616" : "#111",
+                    color: primary ? "#d0d0d0" : "#666",
+                    fontSize: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    width: "100%",
+                    opacity: !displayResultUrl && label !== "Regenerate" ? 0.4 : 1,
+                  }}
+                >
+                  <Icon size={12} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Scrollable content */}
       <div
         className="flex-1 overflow-y-auto flex flex-col"
