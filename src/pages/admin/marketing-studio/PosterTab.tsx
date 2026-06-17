@@ -409,10 +409,8 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
             {resultUrl ? (
               <div className="space-y-3">
                 <img src={resultUrl} alt="Generated poster" className="w-full rounded" />
-                <Button asChild variant="outline" className="w-full">
-                  <a href={resultUrl} download target="_blank" rel="noopener noreferrer">
-                    <Download className="mr-2 h-4 w-4" /> Download
-                  </a>
+                <Button variant="outline" className="w-full" onClick={() => downloadImage(resultUrl, "luut-poster.png")}>
+                  <Download className="mr-2 h-4 w-4" /> Download
                 </Button>
               </div>
             ) : (
