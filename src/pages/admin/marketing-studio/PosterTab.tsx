@@ -110,8 +110,8 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     const sourceRefs =
       refs.length > 0
         ? refs
-        : product.images?.[0]?.url
-        ? [product.images[0].url]
+        : variantImage
+        ? [variantImage]
         : [];
 
     setGenerating(true);
