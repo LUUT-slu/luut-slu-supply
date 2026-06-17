@@ -43,6 +43,10 @@ export interface DesktopChromeProps {
   lastGeneratedAt: number | null;
   onGenerate: () => void;
   onClear: () => void;
+
+  // Optional slots for non-poster tabs
+  displaySlot?: React.ReactNode;
+  videoSlot?: React.ReactNode;
 }
 
 const STYLES: { key: PosterStyle; label: string }[] = [
