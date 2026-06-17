@@ -284,16 +284,61 @@ interface SceneInteraction {
 
 function resolveInteraction(c: SceneContext): SceneInteraction {
   const product = `the ${c.productTitle}`;
+  const cat = `${c.productCategory || ""} ${c.productTitle || ""}`.toLowerCase();
   const human = c.goal === "human_model" || c.style === "human";
   const inUse = c.focus === "in_use" || human;
   const closeup =
     c.goal === "product_closeup" || c.focus === "detail" || c.focus === "texture";
 
+  // Category-aware narrative context — gives the model a believable story for
+  // HOW the product is being used or WHERE it is placed, so results never
+  // feel "out of place" or randomly composited.
+  const isApparel = /(shirt|tee|top|hoodie|jacket|coat|pant|jean|short|dress|skirt|suit|blouse|sweater|outfit|apparel|clothing|wear)/.test(cat);
+  const isFootwear = /(shoe|sneaker|boot|sandal|heel|loafer|trainer)/.test(cat);
+  const isBag = /(bag|backpack|tote|purse|wallet|handbag|clutch)/.test(cat);
+  const isAccessory = /(watch|jewelry|jewellery|ring|necklace|bracelet|earring|sunglass|glasses|hat|cap|belt|scarf)/.test(cat);
+  const isTech = /(phone|laptop|tablet|headphone|earbud|camera|console|gadget|device|speaker)/.test(cat);
+  const isBeauty = /(perfume|cologne|fragrance|skincare|cream|serum|lipstick|makeup|cosmetic|lotion)/.test(cat);
+  const isDrink = /(drink|bottle|can|beverage|coffee|tea|wine|beer|juice)/.test(cat);
+  const isFood = /(food|snack|chocolate|candy|meal|dish)/.test(cat);
+  const isHome = /(candle|mug|cup|vase|lamp|pillow|decor|furniture|chair|table)/.test(cat);
+
+  const humanAction = (() => {
+    if (isApparel) return `wearing ${product}, standing or walking in a believable real-world setting that matches the garment (street, studio loft, or natural daylight), with confident relaxed posture so the fit, drape, and silhouette of ${product} are fully visible`;
+    if (isFootwear) return `wearing ${product} while standing or mid-step, camera angled low to keep ${product} as the hero, surroundings (pavement, studio floor, or natural ground) chosen to flatter the shoe`;
+    if (isBag) return `carrying ${product} naturally over the shoulder or in hand while walking through an environment that suits the bag (city street, café, travel scene), held in a way that shows its shape, strap, and material clearly`;
+    if (isAccessory) return `wearing ${product} with the body positioned so the accessory is the clear focal point (wrist raised for a watch, hand to face for sunglasses, neckline visible for jewelry)`;
+    if (isTech) return `actively using ${product} in a believable everyday moment (at a desk, on a couch, outdoors) with hands interacting with it naturally`;
+    if (isBeauty) return `holding ${product} near the face or applying it in a soft, intimate beauty-campaign moment with gentle daylight`;
+    if (isDrink) return `holding or drinking from ${product} in a relaxed lifestyle moment that matches the beverage (café, kitchen, outdoor patio)`;
+    return `actively wearing, holding, or using ${product} in a believable real-world moment that matches what the product is for`;
+  })();
+
+  const lifestyleContext = (() => {
+    if (isApparel) return `${product} styled on a clean surface, mannequin, or hanger inside a real wardrobe-style setting, with surrounding textures (wood, linen, neutral wall) that frame the garment without competing`;
+    if (isFootwear) return `${product} placed on the ground in a context that fits the shoe (polished studio floor, concrete street, wooden plank, sand) with one shoe slightly angled to show the side profile`;
+    if (isBag) return `${product} resting on a café table, bench, or styled flat-lay surface with a few intentional props (keys, sunglasses, coffee cup) that suggest a real owner without distracting from the bag`;
+    if (isAccessory) return `${product} arranged on a soft fabric, marble tray, or velvet surface with directional light catching its details`;
+    if (isTech) return `${product} placed on a clean desk or table with subtle context props (notebook, plant, mug) that imply real use, never crowding the device`;
+    if (isBeauty) return `${product} standing upright on a soft surface (marble, satin, brushed stone) with petals, water droplets, or muted props that match the fragrance/skincare mood`;
+    if (isDrink) return `${product} placed on a bar top, wooden table, or styled surface with condensation or steam appropriate to the drink, props (glass, ice, garnish) reinforcing context`;
+    if (isFood) return `${product} plated or styled on a serving surface with complementary ingredients arranged intentionally around it`;
+    if (isHome) return `${product} placed in a styled corner of a real home (shelf, side table, windowsill) with natural light and matching decor cues`;
+    return `${product} placed within a realistic environment that suits how the product is actually used, with intentional surrounding context that reinforces — never competes with — the product`;
+  })();
+
+  const heroContext = (() => {
+    if (isApparel || isFootwear || isBag || isAccessory) return `${product} presented as the single hero subject with dramatic directional lighting, a clean intentional surface or studio pedestal beneath it, and a graduated backdrop that flatters the silhouette`;
+    if (isTech) return `${product} centered as the hero with crisp rim light along its edges, resting on a minimalist pedestal or graduated dark backdrop typical of premium tech advertising`;
+    if (isBeauty) return `${product} centered as the hero with soft beauty-campaign lighting, a graduated colored backdrop matching the product's palette, and a subtle reflective surface beneath`;
+    return `${product} centered as the hero with dramatic studio lighting and a graduated backdrop that frames it as the single focal point`;
+  })();
+
   if (human && inUse) {
     return {
       isHuman: true,
       isCloseup: closeup,
-      clause: `${closeup ? "tight close-up of " : ""}a person actively wearing, holding, or using ${product}, captured from a distance close enough to keep the product as the primary focus. The model exists only to demonstrate real-world use of ${product} and never becomes the focal point. ${product} must be physically interacted with — never floating, never placed beside the person, never disconnected from the body.`,
+      clause: `${closeup ? "tight close-up of " : ""}a person ${humanAction}, captured from a distance close enough to keep ${product} as the primary focus. The model exists only to demonstrate real-world use of ${product} and never becomes the focal point. ${product} must be physically interacted with — never floating, never placed beside the person, never disconnected from the body. The environment, pose, and props must clearly tell the story of what the person is doing with ${product}.`,
     };
   }
 
@@ -301,7 +346,7 @@ function resolveInteraction(c: SceneContext): SceneInteraction {
     return {
       isHuman: false,
       isCloseup: true,
-      clause: `extreme close-up of ${product}, filling 60–80% of the frame, camera close enough to reveal materials, stitching, and surface detail. No wide angle, no secondary subjects.`,
+      clause: `extreme close-up of ${product}, filling 60–80% of the frame, camera close enough to reveal materials, stitching, and surface detail. ${product} rests on or against a surface that physically suits it (matching fabric, stone, wood, or studio sweep) — never floating in empty space. No wide angle, no secondary subjects.`,
     };
   }
 
@@ -309,7 +354,7 @@ function resolveInteraction(c: SceneContext): SceneInteraction {
     return {
       isHuman: false,
       isCloseup: false,
-      clause: `hero composition centered on ${product} with dramatic framing. ${product} is the single focal point and occupies most of the frame.`,
+      clause: `hero composition centered on ${product} with dramatic framing. ${heroContext}. ${product} is the single focal point and occupies most of the frame, anchored to a real surface or pedestal so it never appears to float without context.`,
     };
   }
 
@@ -317,7 +362,7 @@ function resolveInteraction(c: SceneContext): SceneInteraction {
     return {
       isHuman: false,
       isCloseup: false,
-      clause: `${product} shown in realistic everyday use within a supporting environment. ${product} remains the primary subject and the environment never competes for attention.`,
+      clause: `${lifestyleContext}. ${product} remains the primary subject and the environment never competes for attention, but every surrounding element must make sense for how ${product} is actually used.`,
     };
   }
 
@@ -325,7 +370,7 @@ function resolveInteraction(c: SceneContext): SceneInteraction {
     return {
       isHuman: false,
       isCloseup: false,
-      clause: `retail packshot of ${product}, packaging filling most of the frame with the label cleanly legible. No distractions.`,
+      clause: `retail packshot of ${product}, packaging filling most of the frame with the label cleanly legible, standing upright on a clean surface that grounds it physically (studio sweep, matte stone, soft fabric). No distractions.`,
     };
   }
 
@@ -333,7 +378,7 @@ function resolveInteraction(c: SceneContext): SceneInteraction {
   return {
     isHuman: false,
     isCloseup: false,
-    clause: `${product} isolated as the sole main subject, occupying most of the frame${c.focus === "hero_angle" ? " from a slightly low dramatic hero angle" : ""}. No distractions, no secondary objects.`,
+    clause: `${product} isolated as the sole main subject, occupying most of the frame${c.focus === "hero_angle" ? " from a slightly low dramatic hero angle" : ""}, resting on or anchored to a clean surface so it sits physically in the scene rather than floating. No distractions, no secondary objects.`,
   };
 }
 
@@ -429,11 +474,46 @@ const REF_PRESERVATION =
 
 // ---------- Prompt builders ----------
 
+function buildPosterLayoutBlueprint(c: PosterControls): string {
+  const isPortrait = c.aspectRatio === "4:5" || c.aspectRatio === "9:16" || c.aspectRatio === "3:4";
+  const isSquare = c.aspectRatio === "1:1";
+  const productZone = isPortrait
+    ? "the product image anchors the center of the poster, occupying roughly the middle 55–65% of the canvas, with clear breathing room above and below"
+    : isSquare
+      ? "the product image sits slightly right of center, occupying roughly 55% of the canvas, with text stacked on the left third"
+      : "the product image dominates the right two-thirds of the canvas, with the text block aligned along the left third";
+
+  const styleLayout: Record<PosterStyle, string> = {
+    clean:    "grid-aligned editorial layout: small brand wordmark top-left, thin horizontal divider, headline set in clean modern sans-serif at the top, subheadline directly beneath in a lighter weight, price and CTA pill anchored bottom-left, generous whitespace throughout",
+    luxury:   "centered symmetrical luxury layout: small serif brand wordmark top-center, headline set in an elegant serif centered above the product, subheadline in small caps beneath, thin gold or metallic divider lines, price and CTA centered at the bottom with refined spacing",
+    bold:     "high-impact poster grid: oversized condensed headline filling the top third edge-to-edge, product image centered beneath, price as an oversized number bottom-right, CTA pill bottom-left, brand wordmark top-left, strong solid color blocks dividing the composition",
+    hype:     "streetwear flyer layout: stencil/graffiti-style headline rotated or skewed across the top, product centered with halo glow, price ticker-tape along the bottom edge, CTA stamped lower-right, gritty texture overlay, brand wordmark small in a corner",
+    modern:   "asymmetric geometric layout: headline set diagonally or in a vertical stack along one edge, product floating with a colored geometric shape behind it, subheadline and price in a small information block bottom-corner, CTA as a clean rectangular button, brand wordmark opposite corner",
+    minimal:  "minimal poster layout: a single small headline at the top, the product centered with maximum negative space around it, price and CTA reduced to one small line at the bottom, brand wordmark tiny in a corner, restrained two-color palette",
+  };
+
+  const campaignAccent: Record<PosterCampaign, string> = {
+    sale:            "include a prominent percent-off badge or 'SALE' tag near the price",
+    promotion:       "include a small promotional badge near the CTA",
+    new_arrival:     "include a small 'NEW' or 'JUST IN' tag near the headline",
+    limited_drop:    "include a 'LIMITED' or numbered-drop stamp near the product",
+    clearance:       "include a bold 'CLEARANCE' or 'FINAL SALE' tag near the price",
+    brand_awareness: "no badges; keep the layout pure and brand-led",
+    event:           "include a date/time block near the CTA",
+  };
+
+  return `Poster layout blueprint (the generated image MUST follow this composition exactly): ${productZone}. ${styleLayout[c.style]}. ${campaignAccent[c.campaign]}. Text and product never overlap; each text element has its own designated zone; alignment is consistent; readable hierarchy from headline → subheadline → price → CTA → brand.`;
+}
+
 export function buildPosterPrompt(c: PosterControls, brand: BrandStyle): string {
   const parts: string[] = [];
   parts.push(
     `${POSTER_CAMPAIGN_LABEL[c.campaign]} for "${c.productTitle}", ${POSTER_STYLE_HINT[c.style]}.`,
   );
+
+  // Explicit layout blueprint — tells the model where every element goes so
+  // the poster is actually designed, not randomly composed.
+  parts.push(buildPosterLayoutBlueprint(c));
 
   // Product scene on the poster — composed coherently, product as primary subject.
   const scene = composeScene({
