@@ -51,6 +51,10 @@ export interface DesktopChromeProps {
   onGenerate: () => void;
   onClear: () => void;
 
+  // Optional user-uploaded source photo (data URL) that overrides the listing image
+  customProductImage?: string | null;
+  setCustomProductImage?: (v: string | null) => void;
+
   // Optional slots for non-poster tabs (fallback)
   displaySlot?: React.ReactNode;
   videoSlot?: React.ReactNode;
@@ -212,6 +216,8 @@ export default function DesktopChrome(props: DesktopChromeProps) {
     lastGeneratedAt,
     onGenerate,
     onClear,
+    customProductImage = null,
+    setCustomProductImage,
     displaySlot,
     videoSlot,
     displayStyle = "studio",
@@ -331,6 +337,56 @@ export default function DesktopChrome(props: DesktopChromeProps) {
                   </select>
                 </div>
               </section>
+
+              {/* Source photo override */}
+              {setCustomProductImage && (
+                <section>
+                  <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#555]">Source photo</div>
+                  <div className="flex items-center gap-3 rounded-md border border-[#1c1c1c] bg-[#111] p-3">
+                    <div className="h-10 w-10 overflow-hidden rounded border border-[#222] bg-[#161616]">
+                      {(customProductImage || productImage) && (
+                        <img src={customProductImage || productImage} alt="" className="h-full w-full object-cover" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[12px] text-[#e8e8e8]">
+                        {customProductImage ? "Using your upload" : "Using listing image"}
+                      </div>
+                      <div className="text-[10px] text-[#555]">Optional override for the poster pipeline</div>
+                    </div>
+                    <label className="cursor-pointer rounded border border-[#1c1c1c] px-2 py-1 text-[10px] text-[#aaa] hover:text-[#e8e8e8]">
+                      {customProductImage ? "Replace" : "Upload"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            if (typeof reader.result === "string") {
+                              setCustomProductImage(reader.result);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {customProductImage && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomProductImage(null)}
+                        className="rounded border border-[#1c1c1c] px-2 py-1 text-[10px] text-[#888] hover:text-[#e8e8e8]"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </section>
+              )}
+
 
 
               {/* Style */}

@@ -379,8 +379,22 @@ export default function MarketingStudio() {
     );
   }, [productPayload?.price]);
 
+  // Optional user-uploaded photo that overrides the default listing image for
+  // the poster pipeline. Stored as a data URL; the edge function uploads it
+  // to storage before passing it to Replicate.
+  const [customProductImage, setCustomProductImage] = useState<string | null>(null);
+  // Reset the override when the user switches products.
+  useEffect(() => {
+    setCustomProductImage(null);
+  }, [productPayload?.productImage]);
+
   const generateAiPoster = async () => {
     if (!productPayload) return;
+    const sourceImage = customProductImage || productPayload.productImage || "";
+    if (!sourceImage) {
+      toast.error("This product has no image — upload one to continue");
+      return;
+    }
     setAiPosterGenerating(true);
     setAiPosterResult(null);
     try {
@@ -388,15 +402,13 @@ export default function MarketingStudio() {
       const { data, error } = await supabase.functions.invoke("generate-ai-poster", {
         body: {
           productTitle: productPayload.name,
-          productPrice: posterPrice || (productPayload.price ? `EC$${Math.round(Number(productPayload.price))}` : ""),
-          productImageUrl: productPayload.productImage || "",
+          productPrice:
+            posterPrice ||
+            (productPayload.price ? `EC$${Math.round(Number(productPayload.price))}` : ""),
+          productImageUrl: sourceImage,
           ctaText,
           brandName,
           meetupText,
-          urgencyText,
-          tagline: tagline || null,
-          posterStyle: aiPosterStyle,
-          aspectRatio: aiPosterAspectRatio,
           customInstructions: aiPosterCustom || null,
         },
         headers: { Authorization: `Bearer ${session?.access_token}` },
@@ -1337,6 +1349,8 @@ export default function MarketingStudio() {
             setAiPosterResult(null);
             setAiPosterPrompt("");
           }}
+          customProductImage={customProductImage}
+          setCustomProductImage={setCustomProductImage}
           displaySlot={displayPanel}
           videoSlot={desktopVideoPanel}
           displayStyle={displayStyle}
@@ -1393,6 +1407,8 @@ export default function MarketingStudio() {
         aiPosterResult={aiPosterResult}
         onGenerate={generateAiPoster}
         onOpenProductPicker={() => setMobileProductPickerOpen(true)}
+        customProductImage={customProductImage}
+        setCustomProductImage={setCustomProductImage}
         displaySlot={displayPanel}
         videoSlot={desktopVideoPanel}
         displayStyle={displayStyle}
