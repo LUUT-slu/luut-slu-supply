@@ -189,8 +189,7 @@ Deno.serve(async (req) => {
       magic_prompt_option: "On",
     };
     if (body.productImageUrl && /^https?:\/\//i.test(body.productImageUrl)) {
-      replicateInput.image = body.productImageUrl;
-      replicateInput.image_weight = 0.85;
+      replicateInput.style_reference_images = [body.productImageUrl];
     }
 
     const output = await runReplicate(REPLICATE_MODEL, replicateInput);
