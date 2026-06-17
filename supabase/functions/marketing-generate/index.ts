@@ -168,6 +168,7 @@ function buildModelInput(
   aspect: string,
   productRefs: string[],
   styleRef: string | null,
+  seed?: number,
 ): Record<string, unknown> {
   // Combined ref list: product refs first, style donor last.
   const combined = [...productRefs];
@@ -177,6 +178,11 @@ function buildModelInput(
   if (productRefs.length) enhancedPrompt += PRESERVE_INSTRUCTION;
   if (styleRef) enhancedPrompt += STYLE_REF_INSTRUCTION;
 
+  const withSeed = (o: Record<string, unknown>) => {
+    if (typeof seed === "number" && Number.isFinite(seed)) o.seed = seed;
+    return o;
+  };
+
   switch (model) {
     case "ideogram-ai/ideogram-v3-quality": {
       const input: Record<string, unknown> = {
@@ -184,21 +190,17 @@ function buildModelInput(
         aspect_ratio: aspect,
         magic_prompt_option: "Auto",
       };
-      // Ideogram's style_reference_images is style-only by design, so the
-      // brand-style donor fits naturally alongside the product refs here.
       if (combined.length) input.style_reference_images = combined.slice(0, 4);
-      return input;
+      return withSeed(input);
     }
     case "sourceful/riverflow-2.0-pro": {
-      // Riverflow only accepts a single image. Prefer the product ref;
-      // the style donor only contributes via the prompt clause.
       const input: Record<string, unknown> = {
         instruction: enhancedPrompt,
         aspect_ratio: aspect,
       };
       const primary = productRefs[0] || styleRef;
       if (primary) input.image = primary;
-      return input;
+      return withSeed(input);
     }
     case "google/nano-banana-pro": {
       const input: Record<string, unknown> = {
@@ -207,10 +209,10 @@ function buildModelInput(
         output_format: "png",
       };
       if (combined.length) input.image_input = combined.slice(0, 4);
-      return input;
+      return withSeed(input);
     }
     default:
-      return { prompt: enhancedPrompt, aspect_ratio: aspect };
+      return withSeed({ prompt: enhancedPrompt, aspect_ratio: aspect });
   }
 }
 
