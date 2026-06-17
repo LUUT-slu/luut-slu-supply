@@ -212,7 +212,29 @@ export default function DesktopChrome(props: DesktopChromeProps) {
     onClear,
     displaySlot,
     videoSlot,
+    displayStyle = "studio",
+    setDisplayStyle,
+    displayAspect = "1:1",
+    setDisplayAspect,
+    displayTextOverlay = "",
+    setDisplayTextOverlay,
+    displayBackground = "studio",
+    setDisplayBackground,
+    displayCustomPrompt = "",
+    setDisplayCustomPrompt,
+    modelGender = "unspecified",
+    setModelGender,
+    skinTone = "medium",
+    setSkinTone,
+    displayLoading = false,
+    displayResultUrl = null,
+    displayPrompt = "",
+    onGenerateDisplay,
+    onClearDisplay,
   } = props;
+
+  const displayWired = Boolean(onGenerateDisplay && setDisplayStyle);
+  const [displayLightboxOpen, setDisplayLightboxOpen] = useState(false);
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
