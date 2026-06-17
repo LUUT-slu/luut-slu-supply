@@ -131,28 +131,7 @@ const DISPLAY_MODEL_LABEL = "Gemini Nano Banana";
 
 async function downloadOrShare(url: string) {
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Fetch failed");
-    const blob = await res.blob();
-    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-    if (isMobile && typeof navigator.share === "function") {
-      try {
-        const file = new File([blob], "luut-poster.png", { type: blob.type || "image/png" });
-        const navAny = navigator as any;
-        if (navAny.canShare?.({ files: [file] })) {
-          await navAny.share({ files: [file], title: "Luut Poster" });
-          return;
-        }
-      } catch {}
-    }
-    const obj = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = obj;
-    a.download = "luut-poster.png";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(obj);
+    await downloadImage(url, "luut-poster.png");
   } catch {
     toast.error("Download failed");
   }
