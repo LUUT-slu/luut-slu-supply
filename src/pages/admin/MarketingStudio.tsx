@@ -1349,6 +1349,8 @@ export default function MarketingStudio() {
             setAiPosterResult(null);
             setAiPosterPrompt("");
           }}
+          customProductImage={customProductImage}
+          setCustomProductImage={setCustomProductImage}
           displaySlot={displayPanel}
           videoSlot={desktopVideoPanel}
           displayStyle={displayStyle}
