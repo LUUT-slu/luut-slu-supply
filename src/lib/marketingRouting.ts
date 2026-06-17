@@ -157,7 +157,11 @@ export interface DisplayControls {
 
 // ---------- Routing ----------
 
-export function routeForPoster(_c: PosterControls): ModelChoice {
+export function routeForPoster(c: PosterControls): ModelChoice {
+  // When a reference image is provided, prefer nano-banana-pro which actually
+  // preserves the product identity (image-to-image). Ideogram's style_reference
+  // only transfers aesthetic, not product identity.
+  if (c.hasReference) return MODEL_REGISTRY.display;
   return MODEL_REGISTRY.poster;
 }
 
