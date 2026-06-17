@@ -430,22 +430,58 @@ export default function MarketingStudio() {
     setDisplayComposite(null);
     setDisplayCompositeSaved(false);
     try {
+      // Compose extra prompt: Human Model anchor + background hint + user notes
+      const skinToneLabel = skinTone.replace("-", " ");
+      const genderClause =
+        modelGender === "male"
+          ? " The model is male."
+          : modelGender === "female"
+            ? " The model is female."
+            : "";
+      const humanAnchor =
+        displayStyle === "human"
+          ? `A real human model wearing/holding/using the product. The model should have ${skinToneLabel} skin tone.${genderClause} The product must be clearly visible and accurately represented. Fashion editorial style photography, professional lighting, clean background.`
+          : "";
+      const backgroundHint = (() => {
+        switch (displayBackground) {
+          case "solid":
+            return "Clean solid color background.";
+          case "gradient":
+            return "Soft gradient background.";
+          case "studio":
+            return "Professional studio backdrop with controlled lighting.";
+          case "lifestyle":
+            return "Lifestyle scene background that complements the product.";
+          case "transparent":
+            return "Pure white background suitable for transparent cut-out.";
+          default:
+            return "";
+        }
+      })();
+      const composedCustom = [humanAnchor, backgroundHint, displayCustomPrompt.trim()]
+        .filter(Boolean)
+        .join(" ");
+
+      // Send "lifestyle" to the edge function when human is chosen (closest supported value).
+      const styleForApi = displayStyle === "human" ? "lifestyle" : displayStyle;
+
       const { data, error } = await supabase.functions.invoke("generate-product-display-image", {
         body: {
           productImageUrl: imageUrl,
           productTitle: selectedProduct.title,
           productCategory: selectedProduct.category || "product",
-          style: displayStyle,
+          style: styleForApi,
           aspectRatio: displayAspect,
           textOverlay: displayTextOverlay.trim() || null,
           referenceImageUrl: displayRefImage,
-          customPrompt: displayCustomPrompt.trim() || null,
+          customPrompt: composedCustom || null,
         },
       });
       if (error) throw new Error(error.message || "Generation failed");
       if (!data?.url) throw new Error(data?.error || "No image returned");
       setDisplayResultUrl(data.url as string);
       setDisplayResultId((data.id as string) || null);
+      setDisplayPrompt((data.prompt as string) || "");
       toast.success("Display image generated");
     } catch (e: any) {
       toast.error(e?.message || "Generation failed");
