@@ -356,7 +356,7 @@ async function runPosterTwoStage(
   }
   console.log("[poster-two-stage] Stage 2 (Ideogram) complete:", finalUrl);
 
-  return { finalUrl, geminiUrl, modelLabel: `${geminiModelUsed} -> ideogram-v3-turbo` };
+  return { finalUrl, geminiUrl, modelLabel: `nano-banana-pro -> ideogram-v3-turbo` };
 }
 
 Deno.serve(async (req) => {
