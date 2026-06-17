@@ -31,6 +31,7 @@ interface PosterInput {
   productTitle: string;
   productPrice: string;
   productImageUrl: string;
+  productImageUrls?: string[]; // optional multi-reference (up to 4)
   ctaText?: string;
   brandName?: string;
   meetupText?: string;
@@ -355,6 +356,73 @@ async function dataUrlToHostedUrl(
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return uploadBytesToBucket(admin, bytes, contentType, "poster-src");
+}
+
+// Normalize any incoming reference (data: or http(s)) to a hosted https URL.
+async function normalizeRefUrl(
+  admin: ReturnType<typeof createClient>,
+  url: string,
+): Promise<string> {
+  if (url.startsWith("data:")) return dataUrlToHostedUrl(admin, url);
+  if (/^https?:\/\//i.test(url)) return url;
+  throw new Error("Reference image must be an http(s) URL or data URL");
+}
+
+// Composite up to 4 reference images into a single 1024x1024 grid so
+// Flux Kontext can see every angle / detail in a single input_image.
+// Returns a hosted signed URL.
+async function compositeReferences(
+  admin: ReturnType<typeof createClient>,
+  urls: string[],
+): Promise<string> {
+  const size = 1024;
+  const canvas = new Image(size, size);
+  // Fill with white background so the model treats it as a clean reference sheet.
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      canvas.setPixelAt(x + 1, y + 1, 0xffffffff);
+    }
+  }
+
+  // Decide grid based on count
+  const n = Math.min(urls.length, 4);
+  const cells: Array<{ x: number; y: number; w: number; h: number }> = [];
+  if (n === 1) {
+    cells.push({ x: 0, y: 0, w: size, h: size });
+  } else if (n === 2) {
+    cells.push({ x: 0, y: 0, w: size / 2, h: size });
+    cells.push({ x: size / 2, y: 0, w: size / 2, h: size });
+  } else {
+    // 3 or 4 -> 2x2 grid (3 leaves the 4th cell blank/white)
+    cells.push({ x: 0, y: 0, w: size / 2, h: size / 2 });
+    cells.push({ x: size / 2, y: 0, w: size / 2, h: size / 2 });
+    cells.push({ x: 0, y: size / 2, w: size / 2, h: size / 2 });
+    cells.push({ x: size / 2, y: size / 2, w: size / 2, h: size / 2 });
+  }
+
+  for (let i = 0; i < n; i++) {
+    const cell = cells[i];
+    try {
+      const res = await fetch(urls[i]);
+      if (!res.ok) continue;
+      const buf = new Uint8Array(await res.arrayBuffer());
+      const decoded = await decodeImage(buf);
+      const ref = decoded instanceof Image ? decoded : (decoded as unknown as Image);
+      // Contain-fit into the cell, preserve aspect ratio.
+      const scale = Math.min(cell.w / ref.width, cell.h / ref.height);
+      const dw = Math.max(1, Math.round(ref.width * scale));
+      const dh = Math.max(1, Math.round(ref.height * scale));
+      ref.resize(dw, dh);
+      const ox = Math.round(cell.x + (cell.w - dw) / 2);
+      const oy = Math.round(cell.y + (cell.h - dh) / 2);
+      canvas.composite(ref, ox, oy);
+    } catch (e) {
+      console.warn("compositeReferences cell failed", i, e);
+    }
+  }
+
+  const png = await canvas.encode();
+  return uploadBytesToBucket(admin, png, "image/png", "poster-refsheet");
 }
 
 // ---------- Prompts ----------
