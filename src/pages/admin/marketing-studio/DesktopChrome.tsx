@@ -152,6 +152,8 @@ export default function DesktopChrome(props: DesktopChromeProps) {
     lastGeneratedAt,
     onGenerate,
     onClear,
+    displaySlot,
+    videoSlot,
   } = props;
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
