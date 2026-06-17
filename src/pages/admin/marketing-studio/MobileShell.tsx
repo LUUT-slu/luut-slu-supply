@@ -130,7 +130,26 @@ export default function MobileShell(props: MobileShellProps) {
     onOpenProductPicker,
     displaySlot,
     videoSlot,
+    displayStyle = "studio",
+    setDisplayStyle,
+    displayAspect = "1:1",
+    setDisplayAspect,
+    displayTextOverlay = "",
+    setDisplayTextOverlay,
+    displayBackground = "studio",
+    setDisplayBackground,
+    displayCustomPrompt = "",
+    setDisplayCustomPrompt,
+    modelGender = "unspecified",
+    setModelGender,
+    skinTone = "medium",
+    setSkinTone,
+    displayLoading = false,
+    displayResultUrl = null,
+    onGenerateDisplay,
   } = props;
+
+  const displayWired = Boolean(onGenerateDisplay && setDisplayStyle);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
