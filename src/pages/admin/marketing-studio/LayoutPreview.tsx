@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-import { getBrandStyleDef, getBrandStyleReferenceImage, type BrandStyle, type BrandSurface, type AspectRatio } from "@/lib/marketingRouting";
+import {
+  getBrandStyleDef,
+  getBrandStyleReferenceImage,
+  routeForPoster,
+  routeForDisplay,
+  type BrandStyle,
+  type BrandSurface,
+  type AspectRatio,
+} from "@/lib/marketingRouting";
 
 type Background =
   | "solid"
@@ -127,6 +135,28 @@ export default function LayoutPreview(props: LayoutPreviewProps) {
   const text = dark ? "text-white" : "text-neutral-900";
   const { size, shadow } = productScale(focus, goal);
 
+  const hasReference = Boolean(productImage);
+  const route = useMemo(() => {
+    if (surface === "poster") {
+      return routeForPoster({
+        aspectRatio,
+        campaign: (campaign as never) ?? "social_promo",
+        brandStyle,
+        hasReference,
+      } as never);
+    }
+    return routeForDisplay({
+      aspectRatio,
+      goal: (goal as never) ?? "product_display",
+      style: (style as never) ?? "studio",
+      background: (background as never) ?? "clean",
+      realism: (realism as never) ?? "natural",
+      focus: (focus as never) ?? "full_product",
+      brandStyle,
+      hasReference,
+    } as never);
+  }, [surface, aspectRatio, campaign, goal, style, background, realism, focus, brandStyle, hasReference]);
+
   const realismRing =
     realism === "hyper" || realism === "luxury"
       ? "ring-1 ring-black/10"
@@ -225,6 +255,9 @@ export default function LayoutPreview(props: LayoutPreviewProps) {
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+        <span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
+          model: {route.model}
+        </span>
         <span className="rounded bg-muted px-1.5 py-0.5">{aspectRatio}</span>
         {style && <span className="rounded bg-muted px-1.5 py-0.5">style: {style}</span>}
         {background && <span className="rounded bg-muted px-1.5 py-0.5">bg: {background}</span>}
@@ -237,7 +270,7 @@ export default function LayoutPreview(props: LayoutPreviewProps) {
         )}
       </div>
       <p className="text-[10px] italic text-muted-foreground">
-        Mockup preview — not a generated image. Updates live as you change settings.
+        Mockup preview — not a generated image. <span className="font-medium">{route.reason}.</span>
       </p>
     </div>
   );
