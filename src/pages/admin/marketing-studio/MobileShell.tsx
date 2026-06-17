@@ -671,9 +671,104 @@ export default function MobileShell(props: MobileShellProps) {
                   }}
                 >
                   Change
-                </button>
               </div>
             </div>
+
+            {/* Source photo override */}
+            {setCustomProductImage && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                  Source photo
+                </div>
+                <div
+                  style={{
+                    background: "#111",
+                    border: "0.5px solid #1c1c1c",
+                    borderRadius: 8,
+                    padding: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 5,
+                      background: "#161616",
+                      border: "0.5px solid #222",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {(customProductImage || productImage) && (
+                      <img
+                        src={customProductImage || productImage}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: "#bbb" }}>
+                      {customProductImage ? "Using your upload" : "Using listing image"}
+                    </div>
+                    <div style={{ fontSize: 9, color: "#555", marginTop: 2 }}>
+                      Optional override for the poster pipeline
+                    </div>
+                  </div>
+                  <label
+                    style={{
+                      fontSize: 10,
+                      color: "#aaa",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 4,
+                      padding: "3px 7px",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {customProductImage ? "Replace" : "Upload"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          if (typeof reader.result === "string") {
+                            setCustomProductImage(reader.result);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {customProductImage && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomProductImage(null)}
+                      style={{
+                        fontSize: 10,
+                        color: "#888",
+                        background: "transparent",
+                        border: "0.5px solid #1c1c1c",
+                        borderRadius: 4,
+                        padding: "3px 7px",
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+
 
             {/* Style */}
             <div>
