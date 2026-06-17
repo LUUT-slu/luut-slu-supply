@@ -1328,7 +1328,7 @@ export default function MarketingStudio() {
             setAiPosterPrompt("");
           }}
           displaySlot={displayPanel}
-          videoSlot={videoPanel}
+          videoSlot={desktopVideoPanel}
           displayStyle={displayStyle}
           setDisplayStyle={setDisplayStyle}
           displayAspect={displayAspect}
