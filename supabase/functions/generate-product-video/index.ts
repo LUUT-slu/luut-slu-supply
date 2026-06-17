@@ -54,14 +54,25 @@ Deno.serve(async (req) => {
     if (!isAdmin) return json({ error: "Admin access required" }, 403);
 
     const body = await req.json().catch(() => ({}));
-    const productImageUrl: string = body.productImageUrl;
+    const productImageUrl: string | undefined = body.productImageUrl;
+    const endImageUrl: string | undefined = body.endImageUrl;
     const productTitle: string = body.productTitle ?? "this product";
     const motionStyle: MotionStyle = (body.motionStyle ?? "subtle") as MotionStyle;
     const duration: number = body.duration === 10 ? 10 : 5;
-
-    if (!productImageUrl) return json({ error: "productImageUrl required" }, 400);
+    const allowedRatios = ["9:16", "1:1", "16:9", "4:3", "3:4", "21:9"];
+    const aspectRatio: string = allowedRatios.includes(body.aspectRatio) ? body.aspectRatio : "9:16";
 
     const prompt = buildPrompt(motionStyle, productTitle);
+
+    const input: Record<string, unknown> = {
+      prompt,
+      duration,
+      aspect_ratio: aspectRatio,
+      negative_prompt:
+        "blurry, distorted, watermark, text, logo, people, faces, hands, low quality, artifacts",
+    };
+    if (productImageUrl) input.image = productImageUrl;
+    if (endImageUrl) input.end_image = endImageUrl;
 
     const createRes = await fetch(`${REPLICATE_API}/models/${MODEL}/predictions`, {
       method: "POST",
@@ -69,16 +80,7 @@ Deno.serve(async (req) => {
         Authorization: `Token ${REPLICATE_API_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        input: {
-          image: productImageUrl,
-          prompt,
-          duration,
-          aspect_ratio: "9:16",
-          negative_prompt:
-            "blurry, distorted, watermark, text, logo, people, faces, hands, low quality, artifacts",
-        },
-      }),
+      body: JSON.stringify({ input }),
     });
 
     if (!createRes.ok) {

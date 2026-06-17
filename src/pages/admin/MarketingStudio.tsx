@@ -371,6 +371,14 @@ export default function MarketingStudio() {
   const [aiPosterLastAt, setAiPosterLastAt] = useState<number | null>(null);
   const [mobileProductPickerOpen, setMobileProductPickerOpen] = useState(false);
 
+  // Editable poster price (defaults from selected product, user can override)
+  const [posterPrice, setPosterPrice] = useState<string>("");
+  useEffect(() => {
+    setPosterPrice(
+      productPayload?.price ? `EC$${Math.round(Number(productPayload.price))}` : ""
+    );
+  }, [productPayload?.price]);
+
   const generateAiPoster = async () => {
     if (!productPayload) return;
     setAiPosterGenerating(true);
@@ -380,7 +388,7 @@ export default function MarketingStudio() {
       const { data, error } = await supabase.functions.invoke("generate-ai-poster", {
         body: {
           productTitle: productPayload.name,
-          productPrice: productPayload.price ? `EC$${Math.round(Number(productPayload.price))}` : "",
+          productPrice: posterPrice || (productPayload.price ? `EC$${Math.round(Number(productPayload.price))}` : ""),
           productImageUrl: productPayload.productImage || "",
           ctaText,
           brandName,
@@ -1302,6 +1310,8 @@ export default function MarketingStudio() {
           productName={productPayload?.name}
           productImage={productPayload?.productImage}
           productPrice={productPayload?.price}
+          posterPrice={posterPrice}
+          setPosterPrice={setPosterPrice}
           brandName={brandName}
           products={products.map((p) => ({ id: p.id, title: p.title }))}
           selectedProductId={selectedId}
@@ -1364,6 +1374,8 @@ export default function MarketingStudio() {
         productName={productPayload?.name}
         productImage={productPayload?.productImage}
         productPrice={productPayload?.price}
+        posterPrice={posterPrice}
+        setPosterPrice={setPosterPrice}
         brandName={brandName}
         aiPosterStyle={aiPosterStyle}
         setAiPosterStyle={setAiPosterStyle}
@@ -1382,7 +1394,7 @@ export default function MarketingStudio() {
         onGenerate={generateAiPoster}
         onOpenProductPicker={() => setMobileProductPickerOpen(true)}
         displaySlot={displayPanel}
-        videoSlot={videoPanel}
+        videoSlot={desktopVideoPanel}
         displayStyle={displayStyle}
         setDisplayStyle={setDisplayStyle}
         displayAspect={displayAspect}

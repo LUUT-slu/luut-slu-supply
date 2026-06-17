@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   Shirt,
   LayoutGrid,
@@ -25,7 +25,14 @@ import { supabase } from "@/integrations/supabase/client";
 type VideoType = "product" | "poster" | "model" | "promo";
 type MotionStyleV = "subtle" | "dynamic" | "cinematic" | "zoom" | "orbit";
 type DurationV = 5 | 10;
-type RatioV = "9:16" | "1:1" | "16:9";
+type RatioV = "9:16" | "1:1" | "16:9" | "4:3" | "3:4" | "21:9";
+
+const RATIOS: RatioV[] = ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"];
+
+function ratioToWH(r: RatioV): [number, number] {
+  const [w, h] = r.split(":").map(Number);
+  return [w, h];
+}
 
 const VIDEO_TYPES: { id: VideoType; label: string; desc: string; Icon: any }[] = [
   { id: "product", label: "Product video", desc: "Animate product photo", Icon: Shirt },
@@ -60,7 +67,7 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
   const [aspectRatio, setAspectRatio] = useState<RatioV>("9:16");
   const [customPrompt, setCustomPrompt] = useState("");
 
-  const [startFrame, setStartFrame] = useState<string | null>(productImageUrl);
+  const [startFrame, setStartFrame] = useState<string | null>(null);
   const [endFrame, setEndFrame] = useState<string | null>(null);
   const startInputRef = useRef<HTMLInputElement | null>(null);
   const endInputRef = useRef<HTMLInputElement | null>(null);
@@ -70,11 +77,6 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
   const [lastAt, setLastAt] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
-
-  // Auto-fill start frame from selected product
-  useEffect(() => {
-    if (productImageUrl) setStartFrame(productImageUrl);
-  }, [productImageUrl]);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>, slot: "start" | "end") {
     const file = e.target.files?.[0];
@@ -108,10 +110,6 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
       toast.error("Select a product first");
       return;
     }
-    if (!startFrame) {
-      toast.error("Add a start frame or select a product image");
-      return;
-    }
     setGenerating(true);
     setVideoUrl(null);
     try {
@@ -120,25 +118,24 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
       const fn = isPoster ? "generate-product-poster-video" : "generate-product-video";
       const body: any = isPoster
         ? {
-            posterImageUrl: startFrame,
+            posterImageUrl: startFrame ?? undefined,
             posterType: "product",
             prompt,
-            endImageUrl: endFrame ?? undefined,
             duration,
             aspectRatio,
             motionStyle,
           }
         : {
-            productImageUrl: startFrame,
+            productImageUrl: startFrame ?? undefined,
             productTitle: selectedProduct.title,
             productCategory: selectedProduct.category || "",
             motionStyle,
             duration,
             aspectRatio,
-            endImageUrl: endFrame ?? undefined,
             customPrompt: customPrompt?.trim() || undefined,
             videoType,
           };
+      if (endFrame) body.endImageUrl = endFrame;
       const { data, error } = await supabase.functions.invoke(fn, { body });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -215,10 +212,17 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
     MOTION_STYLES.find((m) => m.id === motionStyle)?.label
   } · Kling v2.1`;
 
+  // Compute preview dimensions from aspect ratio
+  const [rw, rh] = ratioToWH(aspectRatio);
+  const previewMax = 380;
+  const previewW = rw >= rh ? previewMax : Math.round((previewMax * rw) / rh);
+  const previewH = rh > rw ? previewMax : Math.round((previewMax * rh) / rw);
+
   return (
-    <div className="flex flex-1 overflow-hidden bg-[#080808] text-[#e8e8e8]">
+    <div className="flex flex-1 flex-col overflow-hidden bg-[#080808] text-[#e8e8e8] lg:flex-row">
       {/* ===== Sidebar ===== */}
-      <aside className="w-[300px] shrink-0 overflow-y-auto border-r border-[#1c1c1c] bg-[#0c0c0c] p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <aside className="w-full shrink-0 overflow-y-auto border-b border-[#1c1c1c] bg-[#0c0c0c] p-4 lg:w-[300px] lg:border-b-0 lg:border-r [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+
         <div className="flex flex-col gap-3.5 pb-6">
           {/* Product */}
           <div>
@@ -348,7 +352,7 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
             <div className="flex-1">
               <div className={sLabel}>Ratio</div>
               <div className="flex flex-wrap gap-1.5">
-                {(["9:16", "1:1", "16:9"] as RatioV[]).map((r) => (
+                {RATIOS.map((r) => (
                   <button
                     key={r}
                     type="button"
@@ -416,7 +420,7 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
             <ArrowRight className="h-3.5 w-3.5 text-[#2a2a2a]" />
             <div
               className="relative flex flex-col items-center justify-center gap-2.5 overflow-hidden rounded-lg border border-[#1c1c1c] bg-[#0c0c0c]"
-              style={{ width: 200, height: 356 }}
+              style={{ width: previewW, height: previewH }}
             >
               {videoUrl ? (
                 <>
@@ -468,7 +472,7 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
       </section>
 
       {/* ===== Action Strip ===== */}
-      <aside className="flex w-[180px] shrink-0 flex-col gap-1.5 overflow-y-auto border-l border-[#1c1c1c] bg-[#0c0c0c] px-3 py-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <aside className="flex w-full shrink-0 flex-col gap-1.5 overflow-y-auto border-t border-[#1c1c1c] bg-[#0c0c0c] px-3 py-3.5 lg:w-[180px] lg:border-l lg:border-t-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {videoUrl ? (
           <>
             <div className="mb-0.5 text-[9px] uppercase tracking-[0.1em] text-[#3a3a3a]">Ready</div>

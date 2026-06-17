@@ -45,8 +45,19 @@ Deno.serve(async (req) => {
     if (!isAdmin) return json({ error: "Admin access required" }, 403);
 
     const body = await req.json().catch(() => ({}));
-    const posterImageUrl: string = body.posterImageUrl;
-    if (!posterImageUrl) return json({ error: "posterImageUrl required" }, 400);
+    const posterImageUrl: string | undefined = body.posterImageUrl;
+    const endImageUrl: string | undefined = body.endImageUrl;
+    const allowedRatios = ["9:16", "1:1", "16:9", "4:3", "3:4", "21:9"];
+    const aspectRatio: string = allowedRatios.includes(body.aspectRatio) ? body.aspectRatio : "9:16";
+    const prompt: string = (typeof body.prompt === "string" && body.prompt.trim()) || POSTER_PROMPT;
+
+    const input: Record<string, unknown> = {
+      prompt,
+      num_frames: 81,
+      aspect_ratio: aspectRatio,
+    };
+    if (posterImageUrl) input.image = posterImageUrl;
+    if (endImageUrl) input.end_image = endImageUrl;
 
     const createRes = await fetch(`${REPLICATE_API}/models/${MODEL}/predictions`, {
       method: "POST",
@@ -54,14 +65,7 @@ Deno.serve(async (req) => {
         Authorization: `Token ${REPLICATE_API_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        input: {
-          image: posterImageUrl,
-          prompt: POSTER_PROMPT,
-          num_frames: 81,
-          aspect_ratio: "9:16",
-        },
-      }),
+      body: JSON.stringify({ input }),
     });
 
     if (!createRes.ok) {

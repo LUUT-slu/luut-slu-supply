@@ -37,6 +37,8 @@ export interface MobileShellProps {
   productName?: string;
   productImage?: string;
   productPrice?: number | string;
+  posterPrice?: string;
+  setPosterPrice?: (s: string) => void;
   brandName: string;
 
   aiPosterStyle: AiStyle;
@@ -111,6 +113,8 @@ export default function MobileShell(props: MobileShellProps) {
     productName,
     productImage,
     productPrice,
+    posterPrice = "",
+    setPosterPrice,
     brandName,
     aiPosterStyle,
     setAiPosterStyle,
@@ -705,6 +709,7 @@ export default function MobileShell(props: MobileShellProps) {
                 Details
               </div>
               {[
+                { label: "Price", value: posterPrice, set: (v: string) => setPosterPrice?.(v), placeholder: "EC$120" },
                 { label: "Urgency", value: urgencyText, set: setUrgencyText, placeholder: "Limited Drop" },
                 { label: "Tagline", value: tagline, set: setTagline, placeholder: "Saint Lucia's Plug 🇱🇨" },
                 { label: "Pickup locations", value: meetupText, set: setMeetupText, placeholder: "Castries · Gros Islet · Vieux Fort" },
