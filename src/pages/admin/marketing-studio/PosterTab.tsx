@@ -18,6 +18,7 @@ import {
   type PosterStyle,
   POSTER_PRESETS,
   previewPosterFinal,
+  getBrandStyleReferenceImage,
 } from "@/lib/marketingRouting";
 
 import PromptPreview from "./PromptPreview";
