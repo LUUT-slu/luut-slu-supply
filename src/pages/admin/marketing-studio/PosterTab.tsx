@@ -83,6 +83,8 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
   const [priceText, setPriceText] = useState("");
   const [ctaText, setCtaText] = useState("Shop Now");
   const [notes, setNotes] = useState("");
+  const [promptOverride, setPromptOverride] = useState<string | null>(null);
+  const [lastSeed, setLastSeed] = useState<number | null>(null);
 
   const [generating, setGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
