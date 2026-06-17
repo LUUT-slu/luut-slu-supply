@@ -38,6 +38,7 @@ interface ReqBody {
   aspectRatio?: string;
   referenceImages?: string[]; // product refs — http(s) URL or data: URL
   styleReferenceImage?: string; // brand-style donor ref — http(s) URL or data: URL
+  seed?: number; // optional deterministic seed for reproducible generations
   // Bookkeeping for the library row:
   productTitle?: string;
   productHandle?: string;
