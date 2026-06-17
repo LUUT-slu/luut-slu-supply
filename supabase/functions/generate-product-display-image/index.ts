@@ -14,8 +14,8 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN")!;
-const REPLICATE_API = "https://api.replicate.com/v1";
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/images/generations";
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10; // ~10 years
 
@@ -49,45 +49,44 @@ function buildPrompt(
   return base;
 }
 
-async function runReplicate(
-  model: string,
-  input: Record<string, unknown>,
-): Promise<unknown> {
-  const createRes = await fetch(`${REPLICATE_API}/models/${model}/predictions`, {
+async function generateViaGateway(
+  prompt: string,
+  productImageUrl: string,
+  referenceImageUrl?: string | null,
+): Promise<Uint8Array> {
+  const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
+  content.push({ type: "image_url", image_url: { url: productImageUrl } });
+  if (referenceImageUrl) {
+    content.push({ type: "image_url", image_url: { url: referenceImageUrl } });
+  }
+
+  const res = await fetch(AI_GATEWAY, {
     method: "POST",
     headers: {
-      Authorization: `Token ${REPLICATE_API_TOKEN}`,
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
-      Prefer: "wait",
     },
-    body: JSON.stringify({ input }),
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash-image",
+      messages: [{ role: "user", content }],
+      modalities: ["image", "text"],
+    }),
   });
-  if (!createRes.ok) {
-    const text = await createRes.text().catch(() => "");
-    throw new Error(`Replicate ${createRes.status}: ${text}`);
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`AI Gateway ${res.status}: ${text}`);
   }
-  let prediction = await createRes.json();
-  const start = Date.now();
-  while (
-    prediction.status !== "succeeded" &&
-    prediction.status !== "failed" &&
-    prediction.status !== "canceled"
-  ) {
-    if (Date.now() - start > 120_000) throw new Error("Replicate prediction timed out");
-    await new Promise((r) => setTimeout(r, 3000));
-    const pollRes = await fetch(`${REPLICATE_API}/predictions/${prediction.id}`, {
-      headers: { Authorization: `Token ${REPLICATE_API_TOKEN}` },
-    });
-    if (!pollRes.ok) {
-      const text = await pollRes.text().catch(() => "");
-      throw new Error(`Replicate poll ${pollRes.status}: ${text}`);
-    }
-    prediction = await pollRes.json();
+  const data = await res.json();
+  const b64 = data?.data?.[0]?.b64_json;
+  if (!b64 || typeof b64 !== "string") {
+    throw new Error("AI Gateway returned no image data");
   }
-  if (prediction.status !== "succeeded") {
-    throw new Error(prediction.error || `Prediction ${prediction.status}`);
-  }
-  return prediction.output;
+  // base64 -> Uint8Array
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
 
 function json(body: unknown, status = 200) {
@@ -148,30 +147,8 @@ Deno.serve(async (req) => {
 
     const fullPrompt = buildPrompt(resolvedStyle, productTitle, textOverlay, customPrompt);
 
-    const replicateInput: Record<string, unknown> = {
-      prompt: fullPrompt,
-      input_image: productImageUrl,
-      aspect_ratio: resolvedAspect,
-      output_format: "png",
-      safety_tolerance: 2,
-    };
-    if (referenceImageUrl && referenceImageUrl.length > 0) {
-      replicateInput.reference_image = referenceImageUrl;
-    }
-
-    const output = await runReplicate(
-      "black-forest-labs/flux-kontext-pro",
-      replicateInput,
-    );
-    const replicateUrl = Array.isArray(output) ? String(output[0]) : String(output);
-    if (!replicateUrl || !replicateUrl.startsWith("http")) {
-      throw new Error("Replicate returned no image URL");
-    }
-
-    // Download and upload to storage
-    const imgRes = await fetch(replicateUrl);
-    if (!imgRes.ok) throw new Error(`Failed to fetch generated image: ${imgRes.status}`);
-    const bytes = new Uint8Array(await imgRes.arrayBuffer());
+    // Generate via Lovable AI Gateway (Gemini Nano Banana — image editing with input image)
+    const bytes = await generateViaGateway(fullPrompt, productImageUrl, referenceImageUrl);
     const path = `display-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`;
 
     const { error: uploadErr } = await admin.storage
