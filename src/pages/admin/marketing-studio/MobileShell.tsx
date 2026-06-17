@@ -16,6 +16,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
+import PosterLightbox from "./PosterLightbox";
 
 type StudioMode = "select" | "images" | "videos";
 type AiStyle = "hype" | "clean" | "luxury" | "bold";
@@ -101,6 +102,7 @@ export default function MobileShell(props: MobileShellProps) {
   } = props;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // Determine current "mode" for the nav
   const currentNav: "poster" | "display" | "video" | "library" =
@@ -247,11 +249,18 @@ export default function MobileShell(props: MobileShellProps) {
                 }}
               >
                 {aiPosterResult ? (
-                  <img
-                    src={aiPosterResult}
-                    alt="Generated poster"
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setLightboxOpen(true)}
+                    aria-label="View poster full screen"
+                    className="absolute inset-0 p-0 border-0 bg-transparent cursor-zoom-in"
+                  >
+                    <img
+                      src={aiPosterResult}
+                      alt="Generated poster"
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
                 ) : (
                   <>
                     <div
@@ -784,6 +793,13 @@ export default function MobileShell(props: MobileShellProps) {
           <span style={{ fontSize: 12, color: "#777", fontWeight: 500 }}>Live</span>
         </div>
       </div>
+
+      <PosterLightbox
+        open={lightboxOpen}
+        src={aiPosterResult}
+        onClose={() => setLightboxOpen(false)}
+        showDownload
+      />
     </div>
   );
 }
