@@ -43,6 +43,14 @@ const STYLES: { key: PosterStyle; label: string }[] = [
 
 const ASPECTS: AspectRatio[] = ["1:1", "4:5", "9:16", "16:9", "3:4"];
 
+const REALISMS: { key: DisplayRealism; label: string }[] = [
+  { key: "standard", label: "Standard" },
+  { key: "premium", label: "Premium" },
+  { key: "hyper", label: "Hyper Realistic" },
+  { key: "luxury", label: "Luxury" },
+];
+
+
 const MAX_REFS = 4;
 
 export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
