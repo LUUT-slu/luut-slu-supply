@@ -1068,6 +1068,7 @@ export default function MarketingStudio() {
 
   return (
     <AdminAuth>
+      <div className="lg:grid lg:grid-cols-[300px_1fr_180px] lg:bg-[#080808] lg:min-h-screen">
       {desktopChromeActive && (
         <div className="hidden lg:block">
           <DesktopChrome
