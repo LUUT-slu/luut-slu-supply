@@ -198,6 +198,24 @@ function escapeXml(value: string | null | undefined): string {
     .replace(/"/g, "&quot;");
 }
 
+function wrapText(value: string, maxChars: number, maxLines: number): string[] {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > maxChars && current) {
+      lines.push(current);
+      current = word;
+      if (lines.length === maxLines - 1) break;
+    } else {
+      current = next;
+    }
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+  return lines.length ? lines : [value];
+}
+
 function generatePosterSvg(input: PosterInput, plan: PosterPlan, productDataUrl: string | null): string {
   const aspect = mapAspect(input.aspectRatio);
   const [width, height] = aspect.dimensions.split("×").map((n) => Number(n));
@@ -210,6 +228,19 @@ function generatePosterSvg(input: PosterInput, plan: PosterPlan, productDataUrl:
   const heroY = isWide ? (height - heroSize) / 2 : height * 0.34;
   const textWidth = isWide ? width * 0.48 : width - pad * 2;
   const ctaY = height - pad - 86;
+  const titleLineHeight = Math.round(titleSize * 0.92);
+  const titleLines = wrapText(
+    input.productTitle,
+    Math.max(8, Math.floor(textWidth / (titleSize * 0.56))),
+    isWide ? 3 : 4,
+  );
+  const titleSvg = titleLines
+    .map(
+      (line, index) =>
+        `<text x="${pad}" y="${titleY + index * titleLineHeight}" fill="${escapeXml(plan.text)}" font-family="Inter,Arial,sans-serif" font-size="${titleSize}" font-weight="900" letter-spacing="0">${escapeXml(line.toUpperCase())}</text>`,
+    )
+    .join("\n  ");
+  const afterTitleY = titleY + titleLines.length * titleLineHeight + 46;
 
   const bg = escapeXml(plan.background);
   const accent = escapeXml(plan.accent);
@@ -237,8 +268,8 @@ function generatePosterSvg(input: PosterInput, plan: PosterPlan, productDataUrl:
   <text x="${pad}" y="${pad}" fill="${text}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="900" letter-spacing="4">${brandUpper}</text>
   <rect x="${width - pad - 285}" y="${pad - 34}" width="285" height="58" rx="29" fill="${accent}"/>
   <text x="${width - pad - 142}" y="${pad + 5}" text-anchor="middle" fill="${bg}" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="900">${urgencyUpper}</text>
-  <foreignObject x="${pad}" y="${titleY}" width="${textWidth}" height="${isWide ? 230 : 330}"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Inter,Arial,sans-serif;color:${text};font-size:${titleSize}px;line-height:.92;font-weight:900;text-transform:uppercase;letter-spacing:0;word-break:break-word;">${title}</div></foreignObject>
-  ${tagline ? `<text x="${pad}" y="${titleY + (isWide ? 260 : 360)}" fill="${muted}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700">${tagline}</text>` : ""}
+  ${titleSvg}
+  ${tagline ? `<text x="${pad}" y="${afterTitleY}" fill="${muted}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700">${tagline}</text>` : ""}
   <circle cx="${heroX + heroSize / 2}" cy="${heroY + heroSize / 2}" r="${heroSize / 1.9}" fill="${accent}" opacity="0.18"/>
   <rect x="${heroX}" y="${heroY}" width="${heroSize}" height="${heroSize}" rx="${Math.round(heroSize * 0.08)}" fill="${surface}" filter="url(#shadow)"/>
   ${productDataUrl ? `<image href="${productDataUrl}" x="${heroX + 26}" y="${heroY + 26}" width="${heroSize - 52}" height="${heroSize - 52}" preserveAspectRatio="xMidYMid meet"/>` : `<text x="${heroX + heroSize / 2}" y="${heroY + heroSize / 2}" text-anchor="middle" fill="${muted}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="800">${title}</text>`}
