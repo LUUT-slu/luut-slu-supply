@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
       negative_prompt:
         "blurry, distorted, watermark, text, logo, people, faces, hands, low quality, artifacts",
     };
-    if (productImageUrl) input.image = productImageUrl;
+    if (productImageUrl) input.start_image = productImageUrl;
     if (endImageUrl) input.end_image = endImageUrl;
 
     const createRes = await fetch(`${REPLICATE_API}/models/${MODEL}/predictions`, {
