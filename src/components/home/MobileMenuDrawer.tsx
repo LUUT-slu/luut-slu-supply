@@ -4,7 +4,7 @@ import {
   Sparkles, Flame, Store, ShoppingBag, Package, Heart, Clock, MapPin,
   Ticket, MessageCircle, Building2, UserPlus, LayoutDashboard, Gift,
   Info, Truck, HelpCircle, Mail, ShoppingCart, Bell, User as UserIcon,
-  ChevronRight, Sparkle, LogOut, LogIn,
+  ChevronRight, Sparkle, LogOut, LogIn, Megaphone,
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -81,6 +81,7 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [orderCount, setOrderCount] = useState(0);
+  const [isAdminOrSeller, setIsAdminOrSeller] = useState(false);
   const localeCountry = useLocaleStore((s) => s.country);
   const localeLanguage = useLocaleStore((s) => s.language);
   const localeCurrency = useLocaleStore((s) => s.currency);
@@ -92,6 +93,28 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
     supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setIsAdminOrSeller(false);
+      return;
+    }
+    const checkRoles = async () => {
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      const roleNames = roles?.map((r) => r.role as string) || [];
+      if (roleNames.includes("admin")) {
+        setIsAdminOrSeller(true);
+        return;
+      }
+      const { data: sellerProfile } = await supabase
+        .from("seller_profiles")
+        .select("is_approved")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setIsAdminOrSeller(!!sellerProfile?.is_approved);
+    };
+    checkRoles();
+  }, [user]);
 
   useEffect(() => {
     if (!user) { setDisplayName(""); return; }
@@ -290,6 +313,9 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
             <Row to="/sell" icon={<Building2 className="h-4 w-4" />} label="Sell on Luut" hint="List your products" onClick={close} />
             <Row to="/sell" icon={<UserPlus className="h-4 w-4" />} label="Become a Seller" onClick={close} />
             <Row to="/seller" icon={<LayoutDashboard className="h-4 w-4" />} label="Vendor Dashboard" onClick={close} />
+            {isAdminOrSeller && (
+              <Row to="/admin/marketing-studio" icon={<Megaphone className="h-4 w-4" />} label="Marketing Studio" hint="Create posters & videos" onClick={close} />
+            )}
             <Row to="/sell" icon={<Gift className="h-4 w-4" />} label="Affiliate Program" hint="Coming soon" onClick={close} />
 
             {/* Info */}
