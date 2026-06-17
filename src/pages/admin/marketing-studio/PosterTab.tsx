@@ -89,6 +89,8 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     productPrice: product?.price?.amount ? String(product.price.amount) : undefined,
     campaign,
     style,
+    realism,
+
     aspectRatio: aspect,
     headline,
     subheadline,
