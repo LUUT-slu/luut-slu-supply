@@ -277,7 +277,7 @@ Deno.serve(async (req) => {
     const productDataUrl = await fetchProductDataUrl(body.productImageUrl);
     const svg = generatePosterSvg(body, plan, productDataUrl);
     const bytes = new TextEncoder().encode(svg);
-    const path = `ai-poster-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`;
+    const path = `ai-poster-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.svg`;
 
     const upload = await admin.storage.from(BUCKET).upload(path, bytes, {
       contentType: "image/svg+xml",

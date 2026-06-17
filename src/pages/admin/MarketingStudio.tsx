@@ -1469,7 +1469,7 @@ export default function MarketingStudio() {
             </Card>
           )}
 
-          <Tabs value={tab} onValueChange={(v) => { setTab(v as TemplateFormat); setShowAiPoster(false); }} className="w-full min-w-0">
+          <Tabs value={tab} onValueChange={(v) => { setTab(v as StudioTab); setShowAiPoster(false); }} className="w-full min-w-0">
             <div className="w-full overflow-x-auto">
               <TabsList className="inline-flex w-auto min-w-full justify-start">
                 {FORMATS.map((f) => (
@@ -1966,7 +1966,7 @@ export default function MarketingStudio() {
         <ImageEditorModal
           open={!!editorImage}
           imageUrl={editorImage}
-          format={tab}
+          format={activeTemplateFormat}
           initialCrop={editorImage ? cropMap[editorImage] : undefined}
           onSave={handleEditorSave}
           onClose={() => setEditorImage(null)}
