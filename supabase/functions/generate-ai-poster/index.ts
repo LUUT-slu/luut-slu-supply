@@ -116,9 +116,8 @@ async function createPrediction(prompt: string, aspectRatio: string): Promise<st
       input: {
         prompt,
         aspect_ratio: aspectRatio,
-        style_type: "DESIGN",
-        negative_prompt:
-          "blurry, low quality, distorted text, misspelled, watermark, extra limbs, bad composition, cluttered background",
+        style_type: "Design",
+        magic_prompt_option: "On",
       },
     }),
   });
