@@ -41,48 +41,67 @@ export const MODEL_REGISTRY: Record<ModelKey, ModelChoice> = {
 
 // ---------- Brand styles ----------
 
-export type BrandStyle =
-  | "default"
-  | "tech"
-  | "luxury"
-  | "streetwear"
-  | "sports"
-  | "minimal"
-  | "apple"
-  | "nike";
+export type BrandStyle = string;
 
-export const BRAND_STYLES: { key: BrandStyle; label: string }[] = [
-  { key: "default", label: "Default" },
-  { key: "tech", label: "Tech" },
-  { key: "luxury", label: "Luxury" },
-  { key: "streetwear", label: "Streetwear" },
-  { key: "sports", label: "Sports" },
-  { key: "minimal", label: "Minimal" },
-  { key: "apple", label: "Apple Inspired" },
-  { key: "nike", label: "Nike Inspired" },
+export interface BrandStyleDef {
+  key: string;
+  label: string;
+  description: string;
+  snippet: string;
+  custom?: boolean;
+}
+
+export const BUILTIN_BRAND_STYLES: BrandStyleDef[] = [
+  { key: "default", label: "Default", description: "No extra brand styling — uses only the selected options.", snippet: "" },
+  { key: "tech", label: "Tech", description: "Futuristic, sleek and clean. Cool-toned lighting, modern surfaces.", snippet: "clean technology advertising, futuristic presentation, sleek product positioning" },
+  { key: "luxury", label: "Luxury", description: "Premium and elegant. Refined lighting, generous space, polished materials.", snippet: "premium branding, elegant composition, refined lighting, luxury commercial campaign" },
+  { key: "streetwear", label: "Streetwear", description: "Urban culture, high contrast, modern editorial energy.", snippet: "urban aesthetic, modern culture-driven branding, high contrast photography" },
+  { key: "sports", label: "Sports", description: "Athletic, dynamic angles, vibrant accent lighting, performance energy.", snippet: "athletic energy, dynamic angle, vibrant accent lighting, performance-driven advertising" },
+  { key: "minimal", label: "Minimal", description: "Lots of negative space, calm hierarchy, refined typography.", snippet: "minimalist composition, abundant negative space, calm hierarchy, refined typography" },
+  { key: "apple", label: "Apple Inspired", description: "Monochrome backdrops, soft key lighting, premium negative space.", snippet: "minimalist composition, monochrome backdrop, premium negative space, soft key lighting, luxury technology advertisement" },
+  { key: "nike", label: "Nike Inspired", description: "Bold athletic energy, dynamic angles, motion and vibrancy.", snippet: "athletic energy, dynamic camera angle, vibrant accent lighting, performance-focused advertising, powerful motion" },
 ];
 
-export function buildBrandStyleSnippet(b: BrandStyle): string {
-  switch (b) {
-    case "tech":
-      return "clean technology advertising, futuristic presentation, sleek product positioning";
-    case "luxury":
-      return "premium branding, elegant composition, refined lighting, luxury commercial campaign";
-    case "streetwear":
-      return "urban aesthetic, modern culture-driven branding, high contrast photography";
-    case "sports":
-      return "athletic energy, dynamic angle, vibrant accent lighting, performance-driven advertising";
-    case "minimal":
-      return "minimalist composition, abundant negative space, calm hierarchy, refined typography";
-    case "apple":
-      return "minimalist composition, monochrome backdrop, premium negative space, soft key lighting, luxury technology advertisement";
-    case "nike":
-      return "athletic energy, dynamic camera angle, vibrant accent lighting, performance-focused advertising, powerful motion";
-    case "default":
-    default:
-      return "";
+const CUSTOM_BRAND_STYLES_KEY = "luut.marketing.customBrandStyles.v1";
+
+export function loadCustomBrandStyles(): BrandStyleDef[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_BRAND_STYLES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as BrandStyleDef[];
+    return Array.isArray(parsed) ? parsed.map((s) => ({ ...s, custom: true })) : [];
+  } catch {
+    return [];
   }
 }
+
+export function saveCustomBrandStyles(styles: BrandStyleDef[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      CUSTOM_BRAND_STYLES_KEY,
+      JSON.stringify(styles.map((s) => ({ ...s, custom: true }))),
+    );
+  } catch {
+    /* ignore quota */
+  }
+}
+
+export function getAllBrandStyles(): BrandStyleDef[] {
+  return [...BUILTIN_BRAND_STYLES, ...loadCustomBrandStyles()];
+}
+
+// Backwards-compatible label list used by older selectors.
+export const BRAND_STYLES: { key: BrandStyle; label: string }[] =
+  BUILTIN_BRAND_STYLES.map((b) => ({ key: b.key, label: b.label }));
+
+export function buildBrandStyleSnippet(b: BrandStyle): string {
+  const all = getAllBrandStyles();
+  const match = all.find((s) => s.key === b);
+  return match?.snippet || "";
+}
+
 
 // ---------- Tasks ----------
 
