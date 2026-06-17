@@ -1348,6 +1348,12 @@ export default function MobileShell(props: MobileShellProps) {
         onClose={() => setLightboxOpen(false)}
         showDownload
       />
+      <PosterLightbox
+        open={displayLightboxOpen}
+        src={displayResultUrl}
+        onClose={() => setDisplayLightboxOpen(false)}
+        showDownload
+      />
     </div>
   );
 }
