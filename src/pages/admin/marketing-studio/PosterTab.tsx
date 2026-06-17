@@ -52,6 +52,13 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     [products, selectedId],
   );
 
+  const [selectedVariantId, setSelectedVariantId] = useState("");
+  const variant = useMemo(() => {
+    if (!product?.variants?.length) return null;
+    return product.variants.find((v) => v.id === selectedVariantId) || product.variants[0];
+  }, [product, selectedVariantId]);
+  const variantImage = variant?.image?.url || product?.images?.[0]?.url || null;
+
   const [refs, setRefs] = useState<string[]>([]);
   const [campaign, setCampaign] = useState<PosterCampaign>("sale");
   const [style, setStyle] = useState<PosterStyle>("bold");
