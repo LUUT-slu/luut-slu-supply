@@ -328,55 +328,75 @@ export default function BrandStyleSelector({
               </p>
             </div>
 
-            <div>
-              <Label className="text-xs">Reference image (optional — pure style donor)</Label>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Upload a poster or display image whose visual DNA — colors, lighting, composition,
-                typography feel, background style, how the product is positioned — should influence
-                every generation under this style. The actual content of this image is never copied;
-                the product stays whatever you have selected on the page.
+            <div className="space-y-3">
+              <Label className="text-xs">Reference images (optional — pure style donors)</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Upload separate references for posters and for display images. Each one's visual DNA
+                — colors, lighting, composition, typography feel, background style, how the product
+                is positioned — influences generations of that surface type. The actual content of
+                these images is never copied; the product stays whatever you have selected on the
+                page.
               </p>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => onPickFile(e.target.files?.[0] || null)}
-              />
-              <div className="mt-2 flex items-center gap-3">
-                {draft.referenceImage ? (
-                  <img
-                    src={draft.referenceImage}
-                    alt="Style reference preview"
-                    className="h-20 w-20 rounded border object-cover"
+
+              {([
+                {
+                  slot: "poster" as RefSlot,
+                  title: "Poster reference",
+                  desc: "Used when generating posters & flyers.",
+                  current: draft.referenceImagePoster,
+                  ref: posterFileRef,
+                  clear: () => setDraft((d) => ({ ...d, referenceImagePoster: undefined })),
+                },
+                {
+                  slot: "display" as RefSlot,
+                  title: "Display image reference",
+                  desc: "Used when generating product display & lifestyle images.",
+                  current: draft.referenceImageDisplay,
+                  ref: displayFileRef,
+                  clear: () => setDraft((d) => ({ ...d, referenceImageDisplay: undefined })),
+                },
+              ]).map((row) => (
+                <div key={row.slot} className="rounded border p-3">
+                  <div className="text-xs font-medium">{row.title}</div>
+                  <p className="text-[11px] text-muted-foreground">{row.desc}</p>
+                  <input
+                    ref={row.ref}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => onPickFile(e.target.files?.[0] || null, row.slot)}
                   />
-                ) : (
-                  <div className="flex h-20 w-20 items-center justify-center rounded border border-dashed text-muted-foreground">
-                    <ImageIcon className="h-5 w-5" />
+                  <div className="mt-2 flex items-center gap-3">
+                    {row.current ? (
+                      <img
+                        src={row.current}
+                        alt={`${row.title} preview`}
+                        className="h-20 w-20 rounded border object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-20 w-20 items-center justify-center rounded border border-dashed text-muted-foreground">
+                        <ImageIcon className="h-5 w-5" />
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => row.ref.current?.click()}
+                      >
+                        <Upload className="mr-1 h-3.5 w-3.5" />
+                        {row.current ? "Replace image" : "Upload image"}
+                      </Button>
+                      {row.current && (
+                        <Button type="button" variant="ghost" size="sm" onClick={row.clear}>
+                          Remove image
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div className="flex flex-col gap-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileRef.current?.click()}
-                  >
-                    <Upload className="mr-1 h-3.5 w-3.5" />
-                    {draft.referenceImage ? "Replace image" : "Upload image"}
-                  </Button>
-                  {draft.referenceImage && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDraft((d) => ({ ...d, referenceImage: undefined }))}
-                    >
-                      Remove image
-                    </Button>
-                  )}
                 </div>
-              </div>
+              ))}
             </div>
           </div>
           <DialogFooter>
