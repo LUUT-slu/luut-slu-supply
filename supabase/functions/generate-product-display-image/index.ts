@@ -14,8 +14,8 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN")!;
-const REPLICATE_API = "https://api.replicate.com/v1";
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/images/generations";
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10; // ~10 years
 
