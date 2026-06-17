@@ -148,7 +148,9 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
         body: {
           task: "poster",
           model: route.model,
-          prompt: promptOverride ?? prompt,
+          prompt: promptOverride ?? textPrompt,
+          backgroundPrompt,
+          textPrompt: promptOverride ?? textPrompt,
           aspectRatio: aspect,
           referenceImages: sourceRefs,
           styleReferenceImage: getBrandStyleReferenceImage(brandStyle, "poster") || undefined,
