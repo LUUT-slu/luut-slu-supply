@@ -1405,6 +1405,8 @@ export default function MarketingStudio() {
         aiPosterResult={aiPosterResult}
         onGenerate={generateAiPoster}
         onOpenProductPicker={() => setMobileProductPickerOpen(true)}
+        customProductImage={customProductImage}
+        setCustomProductImage={setCustomProductImage}
         displaySlot={displayPanel}
         videoSlot={desktopVideoPanel}
         displayStyle={displayStyle}
