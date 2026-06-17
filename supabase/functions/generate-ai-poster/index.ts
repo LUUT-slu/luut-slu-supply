@@ -99,7 +99,8 @@ ${tagline ? `"${tagline}" in bold supporting text.` : ""}
 Style: attention-grabbing street market energy, Caribbean hustle aesthetic.`;
   }
 
-  let full = base + ` This is a marketing poster for a Caribbean fashion resale brand based in Saint Lucia. All text must be clearly legible, correctly spelled, and placed inside the poster bounds.`;
+  const anchor = `Use the provided reference image as the exact product to feature in this poster. Do not invent or replace the product appearance. Reproduce the product accurately including its colors, shape, branding, and logo.`;
+  let full = `${anchor} ${base} This is a marketing poster for a Caribbean fashion resale brand based in Saint Lucia. All text must be clearly legible, correctly spelled, and placed inside the poster bounds.`;
 
   if (customInstructions && customInstructions.trim()) {
     full += ` ${customInstructions.trim()}`;
