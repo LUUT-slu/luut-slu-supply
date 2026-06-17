@@ -387,11 +387,12 @@ export function buildPosterPrompt(c: PosterControls, brand: BrandStyle): string 
     goal: "product_hero",
     style: "studio",
     background: "gradient",
-    realism: "hyper",
+    realism: c.realism,
     focus: "hero_angle",
     productTitle: c.productTitle,
   });
   parts.push(`Product imagery on the poster: ${scene}`);
+
 
   parts.push(`Compose strictly in a ${c.aspectRatio} aspect ratio frame.`);
 
