@@ -311,7 +311,7 @@ Deno.serve(async (req) => {
     return json({
       url: publicUrl,
       id: inserted.id,
-      model,
+      model: effectiveModel,
       task,
       prompt,
       aspectRatio,
