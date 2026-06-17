@@ -483,22 +483,46 @@ Deno.serve(async (req) => {
     if (!body.productImageUrl) return json({ error: "Missing productImageUrl" }, 400);
     if (!body.productPrice) return json({ error: "Missing productPrice" }, 400);
 
-    let sourceImageUrl = body.productImageUrl;
-    if (sourceImageUrl.startsWith("data:")) {
-      sourceImageUrl = await dataUrlToHostedUrl(admin, sourceImageUrl);
-    } else if (!/^https?:\/\//i.test(sourceImageUrl)) {
-      return json({ error: "productImageUrl must be an http(s) URL or data URL" }, 400);
+    // Collect all reference images. Prefer productImageUrls when provided,
+    // otherwise fall back to the single productImageUrl.
+    const rawRefs = Array.isArray(body.productImageUrls) && body.productImageUrls.length > 0
+      ? body.productImageUrls.slice(0, 4)
+      : [body.productImageUrl];
+
+    const hostedRefs: string[] = [];
+    for (const r of rawRefs) {
+      try {
+        hostedRefs.push(await normalizeRefUrl(admin, r));
+      } catch (e) {
+        console.warn("skip bad ref", e);
+      }
+    }
+    if (hostedRefs.length === 0) {
+      return json({ error: "No valid reference images" }, 400);
     }
 
+    // Build the Flux input image: composite multiple refs into a single sheet
+    // so Flux Kontext sees every angle. Single-ref case stays as the raw URL.
+    const fluxInputImage =
+      hostedRefs.length === 1
+        ? hostedRefs[0]
+        : await compositeReferences(admin, hostedRefs);
+
+    // Palette extracted from the first (primary) reference — that's the
+    // canonical product photo.
     const styleKey = resolveStyleKey(body.posterStyle);
-    const palette = await extractPalette(sourceImageUrl);
+    const palette = await extractPalette(hostedRefs[0]);
     const preset = stylePreset(styleKey, palette);
 
     // Step 1: Flux Kontext — styled scene around the real product
-    const scenePrompt = buildScenePrompt(body.productTitle, preset, palette);
+    const multiRefNote =
+      hostedRefs.length > 1
+        ? ` The reference image is a sheet of ${hostedRefs.length} photos of the SAME product from different angles — combine them into a single coherent product in the scene.`
+        : "";
+    const scenePrompt = buildScenePrompt(body.productTitle, preset, palette) + multiRefNote;
     const fluxOutput = await runReplicate(FLUX_MODEL, {
       prompt: scenePrompt,
-      input_image: sourceImageUrl,
+      input_image: fluxInputImage,
       aspect_ratio: "1:1",
       output_format: "png",
       safety_tolerance: 2,
