@@ -225,33 +225,35 @@ async function dataUrlToHostedUrl(
   return uploadBytesToBucket(admin, bytes, contentType, "poster-src");
 }
 
-function buildScenePrompt(title: string): string {
+function buildScenePrompt(title: string, preset: StylePreset): string {
   return [
-    `Premium streetwear marketing scene featuring the exact product shown in the reference image: ${title}.`,
+    `Premium marketing scene featuring the exact product shown in the reference image: ${title}.`,
     `Keep the product 100% accurate — same colors, shape, branding, logos, materials, proportions. Do NOT modify, restyle, or replace the product.`,
-    `Place the product as the dramatic hero against a deep black studio background with subtle neon green rim lighting and soft volumetric haze.`,
-    `Cinematic moody product photography, high contrast, glossy reflections on the floor, sharp focus on the product, shallow depth of field.`,
+    `Place the product as the dramatic hero against ${preset.sceneBackground}.`,
+    `Aesthetic: ${preset.aesthetic}. Cinematic product photography, sharp focus on the product, shallow depth of field.`,
     `No text, no logos other than what's on the product, no watermarks, no humans. Square 1:1 framing with generous negative space for typography overlays around the product.`,
   ].join(" ");
 }
 
-function buildOverlayPrompt(i: PosterInput): string {
+function buildOverlayPrompt(i: PosterInput, preset: StylePreset): string {
   const brand = (i.brandName || "LUUT SLU").toUpperCase();
   const cta = (i.ctaText || "DM TO COP").toUpperCase();
   const pickup = i.meetupText || "Castries · Gros Islet · Vieux Fort";
   return [
-    `Marketing poster using the reference image as the background scene — preserve the product, lighting, composition, and dark background exactly as shown.`,
-    `Add bold text overlays in the LUUT SLU visual identity: pitch-black background, neon green accent color (#39FF14), heavy condensed sans-serif typography in the style of Bebas Neue, sharp uppercase, tight letter spacing.`,
-    `Top of poster: large product name "${i.productTitle.toUpperCase()}" in big white condensed uppercase headline.`,
-    `Just below the headline: price chip "${i.productPrice}" in a solid neon green pill with black text.`,
-    `Center-bottom CTA in a bold neon green ribbon: "${cta}".`,
-    `Small uppercase line above the brand: "${pickup}" in light grey.`,
-    `Bottom of poster: brand name "${brand}" centered in neon green, condensed uppercase, slightly wider letter spacing.`,
+    `Marketing poster using the reference image as the background scene — preserve the product, lighting, composition, and background exactly as shown.`,
+    `Visual identity: ${preset.paletteText}. Typography: ${preset.typography}.`,
+    `Top of poster: product name "${i.productTitle.toUpperCase()}" as ${preset.headlineColor}.`,
+    `Just below the headline: price "${i.productPrice}" as ${preset.priceChip}.`,
+    `Center-bottom CTA "${cta}" as ${preset.ctaRibbon}.`,
+    `Small uppercase line above the brand: "${pickup}" in a muted tone consistent with the palette.`,
+    `Bottom of poster: brand name "${brand}" centered in ${preset.brandText}.`,
+    `Stay strictly within the stated palette — do NOT introduce colours outside it (in particular, do not add neon green unless the palette specifies it).`,
     `All text crisp, perfectly spelled, legible, contained inside the poster bounds. No extra captions, no lorem ipsum, no duplicate text.`,
-    `Square 1:1 poster, premium streetwear / Caribbean resale aesthetic.`,
+    `Square 1:1 poster. Aesthetic: ${preset.aesthetic}.`,
     i.customInstructions?.trim() ? i.customInstructions.trim() : "",
   ].filter(Boolean).join(" ");
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
