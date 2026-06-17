@@ -84,7 +84,39 @@ const STYLES: { key: PosterStyle; label: string }[] = [
 
 const FORMATS = ["9:16", "1:1", "4:5", "16:9"];
 
+const DISPLAY_STYLES: { key: DisplayStyle; label: string }[] = [
+  { key: "studio", label: "Studio" },
+  { key: "lifestyle", label: "Lifestyle" },
+  { key: "minimal", label: "Minimal" },
+  { key: "human", label: "Human Model" },
+];
+
+const DISPLAY_FORMATS: DisplayAspect[] = ["1:1", "4:5", "9:16", "3:4", "16:9", "4:3"];
+
+const BACKGROUNDS: { key: DisplayBackground; label: string }[] = [
+  { key: "solid", label: "Solid color" },
+  { key: "gradient", label: "Gradient" },
+  { key: "studio", label: "Studio backdrop" },
+  { key: "lifestyle", label: "Lifestyle scene" },
+  { key: "transparent", label: "Transparent" },
+];
+
+const GENDERS: { key: ModelGender; label: string }[] = [
+  { key: "male", label: "Male" },
+  { key: "female", label: "Female" },
+  { key: "unspecified", label: "Unspecified" },
+];
+
+const SKIN_TONES: { key: SkinTone; label: string }[] = [
+  { key: "light", label: "Light" },
+  { key: "medium-light", label: "Medium-Light" },
+  { key: "medium", label: "Medium" },
+  { key: "medium-dark", label: "Medium-Dark" },
+  { key: "dark", label: "Dark" },
+];
+
 const MODEL_LABEL = "Ideogram v3 Turbo";
+const DISPLAY_MODEL_LABEL = "Gemini Nano Banana";
 
 async function downloadOrShare(url: string) {
   try {
