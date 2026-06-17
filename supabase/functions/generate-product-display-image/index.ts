@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
       style === "lifestyle" || style === "minimal" ? style : "studio";
     const resolvedAspect = aspectRatio && /^\d+:\d+$/.test(aspectRatio) ? aspectRatio : "1:1";
 
-    const fullPrompt = buildPrompt(resolvedStyle, productTitle, textOverlay, customPrompt);
+    const fullPrompt = buildPrompt(resolvedStyle, productTitle, textOverlay, customPrompt, resolvedAspect);
 
     // Generate via Lovable AI Gateway (Gemini Nano Banana — image editing with input image)
     const bytes = await generateViaGateway(fullPrompt, productImageUrl, referenceImageUrl);
