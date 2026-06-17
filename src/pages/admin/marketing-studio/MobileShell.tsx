@@ -14,12 +14,18 @@ import {
   Sparkles,
   Loader2,
   ShoppingBag,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 import PosterLightbox from "./PosterLightbox";
 
 type StudioMode = "select" | "images" | "videos";
 type AiStyle = "hype" | "clean" | "luxury" | "bold";
+type DisplayStyle = "studio" | "lifestyle" | "minimal" | "human";
+type DisplayAspect = "1:1" | "4:5" | "9:16" | "3:4" | "16:9" | "4:3";
+type DisplayBackground = "solid" | "gradient" | "studio" | "lifestyle" | "transparent";
+type ModelGender = "male" | "female" | "unspecified";
+type SkinTone = "light" | "medium-light" | "medium" | "medium-dark" | "dark";
 
 export interface MobileShellProps {
   studioMode: StudioMode;
@@ -52,6 +58,27 @@ export interface MobileShellProps {
   onOpenProductPicker: () => void;
   displaySlot?: React.ReactNode;
   videoSlot?: React.ReactNode;
+
+  // Display generator (optional — when provided, Display mode uses the matching mobile shell)
+  displayStyle?: DisplayStyle;
+  setDisplayStyle?: (s: DisplayStyle) => void;
+  displayAspect?: DisplayAspect;
+  setDisplayAspect?: (a: DisplayAspect) => void;
+  displayTextOverlay?: string;
+  setDisplayTextOverlay?: (s: string) => void;
+  displayBackground?: DisplayBackground;
+  setDisplayBackground?: (b: DisplayBackground) => void;
+  displayCustomPrompt?: string;
+  setDisplayCustomPrompt?: (s: string) => void;
+  modelGender?: ModelGender;
+  setModelGender?: (g: ModelGender) => void;
+  skinTone?: SkinTone;
+  setSkinTone?: (t: SkinTone) => void;
+  displayLoading?: boolean;
+  displayResultUrl?: string | null;
+  displayPrompt?: string;
+  onGenerateDisplay?: () => void;
+  onClearDisplay?: () => void;
 }
 
 const FORMATS = ["9:16", "1:1", "4:5", "16:9"];
@@ -103,10 +130,30 @@ export default function MobileShell(props: MobileShellProps) {
     onOpenProductPicker,
     displaySlot,
     videoSlot,
+    displayStyle = "studio",
+    setDisplayStyle,
+    displayAspect = "1:1",
+    setDisplayAspect,
+    displayTextOverlay = "",
+    setDisplayTextOverlay,
+    displayBackground = "studio",
+    setDisplayBackground,
+    displayCustomPrompt = "",
+    setDisplayCustomPrompt,
+    modelGender = "unspecified",
+    setModelGender,
+    skinTone = "medium",
+    setSkinTone,
+    displayLoading = false,
+    displayResultUrl = null,
+    onGenerateDisplay,
   } = props;
+
+  const displayWired = Boolean(onGenerateDisplay && setDisplayStyle);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [displayLightboxOpen, setDisplayLightboxOpen] = useState(false);
 
   // Determine current "mode" for the nav
   const currentNav: "poster" | "display" | "video" | "library" =
@@ -192,6 +239,78 @@ export default function MobileShell(props: MobileShellProps) {
     await navigator.clipboard.writeText(aiPosterResult);
     toast.success("Link copied");
   };
+
+  // ---- Display handlers ----
+  const handleDisplayDownload = async () => {
+    if (!displayResultUrl) return;
+    try {
+      const res = await fetch(displayResultUrl);
+      const blob = await res.blob();
+      const file = new File([blob], "luut-display.png", { type: blob.type || "image/png" });
+      const navAny: any = navigator;
+      if (navAny.canShare && navAny.canShare({ files: [file] })) {
+        await navAny.share({ files: [file], title: "LUUT Display" });
+        return;
+      }
+      window.open(displayResultUrl, "_blank");
+    } catch {
+      window.open(displayResultUrl, "_blank");
+    }
+  };
+
+  const handleDisplayShare = async () => {
+    if (!displayResultUrl) return;
+    const navAny: any = navigator;
+    try {
+      if (navAny.share) {
+        await navAny.share({ title: "LUUT Display", url: displayResultUrl });
+      } else {
+        await navigator.clipboard.writeText(displayResultUrl);
+        toast.success("Link copied");
+      }
+    } catch {/* ignore */}
+  };
+
+  const handleDisplayWhatsApp = () => {
+    if (!displayResultUrl) return;
+    const text = `${productName || "Check this out"} — ${displayResultUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  const handleDisplayCopyLink = async () => {
+    if (!displayResultUrl) return;
+    await navigator.clipboard.writeText(displayResultUrl);
+    toast.success("Link copied");
+  };
+
+  const DISPLAY_STYLES_M: { key: DisplayStyle; label: string; desc: string }[] = [
+    { key: "studio", label: "Studio", desc: "Clean backdrop" },
+    { key: "lifestyle", label: "Lifestyle", desc: "Real setting" },
+    { key: "minimal", label: "Minimal", desc: "Pure white" },
+    { key: "human", label: "Human Model", desc: "Person wearing it" },
+  ];
+  const DISPLAY_FORMATS_M: DisplayAspect[] = ["1:1", "4:5", "9:16", "3:4", "16:9", "4:3"];
+  const BACKGROUNDS_M: { key: DisplayBackground; label: string }[] = [
+    { key: "solid", label: "Solid" },
+    { key: "gradient", label: "Gradient" },
+    { key: "studio", label: "Studio" },
+    { key: "lifestyle", label: "Lifestyle" },
+    { key: "transparent", label: "Transparent" },
+  ];
+  const GENDERS_M: { key: ModelGender; label: string }[] = [
+    { key: "male", label: "Male" },
+    { key: "female", label: "Female" },
+    { key: "unspecified", label: "Unspecified" },
+  ];
+  const SKIN_TONES_M: { key: SkinTone; label: string }[] = [
+    { key: "light", label: "Light" },
+    { key: "medium-light", label: "Med-Light" },
+    { key: "medium", label: "Medium" },
+    { key: "medium-dark", label: "Med-Dark" },
+    { key: "dark", label: "Dark" },
+  ];
+
+
 
   return (
     <div className="lg:hidden min-h-screen flex flex-col" style={{ background: "#080808", color: "#fff", fontFamily: "Inter, system-ui, sans-serif" }}>
@@ -391,6 +510,90 @@ export default function MobileShell(props: MobileShellProps) {
                     gap: 5,
                     width: "100%",
                     opacity: !aiPosterResult && label !== "Regenerate" ? 0.4 : 1,
+                  }}
+                >
+                  <Icon size={12} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fixed preview panel — Display mode */}
+      {currentNav === "display" && displayWired && (
+        <div
+          className="flex-shrink-0"
+          style={{ background: "#0c0c0c", borderBottom: "0.5px solid #1c1c1c", padding: "12px 14px" }}
+        >
+          <div className="flex items-stretch">
+            <div className="w-1/2 pr-[10px] flex items-center justify-center">
+              <div
+                className="w-full relative overflow-hidden flex items-center justify-center"
+                style={{
+                  aspectRatio: "1 / 1",
+                  maxHeight: 200,
+                  borderRadius: 8,
+                  background: "#111",
+                  border: "0.5px solid #1c1c1c",
+                }}
+              >
+                {displayResultUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => setDisplayLightboxOpen(true)}
+                    aria-label="View display image full screen"
+                    className="absolute inset-0 p-0 border-0 bg-transparent cursor-zoom-in"
+                  >
+                    <img
+                      src={displayResultUrl}
+                      alt="Generated display"
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-center px-2">
+                    <ImageIcon size={20} color="#3a3a3a" />
+                    <span style={{ fontSize: 9, color: "#555" }}>No image yet</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div
+              className="w-1/2 pl-[10px] flex flex-col justify-center"
+              style={{ gap: 5, borderLeft: "0.5px solid #1c1c1c" }}
+            >
+              <div style={{ marginBottom: 4 }}>
+                <div style={{ fontSize: 9, color: "#3a3a3a", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  Style
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: "#888", marginTop: 1 }}>
+                  {DISPLAY_STYLES_M.find((s) => s.key === displayStyle)?.label} · {displayAspect}
+                </div>
+              </div>
+              {[
+                { icon: Download, label: "Download", primary: true, onClick: handleDisplayDownload },
+                { icon: RefreshCw, label: "Regenerate", onClick: () => onGenerateDisplay?.() },
+                { icon: Share2, label: "Share", onClick: handleDisplayShare },
+                { icon: MessageCircle, label: "WhatsApp", onClick: handleDisplayWhatsApp },
+              ].map(({ icon: Icon, label, primary, onClick }) => (
+                <button
+                  key={label}
+                  onClick={onClick}
+                  disabled={!displayResultUrl && label !== "Regenerate"}
+                  style={{
+                    padding: "5px 8px",
+                    borderRadius: 5,
+                    border: primary ? "0.5px solid #888" : "0.5px solid #1c1c1c",
+                    background: primary ? "#161616" : "#111",
+                    color: primary ? "#d0d0d0" : "#666",
+                    fontSize: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    width: "100%",
+                    opacity: !displayResultUrl && label !== "Regenerate" ? 0.4 : 1,
                   }}
                 >
                   <Icon size={12} />
@@ -632,11 +835,354 @@ export default function MobileShell(props: MobileShellProps) {
             )}
           </>
         ) : currentNav === "display" ? (
-          <div className="text-[#e8e8e8]">
-            {displaySlot ?? (
-              <div className="text-center text-xs text-[#555] py-12">Display generator unavailable.</div>
-            )}
-          </div>
+          displayWired ? (
+            <>
+              {/* Product */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                  Product
+                </div>
+                <div
+                  className="flex items-center"
+                  style={{ background: "#111", border: "0.5px solid #1c1c1c", borderRadius: 8, padding: 10, gap: 10 }}
+                >
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 5,
+                      background: "#161616",
+                      border: "0.5px solid #222",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {productImage ? (
+                      <img src={productImage} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <ShoppingBag size={16} color="#333" />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: "#ccc" }} className="truncate">
+                      {productName || "No product selected"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#555", marginTop: 1 }}>
+                      Reference image
+                    </div>
+                  </div>
+                  <button
+                    onClick={onOpenProductPicker}
+                    style={{
+                      marginLeft: "auto",
+                      fontSize: 10,
+                      color: "#aaa",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 4,
+                      padding: "3px 7px",
+                      background: "transparent",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Change
+                  </button>
+                </div>
+              </div>
+
+              {/* Style */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                  Style
+                </div>
+                <div className="grid grid-cols-2" style={{ gap: 5 }}>
+                  {DISPLAY_STYLES_M.map((s) => {
+                    const active = displayStyle === s.key;
+                    return (
+                      <button
+                        key={s.key}
+                        onClick={() => setDisplayStyle?.(s.key)}
+                        style={{
+                          padding: "9px 8px",
+                          borderRadius: 7,
+                          border: active ? "0.5px solid #999" : "0.5px solid #1c1c1c",
+                          background: active ? "#181818" : "#111",
+                          textAlign: "left",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        {s.key === "human" && (
+                          <User size={13} color={active ? "#e8e8e8" : "#666"} />
+                        )}
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 500, color: active ? "#e8e8e8" : "#999" }}>
+                            {s.label}
+                          </div>
+                          <div style={{ fontSize: 9, color: active ? "#555" : "#333", marginTop: 2 }}>
+                            {s.desc}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Human model sub-controls */}
+              {displayStyle === "human" && (
+                <>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                      Model gender
+                    </div>
+                    <div className="flex flex-wrap" style={{ gap: 5 }}>
+                      {GENDERS_M.map((g) => {
+                        const active = modelGender === g.key;
+                        return (
+                          <button
+                            key={g.key}
+                            onClick={() => setModelGender?.(g.key)}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 14,
+                              border: active ? "0.5px solid #999" : "0.5px solid #1c1c1c",
+                              background: active ? "#181818" : "#111",
+                              fontSize: 11,
+                              color: active ? "#e8e8e8" : "#888",
+                            }}
+                          >
+                            {g.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                      Skin tone
+                    </div>
+                    <div className="flex flex-wrap" style={{ gap: 5 }}>
+                      {SKIN_TONES_M.map((t) => {
+                        const active = skinTone === t.key;
+                        return (
+                          <button
+                            key={t.key}
+                            onClick={() => setSkinTone?.(t.key)}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 14,
+                              border: active ? "0.5px solid #999" : "0.5px solid #1c1c1c",
+                              background: active ? "#181818" : "#111",
+                              fontSize: 11,
+                              color: active ? "#e8e8e8" : "#888",
+                            }}
+                          >
+                            {t.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Aspect ratio */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                  Aspect ratio
+                </div>
+                <div className="flex flex-wrap" style={{ gap: 5 }}>
+                  {DISPLAY_FORMATS_M.map((f) => {
+                    const active = displayAspect === f;
+                    return (
+                      <button
+                        key={f}
+                        onClick={() => setDisplayAspect?.(f)}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 14,
+                          border: active ? "0.5px solid #888" : "0.5px solid #1c1c1c",
+                          background: active ? "#e8e8e8" : "#111",
+                          fontSize: 11,
+                          color: active ? "#080808" : "#888",
+                          fontWeight: active ? 600 : 400,
+                        }}
+                      >
+                        {f}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Background */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                  Background
+                </div>
+                <div className="flex flex-wrap" style={{ gap: 5 }}>
+                  {BACKGROUNDS_M.map((b) => {
+                    const active = displayBackground === b.key;
+                    return (
+                      <button
+                        key={b.key}
+                        onClick={() => setDisplayBackground?.(b.key)}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 14,
+                          border: active ? "0.5px solid #999" : "0.5px solid #1c1c1c",
+                          background: active ? "#181818" : "#111",
+                          fontSize: 11,
+                          color: active ? "#e8e8e8" : "#888",
+                        }}
+                      >
+                        {b.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Details */}
+              <div className="flex flex-col" style={{ gap: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase" }}>
+                  Details
+                </div>
+                <div className="flex flex-col" style={{ gap: 4 }}>
+                  <label style={{ fontSize: 10, color: "#3a3a3a", letterSpacing: "0.04em" }}>Text on image</label>
+                  <input
+                    type="text"
+                    value={displayTextOverlay}
+                    placeholder="e.g. SUMMER DROP"
+                    onChange={(e) => setDisplayTextOverlay?.(e.target.value)}
+                    style={{
+                      background: "#111",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 5,
+                      color: "#bbb",
+                      fontSize: 12,
+                      padding: "8px 10px",
+                      outline: "none",
+                      width: "100%",
+                    }}
+                  />
+                </div>
+                <div className="flex flex-col" style={{ gap: 4 }}>
+                  <label style={{ fontSize: 10, color: "#3a3a3a", letterSpacing: "0.04em" }}>Additional prompt notes</label>
+                  <textarea
+                    value={displayCustomPrompt}
+                    onChange={(e) => setDisplayCustomPrompt?.(e.target.value)}
+                    placeholder="e.g. sunlit countertop, magazine photography..."
+                    style={{
+                      background: "#111",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 5,
+                      color: "#bbb",
+                      fontSize: 12,
+                      padding: "8px 10px",
+                      outline: "none",
+                      width: "100%",
+                      height: 52,
+                      resize: "none",
+                      fontFamily: "inherit",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Save or share — after generation */}
+              {displayResultUrl && (
+                <div className="flex flex-col" style={{ gap: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase" }}>
+                    Save or share
+                  </div>
+                  <button
+                    onClick={handleDisplayDownload}
+                    style={{
+                      width: "100%",
+                      padding: 12,
+                      background: "#e8e8e8",
+                      color: "#080808",
+                      border: "none",
+                      borderRadius: 7,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 7,
+                    }}
+                  >
+                    <Download size={15} /> Download
+                  </button>
+                  <button
+                    onClick={handleDisplayWhatsApp}
+                    style={{
+                      width: "100%",
+                      padding: 10,
+                      background: "#111",
+                      color: "#ccc",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 7,
+                      fontSize: 12,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 7,
+                    }}
+                  >
+                    <MessageCircle size={15} /> Share via WhatsApp
+                  </button>
+                  <div className="grid grid-cols-2" style={{ gap: 6 }}>
+                    <button
+                      onClick={handleDisplayCopyLink}
+                      style={{
+                        padding: 9,
+                        background: "#111",
+                        color: "#777",
+                        border: "0.5px solid #1c1c1c",
+                        borderRadius: 7,
+                        fontSize: 11,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <Copy size={12} /> Copy link
+                    </button>
+                    <button
+                      onClick={() => navigate("/admin/content-library")}
+                      style={{
+                        padding: 9,
+                        background: "#111",
+                        color: "#777",
+                        border: "0.5px solid #1c1c1c",
+                        borderRadius: 7,
+                        fontSize: 11,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <Folder size={12} /> Save to library
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-[#e8e8e8]">
+              {displaySlot ?? (
+                <div className="text-center text-xs text-[#555] py-12">Display generator unavailable.</div>
+              )}
+            </div>
+          )
         ) : currentNav === "video" ? (
           <div className="text-[#e8e8e8]">
             {videoSlot ?? (
@@ -647,7 +1193,7 @@ export default function MobileShell(props: MobileShellProps) {
       </div>
 
       {/* Sticky generate */}
-      {currentNav === "poster" && (
+      {(currentNav === "poster" || (currentNav === "display" && displayWired)) && (
         <div
           className="fixed left-0 right-0"
           style={{
@@ -659,8 +1205,15 @@ export default function MobileShell(props: MobileShellProps) {
           }}
         >
           <button
-            onClick={onGenerate}
-            disabled={aiPosterGenerating || !productName}
+            onClick={() => {
+              if (currentNav === "poster") onGenerate();
+              else onGenerateDisplay?.();
+            }}
+            disabled={
+              currentNav === "poster"
+                ? aiPosterGenerating || !productName
+                : displayLoading || !productName
+            }
             style={{
               width: "100%",
               padding: 13,
@@ -674,16 +1227,21 @@ export default function MobileShell(props: MobileShellProps) {
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
-              opacity: aiPosterGenerating || !productName ? 0.6 : 1,
+              opacity:
+                (currentNav === "poster" ? aiPosterGenerating || !productName : displayLoading || !productName)
+                  ? 0.6
+                  : 1,
             }}
           >
-            {aiPosterGenerating ? (
+            {(currentNav === "poster" ? aiPosterGenerating : displayLoading) ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
                 Generating...
               </>
-            ) : (
+            ) : currentNav === "poster" ? (
               "Generate Poster"
+            ) : (
+              "Generate Display Image"
             )}
           </button>
         </div>
@@ -788,6 +1346,12 @@ export default function MobileShell(props: MobileShellProps) {
         open={lightboxOpen}
         src={aiPosterResult}
         onClose={() => setLightboxOpen(false)}
+        showDownload
+      />
+      <PosterLightbox
+        open={displayLightboxOpen}
+        src={displayResultUrl}
+        onClose={() => setDisplayLightboxOpen(false)}
         showDownload
       />
     </div>
