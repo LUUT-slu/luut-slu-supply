@@ -490,7 +490,7 @@ export function buildDisplayPrompt(c: DisplayControls, brand: BrandStyle): strin
 
   const brandSnippet = buildBrandStyleSnippet(brand);
   if (brandSnippet) parts.push(brandSnippet + ".");
-  const brandRefClause = buildBrandStyleReferenceClause(brand, "poster");
+  const brandRefClause = buildBrandStyleReferenceClause(brand, "display");
   if (brandRefClause) parts.push(brandRefClause);
 
   if (c.hasReference) parts.push(REF_PRESERVATION);
