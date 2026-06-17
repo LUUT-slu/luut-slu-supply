@@ -3,9 +3,8 @@
 // and we call Replicate, persist the result to `marketing-assets`, and
 // register it in `marketing_generated_images`.
 //
-// Supported models (all via Replicate):
+// Supported models (all via Replicate, all image-to-image capable):
 //   - ideogram-ai/ideogram-v3-quality
-//   - google/imagen-4
 //   - sourceful/riverflow-2.0-pro
 //   - google/nano-banana-pro
 //
@@ -28,7 +27,6 @@ const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
 const SUPPORTED_MODELS = new Set([
   "ideogram-ai/ideogram-v3-quality",
-  "google/imagen-4",
   "sourceful/riverflow-2.0-pro",
   "google/nano-banana-pro",
 ]);
