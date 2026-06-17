@@ -989,6 +989,11 @@ export default function DesktopChrome(props: DesktopChromeProps) {
         src={aiPosterResult}
         onClose={() => setLightboxOpen(false)}
       />
+      <PosterLightbox
+        open={displayLightboxOpen}
+        src={displayResultUrl}
+        onClose={() => setDisplayLightboxOpen(false)}
+      />
     </div>
   );
 }
