@@ -227,11 +227,12 @@ async function dataUrlToHostedUrl(
 
 function buildScenePrompt(title: string, preset: StylePreset): string {
   return [
-    `Premium marketing scene featuring the exact product shown in the reference image: ${title}.`,
-    `Keep the product 100% accurate — same colors, shape, branding, logos, materials, proportions. Do NOT modify, restyle, or replace the product.`,
-    `Place the product as the dramatic hero against ${preset.sceneBackground}.`,
+    `Premium marketing scene featuring the EXACT product shown in the reference image: ${title}.`,
+    `CRITICAL PRODUCT FIDELITY: the product must appear pixel-accurate to the reference. Preserve its exact colours, hue, saturation, brightness, material, texture, logos, branding, stitching, shape and proportions. Do NOT recolour, restyle, retexture, replace, or "stylise" the product. If the product is black, it stays pure black; if white, stays white; never tint the product to match the scene palette.`,
+    `Light the product itself with a NEUTRAL white softbox key light (around 5500K) so its true colours are preserved. Any coloured ambient light, rim light, glow, haze, or gel from the scene must stay BEHIND the product on the backdrop only — it must not wrap onto, reflect off, or recolour the product surface.`,
+    `Scene / backdrop only (around and behind the product): ${preset.sceneBackground}.`,
     `Aesthetic: ${preset.aesthetic}. Cinematic product photography, sharp focus on the product, shallow depth of field.`,
-    `No text, no logos other than what's on the product, no watermarks, no humans. Square 1:1 framing with generous negative space for typography overlays around the product.`,
+    `No text, no logos other than what's already on the product, no watermarks, no humans, no extra props that obscure the product. Square 1:1 framing with generous negative space around the product for typography overlays.`,
   ].join(" ");
 }
 
