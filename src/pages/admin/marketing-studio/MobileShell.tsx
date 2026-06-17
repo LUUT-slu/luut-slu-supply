@@ -1008,7 +1008,11 @@ export default function MobileShell(props: MobileShellProps) {
                 </div>
               </div>
 
+              {/* Variant selector (shared with poster) */}
+              {variantSlot}
+
               {/* Style */}
+
               <div>
                 <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
                   Style
