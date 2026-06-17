@@ -1272,6 +1272,13 @@ export default function MarketingStudio() {
     </div>
   );
 
+  const desktopVideoPanel = (
+    <VideoModule
+      selectedProduct={selectedProduct}
+      onOpenProductPicker={() => setMobileProductPickerOpen(true)}
+    />
+  );
+
   return (
     <AdminAuth>
       {/* Desktop chrome (lg+) — DesktopChrome handles its own 3-col layout */}
