@@ -133,8 +133,7 @@ export function buildBrandStyleReferenceClause(b: BrandStyle, surface: BrandSurf
   const ref = getBrandStyleReferenceImage(b, surface);
   if (!ref) return "";
   const name = def.label || "the saved brand style";
-  const surfaceWord = surface === "poster" ? "poster" : "display image";
-  return `Channel the visual DNA of the attached "${name}" brand-style ${surfaceWord} reference — its color palette, lighting mood, composition rhythm, background treatment, typography feel, and how the subject is positioned — so this same scene looks like it belongs to that campaign. Treat that reference strictly as a style donor: do not copy, reproduce, or borrow any object, product, person, logo, or text from it; only its aesthetic carries over. The product in this image remains the one currently selected, unchanged in identity.`;
+  return `Use the attached "${name}" brand-style reference strictly as a color and mood donor — borrow only its color palette, lighting temperature, contrast, and overall atmosphere. Do NOT copy its composition, background type, camera angle, framing, props, layout, typography, objects, products, people, logos, or text. The scene structure, background, product framing, and focus must remain exactly as defined by the selected settings above; the reference only tints the look.`;
 }
 
 
