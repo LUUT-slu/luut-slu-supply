@@ -53,7 +53,6 @@ Deno.serve(async (req) => {
       headers: {
         Authorization: `Token ${REPLICATE_API_TOKEN}`,
         "Content-Type": "application/json",
-        Prefer: "wait",
       },
       body: JSON.stringify({
         input: {
@@ -61,7 +60,6 @@ Deno.serve(async (req) => {
           prompt: POSTER_PROMPT,
           num_frames: 81,
           aspect_ratio: "9:16",
-          fast_mode: true,
         },
       }),
     });

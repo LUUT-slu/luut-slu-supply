@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { lovable } from "@/integrations/lovable";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Props {
@@ -18,27 +18,25 @@ export function GoogleSignInButton({ nextUrl, label = "Continue with Google", cl
       const callbackUrl = `${window.location.origin}/auth/callback${
         nextUrl ? `?next=${encodeURIComponent(nextUrl)}` : ""
       }`;
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: callbackUrl,
-        extraParams: {
-          scope: "openid email profile https://www.googleapis.com/auth/calendar.events",
-          access_type: "offline",
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callbackUrl,
+          scopes: "https://www.googleapis.com/auth/calendar.events",
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       });
 
-      if (result.error) {
+      if (error) {
         toast.error("Could not start Google sign-in. Please try again.");
         setLoading(false);
         return;
       }
 
-      if (result.redirected) {
-        // Browser is navigating away; loading state stays until unload
-        return;
-      }
-
-      // Tokens already set by lovable client — bounce to callback handler
-      window.location.href = callbackUrl;
+      // Supabase handles the redirect; loading state stays until unload
     } catch (err) {
       console.error("[google-signin]", err);
       toast.error("Sign-in failed. Please try again.");

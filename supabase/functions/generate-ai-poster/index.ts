@@ -34,11 +34,11 @@ interface PosterInput {
 
 function mapAspect(r: AspectRatio): string {
   switch (r) {
-    case "9:16": return "portrait_9_16";
-    case "1:1": return "square_hd";
-    case "4:5": return "portrait_4_5";
-    case "16:9": return "landscape_16_9";
-    default: return "square_hd";
+    case "9:16": return "ASPECT_9_16";
+    case "1:1": return "ASPECT_1_1";
+    case "4:5": return "ASPECT_3_4"; // 4:5 not supported by Ideogram; closest valid portrait ratio
+    case "16:9": return "ASPECT_16_9";
+    default: return "ASPECT_1_1";
   }
 }
 
