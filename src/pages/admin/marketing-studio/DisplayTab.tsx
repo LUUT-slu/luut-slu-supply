@@ -23,6 +23,7 @@ import {
   getBrandStyleReferenceImage,
 } from "@/lib/marketingRouting";
 import PromptPreview from "./PromptPreview";
+import LayoutPreview from "./LayoutPreview";
 
 const GOALS: { key: DisplayGoal; label: string }[] = [
   { key: "product_display", label: "Product Display" },
@@ -366,7 +367,26 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
         </Button>
       </div>
 
-      <div className="lg:sticky lg:top-4">
+      <div className="space-y-4 lg:sticky lg:top-4">
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <CardTitle className="text-base">Live Preview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LayoutPreview
+              surface="display"
+              brandStyle={brandStyle}
+              productImage={variantImage}
+              productTitle={product?.title}
+              aspectRatio={aspect}
+              goal={goal}
+              style={style}
+              background={background}
+              realism={realism}
+              focus={focus}
+            />
+          </CardContent>
+        </Card>
         <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Result</CardTitle>

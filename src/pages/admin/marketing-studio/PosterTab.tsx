@@ -23,6 +23,7 @@ import {
 } from "@/lib/marketingRouting";
 
 import PromptPreview from "./PromptPreview";
+import LayoutPreview from "./LayoutPreview";
 
 const CAMPAIGNS: { key: PosterCampaign; label: string }[] = [
   { key: "sale", label: "Sale" },
@@ -400,8 +401,33 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
         </Button>
       </div>
 
-      {/* Result */}
-      <div className="lg:sticky lg:top-4">
+      {/* Live preview + Result */}
+      <div className="space-y-4 lg:sticky lg:top-4">
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <CardTitle className="text-base">Live Preview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LayoutPreview
+              surface="poster"
+              brandStyle={brandStyle}
+              productImage={variantImage}
+              productTitle={product?.title}
+              aspectRatio={aspect}
+              style={style}
+              realism={realism}
+              campaign={campaign}
+              headline={headline}
+              subheadline={subheadline}
+              priceText={
+                priceText ||
+                (product?.price?.amount ? `EC$${Math.round(Number(product.price.amount))}` : undefined)
+              }
+              ctaText={ctaText}
+              brandName="LUUT SLU"
+            />
+          </CardContent>
+        </Card>
         <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Result</CardTitle>
