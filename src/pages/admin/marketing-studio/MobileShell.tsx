@@ -671,6 +671,7 @@ export default function MobileShell(props: MobileShellProps) {
                   }}
                 >
                   Change
+                </button>
               </div>
             </div>
 
