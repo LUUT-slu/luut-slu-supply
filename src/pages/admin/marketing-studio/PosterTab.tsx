@@ -72,7 +72,9 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
   const [refs, setRefs] = useState<string[]>([]);
   const [campaign, setCampaign] = useState<PosterCampaign>("sale");
   const [style, setStyle] = useState<PosterStyle>("bold");
+  const [realism, setRealism] = useState<DisplayRealism>("hyper");
   const [aspect, setAspect] = useState<AspectRatio>("4:5");
+
   const [headline, setHeadline] = useState("");
   const [subheadline, setSubheadline] = useState("");
   const [priceText, setPriceText] = useState("");
