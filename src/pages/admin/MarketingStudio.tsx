@@ -71,6 +71,7 @@ import {
 import DesktopChrome from "./marketing-studio/DesktopChrome";
 import MobileShell from "./marketing-studio/MobileShell";
 import VideoModule from "./marketing-studio/VideoModule";
+import CreditsPanel from "./marketing-studio/CreditsPanel";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
