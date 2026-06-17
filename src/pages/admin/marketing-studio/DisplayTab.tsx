@@ -242,6 +242,12 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                   </button>
                 </div>
               ))}
+              {refs.length === 0 && variantImage && (
+                <div className="relative h-16 w-16 overflow-hidden rounded border border-dashed border-muted-foreground/40">
+                  <img src={variantImage} alt="Product listing" className="h-full w-full object-cover opacity-80" />
+                  <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[9px] text-white text-center py-0.5">Auto</span>
+                </div>
+              )}
               {refs.length < MAX_REFS && (
                 <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded border border-dashed text-lg text-muted-foreground hover:border-foreground">
                   +
@@ -264,7 +270,9 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
               )}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Reference images preserve product identity, color, branding and proportions.
+              {refs.length === 0 && variantImage
+                ? "Product listing image will be used as reference. Upload images to override."
+                : "Reference images preserve product identity, color, branding and proportions."}
             </p>
           </CardContent>
         </Card>
