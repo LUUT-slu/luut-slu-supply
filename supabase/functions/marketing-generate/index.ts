@@ -247,6 +247,7 @@ Deno.serve(async (req) => {
       aspectRatio = "1:1",
       referenceImages = [],
       styleReferenceImage,
+      seed,
       productTitle,
       productHandle,
       campaignType,
