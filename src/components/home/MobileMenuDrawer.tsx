@@ -4,7 +4,7 @@ import {
   Sparkles, Flame, Store, ShoppingBag, Package, Heart, Clock, MapPin,
   Ticket, MessageCircle, Building2, UserPlus, LayoutDashboard, Gift,
   Info, Truck, HelpCircle, Mail, ShoppingCart, Bell, User as UserIcon,
-  ChevronRight, Sparkle, LogOut, LogIn,
+  ChevronRight, Sparkle, LogOut, LogIn, Megaphone,
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
