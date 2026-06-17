@@ -23,6 +23,8 @@ const IDEOGRAM_MODEL = "ideogram-ai/ideogram-v3-turbo";
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
+type PosterStyleKey = "default" | "hype" | "clean" | "luxury" | "bold";
+
 interface PosterInput {
   productTitle: string;
   productPrice: string;
@@ -31,6 +33,91 @@ interface PosterInput {
   brandName?: string;
   meetupText?: string;
   customInstructions?: string | null;
+  posterStyle?: PosterStyleKey;
+}
+
+interface StylePreset {
+  sceneBackground: string;
+  paletteText: string;
+  headlineColor: string;
+  priceChip: string;
+  ctaRibbon: string;
+  brandText: string;
+  typography: string;
+  aesthetic: string;
+}
+
+const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
+  default: {
+    sceneBackground:
+      "deep matte-black studio background with subtle neon green (#39FF14) rim lighting and soft volumetric haze",
+    paletteText:
+      "pitch-black background, neon green accent color (#39FF14), white headline text",
+    headlineColor: "large white condensed uppercase headline",
+    priceChip: "solid neon green (#39FF14) pill with black text",
+    ctaRibbon: "bold neon green (#39FF14) ribbon with black text",
+    brandText: "neon green (#39FF14), condensed uppercase, slightly wider letter spacing",
+    typography:
+      "heavy condensed sans-serif typography in the style of Bebas Neue, sharp uppercase, tight letter spacing",
+    aesthetic: "LUUT SLU brand canonical: premium Caribbean streetwear resale",
+  },
+  hype: {
+    sceneBackground:
+      "gritty dark concrete / asphalt urban backdrop with aggressive neon green (#39FF14) rim lighting, smoke haze and graffiti energy",
+    paletteText:
+      "near-black background with neon green (#39FF14) accents, off-white headline text, subtle spray-paint texture",
+    headlineColor: "huge off-white condensed uppercase headline with slight grunge edge",
+    priceChip: "solid neon green (#39FF14) pill with black text, slightly tilted sticker feel",
+    ctaRibbon: "bold neon green (#39FF14) ribbon with black text, stencil-style",
+    brandText: "neon green (#39FF14), condensed uppercase, graffiti-tag energy",
+    typography:
+      "heavy condensed display type (Bebas Neue / Druk), sharp uppercase, tight tracking, streetwear poster energy",
+    aesthetic: "streetwear hype-drop flyer, raw, high-energy",
+  },
+  clean: {
+    sceneBackground:
+      "bright neutral off-white seamless studio backdrop with soft diffused lighting and gentle long shadow",
+    paletteText:
+      "clean white (#FAFAFA) background, charcoal grey (#1F1F1F) text, a single thin black hairline accent — absolutely no neon green",
+    headlineColor: "large charcoal (#1F1F1F) modern sans-serif headline, normal case",
+    priceChip: "thin black outlined chip with charcoal text on white",
+    ctaRibbon: "slim charcoal underline beneath the CTA text — no coloured ribbon",
+    brandText: "charcoal (#1F1F1F), modern sans-serif, generous letter spacing",
+    typography:
+      "refined modern sans-serif (Inter / Söhne / Helvetica Neue), mixed case, calm hierarchy",
+    aesthetic: "minimal editorial product page, lots of negative space",
+  },
+  luxury: {
+    sceneBackground:
+      "warm champagne-gold gradient backdrop with soft golden rim light, subtle marble or velvet surface, refined product photography",
+    paletteText:
+      "deep ivory / warm cream background, metallic gold (#C9A24B) accents, dark espresso (#2A1E14) headline text — no neon green anywhere",
+    headlineColor: "elegant dark espresso (#2A1E14) serif headline",
+    priceChip: "thin gold (#C9A24B) outlined chip with espresso text on cream",
+    ctaRibbon: "slim gold (#C9A24B) underline / wordmark — no bold ribbon",
+    brandText: "metallic gold (#C9A24B) refined serif, wide letter spacing",
+    typography:
+      "elegant high-contrast serif headlines (Playfair Display / Didone) paired with a fine sans-serif for small text",
+    aesthetic: "premium boutique / luxury fashion campaign",
+  },
+  bold: {
+    sceneBackground:
+      "stark editorial backdrop with dramatic single-source lighting, deep crisp shadows, no fixed colour cast — let the product colours lead",
+    paletteText:
+      "pure black (#000) and pure white (#FFF) palette with a single high-impact red (#E5251D) accent — no neon green",
+    headlineColor: "massive black-on-white (or white-on-black) condensed headline with extreme scale contrast",
+    priceChip: "solid red (#E5251D) block with white text",
+    ctaRibbon: "solid red (#E5251D) bar with white text, full bleed across the bottom",
+    brandText: "black or white depending on background, condensed uppercase, maximum weight",
+    typography:
+      "ultra-bold condensed display type, brutalist scale contrast, maximum visual punch",
+    aesthetic: "high-contrast editorial poster, brutalist fashion campaign",
+  },
+};
+
+function resolveStyle(key?: PosterStyleKey): { key: PosterStyleKey; preset: StylePreset } {
+  const k: PosterStyleKey = key && STYLE_PRESETS[key] ? key : "default";
+  return { key: k, preset: STYLE_PRESETS[k] };
 }
 
 function json(body: unknown, status = 200) {
