@@ -1379,6 +1379,7 @@ export default function MarketingStudio() {
             setAiPosterPrompt("");
           }}
           customProductImages={customProductImages}
+          variantSlot={variantSlot}
           setCustomProductImages={setCustomProductImages}
           displaySlot={displayPanel}
           videoSlot={desktopVideoPanel}
@@ -1437,6 +1438,7 @@ export default function MarketingStudio() {
         onGenerate={generateAiPoster}
         onOpenProductPicker={() => setMobileProductPickerOpen(true)}
         customProductImages={customProductImages}
+        variantSlot={variantSlot}
         setCustomProductImages={setCustomProductImages}
         displaySlot={displayPanel}
         videoSlot={desktopVideoPanel}
