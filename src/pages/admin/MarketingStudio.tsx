@@ -2364,15 +2364,21 @@ function RecentlySavedStrip() {
       </CardContent>
 
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[min(92vw,640px)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-sm">
+            <DialogTitle className="text-sm pr-8">
               {preview?.product_title || "Image"}
             </DialogTitle>
           </DialogHeader>
           {preview && (
             <div className="space-y-3">
-              <img src={preview.image_url} alt={preview.product_title || "Image"} className="w-full rounded" />
+              <div className="flex justify-center">
+                <img
+                  src={preview.image_url}
+                  alt={preview.product_title || "Image"}
+                  className="max-h-[65vh] w-auto max-w-full rounded object-contain"
+                />
+              </div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 {preview.style && (
                   <Badge variant="secondary" className="capitalize">{preview.style}</Badge>
