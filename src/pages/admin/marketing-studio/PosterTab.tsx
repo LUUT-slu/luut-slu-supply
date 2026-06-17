@@ -403,15 +403,25 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
           </CardContent>
         </Card>
 
-        <PromptPreview prompt={prompt} />
+        <PromptPreview prompt={prompt} value={promptOverride} onChange={setPromptOverride} />
 
-        <Button onClick={generate} disabled={generating || !product} size="lg" className="w-full">
-          {generating ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
-          ) : (
-            "Generate Poster"
-          )}
-        </Button>
+        <div className="space-y-2">
+          <Button onClick={() => generate()} disabled={generating || !product} size="lg" className="w-full">
+            {generating ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
+            ) : (
+              "Generate Poster"
+            )}
+          </Button>
+          <Button
+            onClick={() => generate({ reuseSeed: true })}
+            disabled={generating || !product || lastSeed == null}
+            variant="outline"
+            className="w-full"
+          >
+            Regenerate Same Poster{lastSeed != null ? ` (seed ${lastSeed})` : ""}
+          </Button>
+        </div>
       </div>
 
       {/* Live preview + Result */}
