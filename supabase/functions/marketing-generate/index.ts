@@ -267,8 +267,9 @@ Deno.serve(async (req) => {
       hostedRefs.push(await normalizeRef(admin, r));
     }
 
-    const input = buildModelInput(model, prompt, aspectRatio, hostedRefs);
-    const output = await runReplicate(model, input);
+    const effectiveModel = resolveModel(model, hostedRefs);
+    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs);
+    const output = await runReplicate(effectiveModel, input);
     const srcUrl = pickUrl(output);
     if (!srcUrl) throw new Error("Replicate returned no image URL");
 
