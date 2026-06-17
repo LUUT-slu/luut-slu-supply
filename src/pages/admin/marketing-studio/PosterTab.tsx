@@ -12,12 +12,14 @@ import { prepareMarketingSourceImages } from "@/lib/marketingSourceImages";
 import {
   type AspectRatio,
   type BrandStyle,
+  type DisplayRealism,
   type PosterCampaign,
   type PosterControls,
   type PosterStyle,
   POSTER_PRESETS,
   previewPosterFinal,
 } from "@/lib/marketingRouting";
+
 import PromptPreview from "./PromptPreview";
 
 const CAMPAIGNS: { key: PosterCampaign; label: string }[] = [
