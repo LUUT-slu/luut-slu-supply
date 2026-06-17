@@ -218,10 +218,13 @@ function generatePosterSvg(input: PosterInput, plan: PosterPlan, productDataUrl:
   const surface = escapeXml(plan.surface);
   const title = escapeXml(input.productTitle);
   const brand = escapeXml(input.brandName);
+  const brandUpper = escapeXml(input.brandName.toUpperCase());
   const price = escapeXml(input.productPrice);
   const cta = escapeXml(input.ctaText);
+  const ctaUpper = escapeXml(input.ctaText.toUpperCase());
   const meetup = escapeXml(input.meetupText);
   const urgency = escapeXml(input.urgencyText);
+  const urgencyUpper = escapeXml(input.urgencyText.toUpperCase());
   const tagline = escapeXml(input.tagline || "");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -231,9 +234,9 @@ function generatePosterSvg(input: PosterInput, plan: PosterPlan, productDataUrl:
   </defs>
   <rect width="${width}" height="${height}" fill="${bg}"/>
   <rect width="${width}" height="${height}" fill="url(#glow)"/>
-  <text x="${pad}" y="${pad}" fill="${text}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="900" letter-spacing="4">${brand.toUpperCase()}</text>
+  <text x="${pad}" y="${pad}" fill="${text}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="900" letter-spacing="4">${brandUpper}</text>
   <rect x="${width - pad - 285}" y="${pad - 34}" width="285" height="58" rx="29" fill="${accent}"/>
-  <text x="${width - pad - 142}" y="${pad + 5}" text-anchor="middle" fill="${bg}" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="900">${urgency.toUpperCase()}</text>
+  <text x="${width - pad - 142}" y="${pad + 5}" text-anchor="middle" fill="${bg}" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="900">${urgencyUpper}</text>
   <foreignObject x="${pad}" y="${titleY}" width="${textWidth}" height="${isWide ? 230 : 330}"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Inter,Arial,sans-serif;color:${text};font-size:${titleSize}px;line-height:.92;font-weight:900;text-transform:uppercase;letter-spacing:0;word-break:break-word;">${title}</div></foreignObject>
   ${tagline ? `<text x="${pad}" y="${titleY + (isWide ? 260 : 360)}" fill="${muted}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700">${tagline}</text>` : ""}
   <circle cx="${heroX + heroSize / 2}" cy="${heroY + heroSize / 2}" r="${heroSize / 1.9}" fill="${accent}" opacity="0.18"/>
@@ -243,7 +246,7 @@ function generatePosterSvg(input: PosterInput, plan: PosterPlan, productDataUrl:
   <text x="${pad + Math.min(350, textWidth) / 2}" y="${ctaY - 58}" text-anchor="middle" fill="${bg}" font-family="Inter,Arial,sans-serif" font-size="42" font-weight="900">${price}</text>
   <text x="${pad}" y="${ctaY - 4}" fill="${muted}" font-family="Inter,Arial,sans-serif" font-size="28" font-weight="700">${meetup}</text>
   <rect x="${pad}" y="${ctaY + 20}" width="${width - pad * 2}" height="86" rx="43" fill="${accent}"/>
-  <text x="${width / 2}" y="${ctaY + 75}" text-anchor="middle" fill="${bg}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="900">${cta.toUpperCase()}</text>
+  <text x="${width / 2}" y="${ctaY + 75}" text-anchor="middle" fill="${bg}" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="900">${ctaUpper}</text>
 </svg>`;
 }
 
