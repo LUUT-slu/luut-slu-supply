@@ -1,5 +1,6 @@
-// Generate a full marketing poster via Ideogram v3 Turbo on Replicate and
-// store it in the `marketing-assets` Storage bucket. Admin-only.
+// Generate a full AI marketing poster, store it in the `marketing-assets`
+// Storage bucket, register it in `marketing_generated_images`, and return a
+// long-lived signed URL. Admin-only.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -11,9 +12,10 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN")!;
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/images/generations";
 const BUCKET = "marketing-assets";
-const REPLICATE_API = "https://api.replicate.com/v1";
+const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
 type PosterStyle = "hype" | "clean" | "luxury" | "bold";
 type AspectRatio = "9:16" | "1:1" | "4:5" | "16:9";
@@ -32,15 +34,13 @@ interface PosterInput {
   customInstructions: string | null;
 }
 
-function mapAspect(r: AspectRatio): string {
-  // Ideogram v3 Turbo accepts plain ratio strings.
-  // Valid: "1:1","16:9","9:16","4:3","3:4","3:2","2:3","16:10","10:16","1:3","3:1".
+function mapAspect(r: AspectRatio): { ratio: string; dimensions: string } {
   switch (r) {
-    case "9:16": return "9:16";
-    case "1:1": return "1:1";
-    case "4:5": return "3:4"; // 4:5 not supported by Ideogram v3; closest valid portrait ratio
-    case "16:9": return "16:9";
-    default: return "1:1";
+    case "9:16": return { ratio: "9:16", dimensions: "1080×1920" };
+    case "1:1": return { ratio: "1:1", dimensions: "1080×1080" };
+    case "4:5": return { ratio: "4:5", dimensions: "1080×1350" };
+    case "16:9": return { ratio: "16:9", dimensions: "1920×1080" };
+    default: return { ratio: "1:1", dimensions: "1080×1080" };
   }
 }
 
@@ -97,7 +97,8 @@ ${tagline ? `"${tagline}" in bold supporting text.` : ""}
 Style: attention-grabbing street market energy, Caribbean hustle aesthetic.`;
   }
 
-  let full = base + ` The product image at ${productImageUrl} should be the hero visual — reference it for the product appearance. This is a marketing poster for a Caribbean fashion resale brand based in Saint Lucia. All text must be clearly legible.`;
+  const aspect = mapAspect(i.aspectRatio);
+  let full = base + ` Compose as a ${aspect.ratio} poster (${aspect.dimensions}). The product reference image should be the hero visual — preserve the product appearance, colors, shape, and branding. This is a marketing poster for a Caribbean fashion resale brand based in Saint Lucia. All text must be clearly legible, correctly spelled, and placed inside the poster bounds.`;
 
   if (customInstructions && customInstructions.trim()) {
     full += ` ${customInstructions.trim()}`;
@@ -105,52 +106,50 @@ Style: attention-grabbing street market energy, Caribbean hustle aesthetic.`;
   return full;
 }
 
-async function createPrediction(prompt: string, aspectRatio: string): Promise<string> {
-  const res = await fetch(`${REPLICATE_API}/models/ideogram-ai/ideogram-v3-turbo/predictions`, {
+async function generateViaGateway(prompt: string, productImageUrl?: string): Promise<Uint8Array> {
+  if (!LOVABLE_API_KEY) throw new Error("AI image generation is not configured");
+
+  const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
+  if (productImageUrl) {
+    content.push({ type: "image_url", image_url: { url: productImageUrl } });
+  }
+
+  const res = await fetch(AI_GATEWAY, {
     method: "POST",
     headers: {
-      Authorization: `Token ${REPLICATE_API_TOKEN}`,
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      input: {
-        prompt,
-        aspect_ratio: aspectRatio,
-        style_type: "Design",
-        magic_prompt_option: "On",
-      },
+      model: "google/gemini-2.5-flash-image",
+      messages: [{ role: "user", content }],
+      modalities: ["image", "text"],
     }),
   });
+
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Replicate create ${res.status}: ${text}`);
+    throw new Error(`AI Gateway ${res.status}: ${text}`);
   }
-  const data = await res.json();
-  return data.id as string;
-}
 
-async function pollPrediction(id: string): Promise<string> {
-  for (let i = 0; i < 40; i++) {
-    await new Promise((r) => setTimeout(r, 3000));
-    const res = await fetch(`${REPLICATE_API}/predictions/${id}`, {
-      headers: { Authorization: `Token ${REPLICATE_API_TOKEN}` },
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Replicate poll ${res.status}: ${text}`);
-    }
-    const data = await res.json();
-    if (data.status === "succeeded") {
-      const out = data.output;
-      const url = Array.isArray(out) ? out[0] : typeof out === "string" ? out : null;
-      if (!url) throw new Error("Replicate succeeded but no output URL");
-      return url;
-    }
-    if (data.status === "failed" || data.status === "canceled") {
-      throw new Error(data.error || `Prediction ${data.status}`);
-    }
+  const data = await res.json();
+  const first = data?.data?.[0];
+  const b64 = first?.b64_json ?? first?.image?.b64_json;
+  if (b64 && typeof b64 === "string") {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
   }
-  throw new Error("Generation timed out after 120s");
+
+  const outputUrl = first?.url ?? first?.image_url ?? (Array.isArray(data?.output) ? data.output[0] : data?.output);
+  if (typeof outputUrl === "string") {
+    const imgRes = await fetch(outputUrl);
+    if (!imgRes.ok) throw new Error("Failed to fetch generated image");
+    return new Uint8Array(await imgRes.arrayBuffer());
+  }
+
+  throw new Error("AI Gateway returned no image data");
 }
 
 Deno.serve(async (req) => {
@@ -180,22 +179,8 @@ Deno.serve(async (req) => {
     }
 
     const fullPrompt = buildPrompt(body);
-    const aspect = mapAspect(body.aspectRatio);
-
-    let imageUrl: string;
-    try {
-      const predId = await createPrediction(fullPrompt, aspect);
-      imageUrl = await pollPrediction(predId);
-    } catch (e: any) {
-      console.error("Replicate error", e);
-      return json({ error: e?.message || "Generation failed" }, 502);
-    }
-
-    // Persist to storage
-    const imgRes = await fetch(imageUrl);
-    if (!imgRes.ok) return json({ error: "Failed to fetch generated image" }, 502);
-    const bytes = new Uint8Array(await imgRes.arrayBuffer());
-    const path = `ai-poster-${Date.now()}.png`;
+    const bytes = await generateViaGateway(fullPrompt, body.productImageUrl);
+    const path = `ai-poster-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`;
 
     const upload = await admin.storage.from(BUCKET).upload(path, bytes, {
       contentType: "image/png",
@@ -210,13 +195,19 @@ Deno.serve(async (req) => {
       return json({ error: "Failed to store image" }, 500);
     }
 
-    const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(path);
-    const publicUrl = pub.publicUrl;
+    const { data: signed, error: signedErr } = await admin.storage
+      .from(BUCKET)
+      .createSignedUrl(path, SIGNED_URL_TTL);
+    if (signedErr || !signed?.signedUrl) {
+      return json({ error: `Could not create signed URL: ${signedErr?.message || "unknown"}` }, 500);
+    }
+    const publicUrl = signed.signedUrl;
 
     // Insert audit row (skip gracefully if table missing)
     try {
       await admin.from("marketing_generated_images").insert({
         image_url: publicUrl,
+        thumbnail_url: publicUrl,
         generation_type: "poster",
         product_title: body.productTitle,
         style: body.posterStyle,
