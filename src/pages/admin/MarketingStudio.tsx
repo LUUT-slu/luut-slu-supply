@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import VideoModule from "./marketing-studio/VideoModule";
 import CreditsPanel from "./marketing-studio/CreditsPanel";
 import PosterTab from "./marketing-studio/PosterTab";
+import TextOverlayTab from "./marketing-studio/TextOverlayTab";
 import DisplayTab from "./marketing-studio/DisplayTab";
 import LibraryTab from "./marketing-studio/LibraryTab";
 import BrandStyleSelector from "./marketing-studio/BrandStyleSelector";
