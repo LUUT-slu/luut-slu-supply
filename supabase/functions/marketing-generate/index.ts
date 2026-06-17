@@ -26,7 +26,7 @@ const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
 const SUPPORTED_MODELS = new Set([
-  "ideogram-ai/ideogram-v3-quality",
+  "ideogram-ai/ideogram-v3-turbo",
   "sourceful/riverflow-2.0-pro",
   "google/nano-banana-pro",
 ]);
