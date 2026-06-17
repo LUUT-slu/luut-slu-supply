@@ -14,12 +14,18 @@ import {
   Sparkles,
   Loader2,
   ShoppingBag,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 import PosterLightbox from "./PosterLightbox";
 
 type StudioMode = "select" | "images" | "videos";
 type AiStyle = "hype" | "clean" | "luxury" | "bold";
+type DisplayStyle = "studio" | "lifestyle" | "minimal" | "human";
+type DisplayAspect = "1:1" | "4:5" | "9:16" | "3:4" | "16:9" | "4:3";
+type DisplayBackground = "solid" | "gradient" | "studio" | "lifestyle" | "transparent";
+type ModelGender = "male" | "female" | "unspecified";
+type SkinTone = "light" | "medium-light" | "medium" | "medium-dark" | "dark";
 
 export interface MobileShellProps {
   studioMode: StudioMode;
