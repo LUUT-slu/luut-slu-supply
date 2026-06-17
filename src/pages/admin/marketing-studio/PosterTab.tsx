@@ -111,7 +111,9 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     const a = preset.apply;
     if (a.campaign) setCampaign(a.campaign);
     if (a.style) setStyle(a.style);
+    if (a.realism) setRealism(a.realism);
     if (a.aspectRatio) setAspect(a.aspectRatio);
+
     if (a.headline !== undefined) setHeadline(a.headline);
     if (a.ctaText !== undefined) setCtaText(a.ctaText);
   };
