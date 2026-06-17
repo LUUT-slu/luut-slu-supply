@@ -21,9 +21,9 @@ export const MODEL_REGISTRY: Record<ModelKey, ModelChoice> = {
   },
   display: {
     key: "display",
-    model: "google/imagen-4",
+    model: "google/nano-banana-pro",
     provider: "replicate",
-    reason: "best hyper realistic product photography and product advertising",
+    reason: "image-to-image product photography that preserves reference identity",
   },
   closeup: {
     key: "closeup",
