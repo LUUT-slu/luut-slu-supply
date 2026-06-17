@@ -98,13 +98,13 @@ Deno.serve(async (req) => {
     if (response.status === 429) {
       return new Response(
         JSON.stringify({ error: "Rate limited — please try again in a moment." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
     if (response.status === 402) {
       return new Response(
-        JSON.stringify({ error: "AI credits exhausted — top up in Settings → Workspace → Usage." }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "Claude API credit balance is too low to extract this preset right now." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
     if (!response.ok) {

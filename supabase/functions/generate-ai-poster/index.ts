@@ -322,7 +322,11 @@ Deno.serve(async (req) => {
     return json({ url: publicUrl, prompt: fullPrompt });
   } catch (e) {
     console.error("generate-ai-poster error", e);
-    return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
+    const message = e instanceof Error ? e.message : "Unknown error";
+    if (/credit balance|credits?|billing/i.test(message)) {
+      return json({ error: "Claude API credit balance is too low to generate this poster right now." });
+    }
+    return json({ error: message }, 500);
   }
 });
 
