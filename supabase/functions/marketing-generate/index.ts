@@ -177,11 +177,12 @@ function buildModelInput(
   if (styleRef) enhancedPrompt += STYLE_REF_INSTRUCTION;
 
   switch (model) {
-    case "ideogram-ai/ideogram-v3-quality": {
+    case "ideogram-ai/ideogram-v3-turbo": {
       const input: Record<string, unknown> = {
         prompt: enhancedPrompt,
         aspect_ratio: aspect,
         magic_prompt_option: "Auto",
+        style_type: "DESIGN",
       };
       // Ideogram's style_reference_images is style-only by design, so the
       // brand-style donor fits naturally alongside the product refs here.
