@@ -101,6 +101,8 @@ export default function MobileShell(props: MobileShellProps) {
     aiPosterResult,
     onGenerate,
     onOpenProductPicker,
+    displaySlot,
+    videoSlot,
   } = props;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
