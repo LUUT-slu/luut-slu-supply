@@ -187,7 +187,7 @@ export default function BrandStyleSelector({
       >
         {all.map((b) => (
           <option key={b.key} value={b.key}>
-            {b.custom ? `★ ${b.label}${b.referenceImage ? " 🖼" : ""}` : b.label}
+            {b.custom ? `★ ${b.label}${(b.referenceImagePoster || b.referenceImageDisplay || b.referenceImage) ? " 🖼" : ""}` : b.label}
           </option>
         ))}
       </select>
@@ -249,20 +249,36 @@ export default function BrandStyleSelector({
                   )}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{b.description}</p>
-                {b.referenceImage && (
-                  <div className="mt-2 flex items-center gap-2 rounded bg-muted/40 p-2">
-                    <img
-                      src={b.referenceImage}
-                      alt={`${b.label} reference`}
-                      className="h-16 w-16 rounded object-cover"
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      Visual DNA from this image is blended into every generated scene as a style
-                      donor — colors, lighting, composition, and background style only. Its content
-                      is never copied.
-                    </p>
-                  </div>
-                )}
+                {(() => {
+                  const slots: { label: string; src?: string }[] = [
+                    { label: "Poster ref", src: b.referenceImagePoster || b.referenceImage },
+                    { label: "Display ref", src: b.referenceImageDisplay || b.referenceImage },
+                  ].filter((s) => !!s.src) as { label: string; src: string }[];
+                  if (slots.length === 0) return null;
+                  return (
+                    <div className="mt-2 space-y-2 rounded bg-muted/40 p-2">
+                      <div className="flex flex-wrap items-start gap-3">
+                        {slots.map((s) => (
+                          <div key={s.label} className="flex flex-col items-center gap-1">
+                            <img
+                              src={s.src}
+                              alt={`${b.label} ${s.label}`}
+                              className="h-16 w-16 rounded object-cover"
+                            />
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                              {s.label}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Visual DNA from these images is blended into the matching surface as a style
+                        donor — colors, lighting, composition, and background style only. Their
+                        content is never copied.
+                      </p>
+                    </div>
+                  );
+                })()}
                 {b.snippet && (
                   <p className="mt-2 rounded bg-muted/40 p-2 font-mono text-[11px] leading-relaxed text-foreground/80">
                     {b.snippet}
