@@ -125,7 +125,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
     if (a.aspectRatio) setAspect(a.aspectRatio);
   };
 
-  const generate = async () => {
+  const generate = async (opts?: { reuseSeed?: boolean }) => {
     if (!product) {
       toast.error("Select a product first");
       return;
@@ -137,6 +137,11 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
         ? [variantImage]
         : [];
 
+    const seed =
+      opts?.reuseSeed && lastSeed != null
+        ? lastSeed
+        : Math.floor(Math.random() * 2_147_483_647);
+
     setGenerating(true);
     setResultUrl(null);
     try {
@@ -145,7 +150,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
         body: {
           task: "display",
           model: route.model,
-          prompt,
+          prompt: promptOverride ?? prompt,
           aspectRatio: aspect,
           referenceImages: sourceRefs,
           styleReferenceImage: getBrandStyleReferenceImage(brandStyle, "display") || undefined,
@@ -153,14 +158,20 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
           productHandle: (product as any).handle || null,
           campaignType: goal,
           style,
+          seed,
         },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (error || (data as any)?.error) {
-        toast.error((data as any)?.error || error?.message || "Generation failed");
+        const raw = (data as any)?.error || error?.message || "Generation failed";
+        const friendly = /insufficient credit/i.test(raw)
+          ? "The image provider is out of credit. Top up Replicate billing and try again."
+          : raw;
+        toast.error(friendly);
         return;
       }
       setResultUrl((data as any).url);
+      setLastSeed(seed);
       toast.success("Display image generated");
     } catch (e: any) {
       toast.error(e?.message || "Generation failed");
