@@ -290,7 +290,7 @@ function pickTheme(headline: string, urgency?: string): PosterTheme {
 export const MultiProductTemplate = forwardRef<HTMLDivElement, MultiTemplateProps>(
   function MultiProductTemplate(props, ref) {
     const { format } = props;
-    const { w, h } = SIZE[format];
+    const { w, h } = SIZE[format] ?? SIZE.story;
 
     const theme = props.preset ? presetToTheme(props.preset) : pickTheme(props.headline, props.urgencyText);
     const dscale = densityScale(props.preset?.layout.density ?? "normal");
@@ -881,7 +881,7 @@ function PresetBadge({
 export const MarketingTemplate = forwardRef<HTMLDivElement, TemplateProps>(
   function MarketingTemplate(props, ref) {
     const { format } = props;
-    const { w, h } = SIZE[format];
+    const { w, h } = SIZE[format] ?? SIZE.story;
     return (
       <div
         ref={ref}
