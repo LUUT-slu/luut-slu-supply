@@ -43,13 +43,19 @@ export const MODEL_REGISTRY: Record<ModelKey, ModelChoice> = {
 
 export type BrandStyle = string;
 
+export type BrandSurface = "poster" | "display";
+
 export interface BrandStyleDef {
   key: string;
   label: string;
   description: string;
   snippet: string;
-  /** Optional reference image (data URL) used purely as a visual-style donor. */
+  /** Legacy single reference (data URL) — used as fallback when a surface-specific one isn't set. */
   referenceImage?: string;
+  /** Optional reference image used purely as a visual-style donor for POSTER generations. */
+  referenceImagePoster?: string;
+  /** Optional reference image used purely as a visual-style donor for DISPLAY generations. */
+  referenceImageDisplay?: string;
   custom?: boolean;
 }
 
