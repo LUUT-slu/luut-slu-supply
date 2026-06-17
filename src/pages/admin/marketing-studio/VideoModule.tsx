@@ -127,6 +127,12 @@ export default function VideoModule({ selectedProduct, activeImageUrl, onOpenPro
       const prompt = buildPrompt();
       const isPoster = videoType === "poster";
       const fn = isPoster ? "generate-product-poster-video" : "generate-product-video";
+      // Fall back to the product's listing image when the user hasn't uploaded
+      // a custom start frame — Kling v2.1 i2v requires a start_image.
+      const effectiveStart = startFrame ?? productImageUrl ?? undefined;
+      if (!isPoster && !effectiveStart) {
+        throw new Error("This product has no image — upload a start frame to continue");
+      }
       const body: any = isPoster
         ? {
             posterImageUrl: startFrame ?? undefined,
@@ -137,7 +143,7 @@ export default function VideoModule({ selectedProduct, activeImageUrl, onOpenPro
             motionStyle,
           }
         : {
-            productImageUrl: startFrame ?? undefined,
+            productImageUrl: effectiveStart,
             productTitle: selectedProduct.title,
             productCategory: selectedProduct.category || "",
             motionStyle,
