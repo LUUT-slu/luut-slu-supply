@@ -133,8 +133,7 @@ export function buildBrandStyleReferenceClause(b: BrandStyle, surface: BrandSurf
   const ref = getBrandStyleReferenceImage(b, surface);
   if (!ref) return "";
   const name = def.label || "the saved brand style";
-  const surfaceWord = surface === "poster" ? "poster" : "display image";
-  return `Channel the visual DNA of the attached "${name}" brand-style ${surfaceWord} reference — its color palette, lighting mood, composition rhythm, background treatment, typography feel, and how the subject is positioned — so this same scene looks like it belongs to that campaign. Treat that reference strictly as a style donor: do not copy, reproduce, or borrow any object, product, person, logo, or text from it; only its aesthetic carries over. The product in this image remains the one currently selected, unchanged in identity.`;
+  return `Use the attached "${name}" brand-style reference strictly as a color and mood donor — borrow only its color palette, lighting temperature, contrast, and overall atmosphere. Do NOT copy its composition, background type, camera angle, framing, props, layout, typography, objects, products, people, logos, or text. The scene structure, background, product framing, and focus must remain exactly as defined by the selected settings above; the reference only tints the look.`;
 }
 
 
@@ -464,9 +463,18 @@ export function buildPosterPrompt(c: PosterControls, brand: BrandStyle): string 
   if (c.meetupText) parts.push(`Footer detail: "${c.meetupText}".`);
 
   const brandSnippet = buildBrandStyleSnippet(brand);
-  if (brandSnippet) parts.push(brandSnippet + ".");
+  if (brandSnippet) {
+    parts.push(
+      `Brand mood overlay (apply ONLY to color palette, lighting temperature, contrast, and atmosphere — do NOT change the selected scene, background, composition, framing, or product focus): ${brandSnippet}.`,
+    );
+  }
   const brandRefClause = buildBrandStyleReferenceClause(brand, "poster");
   if (brandRefClause) parts.push(brandRefClause);
+  if (brandSnippet || brandRefClause) {
+    parts.push(
+      `Hard constraint: the selected campaign, style, aspect ratio, and product scene above define the final structure and must be preserved exactly; the brand style only influences color palette, lighting mood, and atmosphere.`,
+    );
+  }
 
   if (c.hasReference) parts.push(REF_PRESERVATION);
   if (c.notes && c.notes.trim()) parts.push(c.notes.trim());
@@ -489,9 +497,18 @@ export function buildDisplayPrompt(c: DisplayControls, brand: BrandStyle): strin
   parts.push(`Compose strictly in a ${c.aspectRatio} aspect ratio frame.`);
 
   const brandSnippet = buildBrandStyleSnippet(brand);
-  if (brandSnippet) parts.push(brandSnippet + ".");
+  if (brandSnippet) {
+    parts.push(
+      `Brand mood overlay (apply ONLY to color palette, lighting temperature, contrast, and atmosphere — do NOT change the selected Display Goal, Style, Background, or Product Focus): ${brandSnippet}.`,
+    );
+  }
   const brandRefClause = buildBrandStyleReferenceClause(brand, "display");
   if (brandRefClause) parts.push(brandRefClause);
+  if (brandSnippet || brandRefClause) {
+    parts.push(
+      `Hard constraint: the selected Display Goal, Style, Background, and Product Focus above define the scene structure and must be preserved exactly. If "Studio" is selected, the result must be a studio shot. The brand style only influences color palette, lighting mood, and atmosphere — never the type of scene or background.`,
+    );
+  }
 
   if (c.hasReference) parts.push(REF_PRESERVATION);
   if (c.notes && c.notes.trim()) parts.push(c.notes.trim());
