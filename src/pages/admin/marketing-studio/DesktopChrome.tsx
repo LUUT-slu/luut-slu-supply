@@ -191,13 +191,13 @@ export default function DesktopChrome(props: DesktopChromeProps) {
           </div>
         </div>
 
-        <nav className="flex items-center gap-1 rounded-full border border-[#1c1c1c] bg-[#111] p-1">
+        <nav className="flex shrink-0 items-center gap-1 rounded-full border border-[#1c1c1c] bg-[#111] p-1">
           {(["poster", "display", "video", "library"] as DesktopTab[]).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => onTabChange(t)}
-              className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.14em] transition-colors ${
+              className={`whitespace-nowrap rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.14em] transition-colors ${
                 activeTab === t
                   ? "bg-[#e8e8e8] text-[#080808]"
                   : "text-[#aaa] hover:text-[#e8e8e8]"
