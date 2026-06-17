@@ -39,6 +39,9 @@ interface ReqBody {
   referenceImages?: string[]; // product refs — http(s) URL or data: URL
   styleReferenceImage?: string; // brand-style donor ref — http(s) URL or data: URL
   seed?: number; // optional deterministic seed for reproducible generations
+  // Two-stage poster (Gemini background → Ideogram text overlay):
+  backgroundPrompt?: string;
+  textPrompt?: string;
   // Bookkeeping for the library row:
   productTitle?: string;
   productHandle?: string;
