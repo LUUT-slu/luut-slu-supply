@@ -191,10 +191,10 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
           <CardHeader>
             <CardTitle className="text-base">Product</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <select
               value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
+              onChange={(e) => { setSelectedId(e.target.value); setSelectedVariantId(""); }}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               disabled={loading}
             >
@@ -203,6 +203,22 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                 <option key={p.id} value={p.id}>{p.title}</option>
               ))}
             </select>
+            {product && product.variants?.length > 1 && (
+              <div>
+                <Label className="text-xs">Variant</Label>
+                <select
+                  value={variant?.id || ""}
+                  onChange={(e) => setSelectedVariantId(e.target.value)}
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                >
+                  {product.variants.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.title}{v.availableForSale ? "" : " — out of stock"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </CardContent>
         </Card>
 
