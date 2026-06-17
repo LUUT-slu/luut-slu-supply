@@ -25,7 +25,14 @@ import { supabase } from "@/integrations/supabase/client";
 type VideoType = "product" | "poster" | "model" | "promo";
 type MotionStyleV = "subtle" | "dynamic" | "cinematic" | "zoom" | "orbit";
 type DurationV = 5 | 10;
-type RatioV = "9:16" | "1:1" | "16:9";
+type RatioV = "9:16" | "1:1" | "16:9" | "4:3" | "3:4" | "21:9";
+
+const RATIOS: RatioV[] = ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"];
+
+function ratioToWH(r: RatioV): [number, number] {
+  const [w, h] = r.split(":").map(Number);
+  return [w, h];
+}
 
 const VIDEO_TYPES: { id: VideoType; label: string; desc: string; Icon: any }[] = [
   { id: "product", label: "Product video", desc: "Animate product photo", Icon: Shirt },
@@ -60,7 +67,7 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
   const [aspectRatio, setAspectRatio] = useState<RatioV>("9:16");
   const [customPrompt, setCustomPrompt] = useState("");
 
-  const [startFrame, setStartFrame] = useState<string | null>(productImageUrl);
+  const [startFrame, setStartFrame] = useState<string | null>(null);
   const [endFrame, setEndFrame] = useState<string | null>(null);
   const startInputRef = useRef<HTMLInputElement | null>(null);
   const endInputRef = useRef<HTMLInputElement | null>(null);
@@ -70,11 +77,6 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
   const [lastAt, setLastAt] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
-
-  // Auto-fill start frame from selected product
-  useEffect(() => {
-    if (productImageUrl) setStartFrame(productImageUrl);
-  }, [productImageUrl]);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>, slot: "start" | "end") {
     const file = e.target.files?.[0];
@@ -108,10 +110,6 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
       toast.error("Select a product first");
       return;
     }
-    if (!startFrame) {
-      toast.error("Add a start frame or select a product image");
-      return;
-    }
     setGenerating(true);
     setVideoUrl(null);
     try {
@@ -120,25 +118,24 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
       const fn = isPoster ? "generate-product-poster-video" : "generate-product-video";
       const body: any = isPoster
         ? {
-            posterImageUrl: startFrame,
+            posterImageUrl: startFrame ?? undefined,
             posterType: "product",
             prompt,
-            endImageUrl: endFrame ?? undefined,
             duration,
             aspectRatio,
             motionStyle,
           }
         : {
-            productImageUrl: startFrame,
+            productImageUrl: startFrame ?? undefined,
             productTitle: selectedProduct.title,
             productCategory: selectedProduct.category || "",
             motionStyle,
             duration,
             aspectRatio,
-            endImageUrl: endFrame ?? undefined,
             customPrompt: customPrompt?.trim() || undefined,
             videoType,
           };
+      if (endFrame) body.endImageUrl = endFrame;
       const { data, error } = await supabase.functions.invoke(fn, { body });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
