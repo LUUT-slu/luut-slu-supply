@@ -444,11 +444,14 @@ export type Database = {
       marketing_generated_images: {
         Row: {
           aspect_ratio: string | null
+          campaign_type: string | null
           created_at: string
           created_by: string | null
+          download_count: number
           generation_type: string
           id: string
           image_url: string
+          is_favorite: boolean
           logo_applied: boolean | null
           logo_position: string | null
           product_handle: string | null
@@ -460,11 +463,14 @@ export type Database = {
         }
         Insert: {
           aspect_ratio?: string | null
+          campaign_type?: string | null
           created_at?: string
           created_by?: string | null
+          download_count?: number
           generation_type: string
           id?: string
           image_url: string
+          is_favorite?: boolean
           logo_applied?: boolean | null
           logo_position?: string | null
           product_handle?: string | null
@@ -476,11 +482,14 @@ export type Database = {
         }
         Update: {
           aspect_ratio?: string | null
+          campaign_type?: string | null
           created_at?: string
           created_by?: string | null
+          download_count?: number
           generation_type?: string
           id?: string
           image_url?: string
+          is_favorite?: boolean
           logo_applied?: boolean | null
           logo_position?: string | null
           product_handle?: string | null
