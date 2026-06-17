@@ -51,12 +51,15 @@ Deno.serve(async (req) => {
     const aspectRatio: string = allowedRatios.includes(body.aspectRatio) ? body.aspectRatio : "9:16";
     const prompt: string = (typeof body.prompt === "string" && body.prompt.trim()) || POSTER_PROMPT;
 
+    if (!posterImageUrl) {
+      return json({ error: "posterImageUrl is required — upload a poster image to animate" }, 400);
+    }
     const input: Record<string, unknown> = {
       prompt,
       num_frames: 81,
       aspect_ratio: aspectRatio,
+      image: posterImageUrl,
     };
-    if (posterImageUrl) input.image = posterImageUrl;
     if (endImageUrl) input.end_image = endImageUrl;
 
     const createRes = await fetch(`${REPLICATE_API}/models/${MODEL}/predictions`, {
