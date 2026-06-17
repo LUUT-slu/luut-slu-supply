@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
 
 interface Props {
@@ -15,34 +15,35 @@ export function GoogleSignInButton({ nextUrl, label = "Continue with Google", cl
   const handleClick = async () => {
     setLoading(true);
     try {
-      const callbackUrl = `${window.location.origin}/auth/callback${
-        nextUrl ? `?next=${encodeURIComponent(nextUrl)}` : ""
-      }`;
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: callbackUrl,
-          scopes: "https://www.googleapis.com/auth/calendar.events",
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
-        },
+      const redirectUri = nextUrl
+        ? `${window.location.origin}${nextUrl.startsWith("/") ? "" : "/"}${nextUrl}`
+        : window.location.origin;
+
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: redirectUri,
       });
 
-      if (error) {
+      if (result.error) {
+        console.error("[google-signin]", result.error);
         toast.error("Could not start Google sign-in. Please try again.");
         setLoading(false);
         return;
       }
 
-      // Supabase handles the redirect; loading state stays until unload
+      if (result.redirected) {
+        // Browser will redirect to Google
+        return;
+      }
+
+      // Tokens received and session set — navigate to next
+      window.location.href = redirectUri;
     } catch (err) {
       console.error("[google-signin]", err);
       toast.error("Sign-in failed. Please try again.");
       setLoading(false);
     }
   };
+
 
   return (
     <Button
