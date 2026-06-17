@@ -4,7 +4,7 @@
 // register it in `marketing_generated_images`.
 //
 // Supported models (all via Replicate, all image-to-image capable):
-//   - ideogram-ai/ideogram-v3-quality
+//   - ideogram-ai/ideogram-v3-turbo
 //   - sourceful/riverflow-2.0-pro
 //   - google/nano-banana-pro
 //
