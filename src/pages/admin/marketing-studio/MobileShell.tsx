@@ -247,11 +247,18 @@ export default function MobileShell(props: MobileShellProps) {
                 }}
               >
                 {aiPosterResult ? (
-                  <img
-                    src={aiPosterResult}
-                    alt="Generated poster"
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setLightboxOpen(true)}
+                    aria-label="View poster full screen"
+                    className="absolute inset-0 p-0 border-0 bg-transparent cursor-zoom-in"
+                  >
+                    <img
+                      src={aiPosterResult}
+                      alt="Generated poster"
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
                 ) : (
                   <>
                     <div
