@@ -343,6 +343,10 @@ export default function DesktopChrome(props: DesktopChromeProps) {
                 </div>
               </section>
 
+              {/* Variant selector (shared across tabs) */}
+              {variantSlot}
+
+
               {/* Source photos override (multi-upload, up to 4) */}
               {setCustomProductImages && (() => {
                 const MAX_REFS = 4;

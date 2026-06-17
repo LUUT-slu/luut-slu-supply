@@ -60,6 +60,7 @@ export interface MobileShellProps {
   onOpenProductPicker: () => void;
   customProductImages?: string[];
   setCustomProductImages?: (v: string[]) => void;
+  variantSlot?: React.ReactNode;
   displaySlot?: React.ReactNode;
   videoSlot?: React.ReactNode;
 
@@ -137,6 +138,7 @@ export default function MobileShell(props: MobileShellProps) {
     onOpenProductPicker,
     customProductImages = [],
     setCustomProductImages,
+    variantSlot,
     displaySlot,
     videoSlot,
     displayStyle = "studio",
