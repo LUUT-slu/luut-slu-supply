@@ -325,7 +325,7 @@ async function runPosterTwoStage(
   const ideogramInput: Record<string, unknown> = {
     prompt: textPrompt,
     aspect_ratio: aspectRatio,
-    style_type: "DESIGN",
+    style_type: "Design",
     magic_prompt_option: "Off",
     style_reference_images: [geminiUrl],
   };
