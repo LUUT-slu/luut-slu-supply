@@ -4,7 +4,7 @@
 // register it in `marketing_generated_images`.
 //
 // Supported models (all via Replicate, all image-to-image capable):
-//   - ideogram-ai/ideogram-v3-turbo
+//   - ideogram-ai/ideogram-v3-quality
 //   - sourceful/riverflow-2.0-pro
 //   - google/nano-banana-pro
 //
@@ -26,13 +26,10 @@ const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
 const SUPPORTED_MODELS = new Set([
-  "ideogram-ai/ideogram-v3-turbo",
-  "ideogram-ai/ideogram-v3-balanced",
   "ideogram-ai/ideogram-v3-quality",
   "sourceful/riverflow-2.0-pro",
   "google/nano-banana-pro",
 ]);
-
 
 interface ReqBody {
   task: "poster" | "display";
@@ -180,21 +177,17 @@ function buildModelInput(
   if (styleRef) enhancedPrompt += STYLE_REF_INSTRUCTION;
 
   switch (model) {
-    case "ideogram-ai/ideogram-v3-turbo":
-    case "ideogram-ai/ideogram-v3-balanced":
     case "ideogram-ai/ideogram-v3-quality": {
       const input: Record<string, unknown> = {
         prompt: enhancedPrompt,
         aspect_ratio: aspect,
         magic_prompt_option: "Auto",
-        style_type: combined.length ? "Auto" : "Design",
       };
       // Ideogram's style_reference_images is style-only by design, so the
       // brand-style donor fits naturally alongside the product refs here.
       if (combined.length) input.style_reference_images = combined.slice(0, 4);
       return input;
     }
-
     case "sourceful/riverflow-2.0-pro": {
       // Riverflow only accepts a single image. Prefer the product ref;
       // the style donor only contributes via the prompt clause.

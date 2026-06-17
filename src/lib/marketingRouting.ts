@@ -15,7 +15,7 @@ export interface ModelChoice {
 export const MODEL_REGISTRY: Record<ModelKey, ModelChoice> = {
   poster: {
     key: "poster",
-    model: "ideogram-ai/ideogram-v3-turbo",
+    model: "ideogram-ai/ideogram-v3-quality",
     provider: "replicate",
     reason: "best typography, posters, flyers, social marketing graphics",
   },
@@ -38,19 +38,6 @@ export const MODEL_REGISTRY: Record<ModelKey, ModelChoice> = {
     reason: "best general purpose image generation",
   },
 };
-
-// Ideogram v3 variant selection driven by realism:
-//   standard -> turbo    (fast, cheap)
-//   premium  -> balanced (mid)
-//   hyper    -> quality  (highest fidelity)
-//   luxury   -> quality
-const IDEOGRAM_BY_REALISM: Record<DisplayRealism, { model: string; reason: string }> = {
-  standard: { model: "ideogram-ai/ideogram-v3-turbo",    reason: "Ideogram v3 Turbo — fastest poster rendering for standard realism" },
-  premium:  { model: "ideogram-ai/ideogram-v3-balanced", reason: "Ideogram v3 Balanced — mid quality/speed for premium realism" },
-  hyper:    { model: "ideogram-ai/ideogram-v3-quality",  reason: "Ideogram v3 Quality — highest fidelity for hyper realism" },
-  luxury:   { model: "ideogram-ai/ideogram-v3-quality",  reason: "Ideogram v3 Quality — highest fidelity for luxury realism" },
-};
-
 
 // ---------- Brand styles ----------
 
@@ -226,22 +213,12 @@ export interface DisplayControls {
 // ---------- Routing ----------
 
 export function routeForPoster(c: PosterControls): ModelChoice {
-  // All posters always route through Ideogram v3. The variant is picked from
-  // the realism setting. Reference images (when present) are passed to
-  // Ideogram as style_reference_images by the edge function.
-  const pick = pickIdeogramForRealism(c.realism);
-  return {
-    key: "poster",
-    model: pick.model,
-    provider: "replicate",
-    reason: pick.reason,
-  };
+  // When a reference image is provided, prefer nano-banana-pro which actually
+  // preserves the product identity (image-to-image). Ideogram's style_reference
+  // only transfers aesthetic, not product identity.
+  if (c.hasReference) return MODEL_REGISTRY.display;
+  return MODEL_REGISTRY.poster;
 }
-
-function pickIdeogramForRealism(r: DisplayRealism) {
-  return IDEOGRAM_BY_REALISM[r] || IDEOGRAM_BY_REALISM.standard;
-}
-
 
 export function routeForDisplay(c: DisplayControls): ModelChoice {
   // With a reference image, always use nano-banana-pro for true product-identity
