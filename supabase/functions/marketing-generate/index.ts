@@ -21,9 +21,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const REPLICATE_API = "https://api.replicate.com/v1";
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
@@ -34,19 +32,13 @@ const SUPPORTED_MODELS = new Set([
 ]);
 
 interface ReqBody {
-  task: "poster" | "display" | "text-overlay";
+  task: "poster" | "display";
   model: string;
   prompt: string;
   aspectRatio?: string;
   referenceImages?: string[]; // product refs — http(s) URL or data: URL
   styleReferenceImage?: string; // brand-style donor ref — http(s) URL or data: URL
   seed?: number; // optional deterministic seed for reproducible generations
-  // Two-stage poster (Gemini background → Ideogram text overlay):
-  backgroundPrompt?: string;
-  textPrompt?: string;
-  // Text-overlay (Ideogram inpainting on a locked uploaded image):
-  baseImage?: string; // http(s) URL or data: URL — the uploaded display image
-  maskImage?: string; // http(s) URL or data: URL — white=paint, black=preserve
   // Bookkeeping for the library row:
   productTitle?: string;
   productHandle?: string;
@@ -229,139 +221,6 @@ function resolveModel(model: string, _refs: string[]): string {
   return model;
 }
 
-// ---------- Two-stage poster helpers ----------
-
-async function uploadBytesAndSign(
-  admin: ReturnType<typeof createClient>,
-  bytes: Uint8Array,
-  contentType: string,
-  prefix: string,
-): Promise<string> {
-  const ext = contentType.includes("jpeg") ? "jpg" : contentType.includes("webp") ? "webp" : "png";
-  const path = `${prefix}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
-  const up = await admin.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: true });
-  if (up.error) throw new Error(`Storage upload failed: ${up.error.message}`);
-  const { data: signed, error } = await admin.storage
-    .from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
-  if (error || !signed?.signedUrl) {
-    throw new Error(`Signed URL failed: ${error?.message || "unknown"}`);
-  }
-  return signed.signedUrl;
-}
-
-async function runGeminiImage(
-  geminiModel: string,
-  promptText: string,
-  refUrls: string[],
-): Promise<{ bytes: Uint8Array; contentType: string }> {
-  const content: Array<Record<string, unknown>> = [{ type: "text", text: promptText }];
-  for (const u of refUrls.slice(0, 4)) {
-    content.push({ type: "image_url", image_url: { url: u } });
-  }
-
-  const res = await fetch(LOVABLE_AI_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: geminiModel,
-      messages: [{ role: "user", content }],
-      modalities: ["image", "text"],
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Gemini ${res.status}: ${text}`);
-  }
-  const data = await res.json();
-  const msg = data?.choices?.[0]?.message;
-  const images: Array<{ image_url?: { url?: string } }> = msg?.images || [];
-  const imgUrl = images[0]?.image_url?.url;
-  if (!imgUrl) {
-    throw new Error("Gemini returned no image");
-  }
-  // Data URL: data:<ct>;base64,<b64>
-  const m = imgUrl.match(/^data:([^;,]+);base64,(.+)$/);
-  if (m) {
-    const contentType = m[1] || "image/png";
-    const bin = atob(m[2]);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return { bytes, contentType };
-  }
-  // Remote URL fallback
-  const r = await fetch(imgUrl);
-  if (!r.ok) throw new Error(`Could not fetch Gemini image (${r.status})`);
-  const contentType = r.headers.get("content-type") || "image/png";
-  return { bytes: new Uint8Array(await r.arrayBuffer()), contentType };
-}
-
-async function runPosterTwoStage(
-  admin: ReturnType<typeof createClient>,
-  backgroundPrompt: string,
-  textPrompt: string,
-  aspectRatio: string,
-  productRefs: string[],
-  seed?: number,
-): Promise<{ finalUrl: string; geminiUrl: string; modelLabel: string }> {
-  // Stage 1: Nano Banana Pro generates the background plate (product scene, no text).
-  const stage1Model = "google/nano-banana-pro";
-  const stage1Input: Record<string, unknown> = {
-    prompt: backgroundPrompt,
-    aspect_ratio: aspectRatio,
-    output_format: "png",
-  };
-  if (productRefs.length) stage1Input.image_input = productRefs.slice(0, 4);
-  if (typeof seed === "number" && Number.isFinite(seed)) stage1Input.seed = seed;
-
-  console.log("[poster-two-stage] Stage 1 (Nano Banana) starting");
-  const stage1Output = await runReplicate(stage1Model, stage1Input);
-  const stage1Url = pickUrl(stage1Output);
-  if (!stage1Url) throw new Error("Nano Banana returned no image URL");
-
-  // Persist the Nano Banana plate to our bucket so we have a stable signed URL
-  // for Ideogram to reference (Replicate's delivery URLs expire quickly).
-  const plateRes = await fetch(stage1Url);
-  if (!plateRes.ok) throw new Error(`Could not fetch Nano Banana image (${plateRes.status})`);
-  const plateContentType = plateRes.headers.get("content-type") || "image/png";
-  const plateBytes = new Uint8Array(await plateRes.arrayBuffer());
-  const geminiUrl = await uploadBytesAndSign(admin, plateBytes, plateContentType, "poster-bg");
-  console.log("[poster-two-stage] Stage 1 complete, plate URL:", geminiUrl);
-
-  // Stage 2: Ideogram v3 Turbo — text overlay, guided by the Nano Banana plate
-  // as a style reference. Ideogram requires style_type=Auto/General when using
-  // style_reference_images (Design is incompatible with that input).
-  const ideogramInput: Record<string, unknown> = {
-    prompt: textPrompt,
-    aspect_ratio: aspectRatio,
-    style_type: "General",
-    magic_prompt_option: "Off",
-    style_reference_images: [geminiUrl],
-  };
-  if (typeof seed === "number" && Number.isFinite(seed)) ideogramInput.seed = seed;
-
-  console.log("[poster-two-stage] Stage 2 (Ideogram) starting with input:", JSON.stringify(ideogramInput));
-
-  let output: unknown;
-  try {
-    output = await runReplicate("ideogram-ai/ideogram-v3-turbo", ideogramInput);
-  } catch (e) {
-    console.error("[poster-two-stage] Ideogram failed:", (e as Error).message);
-    throw new Error(`Ideogram text overlay step failed: ${(e as Error).message}`);
-  }
-  const finalUrl = pickUrl(output);
-  if (!finalUrl) {
-    console.error("[poster-two-stage] Ideogram output had no URL:", JSON.stringify(output));
-    throw new Error("Ideogram returned no image URL");
-  }
-  console.log("[poster-two-stage] Stage 2 (Ideogram) complete:", finalUrl);
-
-  return { finalUrl, geminiUrl, modelLabel: `nano-banana-pro -> ideogram-v3-turbo` };
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -389,42 +248,20 @@ Deno.serve(async (req) => {
       referenceImages = [],
       styleReferenceImage,
       seed,
-      backgroundPrompt,
-      textPrompt,
-      baseImage,
-      maskImage,
       productTitle,
       productHandle,
       campaignType,
       style,
     } = body;
 
-    if (!task || (task !== "poster" && task !== "display" && task !== "text-overlay")) {
-      return json({ error: "task must be poster, display, or text-overlay" }, 400);
+    if (!task || (task !== "poster" && task !== "display")) {
+      return json({ error: "task must be poster or display" }, 400);
     }
-
-    const isTwoStagePoster =
-      task === "poster" &&
-      typeof backgroundPrompt === "string" && backgroundPrompt.trim().length >= 4 &&
-      typeof textPrompt === "string" && textPrompt.trim().length >= 4;
-
-    const isTextOverlay = task === "text-overlay";
-
-    if (!isTwoStagePoster && !isTextOverlay) {
-      if (!model || !SUPPORTED_MODELS.has(model)) {
-        return json({ error: `Unsupported model: ${model}` }, 400);
-      }
-      if (!prompt || prompt.trim().length < 4) {
-        return json({ error: "prompt is required" }, 400);
-      }
+    if (!model || !SUPPORTED_MODELS.has(model)) {
+      return json({ error: `Unsupported model: ${model}` }, 400);
     }
-
-    if (isTextOverlay) {
-      if (!baseImage) return json({ error: "baseImage is required" }, 400);
-      if (!maskImage) return json({ error: "maskImage is required" }, 400);
-      if (!prompt || prompt.trim().length < 1) {
-        return json({ error: "prompt is required" }, 400);
-      }
+    if (!prompt || prompt.trim().length < 4) {
+      return json({ error: "prompt is required" }, 400);
     }
 
     // Normalize product refs (uploads data: refs to storage).
@@ -439,48 +276,11 @@ Deno.serve(async (req) => {
       hostedStyleRef = await normalizeRef(admin, styleReferenceImage);
     }
 
-    let srcUrl: string | null = null;
-    let effectiveModel: string;
-    let promptForLog: string;
-
-    if (isTextOverlay) {
-      const hostedBase = await normalizeRef(admin, baseImage!);
-      const hostedMask = await normalizeRef(admin, maskImage!);
-      const ideogramInput: Record<string, unknown> = {
-        prompt,
-        image: hostedBase,
-        mask: hostedMask,
-        magic_prompt_option: "Off",
-        style_type: "General",
-      };
-      if (typeof seed === "number" && Number.isFinite(seed)) ideogramInput.seed = seed;
-      console.log("[text-overlay] Ideogram inpaint starting");
-      const output = await runReplicate("ideogram-ai/ideogram-v3-turbo", ideogramInput);
-      srcUrl = pickUrl(output);
-      effectiveModel = "ideogram-v3-turbo (inpaint)";
-      promptForLog = prompt;
-    } else if (isTwoStagePoster) {
-      const refsForGemini = [...hostedRefs];
-      if (hostedStyleRef) refsForGemini.push(hostedStyleRef);
-      const stage = await runPosterTwoStage(
-        admin,
-        backgroundPrompt!,
-        textPrompt!,
-        aspectRatio,
-        refsForGemini,
-        seed,
-      );
-      srcUrl = stage.finalUrl;
-      effectiveModel = stage.modelLabel;
-      promptForLog = `[BACKGROUND]\n${backgroundPrompt}\n\n[TEXT]\n${textPrompt}`;
-    } else {
-      effectiveModel = resolveModel(model, hostedRefs);
-      const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef, seed);
-      const output = await runReplicate(effectiveModel, input);
-      srcUrl = pickUrl(output);
-      promptForLog = prompt;
-    }
-    if (!srcUrl) throw new Error("Generator returned no image URL");
+    const effectiveModel = resolveModel(model, hostedRefs);
+    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef, seed);
+    const output = await runReplicate(effectiveModel, input);
+    const srcUrl = pickUrl(output);
+    if (!srcUrl) throw new Error("Replicate returned no image URL");
 
     // Persist the result to our bucket so it doesn't expire.
     const imgRes = await fetch(srcUrl);
@@ -508,7 +308,7 @@ Deno.serve(async (req) => {
         product_handle: productHandle || null,
         style: style || null,
         aspect_ratio: aspectRatio,
-        prompt_used: promptForLog,
+        prompt_used: prompt,
         model_used: effectiveModel,
 
         reference_image_url: hostedRefs[0] || null,
@@ -524,7 +324,7 @@ Deno.serve(async (req) => {
       id: inserted.id,
       model: effectiveModel,
       task,
-      prompt: promptForLog,
+      prompt,
       aspectRatio,
       seed: seed ?? null,
     });
@@ -532,12 +332,10 @@ Deno.serve(async (req) => {
     const raw = e instanceof Error ? e.message : String(e);
     console.error("[marketing-generate]", raw);
     const friendly = /insufficient credit/i.test(raw)
-      ? "The image provider has insufficient credit. Top up billing and try again."
+      ? "The image provider (Replicate) has insufficient credit. Top up billing and try again."
       : /timed out|timeout/i.test(raw)
         ? "The image provider took too long to respond. Please try again."
-        : /Gemini\s+4\d\d/i.test(raw)
-          ? "Background generation failed. Please try again."
-          : raw;
+        : raw;
     return json({ error: friendly }, 500);
   }
 });

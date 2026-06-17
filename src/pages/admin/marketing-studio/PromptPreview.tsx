@@ -11,8 +11,6 @@ interface Props {
   value?: string | null;
   /** Called whenever the user edits the prompt or resets it (null = use auto). */
   onChange?: (next: string | null) => void;
-  /** Optional read-only companion prompt shown collapsed above the editor (e.g. background prompt for two-stage poster). */
-  secondaryPrompt?: { label: string; value: string } | null;
 }
 
 const QUICK_ADDITIONS: { label: string; text: string }[] = [
@@ -26,9 +24,8 @@ const QUICK_ADDITIONS: { label: string; text: string }[] = [
   { label: "Premium feel", text: "Elevate the overall feel to a premium, luxury editorial standard." },
 ];
 
-export default function PromptPreview({ prompt, value, onChange, secondaryPrompt }: Props) {
+export default function PromptPreview({ prompt, value, onChange }: Props) {
   const [open, setOpen] = useState(false);
-  const [secondaryOpen, setSecondaryOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? prompt);
   const [copied, setCopied] = useState(false);
@@ -75,28 +72,6 @@ export default function PromptPreview({ prompt, value, onChange, secondaryPrompt
 
   return (
     <div className="rounded-md border bg-muted/30">
-      {secondaryPrompt && (
-        <div className="border-b">
-          <button
-            type="button"
-            onClick={() => setSecondaryOpen((v) => !v)}
-            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-xs font-medium"
-          >
-            <span className="flex items-center gap-2">
-              {secondaryPrompt.label}
-              <span className="rounded bg-foreground/10 px-1.5 py-0.5 text-[10px] font-normal">
-                read-only
-              </span>
-            </span>
-            {secondaryOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-          </button>
-          {secondaryOpen && (
-            <pre className="max-h-48 overflow-auto whitespace-pre-wrap border-t bg-background/50 p-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
-{secondaryPrompt.value || "(empty)"}
-            </pre>
-          )}
-        </div>
-      )}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

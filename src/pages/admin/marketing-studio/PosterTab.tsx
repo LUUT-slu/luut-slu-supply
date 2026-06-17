@@ -18,7 +18,7 @@ import {
   type PosterControls,
   type PosterStyle,
   POSTER_PRESETS,
-  previewPosterTwoStage,
+  previewPosterFinal,
   getBrandStyleReferenceImage,
 } from "@/lib/marketingRouting";
 
@@ -108,7 +108,7 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     hasReference: refs.length > 0 || Boolean(variantImage),
   };
 
-  const { route, backgroundPrompt, textPrompt } = previewPosterTwoStage(controls, brandStyle);
+  const { route, prompt } = previewPosterFinal(controls, brandStyle);
 
   const applyPreset = (id: string) => {
     const preset = POSTER_PRESETS.find((p) => p.id === id);
@@ -148,9 +148,7 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
         body: {
           task: "poster",
           model: route.model,
-          prompt: promptOverride ?? textPrompt,
-          backgroundPrompt,
-          textPrompt: promptOverride ?? textPrompt,
+          prompt: promptOverride ?? prompt,
           aspectRatio: aspect,
           referenceImages: sourceRefs,
           styleReferenceImage: getBrandStyleReferenceImage(brandStyle, "poster") || undefined,
@@ -405,12 +403,7 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
           </CardContent>
         </Card>
 
-        <PromptPreview
-          prompt={textPrompt}
-          value={promptOverride}
-          onChange={setPromptOverride}
-          secondaryPrompt={{ label: "Background prompt (Gemini)", value: backgroundPrompt }}
-        />
+        <PromptPreview prompt={prompt} value={promptOverride} onChange={setPromptOverride} />
 
         <div className="space-y-2">
           <Button onClick={() => generate()} disabled={generating || !product} size="lg" className="w-full">
