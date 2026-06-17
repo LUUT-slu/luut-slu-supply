@@ -334,8 +334,9 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
                   </button>
                 ))}
               </div>
-
+            </div>
             <div>
+
               <Label className="text-xs">Aspect Ratio</Label>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {ASPECTS.map((a) => (
