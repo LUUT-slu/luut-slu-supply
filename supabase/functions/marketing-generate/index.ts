@@ -185,7 +185,7 @@ function buildModelInput(
     }
     case "sourceful/riverflow-2.0-pro": {
       const input: Record<string, unknown> = {
-        prompt,
+        instruction: prompt,
         aspect_ratio: aspect,
       };
       if (primaryRef) input.image = primaryRef;
