@@ -240,6 +240,78 @@ export default function MobileShell(props: MobileShellProps) {
     toast.success("Link copied");
   };
 
+  // ---- Display handlers ----
+  const handleDisplayDownload = async () => {
+    if (!displayResultUrl) return;
+    try {
+      const res = await fetch(displayResultUrl);
+      const blob = await res.blob();
+      const file = new File([blob], "luut-display.png", { type: blob.type || "image/png" });
+      const navAny: any = navigator;
+      if (navAny.canShare && navAny.canShare({ files: [file] })) {
+        await navAny.share({ files: [file], title: "LUUT Display" });
+        return;
+      }
+      window.open(displayResultUrl, "_blank");
+    } catch {
+      window.open(displayResultUrl, "_blank");
+    }
+  };
+
+  const handleDisplayShare = async () => {
+    if (!displayResultUrl) return;
+    const navAny: any = navigator;
+    try {
+      if (navAny.share) {
+        await navAny.share({ title: "LUUT Display", url: displayResultUrl });
+      } else {
+        await navigator.clipboard.writeText(displayResultUrl);
+        toast.success("Link copied");
+      }
+    } catch {/* ignore */}
+  };
+
+  const handleDisplayWhatsApp = () => {
+    if (!displayResultUrl) return;
+    const text = `${productName || "Check this out"} — ${displayResultUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  const handleDisplayCopyLink = async () => {
+    if (!displayResultUrl) return;
+    await navigator.clipboard.writeText(displayResultUrl);
+    toast.success("Link copied");
+  };
+
+  const DISPLAY_STYLES_M: { key: DisplayStyle; label: string; desc: string }[] = [
+    { key: "studio", label: "Studio", desc: "Clean backdrop" },
+    { key: "lifestyle", label: "Lifestyle", desc: "Real setting" },
+    { key: "minimal", label: "Minimal", desc: "Pure white" },
+    { key: "human", label: "Human Model", desc: "Person wearing it" },
+  ];
+  const DISPLAY_FORMATS_M: DisplayAspect[] = ["1:1", "4:5", "9:16", "3:4", "16:9", "4:3"];
+  const BACKGROUNDS_M: { key: DisplayBackground; label: string }[] = [
+    { key: "solid", label: "Solid" },
+    { key: "gradient", label: "Gradient" },
+    { key: "studio", label: "Studio" },
+    { key: "lifestyle", label: "Lifestyle" },
+    { key: "transparent", label: "Transparent" },
+  ];
+  const GENDERS_M: { key: ModelGender; label: string }[] = [
+    { key: "male", label: "Male" },
+    { key: "female", label: "Female" },
+    { key: "unspecified", label: "Unspecified" },
+  ];
+  const SKIN_TONES_M: { key: SkinTone; label: string }[] = [
+    { key: "light", label: "Light" },
+    { key: "medium-light", label: "Med-Light" },
+    { key: "medium", label: "Medium" },
+    { key: "medium-dark", label: "Med-Dark" },
+    { key: "dark", label: "Dark" },
+  ];
+
+
+
   return (
     <div className="lg:hidden min-h-screen flex flex-col" style={{ background: "#080808", color: "#fff", fontFamily: "Inter, system-ui, sans-serif" }}>
       {/* Top bar */}
