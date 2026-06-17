@@ -166,6 +166,9 @@ export function routeForPoster(c: PosterControls): ModelChoice {
 }
 
 export function routeForDisplay(c: DisplayControls): ModelChoice {
+  // With a reference image, always use nano-banana-pro for true product-identity
+  // preservation. Riverflow/Ideogram redesign the product too aggressively.
+  if (c.hasReference) return MODEL_REGISTRY.display;
   if (c.goal === "product_closeup" || c.focus === "detail" || c.focus === "texture") {
     return MODEL_REGISTRY.closeup;
   }
