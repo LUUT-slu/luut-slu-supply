@@ -361,6 +361,8 @@ Deno.serve(async (req) => {
       referenceImages = [],
       styleReferenceImage,
       seed,
+      backgroundPrompt,
+      textPrompt,
       productTitle,
       productHandle,
       campaignType,
@@ -370,11 +372,19 @@ Deno.serve(async (req) => {
     if (!task || (task !== "poster" && task !== "display")) {
       return json({ error: "task must be poster or display" }, 400);
     }
-    if (!model || !SUPPORTED_MODELS.has(model)) {
-      return json({ error: `Unsupported model: ${model}` }, 400);
-    }
-    if (!prompt || prompt.trim().length < 4) {
-      return json({ error: "prompt is required" }, 400);
+
+    const isTwoStagePoster =
+      task === "poster" &&
+      typeof backgroundPrompt === "string" && backgroundPrompt.trim().length >= 4 &&
+      typeof textPrompt === "string" && textPrompt.trim().length >= 4;
+
+    if (!isTwoStagePoster) {
+      if (!model || !SUPPORTED_MODELS.has(model)) {
+        return json({ error: `Unsupported model: ${model}` }, 400);
+      }
+      if (!prompt || prompt.trim().length < 4) {
+        return json({ error: "prompt is required" }, 400);
+      }
     }
 
     // Normalize product refs (uploads data: refs to storage).
@@ -389,11 +399,32 @@ Deno.serve(async (req) => {
       hostedStyleRef = await normalizeRef(admin, styleReferenceImage);
     }
 
-    const effectiveModel = resolveModel(model, hostedRefs);
-    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef, seed);
-    const output = await runReplicate(effectiveModel, input);
-    const srcUrl = pickUrl(output);
-    if (!srcUrl) throw new Error("Replicate returned no image URL");
+    let srcUrl: string | null = null;
+    let effectiveModel: string;
+    let promptForLog: string;
+
+    if (isTwoStagePoster) {
+      const refsForGemini = [...hostedRefs];
+      if (hostedStyleRef) refsForGemini.push(hostedStyleRef);
+      const stage = await runPosterTwoStage(
+        admin,
+        backgroundPrompt!,
+        textPrompt!,
+        aspectRatio,
+        refsForGemini,
+        seed,
+      );
+      srcUrl = stage.finalUrl;
+      effectiveModel = stage.modelLabel;
+      promptForLog = `[BACKGROUND]\n${backgroundPrompt}\n\n[TEXT]\n${textPrompt}`;
+    } else {
+      effectiveModel = resolveModel(model, hostedRefs);
+      const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef, seed);
+      const output = await runReplicate(effectiveModel, input);
+      srcUrl = pickUrl(output);
+      promptForLog = prompt;
+    }
+    if (!srcUrl) throw new Error("Generator returned no image URL");
 
     // Persist the result to our bucket so it doesn't expire.
     const imgRes = await fetch(srcUrl);
@@ -421,7 +452,7 @@ Deno.serve(async (req) => {
         product_handle: productHandle || null,
         style: style || null,
         aspect_ratio: aspectRatio,
-        prompt_used: prompt,
+        prompt_used: promptForLog,
         model_used: effectiveModel,
 
         reference_image_url: hostedRefs[0] || null,
@@ -437,7 +468,7 @@ Deno.serve(async (req) => {
       id: inserted.id,
       model: effectiveModel,
       task,
-      prompt,
+      prompt: promptForLog,
       aspectRatio,
       seed: seed ?? null,
     });
@@ -445,10 +476,12 @@ Deno.serve(async (req) => {
     const raw = e instanceof Error ? e.message : String(e);
     console.error("[marketing-generate]", raw);
     const friendly = /insufficient credit/i.test(raw)
-      ? "The image provider (Replicate) has insufficient credit. Top up billing and try again."
+      ? "The image provider has insufficient credit. Top up billing and try again."
       : /timed out|timeout/i.test(raw)
         ? "The image provider took too long to respond. Please try again."
-        : raw;
+        : /Gemini\s+4\d\d/i.test(raw)
+          ? "Background generation failed. Please try again."
+          : raw;
     return json({ error: friendly }, 500);
   }
 });
