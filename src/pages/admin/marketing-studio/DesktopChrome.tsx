@@ -51,9 +51,9 @@ export interface DesktopChromeProps {
   onGenerate: () => void;
   onClear: () => void;
 
-  // Optional user-uploaded source photo (data URL) that overrides the listing image
-  customProductImage?: string | null;
-  setCustomProductImage?: (v: string | null) => void;
+  // Optional user-uploaded source photos (data URLs). Up to 4. When present, override the listing image.
+  customProductImages?: string[];
+  setCustomProductImages?: (v: string[]) => void;
 
   // Optional slots for non-poster tabs (fallback)
   displaySlot?: React.ReactNode;
@@ -217,8 +217,8 @@ export default function DesktopChrome(props: DesktopChromeProps) {
     lastGeneratedAt,
     onGenerate,
     onClear,
-    customProductImage = null,
-    setCustomProductImage,
+    customProductImages = [],
+    setCustomProductImages,
     displaySlot,
     videoSlot,
     displayStyle = "studio",
@@ -339,54 +339,94 @@ export default function DesktopChrome(props: DesktopChromeProps) {
                 </div>
               </section>
 
-              {/* Source photo override */}
-              {setCustomProductImage && (
-                <section>
-                  <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#555]">Source photo</div>
-                  <div className="flex items-center gap-3 rounded-md border border-[#1c1c1c] bg-[#111] p-3">
-                    <div className="h-10 w-10 overflow-hidden rounded border border-[#222] bg-[#161616]">
-                      {(customProductImage || productImage) && (
-                        <img src={customProductImage || productImage} alt="" className="h-full w-full object-cover" />
+              {/* Source photos override (multi-upload, up to 4) */}
+              {setCustomProductImages && (() => {
+                const MAX_REFS = 4;
+                const refs = customProductImages;
+                const canAddMore = refs.length < MAX_REFS;
+                const showPlaceholder = refs.length === 0 && productImage;
+                return (
+                  <section>
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-[#555]">
+                        Source photos {refs.length > 0 ? `(${refs.length}/${MAX_REFS})` : ""}
+                      </div>
+                      {refs.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomProductImages([])}
+                          className="text-[10px] text-[#888] hover:text-[#e8e8e8]"
+                        >
+                          Clear all
+                        </button>
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[12px] text-[#e8e8e8]">
-                        {customProductImage ? "Using your upload" : "Using listing image"}
+                    <div className="rounded-md border border-[#1c1c1c] bg-[#111] p-3">
+                      <div className="flex flex-wrap gap-2">
+                        {showPlaceholder && (
+                          <div className="relative h-14 w-14 overflow-hidden rounded border border-[#222] bg-[#161616]">
+                            <img src={productImage} alt="" className="h-full w-full object-cover opacity-70" />
+                            <div className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-[1px] text-center text-[8px] uppercase tracking-wider text-[#aaa]">
+                              Listing
+                            </div>
+                          </div>
+                        )}
+                        {refs.map((src, idx) => (
+                          <div key={idx} className="relative h-14 w-14 overflow-hidden rounded border border-[#2a2a2a] bg-[#161616]">
+                            <img src={src} alt="" className="h-full w-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setCustomProductImages(refs.filter((_, i) => i !== idx))}
+                              className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black text-[10px] text-white"
+                              aria-label="Remove reference"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        {canAddMore && (
+                          <label className="flex h-14 w-14 cursor-pointer items-center justify-center rounded border border-dashed border-[#2a2a2a] bg-[#0c0c0c] text-[18px] text-[#666] hover:border-[#3a3a3a] hover:text-[#bbb]">
+                            +
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                if (files.length === 0) return;
+                                const room = MAX_REFS - refs.length;
+                                const next = files.slice(0, room);
+                                Promise.all(
+                                  next.map(
+                                    (f) =>
+                                      new Promise<string | null>((resolve) => {
+                                        const reader = new FileReader();
+                                        reader.onload = () =>
+                                          resolve(typeof reader.result === "string" ? reader.result : null);
+                                        reader.onerror = () => resolve(null);
+                                        reader.readAsDataURL(f);
+                                      }),
+                                  ),
+                                ).then((results) => {
+                                  const added = results.filter((r): r is string => Boolean(r));
+                                  if (added.length) setCustomProductImages([...refs, ...added]);
+                                });
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        )}
                       </div>
-                      <div className="text-[10px] text-[#555]">Optional override for the poster pipeline</div>
+                      <div className="mt-2 text-[10px] text-[#555]">
+                        {refs.length === 0
+                          ? "Using listing image. Upload up to 4 reference photos to override."
+                          : `Using your uploaded reference${refs.length > 1 ? "s" : ""}.`}
+                      </div>
                     </div>
-                    <label className="cursor-pointer rounded border border-[#1c1c1c] px-2 py-1 text-[10px] text-[#aaa] hover:text-[#e8e8e8]">
-                      {customProductImage ? "Replace" : "Upload"}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            if (typeof reader.result === "string") {
-                              setCustomProductImage(reader.result);
-                            }
-                          };
-                          reader.readAsDataURL(file);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                    {customProductImage && (
-                      <button
-                        type="button"
-                        onClick={() => setCustomProductImage(null)}
-                        className="rounded border border-[#1c1c1c] px-2 py-1 text-[10px] text-[#888] hover:text-[#e8e8e8]"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                </section>
-              )}
+                  </section>
+                );
+              })()}
 
 
 

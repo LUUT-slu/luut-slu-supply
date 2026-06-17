@@ -31,6 +31,7 @@ interface PosterInput {
   productTitle: string;
   productPrice: string;
   productImageUrl: string;
+  productImageUrls?: string[]; // optional multi-reference (up to 4)
   ctaText?: string;
   brandName?: string;
   meetupText?: string;
@@ -357,6 +358,73 @@ async function dataUrlToHostedUrl(
   return uploadBytesToBucket(admin, bytes, contentType, "poster-src");
 }
 
+// Normalize any incoming reference (data: or http(s)) to a hosted https URL.
+async function normalizeRefUrl(
+  admin: ReturnType<typeof createClient>,
+  url: string,
+): Promise<string> {
+  if (url.startsWith("data:")) return dataUrlToHostedUrl(admin, url);
+  if (/^https?:\/\//i.test(url)) return url;
+  throw new Error("Reference image must be an http(s) URL or data URL");
+}
+
+// Composite up to 4 reference images into a single 1024x1024 grid so
+// Flux Kontext can see every angle / detail in a single input_image.
+// Returns a hosted signed URL.
+async function compositeReferences(
+  admin: ReturnType<typeof createClient>,
+  urls: string[],
+): Promise<string> {
+  const size = 1024;
+  const canvas = new Image(size, size);
+  // Fill with white background so the model treats it as a clean reference sheet.
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      canvas.setPixelAt(x + 1, y + 1, 0xffffffff);
+    }
+  }
+
+  // Decide grid based on count
+  const n = Math.min(urls.length, 4);
+  const cells: Array<{ x: number; y: number; w: number; h: number }> = [];
+  if (n === 1) {
+    cells.push({ x: 0, y: 0, w: size, h: size });
+  } else if (n === 2) {
+    cells.push({ x: 0, y: 0, w: size / 2, h: size });
+    cells.push({ x: size / 2, y: 0, w: size / 2, h: size });
+  } else {
+    // 3 or 4 -> 2x2 grid (3 leaves the 4th cell blank/white)
+    cells.push({ x: 0, y: 0, w: size / 2, h: size / 2 });
+    cells.push({ x: size / 2, y: 0, w: size / 2, h: size / 2 });
+    cells.push({ x: 0, y: size / 2, w: size / 2, h: size / 2 });
+    cells.push({ x: size / 2, y: size / 2, w: size / 2, h: size / 2 });
+  }
+
+  for (let i = 0; i < n; i++) {
+    const cell = cells[i];
+    try {
+      const res = await fetch(urls[i]);
+      if (!res.ok) continue;
+      const buf = new Uint8Array(await res.arrayBuffer());
+      const decoded = await decodeImage(buf);
+      const ref = decoded instanceof Image ? decoded : (decoded as unknown as Image);
+      // Contain-fit into the cell, preserve aspect ratio.
+      const scale = Math.min(cell.w / ref.width, cell.h / ref.height);
+      const dw = Math.max(1, Math.round(ref.width * scale));
+      const dh = Math.max(1, Math.round(ref.height * scale));
+      ref.resize(dw, dh);
+      const ox = Math.round(cell.x + (cell.w - dw) / 2);
+      const oy = Math.round(cell.y + (cell.h - dh) / 2);
+      canvas.composite(ref, ox, oy);
+    } catch (e) {
+      console.warn("compositeReferences cell failed", i, e);
+    }
+  }
+
+  const png = await canvas.encode();
+  return uploadBytesToBucket(admin, png, "image/png", "poster-refsheet");
+}
+
 // ---------- Prompts ----------
 
 function buildScenePrompt(title: string, preset: StylePreset, p: ProductPalette): string {
@@ -415,22 +483,46 @@ Deno.serve(async (req) => {
     if (!body.productImageUrl) return json({ error: "Missing productImageUrl" }, 400);
     if (!body.productPrice) return json({ error: "Missing productPrice" }, 400);
 
-    let sourceImageUrl = body.productImageUrl;
-    if (sourceImageUrl.startsWith("data:")) {
-      sourceImageUrl = await dataUrlToHostedUrl(admin, sourceImageUrl);
-    } else if (!/^https?:\/\//i.test(sourceImageUrl)) {
-      return json({ error: "productImageUrl must be an http(s) URL or data URL" }, 400);
+    // Collect all reference images. Prefer productImageUrls when provided,
+    // otherwise fall back to the single productImageUrl.
+    const rawRefs = Array.isArray(body.productImageUrls) && body.productImageUrls.length > 0
+      ? body.productImageUrls.slice(0, 4)
+      : [body.productImageUrl];
+
+    const hostedRefs: string[] = [];
+    for (const r of rawRefs) {
+      try {
+        hostedRefs.push(await normalizeRefUrl(admin, r));
+      } catch (e) {
+        console.warn("skip bad ref", e);
+      }
+    }
+    if (hostedRefs.length === 0) {
+      return json({ error: "No valid reference images" }, 400);
     }
 
+    // Build the Flux input image: composite multiple refs into a single sheet
+    // so Flux Kontext sees every angle. Single-ref case stays as the raw URL.
+    const fluxInputImage =
+      hostedRefs.length === 1
+        ? hostedRefs[0]
+        : await compositeReferences(admin, hostedRefs);
+
+    // Palette extracted from the first (primary) reference — that's the
+    // canonical product photo.
     const styleKey = resolveStyleKey(body.posterStyle);
-    const palette = await extractPalette(sourceImageUrl);
+    const palette = await extractPalette(hostedRefs[0]);
     const preset = stylePreset(styleKey, palette);
 
     // Step 1: Flux Kontext — styled scene around the real product
-    const scenePrompt = buildScenePrompt(body.productTitle, preset, palette);
+    const multiRefNote =
+      hostedRefs.length > 1
+        ? ` The reference image is a sheet of ${hostedRefs.length} photos of the SAME product from different angles — combine them into a single coherent product in the scene.`
+        : "";
+    const scenePrompt = buildScenePrompt(body.productTitle, preset, palette) + multiRefNote;
     const fluxOutput = await runReplicate(FLUX_MODEL, {
       prompt: scenePrompt,
-      input_image: sourceImageUrl,
+      input_image: fluxInputImage,
       aspect_ratio: "1:1",
       output_format: "png",
       safety_tolerance: 2,
