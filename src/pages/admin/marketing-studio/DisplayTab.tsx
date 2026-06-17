@@ -270,25 +270,25 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
           <CardHeader>
             <CardTitle className="text-base">Display Goal</CardTitle>
           </CardHeader>
-          <CardContent>{optionGrid(GOALS, goal, setGoal)}</CardContent>
+          <CardContent>{optionGrid<DisplayGoal>(GOALS, goal, setGoal)}</CardContent>
         </Card>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Card>
             <CardHeader><CardTitle className="text-base">Style</CardTitle></CardHeader>
-            <CardContent>{optionGrid(STYLES, style, setStyle)}</CardContent>
+            <CardContent>{optionGrid<DisplayStyle>(STYLES, style, setStyle)}</CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle className="text-base">Background</CardTitle></CardHeader>
-            <CardContent>{optionGrid(BACKGROUNDS, background, setBackground)}</CardContent>
+            <CardContent>{optionGrid<DisplayBackground>(BACKGROUNDS, background, setBackground)}</CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle className="text-base">Realism</CardTitle></CardHeader>
-            <CardContent>{optionGrid(REALISMS, realism, setRealism)}</CardContent>
+            <CardContent>{optionGrid<DisplayRealism>(REALISMS, realism, setRealism)}</CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle className="text-base">Product Focus</CardTitle></CardHeader>
-            <CardContent>{optionGrid(FOCUSES, focus, setFocus)}</CardContent>
+            <CardContent>{optionGrid<DisplayFocus>(FOCUSES, focus, setFocus)}</CardContent>
           </Card>
         </div>
 
