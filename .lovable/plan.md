@@ -1,66 +1,66 @@
+
 ## Goal
+For the Poster tab only, replace the single-prompt Replicate call with a two-stage pipeline:
+1. **Stage 1 — Background (Gemini):** generates a clean, text-free cinematic product scene from the product reference image.
+2. **Stage 2 — Text overlay (Ideogram v3 Turbo, `style_type: "DESIGN"`):** takes Stage 1's image as the base and stamps the typography (product name, EC$ price, "DM to Buy", locations line, "LUUT SLU").
 
-Stop concatenating option labels. Build a single coherent scene description where every selected option modifies the same scene, with the product as the default primary subject.
+Display tab, Video, UI, presets, controls, Library, Lightbox, Live Preview, Download — unchanged.
 
-## Scope
+## Changes
 
-Only `src/lib/marketingRouting.ts` — specifically `buildDisplayPrompt` (main offender) and `buildPosterPrompt` (apply the same scene-first pattern to its visual layer). No UI changes, no edge function changes, no new options. Existing `DisplayControls` / `PosterControls` shapes stay the same.
+### 1. `src/lib/marketingRouting.ts`
+Add two new builders next to the existing `buildPosterPrompt`:
 
-## New prompt-construction model
+- `buildPosterBackgroundPrompt(c, brand)` — visual scene only. Includes product identity-preserve clause, brand-style mood (palette/lighting/atmosphere), realism, style. Hard constraints: **deep black studio background, premium dramatic lighting, product sharp and centered, NO text, NO typography, NO logos, NO overlays, NO watermarks, NO captions**.
+- `buildPosterTextPrompt(c)` — typography overlay brief. Lists exact text blocks in render order with hierarchy:
+  - Headline: product name (from `controls.productTitle`)
+  - Price: `EC$<n>` (from `priceText` / product price)
+  - CTA: `DM to Buy`
+  - Locations: `Castries · Gros Islet · Vieux Fort`
+  - Footer wordmark: `LUUT SLU`
+  - Style cues: bold clean sans-serif, strong hierarchy, high-contrast over the supplied base image, no background regeneration, preserve the underlying image, place text in negative-space regions.
 
-Replace fragment concatenation with a `composeScene()` helper that runs in this order:
+Export a helper `previewPosterTwoStage(controls, brand)` returning `{ backgroundPrompt, textPrompt }` so `PromptPreview` and the regenerate flow can still show/edit prompts (a single combined view for the editor, or two collapsible panels — see UI note below).
 
-1. **Resolve primary subject** using the priority list:
-   `product > product interaction > human model > environment > style modifiers`.
-   Product is always primary unless `goal === "human_model"` AND `focus !== "detail" && focus !== "in_use"` — but even then the model is "demonstrating" the product, never the focal point.
+### 2. `supabase/functions/marketing-generate/index.ts`
+Add a poster two-stage branch. Detection: when `task === "poster"` and the body includes `backgroundPrompt` + `textPrompt`, run the pipeline; otherwise fall back to current single-call behavior (keeps Display + legacy callers intact).
 
-2. **Resolve interaction mode** from `focus` + `goal`:
-   - `focus === "in_use"` or `goal === "human_model"` → "a person actively wearing/holding/using the product, product remains the primary subject, no floating product, no product placed beside the person"
-   - `focus === "detail"` / `goal === "product_closeup"` → "extreme close-up, product fills 60–80% of the frame, camera close enough to reveal materials and stitching, no wide angle"
-   - `goal === "product_display"` → "product isolated as the main subject, no distractions, product occupies most of the frame"
-   - `goal === "product_hero"` → "hero composition, dramatic framing, product centered as the focal point"
-   - `goal === "lifestyle_product"` → "product shown in realistic everyday use, environment supports but does not compete with the product"
-   - `goal === "packaging_showcase"` → "retail packshot, packaging fills the frame, label legible"
-
-3. **Resolve style layer** from `style`:
-   - `studio` → "professional commercial photography setup, controlled studio lighting, clean backdrop, product remains the focal point"
-   - `lifestyle` → "realistic everyday environment, natural light, product remains the focal point"
-   - `minimal` → "minimalist composition, generous negative space, product remains the focal point"
-   - `human` → folds into the human-model interaction clause above (do not also emit a separate style sentence).
-
-4. **Resolve realism layer** from `realism`:
-   - `hyper` → "hyper-realistic photograph, natural lighting, real camera depth of field, real textures, real shadows, real materials, no CGI look, no floating objects, no exaggerated textures"
-   - `premium` / `luxury` → existing premium/luxury phrasing but rewritten as one sentence.
-   - `standard` → omitted.
-
-5. **Background** only added if it does NOT conflict with style/interaction (e.g. skip `solid` when goal is `lifestyle_product` or `human_model`; skip `lifestyle` bg when style is `studio`).
-
-6. **Assemble one paragraph** in this shape:
-
+Pipeline:
+1. Normalize product refs (existing `normalizeRef` flow).
+2. **Stage 1 — Gemini** via Lovable AI Gateway (`LOVABLE_API_KEY`, model `google/gemini-3-pro-image-preview` — Nano Banana Pro; falls back to `google/gemini-2.5-flash-image` if Pro fails). Input: `backgroundPrompt` + product reference image(s). Extract returned image bytes, upload to `marketing-assets` bucket, create signed URL (`geminiBaseUrl`).
+3. **Stage 2 — Ideogram v3 Turbo** via Replicate model `ideogram-ai/ideogram-v3-turbo`. Input:
    ```
-   <Realism qualifier> <camera/interaction clause> of <product title>[(category)].
-   <Style/environment clause>. <Background clause if not conflicting>.
-   <Brand snippet>. <Reference-preservation clause if hasReference>. <User notes>.
-   Compose strictly in a <aspectRatio> aspect ratio frame.
+   {
+     prompt: textPrompt,
+     aspect_ratio: aspect,
+     style_type: "DESIGN",
+     magic_prompt_option: "Off",
+     image: geminiBaseUrl,          // base for overlay
+     style_reference_images: [geminiBaseUrl]
+   }
    ```
+   Pass the seed through to Ideogram for reproducibility.
+4. Persist the final Ideogram image to `marketing-assets` (existing code path), insert a `marketing_generated_images` row with `model_used = "gemini→ideogram-v3-turbo"` and `prompt_used = textPrompt` (store `backgroundPrompt` in a notes/meta field if convenient; otherwise concatenate in `prompt_used`).
 
-   Example output for `goal=human_model, focus=in_use, realism=hyper, style=human`:
-   "Hyper-realistic close-up photograph of a person actively wearing and interacting with <product>. The product occupies most of the frame and remains the primary focus; the model exists only to demonstrate real-world use. Natural lighting, real textures and shadows, no floating objects, no secondary focal points. PRESERVE the product exactly as shown in the reference image…"
+Error handling: keep existing friendly messages; if Stage 1 fails, abort before Stage 2 and surface a "Background generation failed" message. If Stage 2 fails, return the Gemini image as a fallback would be misleading — instead surface the Stage 2 error.
 
-7. **Sanity gate**: before returning, drop any clause that contradicts a higher-priority clause (e.g. if interaction = "product isolated" but style = lifestyle environment, suppress the lifestyle environment clause). Implemented as a small set of suppression rules keyed on `(goal, style, background, focus)`.
+### 3. `src/pages/admin/marketing-studio/PosterTab.tsx`
+- Replace `previewPosterFinal` call with `previewPosterTwoStage`; keep `route.model` ignored for poster (server picks the two-stage path).
+- In `generate()`, send `backgroundPrompt` + `textPrompt` in the body instead of the single `prompt`. Keep `prompt` field set to the text prompt for backwards-compatible logging.
+- `PromptPreview` shows the **text** prompt as the editable field (it's what controls the visible poster output), with a read-only collapsible "Background prompt" section above it. `promptOverride` continues to override only the text prompt.
+- Seed reuse, Regenerate Same Poster, Download, Live Preview — unchanged.
 
-## Poster builder
-
-Apply the same `composeScene()` to the visual portion of `buildPosterPrompt` (the part describing the product imagery on the poster). Text/headline/CTA/aspect-ratio blocks stay as-is. The poster's `style` (clean/luxury/bold/hype/modern/minimal) continues to drive layout/typography wording, not the product scene.
+### 4. `src/pages/admin/marketing-studio/PromptPreview.tsx`
+Add an optional `secondaryPrompt?: { label: string; value: string }` prop. When present, render it as a read-only collapsed block above the existing editor. Existing call sites (Display tab) unaffected.
 
 ## Out of scope
+- Display tab generation path
+- Video module
+- UI layout, presets, controls, BrandStyle selector
+- Library, Lightbox, download behavior
 
-- No new options in the UI.
-- No changes to `routeForPoster` / `routeForDisplay` model selection.
-- No edge-function changes.
-- Existing constants (`ENHANCE_*`) get replaced by the new resolver helpers; preset shapes stay identical so saved presets keep working.
-
-## Risks / notes
-
-- Behavior change for every generation. The change is intentional but may shift outputs even for users not selecting human/in-use combos. Acceptable per the request.
-- `PromptPreview` will simply show the new composed prompt — no component edit needed.
+## Technical notes
+- Lovable AI Gateway endpoint for image gen: `https://ai.gateway.lovable.dev/v1/...` using `LOVABLE_API_KEY` (already in secrets). Response format follows the standard Gemini image response — extract base64 inline data, decode, upload as PNG.
+- Ideogram v3 Turbo on Replicate accepts `image` (base image) plus `style_type` per Replicate's schema; we pass the Gemini signed URL.
+- Existing `runReplicate` helper is reused for Stage 2; a new `runGeminiImage(prompt, refUrls)` helper is added alongside it in the same file.
+- No DB migration required. No new secrets required.
