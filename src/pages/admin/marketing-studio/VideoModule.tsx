@@ -53,11 +53,12 @@ const MODEL_LABEL = "kwaivgi/kling-v2.1";
 
 export interface VideoModuleProps {
   selectedProduct: any;
+  activeImageUrl?: string | null;
   onOpenProductPicker?: () => void;
 }
 
-export default function VideoModule({ selectedProduct, onOpenProductPicker }: VideoModuleProps) {
-  const productImageUrl: string | null = selectedProduct?.images?.[0]?.url ?? null;
+export default function VideoModule({ selectedProduct, activeImageUrl, onOpenProductPicker }: VideoModuleProps) {
+  const productImageUrl: string | null = activeImageUrl ?? selectedProduct?.images?.[0]?.url ?? null;
   const productTitle: string = selectedProduct?.title ?? "Select a product";
   const productPrice: number | null = selectedProduct?.price ?? null;
 
