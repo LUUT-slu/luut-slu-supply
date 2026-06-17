@@ -1064,61 +1064,71 @@ export default function MarketingStudio() {
   }, [brandLogoUrl, isMulti, singlePrep.preparedUrl, productPayload?.productImage, variantImages, multiTemplateProps]);
   const imagesReady = useImagesReady(exportImageUrls);
 
-  const desktopChromeActive = true;
+  const desktopTab: "poster" | "display" | "video" | "library" =
+    studioMode === "videos"
+      ? "video"
+      : showAiPoster
+      ? "poster"
+      : "display";
+
+  const showDesktopChrome = desktopTab === "poster";
 
   return (
     <AdminAuth>
-      {/* Desktop chrome (lg+) — DesktopChrome handles its own 3-col layout */}
-      <div className="hidden lg:block">
-        <DesktopChrome
-          activeTab="poster"
-          onTabChange={(t) => {
-            if (t === "poster") {
-              setStudioMode("images");
-              setShowAiPoster(true);
-            } else if (t === "display") {
-              setStudioMode("images");
-              setShowAiPoster(false);
-            } else if (t === "video") {
-              setStudioMode("videos");
-              setShowAiPoster(false);
-            } else if (t === "library") {
-              navigate("/admin/content-library");
-            }
-          }}
-          productName={productPayload?.name}
-          productImage={productPayload?.productImage}
-          productPrice={productPayload?.price}
-          brandName={brandName}
-          products={products.map((p) => ({ id: p.id, title: p.title }))}
-          selectedProductId={selectedId}
-          onSelectProduct={setSelectedId}
-          aiPosterStyle={aiPosterStyle}
-          setAiPosterStyle={setAiPosterStyle}
-          aiPosterAspectRatio={aiPosterAspectRatio}
-          setAiPosterAspectRatio={setAiPosterAspectRatio}
-          urgencyText={urgencyText}
-          setUrgencyText={setUrgencyText}
-          tagline={tagline}
-          setTagline={setTagline}
-          meetupText={meetupText}
-          setMeetupText={setMeetupText}
-          aiPosterCustom={aiPosterCustom}
-          setAiPosterCustom={setAiPosterCustom}
-          aiPosterGenerating={aiPosterGenerating}
-          aiPosterResult={aiPosterResult}
-          aiPosterPrompt={aiPosterPrompt}
-          lastGeneratedAt={aiPosterLastAt}
-          onGenerate={generateAiPoster}
-          onClear={() => {
-            setAiPosterResult(null);
-            setAiPosterPrompt("");
-          }}
-        />
-      </div>
+      {/* Desktop chrome (lg+) — only for POSTER tab. Other tabs fall back to original layout. */}
+      {showDesktopChrome && (
+        <div className="hidden lg:block">
+          <DesktopChrome
+            activeTab={desktopTab}
+            onTabChange={(t) => {
+              if (t === "poster") {
+                setStudioMode("images");
+                setShowAiPoster(true);
+              } else if (t === "display") {
+                setStudioMode("images");
+                setShowAiPoster(false);
+              } else if (t === "video") {
+                setStudioMode("videos");
+                setShowAiPoster(false);
+              } else if (t === "library") {
+                navigate("/admin/content-library");
+              }
+            }}
+            productName={productPayload?.name}
+            productImage={productPayload?.productImage}
+            productPrice={productPayload?.price}
+            brandName={brandName}
+            products={products.map((p) => ({ id: p.id, title: p.title }))}
+            selectedProductId={selectedId}
+            onSelectProduct={setSelectedId}
+            aiPosterStyle={aiPosterStyle}
+            setAiPosterStyle={setAiPosterStyle}
+            aiPosterAspectRatio={aiPosterAspectRatio}
+            setAiPosterAspectRatio={setAiPosterAspectRatio}
+            urgencyText={urgencyText}
+            setUrgencyText={setUrgencyText}
+            tagline={tagline}
+            setTagline={setTagline}
+            meetupText={meetupText}
+            setMeetupText={setMeetupText}
+            aiPosterCustom={aiPosterCustom}
+            setAiPosterCustom={setAiPosterCustom}
+            aiPosterGenerating={aiPosterGenerating}
+            aiPosterResult={aiPosterResult}
+            aiPosterPrompt={aiPosterPrompt}
+            lastGeneratedAt={aiPosterLastAt}
+            onGenerate={generateAiPoster}
+            onClear={() => {
+              setAiPosterResult(null);
+              setAiPosterPrompt("");
+            }}
+          />
+        </div>
+      )}
 
-      {/* Mobile (lg-) — original layout untouched */}
-      <div className="flex min-h-screen flex-col bg-background lg:hidden">
+      {/* Fallback layout (mobile always; desktop when not on POSTER tab) */}
+      <div className={`flex min-h-screen flex-col bg-background ${showDesktopChrome ? "lg:hidden" : ""}`}>
+
 
         <Header />
         <main className="container flex-1 py-6">
