@@ -1357,8 +1357,8 @@ export default function MarketingStudio() {
             setAiPosterResult(null);
             setAiPosterPrompt("");
           }}
-          customProductImage={customProductImage}
-          setCustomProductImage={setCustomProductImage}
+          customProductImages={customProductImages}
+          setCustomProductImages={setCustomProductImages}
           displaySlot={displayPanel}
           videoSlot={desktopVideoPanel}
           displayStyle={displayStyle}
@@ -1415,8 +1415,8 @@ export default function MarketingStudio() {
         aiPosterResult={aiPosterResult}
         onGenerate={generateAiPoster}
         onOpenProductPicker={() => setMobileProductPickerOpen(true)}
-        customProductImage={customProductImage}
-        setCustomProductImage={setCustomProductImage}
+        customProductImages={customProductImages}
+        setCustomProductImages={setCustomProductImages}
         displaySlot={displayPanel}
         videoSlot={desktopVideoPanel}
         displayStyle={displayStyle}
