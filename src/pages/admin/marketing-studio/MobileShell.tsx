@@ -1,0 +1,789 @@
+import { useState } from "react";
+import {
+  Download,
+  RefreshCw,
+  Share2,
+  MessageCircle,
+  Menu,
+  X,
+  LayoutGrid,
+  Image as ImageIcon,
+  Play,
+  Folder,
+  Copy,
+  Sparkles,
+  Loader2,
+  ShoppingBag,
+} from "lucide-react";
+import { toast } from "sonner";
+
+type StudioMode = "select" | "images" | "videos";
+type AiStyle = "hype" | "clean" | "luxury" | "bold";
+
+export interface MobileShellProps {
+  studioMode: StudioMode;
+  setStudioMode: (m: StudioMode) => void;
+  showAiPoster: boolean;
+  setShowAiPoster: (v: boolean) => void;
+  navigate: (path: string) => void;
+
+  productName?: string;
+  productImage?: string;
+  productPrice?: number | string;
+  brandName: string;
+
+  aiPosterStyle: AiStyle;
+  setAiPosterStyle: (s: AiStyle) => void;
+  aiPosterAspectRatio: string;
+  setAiPosterAspectRatio: (r: string) => void;
+  urgencyText: string;
+  setUrgencyText: (v: string) => void;
+  tagline: string;
+  setTagline: (v: string) => void;
+  meetupText: string;
+  setMeetupText: (v: string) => void;
+  aiPosterCustom: string;
+  setAiPosterCustom: (v: string) => void;
+
+  aiPosterGenerating: boolean;
+  aiPosterResult: string | null;
+  onGenerate: () => void;
+  onOpenProductPicker: () => void;
+}
+
+const FORMATS = ["9:16", "1:1", "4:5", "16:9"];
+const STYLES: { key: AiStyle; label: string; desc: string }[] = [
+  { key: "hype", label: "Hype", desc: "Dark streetwear" },
+  { key: "clean", label: "Clean", desc: "White minimal" },
+  { key: "luxury", label: "Luxury", desc: "Dark gold" },
+  { key: "bold", label: "Bold", desc: "High contrast" },
+];
+
+function PlugLogo() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 22 22" fill="none" aria-hidden>
+      <rect x="4" y="2" width="3" height="7" rx="1.5" fill="#777" />
+      <rect x="9.5" y="2" width="3" height="5" rx="1.5" fill="#777" />
+      <rect x="15" y="2" width="3" height="7" rx="1.5" fill="#777" />
+      <path d="M3 9 Q3 18 11 18 Q19 18 19 9" stroke="#999" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+      <rect x="2" y="8" width="18" height="2.5" rx="1.25" fill="#666" />
+    </svg>
+  );
+}
+
+export default function MobileShell(props: MobileShellProps) {
+  const {
+    studioMode,
+    setStudioMode,
+    showAiPoster,
+    setShowAiPoster,
+    navigate,
+    productName,
+    productImage,
+    productPrice,
+    brandName,
+    aiPosterStyle,
+    setAiPosterStyle,
+    aiPosterAspectRatio,
+    setAiPosterAspectRatio,
+    urgencyText,
+    setUrgencyText,
+    tagline,
+    setTagline,
+    meetupText,
+    setMeetupText,
+    aiPosterCustom,
+    setAiPosterCustom,
+    aiPosterGenerating,
+    aiPosterResult,
+    onGenerate,
+    onOpenProductPicker,
+  } = props;
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Determine current "mode" for the nav
+  const currentNav: "poster" | "display" | "video" | "library" =
+    studioMode === "videos"
+      ? "video"
+      : studioMode === "images" && !showAiPoster
+        ? "display"
+        : "poster";
+
+  const modeLabel =
+    currentNav === "poster"
+      ? "Poster"
+      : currentNav === "display"
+        ? "Display"
+        : currentNav === "video"
+          ? "Video"
+          : "Library";
+
+  const selectMode = (m: "poster" | "display" | "video" | "library") => {
+    setDrawerOpen(false);
+    if (m === "poster") {
+      setStudioMode("images");
+      setShowAiPoster(true);
+    } else if (m === "display") {
+      setStudioMode("images");
+      setShowAiPoster(false);
+    } else if (m === "video") {
+      setStudioMode("videos");
+      setShowAiPoster(false);
+    } else if (m === "library") {
+      navigate("/admin/content-library");
+    }
+  };
+
+  // Default to Poster mode on mobile
+  if (studioMode === "select") {
+    // Open Poster by default
+    setStudioMode("images");
+    setShowAiPoster(true);
+  }
+
+  const priceStr = productPrice ? `EC$${Math.round(Number(productPrice))}` : "";
+
+  const handleDownload = async () => {
+    if (!aiPosterResult) return;
+    try {
+      const res = await fetch(aiPosterResult);
+      const blob = await res.blob();
+      const file = new File([blob], "luut-poster.png", { type: blob.type || "image/png" });
+      const navAny: any = navigator;
+      if (navAny.canShare && navAny.canShare({ files: [file] })) {
+        await navAny.share({ files: [file], title: "LUUT Poster" });
+        return;
+      }
+      // fallback: open in new tab
+      window.open(aiPosterResult, "_blank");
+    } catch (e: any) {
+      window.open(aiPosterResult, "_blank");
+    }
+  };
+
+  const handleShare = async () => {
+    if (!aiPosterResult) return;
+    const navAny: any = navigator;
+    try {
+      if (navAny.share) {
+        await navAny.share({ title: "LUUT Poster", url: aiPosterResult });
+      } else {
+        await navigator.clipboard.writeText(aiPosterResult);
+        toast.success("Link copied");
+      }
+    } catch {/* ignore */}
+  };
+
+  const handleWhatsApp = () => {
+    if (!aiPosterResult) return;
+    const text = `${productName || "Check this out"} — ${aiPosterResult}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  const handleCopyLink = async () => {
+    if (!aiPosterResult) return;
+    await navigator.clipboard.writeText(aiPosterResult);
+    toast.success("Link copied");
+  };
+
+  return (
+    <div className="lg:hidden min-h-screen flex flex-col" style={{ background: "#080808", color: "#fff", fontFamily: "Inter, system-ui, sans-serif" }}>
+      {/* Top bar */}
+      <div
+        className="flex items-center justify-between px-[14px] flex-shrink-0"
+        style={{ height: 50, background: "#0c0c0c", borderBottom: "0.5px solid #1c1c1c" }}
+      >
+        <button
+          onClick={() => navigate("/admin")}
+          className="flex items-center gap-2"
+          aria-label="LUUT SLU home"
+        >
+          <PlugLogo />
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.18em", color: "#e0e0e0" }}>
+            LUUT SLU
+          </span>
+        </button>
+        <div className="flex items-center gap-2">
+          <span style={{ fontSize: 10, color: "#444", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            {modeLabel}
+          </span>
+          <button
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 6,
+              border: "0.5px solid #1c1c1c",
+              background: "#111",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Menu size={17} color="#777" />
+          </button>
+        </div>
+      </div>
+
+      {/* Fixed preview panel (only for Poster mode) */}
+      {currentNav === "poster" && (
+        <div
+          className="flex-shrink-0"
+          style={{ background: "#0c0c0c", borderBottom: "0.5px solid #1c1c1c", padding: "12px 14px" }}
+        >
+          <div className="flex items-stretch">
+            <div className="w-1/2 pr-[10px] flex items-center justify-center">
+              <div
+                className="w-full relative overflow-hidden flex flex-col"
+                style={{
+                  aspectRatio: "9 / 16",
+                  maxHeight: 200,
+                  borderRadius: 8,
+                  background: "#111",
+                  border: "0.5px solid #1c1c1c",
+                  padding: 10,
+                }}
+              >
+                {aiPosterResult ? (
+                  <img
+                    src={aiPosterResult}
+                    alt="Generated poster"
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <>
+                    <div
+                      className="pointer-events-none absolute top-0 left-0 right-0"
+                      style={{
+                        height: 80,
+                        background: "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 60%)",
+                      }}
+                    />
+                    <div
+                      style={{
+                        border: "0.5px solid #666",
+                        borderRadius: 10,
+                        padding: "2px 6px",
+                        fontSize: 6,
+                        fontWeight: 700,
+                        color: "#aaa",
+                        letterSpacing: "0.08em",
+                        alignSelf: "flex-start",
+                      }}
+                    >
+                      {urgencyText || "PREVIEW"}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 900,
+                        color: "#e8e8e8",
+                        lineHeight: 0.88,
+                        textTransform: "uppercase",
+                        marginTop: 5,
+                      }}
+                    >
+                      {(productName || "Your\nProduct").slice(0, 28)}
+                    </div>
+                    {priceStr && (
+                      <div
+                        style={{
+                          background: "#e8e8e8",
+                          borderRadius: 3,
+                          padding: "2px 5px",
+                          alignSelf: "flex-start",
+                          marginTop: 5,
+                        }}
+                      >
+                        <span style={{ fontSize: 7, fontWeight: 900, color: "#080808" }}>{priceStr}</span>
+                      </div>
+                    )}
+                    <div style={{ marginTop: "auto" }}>
+                      <div style={{ fontSize: 5, color: "#333", textAlign: "center", marginBottom: 2 }}>
+                        {meetupText}
+                      </div>
+                      <div
+                        style={{
+                          border: "0.5px solid #666",
+                          borderRadius: 10,
+                          padding: 2,
+                          fontSize: 5,
+                          fontWeight: 700,
+                          color: "#bbb",
+                          textAlign: "center",
+                        }}
+                      >
+                        DM TO BUY
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div
+              className="w-1/2 pl-[10px] flex flex-col justify-center"
+              style={{ gap: 5, borderLeft: "0.5px solid #1c1c1c" }}
+            >
+              <div style={{ marginBottom: 4 }}>
+                <div style={{ fontSize: 9, color: "#3a3a3a", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  Style
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: "#888", marginTop: 1 }}>
+                  {STYLES.find((s) => s.key === aiPosterStyle)?.label} · {aiPosterAspectRatio}
+                </div>
+              </div>
+              <div className="flex flex-wrap" style={{ gap: 3, marginTop: 4, marginBottom: 6 }}>
+                {FORMATS.map((f) => {
+                  const active = aiPosterAspectRatio === f;
+                  return (
+                    <button
+                      key={f}
+                      onClick={() => setAiPosterAspectRatio(f)}
+                      style={{
+                        padding: "3px 7px",
+                        borderRadius: 4,
+                        border: active ? "0.5px solid #888" : "0.5px solid #1c1c1c",
+                        background: active ? "#1a1a1a" : "#111",
+                        fontSize: 9,
+                        color: active ? "#d0d0d0" : "#555",
+                      }}
+                    >
+                      {f}
+                    </button>
+                  );
+                })}
+              </div>
+              {[
+                { icon: Download, label: "Download", primary: true, onClick: handleDownload },
+                { icon: RefreshCw, label: "Regenerate", onClick: onGenerate },
+                { icon: Share2, label: "Share", onClick: handleShare },
+                { icon: MessageCircle, label: "WhatsApp", onClick: handleWhatsApp },
+              ].map(({ icon: Icon, label, primary, onClick }) => (
+                <button
+                  key={label}
+                  onClick={onClick}
+                  disabled={!aiPosterResult && label !== "Regenerate"}
+                  style={{
+                    padding: "5px 8px",
+                    borderRadius: 5,
+                    border: primary ? "0.5px solid #888" : "0.5px solid #1c1c1c",
+                    background: primary ? "#161616" : "#111",
+                    color: primary ? "#d0d0d0" : "#666",
+                    fontSize: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    width: "100%",
+                    opacity: !aiPosterResult && label !== "Regenerate" ? 0.4 : 1,
+                  }}
+                >
+                  <Icon size={12} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scrollable content */}
+      <div
+        className="flex-1 overflow-y-auto flex flex-col"
+        style={{ padding: "14px 14px 96px", gap: 16 }}
+      >
+        {currentNav === "poster" ? (
+          <>
+            {/* Product */}
+            <div>
+              <div className="s-label" style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                Product
+              </div>
+              <div
+                className="flex items-center"
+                style={{ background: "#111", border: "0.5px solid #1c1c1c", borderRadius: 8, padding: 10, gap: 10 }}
+              >
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 5,
+                    background: "#161616",
+                    border: "0.5px solid #222",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    overflow: "hidden",
+                  }}
+                >
+                  {productImage ? (
+                    <img src={productImage} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <ShoppingBag size={16} color="#333" />
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: "#ccc" }} className="truncate">
+                    {productName || "No product selected"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#555", marginTop: 1 }}>
+                    {priceStr ? `${priceStr} · ${brandName}` : brandName}
+                  </div>
+                </div>
+                <button
+                  onClick={onOpenProductPicker}
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: 10,
+                    color: "#aaa",
+                    border: "0.5px solid #1c1c1c",
+                    borderRadius: 4,
+                    padding: "3px 7px",
+                    background: "transparent",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Change
+                </button>
+              </div>
+            </div>
+
+            {/* Style */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                Style
+              </div>
+              <div className="grid grid-cols-2" style={{ gap: 5 }}>
+                {STYLES.map((s) => {
+                  const active = aiPosterStyle === s.key;
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => setAiPosterStyle(s.key)}
+                      style={{
+                        padding: "9px 8px",
+                        borderRadius: 7,
+                        border: active ? "0.5px solid #999" : "0.5px solid #1c1c1c",
+                        background: active ? "#181818" : "#111",
+                        textAlign: "left",
+                      }}
+                    >
+                      <div style={{ fontSize: 11, fontWeight: 500, color: active ? "#e8e8e8" : "#999" }}>
+                        {s.label}
+                      </div>
+                      <div style={{ fontSize: 9, color: active ? "#555" : "#333", marginTop: 2 }}>
+                        {s.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="flex flex-col" style={{ gap: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase" }}>
+                Details
+              </div>
+              {[
+                { label: "Urgency", value: urgencyText, set: setUrgencyText, placeholder: "Limited Drop" },
+                { label: "Tagline", value: tagline, set: setTagline, placeholder: "Saint Lucia's Plug 🇱🇨" },
+                { label: "Pickup locations", value: meetupText, set: setMeetupText, placeholder: "Castries · Gros Islet · Vieux Fort" },
+              ].map((f) => (
+                <div key={f.label} className="flex flex-col" style={{ gap: 4 }}>
+                  <label style={{ fontSize: 10, color: "#3a3a3a", letterSpacing: "0.04em" }}>{f.label}</label>
+                  <input
+                    type="text"
+                    value={f.value}
+                    placeholder={f.placeholder}
+                    onChange={(e) => f.set(e.target.value)}
+                    style={{
+                      background: "#111",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 5,
+                      color: "#bbb",
+                      fontSize: 12,
+                      padding: "8px 10px",
+                      outline: "none",
+                      width: "100%",
+                    }}
+                  />
+                </div>
+              ))}
+              <div className="flex flex-col" style={{ gap: 4 }}>
+                <label style={{ fontSize: 10, color: "#3a3a3a", letterSpacing: "0.04em" }}>Extra instructions</label>
+                <textarea
+                  value={aiPosterCustom}
+                  onChange={(e) => setAiPosterCustom(e.target.value)}
+                  placeholder="e.g. dramatic lighting, smoke effect..."
+                  style={{
+                    background: "#111",
+                    border: "0.5px solid #1c1c1c",
+                    borderRadius: 5,
+                    color: "#bbb",
+                    fontSize: 12,
+                    padding: "8px 10px",
+                    outline: "none",
+                    width: "100%",
+                    height: 52,
+                    resize: "none",
+                    fontFamily: "inherit",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Save or share — after generation */}
+            {aiPosterResult && (
+              <div className="flex flex-col" style={{ gap: 6 }}>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase" }}>
+                  Save or share
+                </div>
+                <button
+                  onClick={handleDownload}
+                  style={{
+                    width: "100%",
+                    padding: 12,
+                    background: "#e8e8e8",
+                    color: "#080808",
+                    border: "none",
+                    borderRadius: 7,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 7,
+                  }}
+                >
+                  <Download size={15} /> Download
+                </button>
+                <button
+                  onClick={handleWhatsApp}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    background: "#111",
+                    color: "#ccc",
+                    border: "0.5px solid #1c1c1c",
+                    borderRadius: 7,
+                    fontSize: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 7,
+                  }}
+                >
+                  <MessageCircle size={15} /> Share via WhatsApp
+                </button>
+                <div className="grid grid-cols-2" style={{ gap: 6 }}>
+                  <button
+                    onClick={handleCopyLink}
+                    style={{
+                      padding: 9,
+                      background: "#111",
+                      color: "#777",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 7,
+                      fontSize: 11,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 5,
+                    }}
+                  >
+                    <Copy size={12} /> Copy link
+                  </button>
+                  <button
+                    onClick={() => navigate("/admin/content-library")}
+                    style={{
+                      padding: 9,
+                      background: "#111",
+                      color: "#777",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 7,
+                      fontSize: 11,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 5,
+                    }}
+                  >
+                    <Folder size={12} /> Save to library
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div
+            className="flex flex-col items-center justify-center text-center"
+            style={{ padding: "60px 20px", color: "#555", fontSize: 12, gap: 10 }}
+          >
+            <Sparkles size={28} color="#333" />
+            <div style={{ color: "#888", fontSize: 14, fontWeight: 500 }}>
+              {modeLabel} mode
+            </div>
+            <div>Open this mode on desktop for the full editor, or stay here for the AI Poster.</div>
+            <button
+              onClick={() => selectMode("poster")}
+              style={{
+                marginTop: 12,
+                padding: "10px 18px",
+                background: "#e8e8e8",
+                color: "#080808",
+                borderRadius: 7,
+                fontSize: 12,
+                fontWeight: 700,
+                border: "none",
+              }}
+            >
+              Back to Poster
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Sticky generate */}
+      {currentNav === "poster" && (
+        <div
+          className="fixed left-0 right-0"
+          style={{
+            bottom: 0,
+            padding: "10px 14px",
+            background: "#080808",
+            borderTop: "0.5px solid #1a1a1a",
+            zIndex: 30,
+          }}
+        >
+          <button
+            onClick={onGenerate}
+            disabled={aiPosterGenerating || !productName}
+            style={{
+              width: "100%",
+              padding: 13,
+              background: "#e8e8e8",
+              color: "#080808",
+              border: "none",
+              borderRadius: 7,
+              fontSize: 13,
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              opacity: aiPosterGenerating || !productName ? 0.6 : 1,
+            }}
+          >
+            {aiPosterGenerating ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Generating...
+              </>
+            ) : (
+              "Generate Poster"
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Drawer overlay */}
+      <div
+        onClick={() => setDrawerOpen(false)}
+        className="fixed inset-0"
+        style={{
+          background: "rgba(0,0,0,0.75)",
+          zIndex: 40,
+          opacity: drawerOpen ? 1 : 0,
+          pointerEvents: drawerOpen ? "all" : "none",
+          transition: "opacity 0.2s",
+        }}
+      />
+      {/* Drawer */}
+      <div
+        className="fixed top-0 h-full flex flex-col"
+        style={{
+          right: drawerOpen ? 0 : -260,
+          width: 240,
+          background: "#0c0c0c",
+          borderLeft: "0.5px solid #1c1c1c",
+          zIndex: 50,
+          transition: "right 0.22s",
+        }}
+      >
+        <div
+          className="flex items-center justify-between"
+          style={{ padding: "14px 16px", borderBottom: "0.5px solid #1c1c1c" }}
+        >
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.12em", color: "#555", textTransform: "uppercase" }}>
+            Studio
+          </span>
+          <button
+            onClick={() => setDrawerOpen(false)}
+            aria-label="Close menu"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 5,
+              border: "0.5px solid #1c1c1c",
+              background: "#161616",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <X size={14} color="#666" />
+          </button>
+        </div>
+        <div className="flex-1" style={{ padding: 10, display: "flex", flexDirection: "column", gap: 3 }}>
+          {[
+            { key: "poster", icon: LayoutGrid, label: "Poster", desc: "AI marketing posters" },
+            { key: "display", icon: ImageIcon, label: "Display Image", desc: "Product display shots" },
+            { key: "video", icon: Play, label: "Video", desc: "Product video clips" },
+            { key: "library", icon: Folder, label: "Content Library", desc: "All generated assets" },
+          ].map(({ key, icon: Icon, label, desc }) => {
+            const active = currentNav === key;
+            return (
+              <button
+                key={key}
+                onClick={() => selectMode(key as any)}
+                className="flex items-center text-left"
+                style={{
+                  padding: "11px 12px",
+                  borderRadius: 7,
+                  border: active ? "0.5px solid #1c1c1c" : "0.5px solid transparent",
+                  background: active ? "#161616" : "transparent",
+                  gap: 10,
+                }}
+              >
+                <Icon size={17} color={active ? "#d0d0d0" : "#555"} />
+                <div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: active ? "#e0e0e0" : "#555",
+                      fontWeight: active ? 500 : 400,
+                    }}
+                  >
+                    {label}
+                  </div>
+                  <div style={{ fontSize: 10, color: active ? "#444" : "#2a2a2a", marginTop: 1 }}>{desc}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div
+          className="flex items-center justify-between"
+          style={{ padding: "14px 16px", borderTop: "0.5px solid #1c1c1c" }}
+        >
+          <span style={{ fontSize: 10, color: "#2a2a2a" }}>Replicate</span>
+          <span style={{ fontSize: 12, color: "#777", fontWeight: 500 }}>Live</span>
+        </div>
+      </div>
+    </div>
+  );
+}
