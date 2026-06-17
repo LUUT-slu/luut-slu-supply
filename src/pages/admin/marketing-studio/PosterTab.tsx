@@ -18,7 +18,7 @@ import {
   type PosterControls,
   type PosterStyle,
   POSTER_PRESETS,
-  previewPosterFinal,
+  previewPosterTwoStage,
   getBrandStyleReferenceImage,
 } from "@/lib/marketingRouting";
 
