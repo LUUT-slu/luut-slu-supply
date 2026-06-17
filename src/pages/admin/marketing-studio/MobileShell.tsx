@@ -58,6 +58,27 @@ export interface MobileShellProps {
   onOpenProductPicker: () => void;
   displaySlot?: React.ReactNode;
   videoSlot?: React.ReactNode;
+
+  // Display generator (optional — when provided, Display mode uses the matching mobile shell)
+  displayStyle?: DisplayStyle;
+  setDisplayStyle?: (s: DisplayStyle) => void;
+  displayAspect?: DisplayAspect;
+  setDisplayAspect?: (a: DisplayAspect) => void;
+  displayTextOverlay?: string;
+  setDisplayTextOverlay?: (s: string) => void;
+  displayBackground?: DisplayBackground;
+  setDisplayBackground?: (b: DisplayBackground) => void;
+  displayCustomPrompt?: string;
+  setDisplayCustomPrompt?: (s: string) => void;
+  modelGender?: ModelGender;
+  setModelGender?: (g: ModelGender) => void;
+  skinTone?: SkinTone;
+  setSkinTone?: (t: SkinTone) => void;
+  displayLoading?: boolean;
+  displayResultUrl?: string | null;
+  displayPrompt?: string;
+  onGenerateDisplay?: () => void;
+  onClearDisplay?: () => void;
 }
 
 const FORMATS = ["9:16", "1:1", "4:5", "16:9"];
