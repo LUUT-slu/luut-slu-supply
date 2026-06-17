@@ -92,6 +92,8 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
   const [focus, setFocus] = useState<DisplayFocus>("full");
   const [aspect, setAspect] = useState<AspectRatio>("1:1");
   const [notes, setNotes] = useState("");
+  const [promptOverride, setPromptOverride] = useState<string | null>(null);
+  const [lastSeed, setLastSeed] = useState<number | null>(null);
 
   const [generating, setGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
