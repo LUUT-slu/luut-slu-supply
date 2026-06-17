@@ -319,6 +319,23 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
               </div>
             </div>
             <div>
+              <Label className="text-xs">Realism</Label>
+              <div className="mt-1 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                {REALISMS.map((r) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => setRealism(r.key)}
+                    className={`rounded-md border px-2 py-1.5 text-xs ${
+                      realism === r.key ? "border-foreground bg-foreground/5" : "border-border"
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+
+            <div>
               <Label className="text-xs">Aspect Ratio</Label>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {ASPECTS.map((a) => (
