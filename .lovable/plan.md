@@ -1,56 +1,42 @@
+# Fix: posters must take their colour palette from the actual product
+
 ## Problem
+Each style currently forces its own palette (default/hype = neon green, luxury = gold, bold = black/white/red, clean = white/charcoal). The overlay never sees the product's real colours, so the poster looks "off" and ignores what the listing actually is.
 
-Every poster comes back neon-green-on-black regardless of the selected style because:
+## Solution
+Two changes inside `supabase/functions/generate-ai-poster/index.ts`:
 
-1. `generateAiPoster` in `src/pages/admin/MarketingStudio.tsx` never sends `aiPosterStyle` to the edge function.
-2. `supabase/functions/generate-ai-poster/index.ts` hardcodes LUUT's neon-green-on-black palette in both `buildScenePrompt` (rim lighting, dark studio) and `buildOverlayPrompt` (`#39FF14` accent, pitch-black background, neon green pill/ribbon/brand).
+### 1. Extract a real palette from the source product image
+Before calling Flux/Ideogram, sample the product image and derive:
+- `dominantColor` (main product colour)
+- `secondaryColor` (next strongest hue)
+- `accentColor` (a complementary highlight)
+- `isLightProduct` / `isDarkProduct` flag (for choosing background contrast)
 
-So the style pills in the UI are purely cosmetic.
+Implementation: fetch `sourceImageUrl` server-side, decode the PNG/JPEG with a lightweight Deno-compatible decoder (`https://deno.land/x/imagescript`), downscale to ~64×64, run a small k-means / bucketed-histogram pass in pure TS to pick the top 3 hex colours, ignoring near-white/near-black backdrop pixels around the edges.
 
-## Fix
+Return them as `{ dominant, secondary, accent, isDark }`.
 
-### 1. Add a "Default" style and re-order the pills
+### 2. Rewrite `STYLE_PRESETS` to be palette-driven
+Each preset becomes a *function* `(p: ProductPalette) => StylePreset` that interpolates the product's colours instead of hardcoded brand colours. Style now controls **mood, lighting, typography, layout**, not raw colour:
 
-In both `src/pages/admin/marketing-studio/DesktopChrome.tsx` and `MobileShell.tsx`, extend the `PosterStyle` / `AiStyle` union and the `STYLES` array to:
+- **default** — LUUT layout (condensed uppercase, pill price chip, ribbon CTA). Background = darker shade of `p.dominant` (or pure black if product is light). Accent / chip / ribbon / brand wordmark all use `p.accent` (fallback to `p.dominant`). No forced neon green.
+- **hype** — gritty concrete backdrop tinted toward `p.dominant`. Chip/ribbon use `p.accent`. Streetwear typography.
+- **clean** — neutral off-white backdrop regardless of product. Text uses dark version of `p.dominant`; hairline accent uses `p.accent`. Minimal editorial.
+- **luxury** — soft gradient backdrop built from a desaturated, warmed version of `p.dominant`. Accents in a metallic-tinted `p.accent`. Elegant serif typography. No forced gold.
+- **bold** — high-contrast monochrome backdrop (black if product is light, white if product is dark). Single high-impact accent = `p.accent`. Brutalist scale. No forced red.
 
-- `default` — "Default" — LUUT brand (black + neon green)
-- `hype` — "Hype" — neon green, dark, streetwear energy
-- `clean` — "Clean" — neutral white/grey, minimal
-- `luxury` — "Luxury" — gold / warm tones, premium
-- `bold` — "Bold" — high contrast, no fixed colour cast
+`paletteText`, `headlineColor`, `priceChip`, `ctaRibbon`, `brandText`, `sceneBackground` are all rewritten to reference `{dominant}`, `{secondary}`, `{accent}` hex values explicitly so Ideogram/Flux follow them.
 
-In `MarketingStudio.tsx`, widen the `aiPosterStyle` state union to include `"default"` and change the initial value to `"default"`.
+### 3. Prompt updates
+- `buildScenePrompt` adds: *"Backdrop colour family must come from this product palette: dominant `{hex}`, accent `{hex}`. Do not introduce colours outside this palette (no neon green, no gold, no red unless they are already in the palette)."*
+- `buildOverlayPrompt` adds the same constraint and removes the blanket "do not add neon green" line in favour of: *"Use only the product-derived palette above. Do not introduce any colour that is not in {dominant, secondary, accent, neutral black/white}."*
 
-### 2. Send the style to the edge function
-
-In `generateAiPoster` (around line 402), include `posterStyle: aiPosterStyle` in the invoke body.
-
-### 3. Make the edge function honour the style
-
-In `supabase/functions/generate-ai-poster/index.ts`:
-
-- Add `posterStyle?: "default" | "hype" | "clean" | "luxury" | "bold"` to `PosterInput` (default `"default"`).
-- Replace the hardcoded neon-green language in `buildScenePrompt` and `buildOverlayPrompt` with a small `STYLE_PRESETS` map keyed by style, each entry providing:
-  - `sceneBackground` (e.g. `"deep black studio background with subtle neon green rim lighting"` for default/hype, `"bright neutral off-white seamless studio backdrop with soft diffused lighting"` for clean, `"warm champagne-gold gradient backdrop with soft golden rim light and subtle marble surface"` for luxury, `"high-contrast editorial backdrop, dramatic single-source light, deep shadows, no fixed colour cast"` for bold)
-  - `paletteText` (e.g. `"pitch-black background, neon green accent color (#39FF14)"`, `"clean white background with charcoal grey (#222) text and a single thin black accent line"`, `"deep ivory / warm cream background with metallic gold (#C9A24B) accents and dark espresso text"`, `"stark editorial palette — pure black, pure white, one bold red (#E5251D) accent only"`)
-  - `priceChipText` and `ctaText` styling lines that reuse the palette (e.g. price pill / CTA ribbon colours).
-  - `typography` flavour ("heavy condensed Bebas-Neue style" for hype/default/bold, "refined modern sans-serif (Inter / Söhne)" for clean, "elegant serif headlines (Playfair / Didone)" for luxury).
-- `buildScenePrompt(title, style)` and `buildOverlayPrompt(input, style)` interpolate from the preset instead of hardcoding neon green.
-- Keep `default` and `hype` similar but not identical (default = LUUT canonical neon-green-on-black, hype = same palette but with extra streetwear/grit/graffiti energy in scene + typography).
-- Persist `style: \`${posterStyle}|flux-kontext+ideogram\`` in `marketing_generated_images` so the gallery badge reflects the chosen style.
-
-### 4. Deploy
-
-Redeploy `generate-ai-poster` after the edits.
-
-## Out of scope
-
-- No changes to aspect-ratio handling, Flux/Ideogram model choice, or the custom-image upload flow.
-- No new UI controls beyond adding the fifth pill.
+### 4. Persist for debugging
+Store the derived palette in `marketing_generated_images.style` as `${styleKey}|${dominant},${accent}|flux-kontext+ideogram` so we can verify after the fact.
 
 ## Files touched
+- `supabase/functions/generate-ai-poster/index.ts` (only file)
 
-- `src/pages/admin/MarketingStudio.tsx`
-- `src/pages/admin/marketing-studio/DesktopChrome.tsx`
-- `src/pages/admin/marketing-studio/MobileShell.tsx`
-- `supabase/functions/generate-ai-poster/index.ts`
+## Out of scope
+No UI changes, no aspect-ratio changes, no model swap, no change to the custom-image upload flow.

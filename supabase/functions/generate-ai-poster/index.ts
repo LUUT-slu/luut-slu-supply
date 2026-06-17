@@ -1,12 +1,14 @@
-// Two-step poster pipeline:
-//   1) Flux Kontext Pro — wraps the real product image in a premium dark scene
-//      while keeping the product accurate.
-//   2) Ideogram v3 Turbo — overlays LUUT SLU branded text (title, price, CTA,
-//      pickup locations, brand) on the styled scene.
+// Two-step poster pipeline with product-derived palette:
+//   1) Flux Kontext Pro — wraps the real product image in a styled scene
+//      using the product's own colours (no neon green / gold / red unless
+//      they actually exist in the product).
+//   2) Ideogram v3 Turbo — overlays LUUT SLU branded text using the same
+//      product-derived palette.
 //
 // Square 1:1 only for now. Admin-only.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { decode as decodeImage, Image } from "https://deno.land/x/imagescript@1.2.17/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,12 +30,20 @@ type PosterStyleKey = "default" | "hype" | "clean" | "luxury" | "bold";
 interface PosterInput {
   productTitle: string;
   productPrice: string;
-  productImageUrl: string;       // http(s) URL OR data: URL (user override)
+  productImageUrl: string;
   ctaText?: string;
   brandName?: string;
   meetupText?: string;
   customInstructions?: string | null;
   posterStyle?: PosterStyleKey;
+}
+
+interface ProductPalette {
+  dominant: string;   // hex e.g. "#1a1a1a"
+  secondary: string;
+  accent: string;
+  isDark: boolean;    // dominant luminance < 0.5
+  description: string; // human-readable colour name for prompt clarity
 }
 
 interface StylePreset {
@@ -47,78 +57,203 @@ interface StylePreset {
   aesthetic: string;
 }
 
-const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
-  default: {
-    sceneBackground:
-      "a deep matte-black studio backdrop with subtle neon green (#39FF14) glow CONFINED to the background wall behind and around the product, plus soft volumetric haze in the far background — the coloured glow must stay BEHIND the product and never wrap onto it or tint it",
-    paletteText:
-      "pitch-black background, neon green accent color (#39FF14), white headline text",
-    headlineColor: "large white condensed uppercase headline",
-    priceChip: "solid neon green (#39FF14) pill with black text",
-    ctaRibbon: "bold neon green (#39FF14) ribbon with black text",
-    brandText: "neon green (#39FF14), condensed uppercase, slightly wider letter spacing",
-    typography:
-      "heavy condensed sans-serif typography in the style of Bebas Neue, sharp uppercase, tight letter spacing",
-    aesthetic: "LUUT SLU brand canonical: premium Caribbean streetwear resale",
-  },
-  hype: {
-    sceneBackground:
-      "a gritty dark concrete / asphalt urban backdrop with aggressive neon green (#39FF14) glow RESTRICTED to the background wall behind the product, plus smoke haze and graffiti energy in the far background — coloured light must stay BEHIND the product and never tint or recolour the product itself",
-    paletteText:
-      "near-black background with neon green (#39FF14) accents, off-white headline text, subtle spray-paint texture",
-    headlineColor: "huge off-white condensed uppercase headline with slight grunge edge",
-    priceChip: "solid neon green (#39FF14) pill with black text, slightly tilted sticker feel",
-    ctaRibbon: "bold neon green (#39FF14) ribbon with black text, stencil-style",
-    brandText: "neon green (#39FF14), condensed uppercase, graffiti-tag energy",
-    typography:
-      "heavy condensed display type (Bebas Neue / Druk), sharp uppercase, tight tracking, streetwear poster energy",
-    aesthetic: "streetwear hype-drop flyer, raw, high-energy",
-  },
-  clean: {
-    sceneBackground:
-      "a bright neutral off-white seamless studio backdrop with soft diffused neutral daylight and a gentle long shadow",
-    paletteText:
-      "clean white (#FAFAFA) background, charcoal grey (#1F1F1F) text, a single thin black hairline accent — absolutely no neon green",
-    headlineColor: "large charcoal (#1F1F1F) modern sans-serif headline, normal case",
-    priceChip: "thin black outlined chip with charcoal text on white",
-    ctaRibbon: "slim charcoal underline beneath the CTA text — no coloured ribbon",
-    brandText: "charcoal (#1F1F1F), modern sans-serif, generous letter spacing",
-    typography:
-      "refined modern sans-serif (Inter / Söhne / Helvetica Neue), mixed case, calm hierarchy",
-    aesthetic: "minimal editorial product page, lots of negative space",
-  },
-  luxury: {
-    sceneBackground:
-      "a warm champagne-gold gradient backdrop with soft golden glow CONTAINED to the background only, subtle marble or velvet surface beneath the product — keep the key light on the product itself NEUTRAL white so the product's true colours, materials and branding are preserved exactly",
-    paletteText:
-      "deep ivory / warm cream background, metallic gold (#C9A24B) accents, dark espresso (#2A1E14) headline text — no neon green anywhere",
-    headlineColor: "elegant dark espresso (#2A1E14) serif headline",
-    priceChip: "thin gold (#C9A24B) outlined chip with espresso text on cream",
-    ctaRibbon: "slim gold (#C9A24B) underline / wordmark — no bold ribbon",
-    brandText: "metallic gold (#C9A24B) refined serif, wide letter spacing",
-    typography:
-      "elegant high-contrast serif headlines (Playfair Display / Didone) paired with a fine sans-serif for small text",
-    aesthetic: "premium boutique / luxury fashion campaign",
-  },
-  bold: {
-    sceneBackground:
-      "a stark editorial backdrop with dramatic single-source NEUTRAL white lighting, deep crisp shadows, absolutely no colour cast on the product — let the product's real colours lead",
-    paletteText:
-      "pure black (#000) and pure white (#FFF) palette with a single high-impact red (#E5251D) accent — no neon green",
-    headlineColor: "massive black-on-white (or white-on-black) condensed headline with extreme scale contrast",
-    priceChip: "solid red (#E5251D) block with white text",
-    ctaRibbon: "solid red (#E5251D) bar with white text, full bleed across the bottom",
-    brandText: "black or white depending on background, condensed uppercase, maximum weight",
-    typography:
-      "ultra-bold condensed display type, brutalist scale contrast, maximum visual punch",
-    aesthetic: "high-contrast editorial poster, brutalist fashion campaign",
-  },
-};
+// ---------- Palette extraction ----------
 
-function resolveStyle(key?: PosterStyleKey): { key: PosterStyleKey; preset: StylePreset } {
-  const k: PosterStyleKey = key && STYLE_PRESETS[key] ? key : "default";
-  return { key: k, preset: STYLE_PRESETS[k] };
+function toHex(r: number, g: number, b: number): string {
+  const h = (n: number) => n.toString(16).padStart(2, "0");
+  return `#${h(r)}${h(g)}${h(b)}`.toUpperCase();
 }
+
+function luminance(r: number, g: number, b: number): number {
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+function rgbFromHex(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+function saturation(r: number, g: number, b: number): number {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  if (max === 0) return 0;
+  return (max - min) / max;
+}
+
+function describeColor(hex: string): string {
+  const [r, g, b] = rgbFromHex(hex);
+  const lum = luminance(r, g, b);
+  const sat = saturation(r, g, b);
+  if (sat < 0.12) {
+    if (lum < 0.12) return "near-black";
+    if (lum < 0.35) return "dark grey";
+    if (lum > 0.88) return "near-white";
+    if (lum > 0.65) return "light grey";
+    return "mid grey";
+  }
+  const max = Math.max(r, g, b);
+  let hue = "";
+  if (max === r && g >= b) hue = g > 150 ? "yellow-orange" : "red";
+  else if (max === r) hue = "red-magenta";
+  else if (max === g && r >= b) hue = "yellow-green";
+  else if (max === g) hue = "green";
+  else if (max === b && r >= g) hue = "purple";
+  else hue = "blue";
+  const tone = lum < 0.3 ? "deep" : lum > 0.7 ? "light" : "mid";
+  return `${tone} ${hue}`;
+}
+
+async function extractPalette(imageUrl: string): Promise<ProductPalette> {
+  const fallback: ProductPalette = {
+    dominant: "#1A1A1A",
+    secondary: "#FAFAFA",
+    accent: "#888888",
+    isDark: true,
+    description: "neutral dark",
+  };
+  try {
+    const res = await fetch(imageUrl);
+    if (!res.ok) return fallback;
+    const buf = new Uint8Array(await res.arrayBuffer());
+    const decoded = await decodeImage(buf);
+    const img = decoded instanceof Image ? decoded : (decoded as unknown as Image);
+    // downscale for speed
+    const target = 64;
+    img.resize(target, target);
+
+    // Bucketed histogram (4-bit per channel = 4096 buckets)
+    const buckets = new Map<number, { count: number; r: number; g: number; b: number }>();
+    const w = img.width, h = img.height;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const px = img.getPixelAt(x + 1, y + 1); // imagescript is 1-indexed
+        const r = (px >>> 24) & 0xff;
+        const g = (px >>> 16) & 0xff;
+        const b = (px >>> 8) & 0xff;
+        const a = px & 0xff;
+        if (a < 128) continue;
+        // skip near-white / near-black backdrop pixels around outer edge
+        const edge = x < 4 || y < 4 || x > w - 5 || y > h - 5;
+        const lum = luminance(r, g, b);
+        if (edge && (lum > 0.92 || lum < 0.06)) continue;
+        const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+        const cur = buckets.get(key);
+        if (cur) {
+          cur.count++; cur.r += r; cur.g += g; cur.b += b;
+        } else {
+          buckets.set(key, { count: 1, r, g, b });
+        }
+      }
+    }
+    const sorted = [...buckets.values()]
+      .map((v) => ({
+        count: v.count,
+        r: Math.round(v.r / v.count),
+        g: Math.round(v.g / v.count),
+        b: Math.round(v.b / v.count),
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    if (sorted.length === 0) return fallback;
+
+    const dom = sorted[0];
+    // secondary: most different by RGB distance from dominant, within top 12
+    const distinct = (a: typeof dom, b: typeof dom) =>
+      Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b);
+    const pool = sorted.slice(1, 12);
+    const sec = pool.sort((a, b) => distinct(b, dom) - distinct(a, dom))[0] || dom;
+    // accent: most saturated within top 20 (excluding dominant)
+    const acc = sorted.slice(1, 20)
+      .map((c) => ({ ...c, s: saturation(c.r, c.g, c.b) }))
+      .sort((a, b) => b.s - a.s)[0] || sec;
+
+    const domHex = toHex(dom.r, dom.g, dom.b);
+    const secHex = toHex(sec.r, sec.g, sec.b);
+    const accHex = toHex(acc.r, acc.g, acc.b);
+    return {
+      dominant: domHex,
+      secondary: secHex,
+      accent: accHex,
+      isDark: luminance(dom.r, dom.g, dom.b) < 0.5,
+      description: describeColor(domHex),
+    };
+  } catch (e) {
+    console.warn("extractPalette failed", e);
+    return fallback;
+  }
+}
+
+// ---------- Style presets (palette-driven) ----------
+
+function stylePreset(key: PosterStyleKey, p: ProductPalette): StylePreset {
+  const bgContrast = p.isDark ? "#FAFAFA" : "#0E0E0E";
+  const textOnBg = p.isDark ? "off-white" : "near-black";
+
+  switch (key) {
+    case "default":
+      return {
+        sceneBackground: p.isDark
+          ? `a deep matte studio backdrop in a darker shade of the product's dominant colour (${p.dominant}), with a soft glow tinted ${p.accent} CONFINED to the wall behind the product — never wrapping onto the product`
+          : `a clean studio backdrop in a slightly darker, desaturated version of the product's dominant colour (${p.dominant}), with a soft ${p.accent} glow on the backdrop only`,
+        paletteText: `palette strictly derived from the product itself — dominant ${p.dominant}, secondary ${p.secondary}, accent ${p.accent}. NO neon green, NO gold, NO red unless those colours are already in the palette.`,
+        headlineColor: `large condensed uppercase headline in ${textOnBg} (${bgContrast})`,
+        priceChip: `solid pill in ${p.accent} with contrasting text`,
+        ctaRibbon: `bold ribbon in ${p.accent} with contrasting text`,
+        brandText: `${p.accent}, condensed uppercase, slightly wider letter spacing`,
+        typography: "heavy condensed sans-serif (Bebas Neue style), sharp uppercase, tight letter spacing",
+        aesthetic: "LUUT SLU brand canonical: premium Caribbean streetwear resale",
+      };
+    case "hype":
+      return {
+        sceneBackground: `a gritty dark concrete / asphalt urban backdrop tinted with the product's dominant colour (${p.dominant}), with an aggressive ${p.accent} glow RESTRICTED to the background wall — coloured light never tints the product itself`,
+        paletteText: `palette strictly from the product — dominant ${p.dominant}, accent ${p.accent}, neutrals for text. NO neon green unless the product is actually neon green.`,
+        headlineColor: `huge ${textOnBg} condensed uppercase headline with slight grunge edge`,
+        priceChip: `solid pill in ${p.accent} with contrasting text, slightly tilted sticker feel`,
+        ctaRibbon: `bold stencil-style ribbon in ${p.accent}`,
+        brandText: `${p.accent}, condensed uppercase, graffiti-tag energy`,
+        typography: "heavy condensed display type (Bebas Neue / Druk), tight tracking, streetwear poster energy",
+        aesthetic: "streetwear hype-drop flyer, raw, high-energy",
+      };
+    case "clean":
+      return {
+        sceneBackground: `a bright neutral off-white (#FAFAFA) seamless studio backdrop with soft diffused neutral daylight and a gentle long shadow — no colour cast`,
+        paletteText: `palette: clean white (#FAFAFA) background, charcoal (#1F1F1F) text, single thin hairline accent in ${p.accent} (derived from the product). NO other colours.`,
+        headlineColor: `large charcoal (#1F1F1F) modern sans-serif headline, normal case`,
+        priceChip: `thin charcoal-outlined chip with charcoal text on white`,
+        ctaRibbon: `slim ${p.accent} underline beneath the CTA text — no full ribbon`,
+        brandText: `charcoal (#1F1F1F), modern sans-serif, generous letter spacing`,
+        typography: "refined modern sans-serif (Inter / Söhne / Helvetica Neue), mixed case, calm hierarchy",
+        aesthetic: "minimal editorial product page, lots of negative space",
+      };
+    case "luxury":
+      return {
+        sceneBackground: `a soft gradient backdrop built from a desaturated, slightly warmed version of the product's dominant colour (${p.dominant}), with a subtle marble or velvet surface beneath the product — keep the key light on the product itself NEUTRAL white. NO forced gold unless ${p.dominant} or ${p.accent} are actually gold/warm.`,
+        paletteText: `palette: muted desaturated ${p.dominant} background, refined ${p.accent} accents, ${p.isDark ? "ivory" : "deep espresso"} text. Stay strictly inside this product-derived palette.`,
+        headlineColor: `elegant ${p.isDark ? "ivory" : "deep espresso (#2A1E14)"} serif headline`,
+        priceChip: `thin ${p.accent} outlined chip with ${p.isDark ? "ivory" : "espresso"} text`,
+        ctaRibbon: `slim ${p.accent} underline / wordmark — no bold ribbon`,
+        brandText: `${p.accent} refined serif, wide letter spacing`,
+        typography: "elegant high-contrast serif headlines (Playfair Display / Didone) paired with a fine sans-serif for small text",
+        aesthetic: "premium boutique / luxury fashion campaign",
+      };
+    case "bold":
+      return {
+        sceneBackground: `a stark editorial backdrop in ${p.isDark ? "pure white (#FFFFFF)" : "pure black (#000000)"} with dramatic single-source NEUTRAL white lighting and deep crisp shadows — no colour cast on the product, let the product's real colours lead`,
+        paletteText: `palette: pure ${p.isDark ? "white (#FFF) and near-black for type" : "black (#000) and white (#FFF)"} with a SINGLE high-impact accent in ${p.accent} (taken from the product itself). NO red unless ${p.accent} is red.`,
+        headlineColor: `massive ${p.isDark ? "black-on-white" : "white-on-black"} condensed headline with extreme scale contrast`,
+        priceChip: `solid block in ${p.accent} with contrasting text`,
+        ctaRibbon: `solid bar in ${p.accent} with contrasting text, full bleed across the bottom`,
+        brandText: `${p.isDark ? "black" : "white"}, condensed uppercase, maximum weight`,
+        typography: "ultra-bold condensed display type, brutalist scale contrast, maximum visual punch",
+        aesthetic: "high-contrast editorial poster, brutalist fashion campaign",
+      };
+  }
+}
+
+function resolveStyleKey(key?: PosterStyleKey): PosterStyleKey {
+  return key && ["default", "hype", "clean", "luxury", "bold"].includes(key) ? key : "default";
+}
+
+// ---------- Replicate ----------
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -127,10 +262,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function runReplicate(
-  model: string,
-  input: Record<string, unknown>,
-): Promise<unknown> {
+async function runReplicate(model: string, input: Record<string, unknown>): Promise<unknown> {
   const maxAttempts = 5;
   let createRes: Response | null = null;
   let lastText = "";
@@ -225,36 +357,40 @@ async function dataUrlToHostedUrl(
   return uploadBytesToBucket(admin, bytes, contentType, "poster-src");
 }
 
-function buildScenePrompt(title: string, preset: StylePreset): string {
+// ---------- Prompts ----------
+
+function buildScenePrompt(title: string, preset: StylePreset, p: ProductPalette): string {
   return [
     `Premium marketing scene featuring the EXACT product shown in the reference image: ${title}.`,
-    `CRITICAL PRODUCT FIDELITY: the product must appear pixel-accurate to the reference. Preserve its exact colours, hue, saturation, brightness, material, texture, logos, branding, stitching, shape and proportions. Do NOT recolour, restyle, retexture, replace, or "stylise" the product. If the product is black, it stays pure black; if white, stays white; never tint the product to match the scene palette.`,
-    `Light the product itself with a NEUTRAL white softbox key light (around 5500K) so its true colours are preserved. Any coloured ambient light, rim light, glow, haze, or gel from the scene must stay BEHIND the product on the backdrop only — it must not wrap onto, reflect off, or recolour the product surface.`,
-    `Scene / backdrop only (around and behind the product): ${preset.sceneBackground}.`,
+    `CRITICAL PRODUCT FIDELITY: the product must appear pixel-accurate to the reference. Preserve its exact colours, hue, saturation, brightness, material, texture, logos, branding, stitching, shape and proportions. Do NOT recolour, restyle, retexture, or replace the product.`,
+    `Light the product with a NEUTRAL white softbox key light (around 5500K) so its true colours are preserved. Any coloured ambient light, glow, haze or gel from the scene must stay BEHIND the product on the backdrop only — never wrapping onto the product surface.`,
+    `Scene / backdrop (around and behind the product): ${preset.sceneBackground}.`,
+    `PRODUCT-DERIVED PALETTE (do not violate): dominant ${p.dominant} (${p.description}), secondary ${p.secondary}, accent ${p.accent}. Do NOT introduce colours outside this palette — specifically no neon green, no gold, no red unless those hexes are already in this palette.`,
     `Aesthetic: ${preset.aesthetic}. Cinematic product photography, sharp focus on the product, shallow depth of field.`,
-    `No text, no logos other than what's already on the product, no watermarks, no humans, no extra props that obscure the product. Square 1:1 framing with generous negative space around the product for typography overlays.`,
+    `No text, no extra logos, no watermarks, no humans, no props that obscure the product. Square 1:1 framing with generous negative space for typography overlays.`,
   ].join(" ");
 }
 
-function buildOverlayPrompt(i: PosterInput, preset: StylePreset): string {
+function buildOverlayPrompt(i: PosterInput, preset: StylePreset, p: ProductPalette): string {
   const brand = (i.brandName || "LUUT SLU").toUpperCase();
   const cta = (i.ctaText || "DM TO COP").toUpperCase();
   const pickup = i.meetupText || "Castries · Gros Islet · Vieux Fort";
   return [
-    `Marketing poster using the reference image as the background scene — preserve the product, lighting, composition, and background exactly as shown.`,
+    `Marketing poster using the reference image as the background scene — preserve the product, lighting, composition and background exactly as shown.`,
+    `PRODUCT-DERIVED PALETTE (mandatory): dominant ${p.dominant} (${p.description}), secondary ${p.secondary}, accent ${p.accent}. Use ONLY these colours plus neutral black/white for typography. Do NOT introduce any other colour — no neon green, no gold, no red unless those hexes appear above.`,
     `Visual identity: ${preset.paletteText}. Typography: ${preset.typography}.`,
     `Top of poster: product name "${i.productTitle.toUpperCase()}" as ${preset.headlineColor}.`,
     `Just below the headline: price "${i.productPrice}" as ${preset.priceChip}.`,
     `Center-bottom CTA "${cta}" as ${preset.ctaRibbon}.`,
     `Small uppercase line above the brand: "${pickup}" in a muted tone consistent with the palette.`,
     `Bottom of poster: brand name "${brand}" centered in ${preset.brandText}.`,
-    `Stay strictly within the stated palette — do NOT introduce colours outside it (in particular, do not add neon green unless the palette specifies it).`,
     `All text crisp, perfectly spelled, legible, contained inside the poster bounds. No extra captions, no lorem ipsum, no duplicate text.`,
     `Square 1:1 poster. Aesthetic: ${preset.aesthetic}.`,
     i.customInstructions?.trim() ? i.customInstructions.trim() : "",
   ].filter(Boolean).join(" ");
 }
 
+// ---------- Handler ----------
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -279,7 +415,6 @@ Deno.serve(async (req) => {
     if (!body.productImageUrl) return json({ error: "Missing productImageUrl" }, 400);
     if (!body.productPrice) return json({ error: "Missing productPrice" }, 400);
 
-    // Normalize product image into a hosted URL Replicate can fetch.
     let sourceImageUrl = body.productImageUrl;
     if (sourceImageUrl.startsWith("data:")) {
       sourceImageUrl = await dataUrlToHostedUrl(admin, sourceImageUrl);
@@ -287,10 +422,12 @@ Deno.serve(async (req) => {
       return json({ error: "productImageUrl must be an http(s) URL or data URL" }, 400);
     }
 
-    const { key: styleKey, preset } = resolveStyle(body.posterStyle);
+    const styleKey = resolveStyleKey(body.posterStyle);
+    const palette = await extractPalette(sourceImageUrl);
+    const preset = stylePreset(styleKey, palette);
 
-    // -------- Step 1: Flux Kontext -- styled scene around the real product
-    const scenePrompt = buildScenePrompt(body.productTitle, preset);
+    // Step 1: Flux Kontext — styled scene around the real product
+    const scenePrompt = buildScenePrompt(body.productTitle, preset, palette);
     const fluxOutput = await runReplicate(FLUX_MODEL, {
       prompt: scenePrompt,
       input_image: sourceImageUrl,
@@ -301,8 +438,8 @@ Deno.serve(async (req) => {
     const sceneUrl = pickUrl(fluxOutput);
     if (!sceneUrl) return json({ error: "Flux Kontext returned no image" }, 502);
 
-    // -------- Step 2: Ideogram v3 Turbo -- add styled text overlay
-    const overlayPrompt = buildOverlayPrompt(body, preset);
+    // Step 2: Ideogram v3 Turbo — typography overlay
+    const overlayPrompt = buildOverlayPrompt(body, preset, palette);
     const ideogramOutput = await runReplicate(IDEOGRAM_MODEL, {
       prompt: overlayPrompt,
       aspect_ratio: "1:1",
@@ -313,7 +450,6 @@ Deno.serve(async (req) => {
     const finalUrl = pickUrl(ideogramOutput);
     if (!finalUrl) return json({ error: "Ideogram returned no image" }, 502);
 
-    // -------- Persist the final poster in our bucket
     const imgRes = await fetch(finalUrl);
     if (!imgRes.ok) return json({ error: `Failed to download generated image: ${imgRes.status}` }, 502);
     const contentType = imgRes.headers.get("content-type") || "image/png";
@@ -326,7 +462,7 @@ Deno.serve(async (req) => {
         thumbnail_url: publicUrl,
         generation_type: "poster",
         product_title: body.productTitle,
-        style: `${styleKey}|flux-kontext+ideogram`,
+        style: `${styleKey}|${palette.dominant},${palette.accent}|flux-kontext+ideogram`,
         aspect_ratio: "1:1",
         prompt_used: `[scene] ${scenePrompt}\n[overlay] ${overlayPrompt}`,
         created_by: userId,
@@ -339,6 +475,7 @@ Deno.serve(async (req) => {
       url: publicUrl,
       sceneUrl,
       prompt: overlayPrompt,
+      palette,
     });
   } catch (e: any) {
     console.error("generate-ai-poster error", e);
