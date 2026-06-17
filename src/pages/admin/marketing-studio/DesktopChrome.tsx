@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Sparkles, Download, Share2, Link2, Save, RotateCw, Pencil, Plug } from "lucide-react";
+import { Loader2, Sparkles, Download, Share2, Link2, Save, RotateCw, Pencil, Plug, ZoomIn } from "lucide-react";
+import PosterLightbox from "./PosterLightbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
