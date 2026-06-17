@@ -26,6 +26,7 @@ function buildPrompt(
   productTitle: string,
   textOverlay?: string | null,
   customPrompt?: string | null,
+  aspectRatio?: string | null,
 ): string {
   let base: string;
   switch (style) {
@@ -39,6 +40,9 @@ function buildPrompt(
     default:
       base = `Professional studio product photo of ${productTitle}. Clean white or light grey background, soft box lighting, sharp focus, commercial photography quality, e-commerce ready. The product must look exactly as in the reference — same colors, shape, branding, details.`;
       break;
+  }
+  if (aspectRatio && /^\d+:\d+$/.test(aspectRatio)) {
+    base += ` Compose and render the final image strictly in a ${aspectRatio} aspect ratio frame — do not crop the product, fill the frame appropriately for ${aspectRatio}.`;
   }
   if (textOverlay && textOverlay.trim().length > 0) {
     base += ` Include the text "${textOverlay.trim()}" rendered cleanly on the image in a modern sans-serif font. Place it in the lower third, clear and legible, not overlapping the product.`;
