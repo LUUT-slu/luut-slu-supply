@@ -1375,6 +1375,28 @@ export default function MarketingStudio() {
         onOpenProductPicker={() => setMobileProductPickerOpen(true)}
         displaySlot={displayPanel}
         videoSlot={videoPanel}
+        displayStyle={displayStyle}
+        setDisplayStyle={setDisplayStyle}
+        displayAspect={displayAspect}
+        setDisplayAspect={setDisplayAspect}
+        displayTextOverlay={displayTextOverlay}
+        setDisplayTextOverlay={setDisplayTextOverlay}
+        displayBackground={displayBackground}
+        setDisplayBackground={setDisplayBackground}
+        displayCustomPrompt={displayCustomPrompt}
+        setDisplayCustomPrompt={setDisplayCustomPrompt}
+        modelGender={modelGender}
+        setModelGender={setModelGender}
+        skinTone={skinTone}
+        setSkinTone={setSkinTone}
+        displayLoading={displayLoading}
+        displayResultUrl={displayResultUrl}
+        displayPrompt={displayPrompt}
+        onGenerateDisplay={generateDisplayImage}
+        onClearDisplay={() => {
+          setDisplayResultUrl(null);
+          setDisplayPrompt("");
+        }}
       />
 
       <Dialog open={mobileProductPickerOpen} onOpenChange={setMobileProductPickerOpen}>
