@@ -27,9 +27,12 @@ const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
 const SUPPORTED_MODELS = new Set([
   "ideogram-ai/ideogram-v3-turbo",
+  "ideogram-ai/ideogram-v3-balanced",
+  "ideogram-ai/ideogram-v3-quality",
   "sourceful/riverflow-2.0-pro",
   "google/nano-banana-pro",
 ]);
+
 
 interface ReqBody {
   task: "poster" | "display";
