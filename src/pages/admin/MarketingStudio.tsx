@@ -362,7 +362,7 @@ export default function MarketingStudio() {
 
   // AI Poster (Ideogram v3) — separate generation surface
   const [showAiPoster, setShowAiPoster] = useState(false);
-  const [aiPosterStyle, setAiPosterStyle] = useState<"hype" | "clean" | "luxury" | "bold">("hype");
+  const [aiPosterStyle, setAiPosterStyle] = useState<"default" | "hype" | "clean" | "luxury" | "bold">("default");
   const [aiPosterAspectRatio, setAiPosterAspectRatio] = useState("9:16");
   const [aiPosterCustom, setAiPosterCustom] = useState("");
   const [aiPosterGenerating, setAiPosterGenerating] = useState(false);
