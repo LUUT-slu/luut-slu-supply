@@ -155,6 +155,9 @@ async function normalizeRef(admin: ReturnType<typeof createClient>, url: string)
   throw new Error("Reference must be http(s) or data URL");
 }
 
+const PRESERVE_INSTRUCTION =
+  " IMPORTANT: Use the provided reference image(s) as the EXACT product. Preserve the product's identity, shape, color, branding, logos, materials, labels, and proportions precisely as shown. Do not redesign, restyle, or alter the product itself. Only change the surrounding scene, lighting, background, and composition.";
+
 // Per-model input shape.
 function buildModelInput(
   model: string,
@@ -163,10 +166,11 @@ function buildModelInput(
   refs: string[],
 ): Record<string, unknown> {
   const primaryRef = refs[0];
+  const enhancedPrompt = refs.length ? `${prompt}${PRESERVE_INSTRUCTION}` : prompt;
   switch (model) {
     case "ideogram-ai/ideogram-v3-quality": {
       const input: Record<string, unknown> = {
-        prompt,
+        prompt: enhancedPrompt,
         aspect_ratio: aspect,
         magic_prompt_option: "Auto",
       };
@@ -176,8 +180,9 @@ function buildModelInput(
       return input;
     }
     case "google/imagen-4": {
+      // Imagen-4 on Replicate is text-to-image only; no ref support.
       return {
-        prompt,
+        prompt: enhancedPrompt,
         aspect_ratio: aspect,
         output_format: "png",
         safety_filter_level: "block_only_high",
@@ -185,7 +190,7 @@ function buildModelInput(
     }
     case "sourceful/riverflow-2.0-pro": {
       const input: Record<string, unknown> = {
-        instruction: prompt,
+        instruction: enhancedPrompt,
         aspect_ratio: aspect,
       };
       if (primaryRef) input.image = primaryRef;
@@ -193,7 +198,7 @@ function buildModelInput(
     }
     case "google/nano-banana-pro": {
       const input: Record<string, unknown> = {
-        prompt,
+        prompt: enhancedPrompt,
         aspect_ratio: aspect,
         output_format: "png",
       };
@@ -201,8 +206,17 @@ function buildModelInput(
       return input;
     }
     default:
-      return { prompt, aspect_ratio: aspect };
+      return { prompt: enhancedPrompt, aspect_ratio: aspect };
   }
+}
+
+// Reroute models that can't accept reference images when refs are provided.
+function resolveModel(model: string, refs: string[]): string {
+  if (refs.length && model === "google/imagen-4") {
+    // Imagen-4 ignores image inputs; nano-banana-pro preserves product identity from refs.
+    return "google/nano-banana-pro";
+  }
+  return model;
 }
 
 Deno.serve(async (req) => {
@@ -253,8 +267,9 @@ Deno.serve(async (req) => {
       hostedRefs.push(await normalizeRef(admin, r));
     }
 
-    const input = buildModelInput(model, prompt, aspectRatio, hostedRefs);
-    const output = await runReplicate(model, input);
+    const effectiveModel = resolveModel(model, hostedRefs);
+    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs);
+    const output = await runReplicate(effectiveModel, input);
     const srcUrl = pickUrl(output);
     if (!srcUrl) throw new Error("Replicate returned no image URL");
 
@@ -296,7 +311,7 @@ Deno.serve(async (req) => {
     return json({
       url: publicUrl,
       id: inserted.id,
-      model,
+      model: effectiveModel,
       task,
       prompt,
       aspectRatio,
