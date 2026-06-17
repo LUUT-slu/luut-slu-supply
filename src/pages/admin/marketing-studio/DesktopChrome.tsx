@@ -209,36 +209,36 @@ export default function DesktopChrome(props: DesktopChromeProps) {
               {/* Product */}
               <section>
                 <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#555]">Product</div>
-                {productName ? (
-                  <div className="flex items-center gap-3 rounded-md border border-[#1c1c1c] bg-[#111] p-3">
-                    {productImage && (
-                      <img src={productImage} alt="" className="h-10 w-10 rounded object-cover" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[12px] text-[#e8e8e8]">{productName}</div>
-                      <div className="text-[10px] text-[#555]">
-                        {productPrice ? `EC$${Math.round(Number(productPrice))} · ` : ""}
-                        {brandName}
+                <div className="space-y-2 rounded-md border border-[#1c1c1c] bg-[#111] p-3">
+                  {productName && (
+                    <div className="flex items-center gap-3">
+                      {productImage && (
+                        <img src={productImage} alt="" className="h-10 w-10 rounded object-cover" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[12px] text-[#e8e8e8]">{productName}</div>
+                        <div className="text-[10px] text-[#555]">
+                          {productPrice ? `EC$${Math.round(Number(productPrice))} · ` : ""}
+                          {brandName}
+                        </div>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={onChangeProductClick}
-                      className="rounded border border-[#1c1c1c] px-2 py-1 text-[10px] uppercase tracking-wider text-[#aaa] hover:border-[#3a3a3a] hover:text-[#e8e8e8]"
-                    >
-                      Change
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onChangeProductClick}
-                    className="w-full rounded-md border border-dashed border-[#1c1c1c] bg-[#111] p-4 text-[11px] text-[#aaa] hover:border-[#3a3a3a]"
+                  )}
+                  <select
+                    value={selectedProductId}
+                    onChange={(e) => onSelectProduct(e.target.value)}
+                    className="w-full rounded border border-[#1c1c1c] bg-[#0c0c0c] px-2 py-1.5 text-[11px] text-[#e8e8e8] focus:border-[#3a3a3a] focus:outline-none"
                   >
-                    Pick a product
-                  </button>
-                )}
+                    {products.length === 0 && <option value="">Loading…</option>}
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </section>
+
 
               {/* Style */}
               <section>
