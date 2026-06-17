@@ -448,7 +448,7 @@ export default function MarketingStudio() {
 
   const generateDisplayImage = async () => {
     if (!selectedProduct) return;
-    const imageUrl = selectedProduct.images?.[0]?.url;
+    const imageUrl = productPayload?.productImage || selectedProduct.images?.[0]?.url;
     if (!imageUrl) {
       toast.error("Selected product has no image to use as reference");
       return;
@@ -1300,9 +1300,30 @@ export default function MarketingStudio() {
     </div>
   );
 
+  // Variant-aware source image shared across poster, display, and video tabs.
+  const activeImageUrl = productPayload?.productImage || selectedProduct?.images?.[0]?.url || null;
+
+  const variantSlot =
+    variantOptions.length > 1 ? (
+      <section>
+        <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#555]">Variant</div>
+        <div className="rounded-md border border-[#1c1c1c] bg-[#111] p-3">
+          <VariantSelector
+            variants={variantOptions}
+            mode="single"
+            onModeChange={setVariantMode}
+            selectedIds={selectedVariantIds}
+            onSelectionChange={setSelectedVariantIds}
+            fallbackImageUrl={selectedProduct?.images?.[0]?.url}
+          />
+        </div>
+      </section>
+    ) : null;
+
   const desktopVideoPanel = (
     <VideoModule
       selectedProduct={selectedProduct}
+      activeImageUrl={activeImageUrl}
       onOpenProductPicker={() => setMobileProductPickerOpen(true)}
     />
   );
