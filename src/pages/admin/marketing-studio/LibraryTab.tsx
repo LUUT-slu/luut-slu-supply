@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadImage } from "@/lib/downloadImage";
 import { toast } from "sonner";
 import { Copy, Download, Heart, Info, Loader2, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
