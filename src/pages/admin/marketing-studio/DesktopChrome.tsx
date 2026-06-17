@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Sparkles, Download, Share2, Link2, Save, RotateCw, Pencil, Plug, ZoomIn } from "lucide-react";
+import { Loader2, Sparkles, Download, Share2, Link2, Save, RotateCw, Pencil, Plug, ZoomIn, User, Image as ImageIcon } from "lucide-react";
 import PosterLightbox from "./PosterLightbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 type PosterStyle = "hype" | "clean" | "luxury" | "bold";
 type DesktopTab = "poster" | "display" | "video" | "library";
+type DisplayStyle = "studio" | "lifestyle" | "minimal" | "human";
+type DisplayAspect = "1:1" | "4:5" | "9:16" | "3:4" | "16:9" | "4:3";
+type DisplayBackground = "solid" | "gradient" | "studio" | "lifestyle" | "transparent";
+type ModelGender = "male" | "female" | "unspecified";
+type SkinTone = "light" | "medium-light" | "medium" | "medium-dark" | "dark";
 
 export interface DesktopChromeProps {
   // Tab control
