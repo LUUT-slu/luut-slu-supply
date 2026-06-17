@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-import { getBrandStyleDef, getBrandStyleReferenceImage, type BrandStyle, type BrandSurface, type AspectRatio } from "@/lib/marketingRouting";
+import {
+  getBrandStyleDef,
+  getBrandStyleReferenceImage,
+  routeForPoster,
+  routeForDisplay,
+  type BrandStyle,
+  type BrandSurface,
+  type AspectRatio,
+} from "@/lib/marketingRouting";
 
 type Background =
   | "solid"
