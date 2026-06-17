@@ -130,12 +130,16 @@ export default function VideoModule({ selectedProduct, activeImageUrl, onOpenPro
       // Fall back to the product's listing image when the user hasn't uploaded
       // a custom start frame — Kling v2.1 i2v requires a start_image.
       const effectiveStart = startFrame ?? productImageUrl ?? undefined;
-      if (!isPoster && !effectiveStart) {
-        throw new Error("This product has no image — upload a start frame to continue");
+      if (!effectiveStart) {
+        throw new Error(
+          isPoster
+            ? "Upload a poster image to animate (or select a product so its image can be used)"
+            : "This product has no image — upload a start frame to continue",
+        );
       }
       const body: any = isPoster
         ? {
-            posterImageUrl: startFrame ?? undefined,
+            posterImageUrl: effectiveStart,
             posterType: "product",
             prompt,
             duration,
