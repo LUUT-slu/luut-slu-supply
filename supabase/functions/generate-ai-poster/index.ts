@@ -377,12 +377,9 @@ async function compositeReferences(
 ): Promise<string> {
   const size = 1024;
   const canvas = new Image(size, size);
-  // Fill with white background so the model treats it as a clean reference sheet.
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      canvas.setPixelAt(x + 1, y + 1, 0xffffffff);
-    }
-  }
+  // Fill with white background — use the built-in fill (single native op) instead
+  // of a 1M-iteration JS loop that blows past the edge runtime CPU limit.
+  canvas.fill(0xffffffff);
 
   // Decide grid based on count
   const n = Math.min(urls.length, 4);
