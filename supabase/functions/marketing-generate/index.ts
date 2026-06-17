@@ -304,34 +304,42 @@ async function runPosterTwoStage(
   productRefs: string[],
   seed?: number,
 ): Promise<{ finalUrl: string; geminiUrl: string; modelLabel: string }> {
-  // Stage 1: Gemini background (try Pro, fall back to Flash image).
-  let gemini: { bytes: Uint8Array; contentType: string } | null = null;
-  let geminiModelUsed = "google/gemini-3-pro-image-preview";
-  try {
-    gemini = await runGeminiImage(geminiModelUsed, backgroundPrompt, productRefs);
-  } catch (e) {
-    console.warn("[poster-two-stage] Pro failed, falling back to Flash:", (e as Error).message);
-    geminiModelUsed = "google/gemini-2.5-flash-image";
-    gemini = await runGeminiImage(geminiModelUsed, backgroundPrompt, productRefs);
-  }
-  const geminiUrl = await uploadBytesAndSign(admin, gemini.bytes, gemini.contentType, "poster-bg");
+  // Stage 1: Nano Banana Pro generates the background plate (product scene, no text).
+  const stage1Model = "google/nano-banana-pro";
+  const stage1Input: Record<string, unknown> = {
+    prompt: backgroundPrompt,
+    aspect_ratio: aspectRatio,
+    output_format: "png",
+  };
+  if (productRefs.length) stage1Input.image_input = productRefs.slice(0, 4);
+  if (typeof seed === "number" && Number.isFinite(seed)) stage1Input.seed = seed;
 
-  // Stage 2: Ideogram v3 Turbo — text overlay, guided by the Gemini plate
-  // as a style reference. NOTE: ideogram-v3-turbo's `image` input is for
-  // inpainting and requires a `mask`; passing `image` without a mask causes
-  // the model to either error or echo the input back without text. Using
-  // `style_reference_images` lets Ideogram render the typography while
-  // matching the Gemini background's palette, lighting, and composition.
+  console.log("[poster-two-stage] Stage 1 (Nano Banana) starting");
+  const stage1Output = await runReplicate(stage1Model, stage1Input);
+  const stage1Url = pickUrl(stage1Output);
+  if (!stage1Url) throw new Error("Nano Banana returned no image URL");
+
+  // Persist the Nano Banana plate to our bucket so we have a stable signed URL
+  // for Ideogram to reference (Replicate's delivery URLs expire quickly).
+  const plateRes = await fetch(stage1Url);
+  if (!plateRes.ok) throw new Error(`Could not fetch Nano Banana image (${plateRes.status})`);
+  const plateContentType = plateRes.headers.get("content-type") || "image/png";
+  const plateBytes = new Uint8Array(await plateRes.arrayBuffer());
+  const geminiUrl = await uploadBytesAndSign(admin, plateBytes, plateContentType, "poster-bg");
+  console.log("[poster-two-stage] Stage 1 complete, plate URL:", geminiUrl);
+
+  // Stage 2: Ideogram v3 Turbo — text overlay, guided by the Nano Banana plate
+  // as a style reference. Ideogram requires style_type=Auto/General when using
+  // style_reference_images (Design is incompatible with that input).
   const ideogramInput: Record<string, unknown> = {
     prompt: textPrompt,
     aspect_ratio: aspectRatio,
-    style_type: "Design",
+    style_type: "General",
     magic_prompt_option: "Off",
     style_reference_images: [geminiUrl],
   };
   if (typeof seed === "number" && Number.isFinite(seed)) ideogramInput.seed = seed;
 
-  console.log("[poster-two-stage] Stage 1 (Gemini) complete:", geminiUrl);
   console.log("[poster-two-stage] Stage 2 (Ideogram) starting with input:", JSON.stringify(ideogramInput));
 
   let output: unknown;
