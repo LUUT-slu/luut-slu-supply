@@ -72,7 +72,7 @@ export default function PosterLightbox({ open, src, onClose, showDownload, filen
         <button
           onClick={(e) => {
             e.stopPropagation();
-            downloadOrShare(src, filename);
+            downloadImage(src, filename || "luut-poster.png");
           }}
           className="fixed left-1/2 -translate-x-1/2"
           style={{
