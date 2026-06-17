@@ -287,6 +287,8 @@ Deno.serve(async (req) => {
         style: style || null,
         aspect_ratio: aspectRatio,
         prompt_used: prompt,
+        model_used: effectiveModel,
+
         reference_image_url: hostedRefs[0] || null,
         campaign_type: campaignType || null,
         created_by: userId,

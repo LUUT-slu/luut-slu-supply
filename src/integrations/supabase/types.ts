@@ -454,6 +454,7 @@ export type Database = {
           is_favorite: boolean
           logo_applied: boolean | null
           logo_position: string | null
+          model_used: string | null
           product_handle: string | null
           product_title: string | null
           prompt_used: string | null
@@ -473,6 +474,7 @@ export type Database = {
           is_favorite?: boolean
           logo_applied?: boolean | null
           logo_position?: string | null
+          model_used?: string | null
           product_handle?: string | null
           product_title?: string | null
           prompt_used?: string | null
@@ -492,6 +494,7 @@ export type Database = {
           is_favorite?: boolean
           logo_applied?: boolean | null
           logo_position?: string | null
+          model_used?: string | null
           product_handle?: string | null
           product_title?: string | null
           prompt_used?: string | null

@@ -1,0 +1,1 @@
+ALTER TABLE public.marketing_generated_images ADD COLUMN IF NOT EXISTS model_used text;
