@@ -108,7 +108,7 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     hasReference: refs.length > 0 || Boolean(variantImage),
   };
 
-  const { route, prompt } = previewPosterFinal(controls, brandStyle);
+  const { route, backgroundPrompt, textPrompt } = previewPosterTwoStage(controls, brandStyle);
 
   const applyPreset = (id: string) => {
     const preset = POSTER_PRESETS.find((p) => p.id === id);
