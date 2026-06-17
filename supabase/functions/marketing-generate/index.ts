@@ -326,10 +326,16 @@ Deno.serve(async (req) => {
       task,
       prompt,
       aspectRatio,
+      seed: seed ?? null,
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("[marketing-generate]", msg);
-    return json({ error: msg }, 500);
+    const raw = e instanceof Error ? e.message : String(e);
+    console.error("[marketing-generate]", raw);
+    const friendly = /insufficient credit/i.test(raw)
+      ? "The image provider (Replicate) has insufficient credit. Top up billing and try again."
+      : /timed out|timeout/i.test(raw)
+        ? "The image provider took too long to respond. Please try again."
+        : raw;
+    return json({ error: friendly }, 500);
   }
 });
