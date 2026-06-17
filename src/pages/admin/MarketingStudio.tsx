@@ -2313,14 +2313,32 @@ function RecentlySavedStrip() {
     }
   };
 
-  const download = async (url: string, id: string) => {
+  const handlePosterAction = async (url: string) => {
     try {
       const res = await fetch(url);
+      if (!res.ok) throw new Error("Fetch failed");
       const blob = await res.blob();
+      const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+      if (isMobile && typeof navigator.share === "function" && navigator.canShare && navigator.canShare({ files: [] })) {
+        const file = new File([blob], "luut-poster.png", { type: blob.type || "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: "Luut Poster" });
+          return;
+        }
+      }
+
+      if (isMobile) {
+        const obj = URL.createObjectURL(blob);
+        window.open(obj, "_blank");
+        URL.revokeObjectURL(obj);
+        return;
+      }
+
       const obj = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = obj;
-      a.download = `image-${id}.png`;
+      a.download = "luut-poster.png";
       document.body.appendChild(a);
       a.click();
       a.remove();
