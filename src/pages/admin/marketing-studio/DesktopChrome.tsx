@@ -956,13 +956,11 @@ export default function DesktopChrome(props: DesktopChromeProps) {
           </div>
         )
       ) : activeTab === "video" ? (
-        <div className="flex flex-1 overflow-auto bg-[#080808]">
-          <div className="mx-auto w-full max-w-5xl p-8">
-            {videoSlot ?? (
-              <div className="text-center text-[12px] text-[#555]">Video generator unavailable.</div>
-            )}
+        videoSlot ?? (
+          <div className="flex flex-1 items-center justify-center bg-[#080808] p-12 text-center text-[12px] text-[#555]">
+            Video generator unavailable.
           </div>
-        </div>
+        )
       ) : (
         <div className="flex flex-1 items-center justify-center bg-[#080808] p-12 text-center text-[#aaa]">
           <div className="max-w-md space-y-3">

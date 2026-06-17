@@ -70,6 +70,7 @@ import {
 } from "@/lib/imageCropState";
 import DesktopChrome from "./marketing-studio/DesktopChrome";
 import MobileShell from "./marketing-studio/MobileShell";
+import VideoModule from "./marketing-studio/VideoModule";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
@@ -1271,6 +1272,13 @@ export default function MarketingStudio() {
     </div>
   );
 
+  const desktopVideoPanel = (
+    <VideoModule
+      selectedProduct={selectedProduct}
+      onOpenProductPicker={() => setMobileProductPickerOpen(true)}
+    />
+  );
+
   return (
     <AdminAuth>
       {/* Desktop chrome (lg+) — DesktopChrome handles its own 3-col layout */}
@@ -1320,7 +1328,7 @@ export default function MarketingStudio() {
             setAiPosterPrompt("");
           }}
           displaySlot={displayPanel}
-          videoSlot={videoPanel}
+          videoSlot={desktopVideoPanel}
           displayStyle={displayStyle}
           setDisplayStyle={setDisplayStyle}
           displayAspect={displayAspect}
