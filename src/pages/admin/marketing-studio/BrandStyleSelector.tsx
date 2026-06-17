@@ -175,6 +175,9 @@ export default function BrandStyleSelector({
     if (value === key) onChange("default");
   };
 
+  const selectedDef = all.find((b) => b.key === value);
+  const isCustomSelected = selectedDef?.custom === true;
+
   return (
     <div className="flex items-center gap-2">
       <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -191,6 +194,18 @@ export default function BrandStyleSelector({
           </option>
         ))}
       </select>
+
+      {isCustomSelected && selectedDef && (
+        <button
+          type="button"
+          onClick={() => openEdit(selectedDef)}
+          className="rounded-md border bg-background p-1.5 text-muted-foreground hover:text-foreground"
+          aria-label="Edit selected brand style"
+          title="Edit selected brand style"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      )}
 
       <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
         <DialogTrigger asChild>
