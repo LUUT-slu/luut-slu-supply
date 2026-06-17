@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import PosterLightbox from "./PosterLightbox";
+import { prepareMarketingSourceImages } from "@/lib/marketingSourceImages";
 
 type StudioMode = "select" | "images" | "videos";
 type AiStyle = "default" | "hype" | "clean" | "luxury" | "bold";
@@ -756,27 +757,14 @@ export default function MobileShell(props: MobileShellProps) {
                             accept="image/*"
                             multiple
                             style={{ display: "none" }}
-                            onChange={(e) => {
+                              onChange={async (e) => {
                               const files = Array.from(e.target.files || []);
                               if (files.length === 0) return;
                               const room = MAX_REFS - refs.length;
-                              const next = files.slice(0, room);
-                              Promise.all(
-                                next.map(
-                                  (f) =>
-                                    new Promise<string | null>((resolve) => {
-                                      const reader = new FileReader();
-                                      reader.onload = () =>
-                                        resolve(typeof reader.result === "string" ? reader.result : null);
-                                      reader.onerror = () => resolve(null);
-                                      reader.readAsDataURL(f);
-                                    }),
-                                ),
-                              ).then((results) => {
-                                const added = results.filter((r): r is string => Boolean(r));
+                                const input = e.currentTarget;
+                                input.value = "";
+                                const added = await prepareMarketingSourceImages(files, room);
                                 if (added.length) setCustomProductImages([...refs, ...added]);
-                              });
-                              e.target.value = "";
                             }}
                           />
                         </label>

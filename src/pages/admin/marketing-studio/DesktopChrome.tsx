@@ -4,6 +4,7 @@ import { Loader2, Sparkles, Download, Share2, Link2, Save, RotateCw, Pencil, Plu
 import PosterLightbox from "./PosterLightbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { prepareMarketingSourceImages } from "@/lib/marketingSourceImages";
 
 type PosterStyle = "default" | "hype" | "clean" | "luxury" | "bold";
 type DesktopTab = "poster" | "display" | "video" | "library";
@@ -400,27 +401,14 @@ export default function DesktopChrome(props: DesktopChromeProps) {
                               accept="image/*"
                               multiple
                               className="hidden"
-                              onChange={(e) => {
+                              onChange={async (e) => {
                                 const files = Array.from(e.target.files || []);
                                 if (files.length === 0) return;
                                 const room = MAX_REFS - refs.length;
-                                const next = files.slice(0, room);
-                                Promise.all(
-                                  next.map(
-                                    (f) =>
-                                      new Promise<string | null>((resolve) => {
-                                        const reader = new FileReader();
-                                        reader.onload = () =>
-                                          resolve(typeof reader.result === "string" ? reader.result : null);
-                                        reader.onerror = () => resolve(null);
-                                        reader.readAsDataURL(f);
-                                      }),
-                                  ),
-                                ).then((results) => {
-                                  const added = results.filter((r): r is string => Boolean(r));
-                                  if (added.length) setCustomProductImages([...refs, ...added]);
-                                });
-                                e.target.value = "";
+                                const input = e.currentTarget;
+                                input.value = "";
+                                const added = await prepareMarketingSourceImages(files, room);
+                                if (added.length) setCustomProductImages([...refs, ...added]);
                               }}
                             />
                           </label>
