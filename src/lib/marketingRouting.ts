@@ -465,7 +465,7 @@ export function buildPosterPrompt(c: PosterControls, brand: BrandStyle): string 
 
   const brandSnippet = buildBrandStyleSnippet(brand);
   if (brandSnippet) parts.push(brandSnippet + ".");
-  const brandRefClause = buildBrandStyleReferenceClause(brand);
+  const brandRefClause = buildBrandStyleReferenceClause(brand, "poster");
   if (brandRefClause) parts.push(brandRefClause);
 
   if (c.hasReference) parts.push(REF_PRESERVATION);
@@ -490,7 +490,7 @@ export function buildDisplayPrompt(c: DisplayControls, brand: BrandStyle): strin
 
   const brandSnippet = buildBrandStyleSnippet(brand);
   if (brandSnippet) parts.push(brandSnippet + ".");
-  const brandRefClause = buildBrandStyleReferenceClause(brand);
+  const brandRefClause = buildBrandStyleReferenceClause(brand, "poster");
   if (brandRefClause) parts.push(brandRefClause);
 
   if (c.hasReference) parts.push(REF_PRESERVATION);
