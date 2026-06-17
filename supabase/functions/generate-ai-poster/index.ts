@@ -13,7 +13,10 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_KEY")!;
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/images/generations";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const CLAUDE_MODEL = "claude-sonnet-4-6";
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
@@ -106,6 +109,41 @@ Style: attention-grabbing street market energy, Caribbean hustle aesthetic.`;
   return full;
 }
 
+async function refinePromptWithClaude(prompt: string): Promise<string> {
+  if (!ANTHROPIC_KEY) throw new Error("Claude is not configured");
+
+  const res = await fetch(ANTHROPIC_URL, {
+    method: "POST",
+    headers: {
+      "x-api-key": ANTHROPIC_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 900,
+      temperature: 0.3,
+      system:
+        "You are the marketing design brain for Luut SLU. Rewrite the user's poster brief into one concise image-generation prompt. Preserve every required text string exactly. Return only the final prompt, no markdown.",
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Claude ${res.status}: ${text}`);
+  }
+
+  const data = await res.json();
+  const text = data?.content
+    ?.filter((part: { type?: string; text?: string }) => part?.type === "text" && part.text)
+    .map((part: { text: string }) => part.text)
+    .join("\n")
+    .trim();
+
+  return text || prompt;
+}
+
 async function generateViaGateway(prompt: string, productImageUrl?: string): Promise<Uint8Array> {
   if (!LOVABLE_API_KEY) throw new Error("AI image generation is not configured");
 
@@ -178,7 +216,7 @@ Deno.serve(async (req) => {
       if (!body[k]) return json({ error: `Missing required field: ${k}` }, 400);
     }
 
-    const fullPrompt = buildPrompt(body);
+    const fullPrompt = await refinePromptWithClaude(buildPrompt(body));
     const bytes = await generateViaGateway(fullPrompt, body.productImageUrl);
     const path = `ai-poster-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`;
 
