@@ -369,15 +369,25 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
           </CardContent>
         </Card>
 
-        <PromptPreview prompt={prompt} />
+        <PromptPreview prompt={prompt} value={promptOverride} onChange={setPromptOverride} />
 
-        <Button onClick={generate} disabled={generating || !product} size="lg" className="w-full">
-          {generating ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
-          ) : (
-            "Generate Display Image"
-          )}
-        </Button>
+        <div className="space-y-2">
+          <Button onClick={() => generate()} disabled={generating || !product} size="lg" className="w-full">
+            {generating ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
+            ) : (
+              "Generate Display Image"
+            )}
+          </Button>
+          <Button
+            onClick={() => generate({ reuseSeed: true })}
+            disabled={generating || !product || lastSeed == null}
+            variant="outline"
+            className="w-full"
+          >
+            Regenerate Same Image{lastSeed != null ? ` (seed ${lastSeed})` : ""}
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-4 lg:sticky lg:top-4">
