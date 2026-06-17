@@ -50,6 +50,8 @@ export interface MobileShellProps {
   aiPosterResult: string | null;
   onGenerate: () => void;
   onOpenProductPicker: () => void;
+  displaySlot?: React.ReactNode;
+  videoSlot?: React.ReactNode;
 }
 
 const FORMATS = ["9:16", "1:1", "4:5", "16:9"];
