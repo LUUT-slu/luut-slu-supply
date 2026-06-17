@@ -150,14 +150,16 @@ export default function DesktopChrome(props: DesktopChromeProps) {
     onClear,
   } = props;
 
-  // Escape to clear preview on canvas
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  // Escape to clear preview on canvas (only when lightbox is closed)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && aiPosterResult) onClear();
+      if (e.key === "Escape" && aiPosterResult && !lightboxOpen) onClear();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [aiPosterResult, onClear]);
+  }, [aiPosterResult, onClear, lightboxOpen]);
 
   const lastTimeLabel = lastGeneratedAt
     ? new Date(lastGeneratedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
