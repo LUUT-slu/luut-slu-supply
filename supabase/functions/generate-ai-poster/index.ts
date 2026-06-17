@@ -112,20 +112,37 @@ async function runReplicate(
   model: string,
   input: Record<string, unknown>,
 ): Promise<unknown> {
-  const createRes = await fetch(`${REPLICATE_API}/models/${model}/predictions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Token ${REPLICATE_API_TOKEN}`,
-      "Content-Type": "application/json",
-      Prefer: "wait",
-    },
-    body: JSON.stringify({ input }),
-  });
+  const maxAttempts = 5;
+  let createRes: Response | null = null;
+  let lastText = "";
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    createRes = await fetch(`${REPLICATE_API}/models/${model}/predictions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Token ${REPLICATE_API_TOKEN}`,
+        "Content-Type": "application/json",
+        Prefer: "wait",
+      },
+      body: JSON.stringify({ input }),
+    });
+    if (createRes.status !== 429) break;
+    const retryAfterHeader = createRes.headers.get("retry-after");
+    lastText = await createRes.text().catch(() => "");
+    let waitMs = 0;
+    if (retryAfterHeader) waitMs = parseInt(retryAfterHeader, 10) * 1000;
+    if (!waitMs) {
+      const m = lastText.match(/"retry_after":\s*(\d+)/);
+      if (m) waitMs = parseInt(m[1], 10) * 1000;
+    }
+    if (!waitMs) waitMs = Math.min(2000 * Math.pow(2, attempt), 16000);
+    await new Promise((r) => setTimeout(r, waitMs + 250));
+  }
 
-  if (!createRes.ok) {
-    const text = await createRes.text().catch(() => "");
-    const err: any = new Error(`Replicate ${createRes.status}: ${text}`);
-    err.status = createRes.status;
+  if (!createRes || !createRes.ok) {
+    const text = createRes ? await createRes.text().catch(() => lastText) : lastText;
+    const status = createRes?.status ?? 0;
+    const err: any = new Error(`Replicate ${status}: ${text}`);
+    err.status = status;
     throw err;
   }
 
