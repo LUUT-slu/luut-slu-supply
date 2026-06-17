@@ -11,6 +11,8 @@ interface Props {
   value?: string | null;
   /** Called whenever the user edits the prompt or resets it (null = use auto). */
   onChange?: (next: string | null) => void;
+  /** Optional read-only companion prompt shown collapsed above the editor (e.g. background prompt for two-stage poster). */
+  secondaryPrompt?: { label: string; value: string } | null;
 }
 
 const QUICK_ADDITIONS: { label: string; text: string }[] = [
@@ -24,8 +26,9 @@ const QUICK_ADDITIONS: { label: string; text: string }[] = [
   { label: "Premium feel", text: "Elevate the overall feel to a premium, luxury editorial standard." },
 ];
 
-export default function PromptPreview({ prompt, value, onChange }: Props) {
+export default function PromptPreview({ prompt, value, onChange, secondaryPrompt }: Props) {
   const [open, setOpen] = useState(false);
+  const [secondaryOpen, setSecondaryOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? prompt);
   const [copied, setCopied] = useState(false);
