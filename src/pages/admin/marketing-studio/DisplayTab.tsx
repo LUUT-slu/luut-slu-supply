@@ -144,6 +144,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
           prompt,
           aspectRatio: aspect,
           referenceImages: sourceRefs,
+          styleReferenceImage: getBrandStyleReferenceImage(brandStyle) || undefined,
           productTitle: product.title,
           productHandle: (product as any).handle || null,
           campaignType: goal,
