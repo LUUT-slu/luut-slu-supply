@@ -241,49 +241,52 @@ export default function ContentLibrary() {
                         loading="lazy"
                       />
                     </button>
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 pointer-events-none">
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {it.aspect_ratio && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            {it.aspect_ratio}
-                          </Badge>
-                        )}
-                        {it.style && (
-                          <Badge variant="secondary" className="text-[10px] capitalize">
-                            {it.style}
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="text-[10px] text-white border-white/40">
-                          {formatDate(it.created_at)}
+                    {/* Badges overlay (hover on desktop, always on touch) */}
+                    <div className="absolute inset-x-0 top-0 p-2 flex flex-wrap gap-1 bg-gradient-to-b from-black/60 to-transparent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-none">
+                      {it.aspect_ratio && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {it.aspect_ratio}
                         </Badge>
-                      </div>
-                      <div className="text-xs text-white truncate mb-2">
-                        {it.product_title || "—"}
-                      </div>
-                      <div className="flex gap-1 pointer-events-auto">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="flex-1 h-7 text-xs"
-                          onClick={() =>
-                            downloadImage(
-                              it.image_url,
-                              `${it.generation_type}-${it.id}.png`,
-                            )
-                          }
-                        >
-                          <Download className="h-3 w-3 mr-1" />
-                          Download
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="h-7 text-xs"
-                          onClick={() => setToDelete(it)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      )}
+                      {it.style && (
+                        <Badge variant="secondary" className="text-[10px] capitalize">
+                          {it.style}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-[10px] text-white border-white/40">
+                        {formatDate(it.created_at)}
+                      </Badge>
+                    </div>
+                  </div>
+                  {/* Always-visible action row */}
+                  <div className="p-2 space-y-2 border-t bg-card">
+                    <div className="text-xs truncate text-muted-foreground">
+                      {it.product_title || "—"}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="flex-1 h-7 text-xs"
+                        onClick={() =>
+                          downloadImage(
+                            it.image_url,
+                            `${it.generation_type}-${it.id}.png`,
+                          )
+                        }
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Download
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-7 text-xs"
+                        onClick={() => setToDelete(it)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
                   </div>
                 </Card>
