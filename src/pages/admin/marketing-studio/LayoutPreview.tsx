@@ -135,6 +135,28 @@ export default function LayoutPreview(props: LayoutPreviewProps) {
   const text = dark ? "text-white" : "text-neutral-900";
   const { size, shadow } = productScale(focus, goal);
 
+  const hasReference = Boolean(productImage);
+  const route = useMemo(() => {
+    if (surface === "poster") {
+      return routeForPoster({
+        aspectRatio,
+        campaign: (campaign as never) ?? "social_promo",
+        brandStyle,
+        hasReference,
+      } as never);
+    }
+    return routeForDisplay({
+      aspectRatio,
+      goal: (goal as never) ?? "product_display",
+      style: (style as never) ?? "studio",
+      background: (background as never) ?? "clean",
+      realism: (realism as never) ?? "natural",
+      focus: (focus as never) ?? "full_product",
+      brandStyle,
+      hasReference,
+    } as never);
+  }, [surface, aspectRatio, campaign, goal, style, background, realism, focus, brandStyle, hasReference]);
+
   const realismRing =
     realism === "hyper" || realism === "luxury"
       ? "ring-1 ring-black/10"
