@@ -68,6 +68,7 @@ import {
   cropToSourceRect,
   isDefaultCrop,
 } from "@/lib/imageCropState";
+import DesktopChrome from "./marketing-studio/DesktopChrome";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
@@ -357,6 +358,44 @@ export default function MarketingStudio() {
   const [aiPosterGenerating, setAiPosterGenerating] = useState(false);
   const [aiPosterResult, setAiPosterResult] = useState<string | null>(null);
   const [aiPosterPrompt, setAiPosterPrompt] = useState("");
+  const [aiPosterLastAt, setAiPosterLastAt] = useState<number | null>(null);
+
+  const generateAiPoster = async () => {
+    if (!productPayload) return;
+    setAiPosterGenerating(true);
+    setAiPosterResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke("generate-ai-poster", {
+        body: {
+          productTitle: productPayload.name,
+          productPrice: productPayload.price ? `EC$${Math.round(Number(productPayload.price))}` : "",
+          productImageUrl: productPayload.productImage || "",
+          ctaText,
+          brandName,
+          meetupText,
+          urgencyText,
+          tagline: tagline || null,
+          posterStyle: aiPosterStyle,
+          aspectRatio: aiPosterAspectRatio,
+          customInstructions: aiPosterCustom || null,
+        },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (error || (data as any)?.error) {
+        toast.error((data as any)?.error || "Generation failed");
+      } else {
+        setAiPosterResult((data as any).url);
+        setAiPosterPrompt((data as any).prompt || "");
+        setAiPosterLastAt(Date.now());
+        toast.success("AI poster generated!");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Generation failed");
+    } finally {
+      setAiPosterGenerating(false);
+    }
+  };
 
   const handleRefImageFile = (file: File | null) => {
     if (!file) {
@@ -1025,9 +1064,60 @@ export default function MarketingStudio() {
   }, [brandLogoUrl, isMulti, singlePrep.preparedUrl, productPayload?.productImage, variantImages, multiTemplateProps]);
   const imagesReady = useImagesReady(exportImageUrls);
 
+  const desktopChromeActive = studioMode === 'images' && showAiPoster;
+
   return (
     <AdminAuth>
-      <div className="flex min-h-screen flex-col bg-background">
+      {desktopChromeActive && (
+        <div className="hidden lg:block">
+          <DesktopChrome
+            activeTab="poster"
+            onTabChange={(t) => {
+              if (t === "poster") {
+                setStudioMode("images");
+                setShowAiPoster(true);
+              } else if (t === "display") {
+                setStudioMode("images");
+                setShowAiPoster(false);
+              } else if (t === "video") {
+                setStudioMode("videos");
+                setShowAiPoster(false);
+              } else if (t === "library") {
+                navigate("/admin/content-library");
+              }
+            }}
+            productName={productPayload?.name}
+            productImage={productPayload?.productImage}
+            productPrice={productPayload?.price}
+            brandName={brandName}
+            products={products.map((p) => ({ id: p.id, title: p.title }))}
+            selectedProductId={selectedId}
+            onSelectProduct={setSelectedId}
+            aiPosterStyle={aiPosterStyle}
+            setAiPosterStyle={setAiPosterStyle}
+            aiPosterAspectRatio={aiPosterAspectRatio}
+            setAiPosterAspectRatio={setAiPosterAspectRatio}
+            urgencyText={urgencyText}
+            setUrgencyText={setUrgencyText}
+            tagline={tagline}
+            setTagline={setTagline}
+            meetupText={meetupText}
+            setMeetupText={setMeetupText}
+            aiPosterCustom={aiPosterCustom}
+            setAiPosterCustom={setAiPosterCustom}
+            aiPosterGenerating={aiPosterGenerating}
+            aiPosterResult={aiPosterResult}
+            aiPosterPrompt={aiPosterPrompt}
+            lastGeneratedAt={aiPosterLastAt}
+            onGenerate={generateAiPoster}
+            onClear={() => {
+              setAiPosterResult(null);
+              setAiPosterPrompt("");
+            }}
+          />
+        </div>
+      )}
+      <div className={`flex min-h-screen flex-col bg-background ${desktopChromeActive ? "lg:hidden" : ""}`}>
         <Header />
         <main className="container flex-1 py-6">
           <div className="mb-5 flex items-center gap-3">

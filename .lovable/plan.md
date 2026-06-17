@@ -1,58 +1,79 @@
-# Marketing Studio: Preset Redesign + AI Poster Tab
 
-Two independent changes, executed in order.
+## Goal
 
----
+Redesign `/admin/marketing-studio` for desktop (≥1024px) only with a 3-column "studio" shell in black/white/silver. Mobile (<1024px) stays pixel-identical. No generation logic, edge function call, Supabase query, state, or handler changes.
 
-## Change 1 — Redesign builtin presets
+## Approach
 
-**File:** `src/lib/marketingPresets.ts` (only)
+Rather than rewrite the 2,400-line `MarketingStudio.tsx`, wrap the existing render tree in a new desktop chrome that is only visible at `lg:` and hide the current chrome at `lg:`. The same React state, same forms, same buttons, same Generate handler — just re-skinned and re-laid-out via Tailwind `lg:` utilities and a scoped CSS block. Mobile classes stay; we only add `lg:` overrides.
 
-Replace the entire `BUILTIN_PRESETS` array with the 7 redesigned presets supplied in the spec. All IDs preserved (`clean`, `hype`, `minimal`, `sale`, `urgency`, `luxury`, `grid-showcase`). Every `surface` is now opaque so the `PresetChip` thumbnail (`bg | surface | accent`) renders three visually distinct swatches per preset. Nothing else in the file changes (helpers, custom-preset functions, validators all kept).
+### New desktop shell (lg+ only)
 
----
+```text
+┌──────────────────────────────────────────────────────────────────┐ 54px topbar
+│ [plug] LUUT SLU │ MARKETING STUDIO            [Poster|Display|Video|Library] │
+├────────────┬──────────────────────────────────────┬──────────────┤
+│  300px     │     center canvas (flex-1)           │   180px      │
+│  sidebar   │  ┌ toolbar: Regenerate Edit · Share Download ┐      │
+│  scroll    │  │                                     │      │
+│            │  │         poster preview (scaled)     │  right strip │
+│            │  │                                     │      │
+│            │  └ dims label (muted)                  │      │
+├────────────┴──────────────────────────────────────┴──────────────┤ 36px status
+│ • last generated · model · Replicate credit                       │
+└──────────────────────────────────────────────────────────────────┘
+```
 
-## Change 2 — AI Poster generator (Ideogram v3)
+- New file `src/pages/admin/marketing-studio/DesktopShell.tsx` renders topbar, sidebar slot, canvas slot, right-strip slot, status bar. All children passed in as props from `MarketingStudio.tsx` so existing handlers/state are reused 1:1.
+- `MarketingStudio.tsx` keeps current JSX behind a `lg:hidden` wrapper. The new `<DesktopShell>` renders behind a `hidden lg:flex` wrapper. Zero shared visual styles — clean fork at the breakpoint.
 
-A new, separate generation surface alongside the DOM-rendered templates. The existing template system is untouched.
+### Color tokens (desktop-only)
 
-### 2A. New edge function — `supabase/functions/generate-ai-poster/index.ts`
+Add a scoped class `.studio-desktop` on the desktop shell root and define tokens inside `src/index.css` under `@media (min-width: 1024px)`:
 
-- **Auth:** copies `generate-category-image/index.ts` pattern exactly — service-role client, `auth.getUser(token)` from `Authorization` header, check `user_roles` for `admin`, return 403 otherwise.
-- **Input:** `productTitle`, `productPrice`, `productImageUrl`, `ctaText`, `brandName`, `meetupText`, `urgencyText`, `tagline`, `posterStyle` (`hype`|`clean`|`luxury`|`bold`), `aspectRatio` (`9:16`|`1:1`|`4:5`|`16:9`), `customInstructions`.
-- **Prompt builder:** one of 4 style templates from the spec, with all literal text wrapped in straight quotes for Ideogram text rendering, plus the fixed Saint Lucia / Caribbean brand suffix, plus `customInstructions` appended if non-empty.
-- **Aspect ratio map:** `9:16→portrait_9_16`, `1:1→square_hd`, `4:5→portrait_4_5`, `16:9→landscape_16_9`.
-- **Replicate call:** `POST /v1/models/ideogram-ai/ideogram-v3-turbo/predictions`, headers `Authorization: Token ${REPLICATE_API_TOKEN}`. Body uses `prompt`, `aspect_ratio`, `style_type: "DESIGN"`, plus the spec's `negative_prompt`.
-- **Polling:** every 3s, max 40 polls (120s). Success → `output[0]`. Failure / timeout → `{ error }`.
-- **Storage:** `fetch` → bytes → upload `ai-poster-${Date.now()}.png` to `marketing-assets` (upsert), return `getPublicUrl`. Bucket-not-found returns the explicit "Storage not configured" message.
-- **DB insert:** `marketing_generated_images` row (`generation_type: 'poster'`, style, aspect_ratio, prompt_used, created_by). Skip gracefully if missing.
-- **Response:** `{ url, prompt }` or `{ error }`. Standard CORS / OPTIONS preflight. Uses only `REPLICATE_API_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — no `LOVABLE_API_KEY`.
+```css
+@media (min-width: 1024px) {
+  .studio-desktop {
+    --s-bg: #080808;
+    --s-surface: #0c0c0c;
+    --s-card: #111;
+    --s-border: #1c1c1c;
+    --s-text: #e8e8e8;
+    --s-text-2: #aaa;
+    --s-muted: #555;
+    --s-muted-2: #3a3a3a;
+  }
+}
+```
 
-### 2B. Studio UI — `src/pages/admin/MarketingStudio.tsx`
+All desktop components consume these via arbitrary-value Tailwind classes (`bg-[var(--s-surface)]`, `border-[var(--s-border)]`, `text-[var(--s-text)]`) so mobile tokens are unaffected.
 
-- Add 6 state vars (`aiPosterStyle`, `aiPosterAspectRatio`, `aiPosterCustom`, `aiPosterGenerating`, `aiPosterResult`, `aiPosterPrompt`) plus `showAiPoster`.
-- Add `handleGenerateAiPoster` calling `supabase.functions.invoke("generate-ai-poster", …)` with the studio's current product + copy fields.
-- Add a tab-styled `<button>` with `Sparkles` icon at the end of the existing `TabsList`. Clicking it sets `showAiPoster(true)`. Wrap the existing `Tabs.onValueChange` so any format tab change sets `showAiPoster(false)`.
-- Render the AI Poster panel **conditionally** (`showAiPoster && …`) outside the format `TabsContent` blocks: product summary card, 4 style cards (Hype / Clean / Luxury / Bold), 4 format pills (9:16, 1:1, 4:5, 16:9), extra-instructions textarea, Generate button (disabled when no product or generating), result image with Download PNG + Clear + collapsible "View prompt used".
-- Import `Sparkles` from `lucide-react` (added to the existing import line — no duplicate).
+### Green removal (desktop only)
 
-### Multi-product poster types — per your answer
+Audit `MarketingStudio.tsx` for `#c8ff00`, `fuchsia-`, `lime-`, neon green utility classes, and `text-primary`/`bg-primary` usage that resolves to the green brand color. In the desktop tree only, swap them for the silver tokens above. Mobile tree keeps the existing classes.
 
-The "Use first product only" behavior is implicit in how the panel is wired: `productPayload` is the single hero product already shown in the studio. For multi-product poster types (Best Sellers / New Arrivals / Restocked / Almost Gone / Promotions), the panel automatically uses the first product from the active list as `productPayload` — which is exactly what the studio already exposes via the existing `productPayload` derivation. No additional plumbing is needed: the AI Poster tab works for every poster type, always taking the first product as the hero. The poster type's headline (e.g. "JUST DROPPED") is not injected into the AI prompt — the AI style templates own the headline language.
+### Sections to re-skin in desktop shell
 
----
+- **Topbar (54px)**: plug logo + `LUUT SLU` wordmark (tracking-[0.18em] uppercase) + thin `1px` separator + `MARKETING STUDIO` muted label · right side pill group of tabs (Poster, Display, Video, Library) bound to existing `tab`/`setTab` state and the existing `studioMode` toggle for Video.
+- **Left sidebar (300px, scroll)**: product card with Change button (existing product selector handler), 2×2 style grid (Hype/Clean/Luxury/Bold — wired to existing `posterStyle` state), format pills 9:16/1:1/4:5/16:9 (wired to existing `format`), Urgency / Tagline / Pickup / Extra instructions inputs (existing state), Generate button at bottom calling existing `generateAiPoster` handler.
+- **Center canvas**: Regenerate + Edit buttons left (existing handlers), Share + Download right with Download `border-[#888]`. Preview image reuses `PreviewBox`/existing poster `<img>`; centered with `object-contain` and a max-h that respects available viewport. Dimensions label below in `text-[var(--s-muted)]`.
+- **Right action strip (180px)**: visible only when a generated image exists. Ready label, style/format/model meta, divider, primary Download (calls existing `handlePosterAction`), Share via WhatsApp / Copy link / Save to library, divider, Regenerate / Adjust prompt. All bound to existing handlers; WhatsApp share builds the same URL pattern used elsewhere in the file.
+- **Status bar (36px)**: dot, last generated timestamp (from existing generation result), model name, Replicate credit pill on the right (static label, no new API call).
 
-## Scope lock
+### Files touched
 
-**Create:** `supabase/functions/generate-ai-poster/index.ts`
-**Modify:** `src/lib/marketingPresets.ts`, `src/pages/admin/MarketingStudio.tsx`
-**Do not touch:** `templates.tsx`, `PresetPicker.tsx`, any other edge function, any other page/hook/component.
+- `src/pages/admin/MarketingStudio.tsx` — wrap existing root in `lg:hidden`, mount `<DesktopShell …/>` in `hidden lg:flex`, pass handlers/state as props.
+- `src/pages/admin/marketing-studio/DesktopShell.tsx` *(new)* — pure presentational shell, no business logic.
+- `src/pages/admin/marketing-studio/desktop/` *(new)* — small subcomponents: `TopBar.tsx`, `Sidebar.tsx`, `Canvas.tsx`, `ActionStrip.tsx`, `StatusBar.tsx`.
+- `src/index.css` — add the `@media (min-width: 1024px) .studio-desktop { … }` token block. No global rule changes.
 
-## Verification after build
+### Explicit non-goals
 
-1. PresetPicker thumbnails show 7 visibly distinct presets.
-2. `generate-ai-poster` deploys and uses `REPLICATE_API_TOKEN` only.
-3. "AI Poster" tab with Sparkles icon appears in the studio.
-4. Switching format tabs hides the AI panel; clicking AI Poster shows it.
-5. Generate disabled until a product is selected; works for single + multi-product poster types using the first product as hero.
-6. Result shows image + Download PNG + Clear + prompt details.
+- No mobile changes (no class removal/edit on the existing tree).
+- No changes to `generate-ai-poster`, `generate-product-display-image`, video edge functions, or any Supabase query.
+- No new dependencies.
+- No changes to the Video studio panel internals — it just renders inside the new canvas slot when the Video tab is active.
+
+### Verification
+
+After implementation: load `/admin/marketing-studio` at 1280×800 — confirm new shell, no green anywhere, Generate still works end-to-end. Resize to <1024px — confirm the original mobile layout reappears unchanged.
