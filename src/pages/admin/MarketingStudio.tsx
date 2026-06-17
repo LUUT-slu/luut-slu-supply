@@ -68,6 +68,7 @@ import {
   cropToSourceRect,
   isDefaultCrop,
 } from "@/lib/imageCropState";
+import DesktopChrome from "./marketing-studio/DesktopChrome";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
