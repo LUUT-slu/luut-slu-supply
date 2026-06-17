@@ -313,6 +313,9 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
             <Row to="/sell" icon={<Building2 className="h-4 w-4" />} label="Sell on Luut" hint="List your products" onClick={close} />
             <Row to="/sell" icon={<UserPlus className="h-4 w-4" />} label="Become a Seller" onClick={close} />
             <Row to="/seller" icon={<LayoutDashboard className="h-4 w-4" />} label="Vendor Dashboard" onClick={close} />
+            {isAdminOrSeller && (
+              <Row to="/admin/marketing-studio" icon={<Megaphone className="h-4 w-4" />} label="Marketing Studio" hint="Create posters & videos" onClick={close} />
+            )}
             <Row to="/sell" icon={<Gift className="h-4 w-4" />} label="Affiliate Program" hint="Coming soon" onClick={close} />
 
             {/* Info */}
