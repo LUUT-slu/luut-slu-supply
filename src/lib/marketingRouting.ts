@@ -229,7 +229,7 @@ export function routeForPoster(c: PosterControls): ModelChoice {
   // All posters always route through Ideogram v3. The variant is picked from
   // the realism setting. Reference images (when present) are passed to
   // Ideogram as style_reference_images by the edge function.
-  const pick = IDEOGRAM_BY_REALREALISM_SAFE(c.realism);
+  const pick = pickIdeogramForRealism(c.realism);
   return {
     key: "poster",
     model: pick.model,
@@ -238,7 +238,7 @@ export function routeForPoster(c: PosterControls): ModelChoice {
   };
 }
 
-function IDEOGRAM_BY_REALREALISM_SAFE(r: DisplayRealism) {
+function pickIdeogramForRealism(r: DisplayRealism) {
   return IDEOGRAM_BY_REALISM[r] || IDEOGRAM_BY_REALISM.standard;
 }
 
