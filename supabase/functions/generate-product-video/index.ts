@@ -54,6 +54,30 @@ Deno.serve(async (req) => {
     if (!isAdmin) return json({ error: "Admin access required" }, 403);
 
     const body = await req.json().catch(() => ({}));
+
+    // Poll mode: if a predictionId is provided, just return current status.
+    const predictionId: string | undefined = body.predictionId;
+    if (predictionId) {
+      const pollRes = await fetch(`${REPLICATE_API}/predictions/${predictionId}`, {
+        headers: { Authorization: `Token ${REPLICATE_API_TOKEN}` },
+      });
+      if (!pollRes.ok) {
+        const text = await pollRes.text().catch(() => "");
+        return json({ error: `Replicate poll ${pollRes.status}: ${text.slice(0, 200)}` }, 502);
+      }
+      const prediction = await pollRes.json();
+      if (prediction.status === "succeeded") {
+        const output = prediction.output;
+        const videoUrl = Array.isArray(output) ? String(output[0]) : typeof output === "string" ? output : null;
+        if (!videoUrl) return json({ error: "Replicate did not return a video" }, 502);
+        return json({ status: "succeeded", videoUrl });
+      }
+      if (prediction.status === "failed" || prediction.status === "canceled") {
+        return json({ status: prediction.status, error: prediction.error || `Prediction ${prediction.status}` }, 200);
+      }
+      return json({ status: prediction.status ?? "processing", predictionId });
+    }
+
     const productImageUrl: string | undefined = body.productImageUrl;
     const endImageUrl: string | undefined = body.endImageUrl;
     const productTitle: string = body.productTitle ?? "this product";
@@ -92,36 +116,9 @@ Deno.serve(async (req) => {
       return json({ error: `Replicate ${createRes.status}: ${text.slice(0, 300)}` }, 502);
     }
 
-    let prediction = await createRes.json();
-    for (let i = 0; i < 40; i++) {
-      if (
-        prediction.status === "succeeded" ||
-        prediction.status === "failed" ||
-        prediction.status === "canceled"
-      ) break;
-      await new Promise((r) => setTimeout(r, 3000));
-      const pollRes = await fetch(`${REPLICATE_API}/predictions/${prediction.id}`, {
-        headers: { Authorization: `Token ${REPLICATE_API_TOKEN}` },
-      });
-      if (!pollRes.ok) {
-        const text = await pollRes.text().catch(() => "");
-        return json({ error: `Replicate poll ${pollRes.status}: ${text.slice(0, 200)}` }, 502);
-      }
-      prediction = await pollRes.json();
-    }
-
-    if (prediction.status !== "succeeded") {
-      if (prediction.status === "failed" || prediction.status === "canceled") {
-        return json({ error: prediction.error || `Prediction ${prediction.status}` }, 502);
-      }
-      return json({ error: "Generation timed out" }, 504);
-    }
-
-    const output = prediction.output;
-    const videoUrl = Array.isArray(output) ? String(output[0]) : typeof output === "string" ? output : null;
-    if (!videoUrl) return json({ error: "Replicate did not return a video" }, 502);
-
-    return json({ videoUrl, prompt });
+    const prediction = await createRes.json();
+    // Return immediately — the client polls via predictionId to avoid edge function timeouts.
+    return json({ status: prediction.status ?? "starting", predictionId: prediction.id, prompt });
   } catch (e) {
     console.error("generate-product-video error", e);
     return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);

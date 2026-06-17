@@ -156,7 +156,27 @@ export default function VideoModule({ selectedProduct, activeImageUrl, onOpenPro
       const { data, error } = await supabase.functions.invoke(fn, { body });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      const url = (data as any)?.videoUrl;
+      let url = (data as any)?.videoUrl as string | undefined;
+      // Async path: edge function returned a predictionId; poll until done.
+      const predictionId = (data as any)?.predictionId as string | undefined;
+      if (!url && predictionId && !isPoster) {
+        const deadline = Date.now() + 12 * 60 * 1000; // 12 minutes
+        while (Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, 5000));
+          const { data: pd, error: pe } = await supabase.functions.invoke(fn, {
+            body: { predictionId },
+          });
+          if (pe) throw pe;
+          const status = (pd as any)?.status;
+          if (status === "succeeded") {
+            url = (pd as any)?.videoUrl;
+            break;
+          }
+          if (status === "failed" || status === "canceled") {
+            throw new Error((pd as any)?.error || `Generation ${status}`);
+          }
+        }
+      }
       if (!url) throw new Error("No video returned");
       setVideoUrl(url);
       setLastAt(Date.now());
