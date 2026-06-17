@@ -497,9 +497,18 @@ export function buildDisplayPrompt(c: DisplayControls, brand: BrandStyle): strin
   parts.push(`Compose strictly in a ${c.aspectRatio} aspect ratio frame.`);
 
   const brandSnippet = buildBrandStyleSnippet(brand);
-  if (brandSnippet) parts.push(brandSnippet + ".");
+  if (brandSnippet) {
+    parts.push(
+      `Brand mood overlay (apply ONLY to color palette, lighting temperature, contrast, and atmosphere — do NOT change the selected Display Goal, Style, Background, or Product Focus): ${brandSnippet}.`,
+    );
+  }
   const brandRefClause = buildBrandStyleReferenceClause(brand, "display");
   if (brandRefClause) parts.push(brandRefClause);
+  if (brandSnippet || brandRefClause) {
+    parts.push(
+      `Hard constraint: the selected Display Goal, Style, Background, and Product Focus above define the scene structure and must be preserved exactly. If "Studio" is selected, the result must be a studio shot. The brand style only influences color palette, lighting mood, and atmosphere — never the type of scene or background.`,
+    );
+  }
 
   if (c.hasReference) parts.push(REF_PRESERVATION);
   if (c.notes && c.notes.trim()) parts.push(c.notes.trim());
