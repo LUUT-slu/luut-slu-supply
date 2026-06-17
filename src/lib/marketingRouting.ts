@@ -39,6 +39,19 @@ export const MODEL_REGISTRY: Record<ModelKey, ModelChoice> = {
   },
 };
 
+// Ideogram v3 variant selection driven by realism:
+//   standard -> turbo    (fast, cheap)
+//   premium  -> balanced (mid)
+//   hyper    -> quality  (highest fidelity)
+//   luxury   -> quality
+const IDEOGRAM_BY_REALISM: Record<DisplayRealism, { model: string; reason: string }> = {
+  standard: { model: "ideogram-ai/ideogram-v3-turbo",    reason: "Ideogram v3 Turbo — fastest poster rendering for standard realism" },
+  premium:  { model: "ideogram-ai/ideogram-v3-balanced", reason: "Ideogram v3 Balanced — mid quality/speed for premium realism" },
+  hyper:    { model: "ideogram-ai/ideogram-v3-quality",  reason: "Ideogram v3 Quality — highest fidelity for hyper realism" },
+  luxury:   { model: "ideogram-ai/ideogram-v3-quality",  reason: "Ideogram v3 Quality — highest fidelity for luxury realism" },
+};
+
+
 // ---------- Brand styles ----------
 
 export type BrandStyle = string;
