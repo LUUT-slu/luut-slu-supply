@@ -216,6 +216,8 @@ export default function DesktopChrome(props: DesktopChromeProps) {
     lastGeneratedAt,
     onGenerate,
     onClear,
+    customProductImage = null,
+    setCustomProductImage,
     displaySlot,
     videoSlot,
     displayStyle = "studio",
