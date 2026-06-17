@@ -81,6 +81,7 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [orderCount, setOrderCount] = useState(0);
+  const [isAdminOrSeller, setIsAdminOrSeller] = useState(false);
   const localeCountry = useLocaleStore((s) => s.country);
   const localeLanguage = useLocaleStore((s) => s.language);
   const localeCurrency = useLocaleStore((s) => s.currency);
@@ -92,6 +93,28 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
     supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setIsAdminOrSeller(false);
+      return;
+    }
+    const checkRoles = async () => {
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      const roleNames = roles?.map((r) => r.role as string) || [];
+      if (roleNames.includes("admin")) {
+        setIsAdminOrSeller(true);
+        return;
+      }
+      const { data: sellerProfile } = await supabase
+        .from("seller_profiles")
+        .select("is_approved")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setIsAdminOrSeller(!!sellerProfile?.is_approved);
+    };
+    checkRoles();
+  }, [user]);
 
   useEffect(() => {
     if (!user) { setDisplayName(""); return; }
