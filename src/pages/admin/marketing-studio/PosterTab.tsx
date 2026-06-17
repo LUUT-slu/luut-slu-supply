@@ -86,7 +86,7 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     ctaText,
     brandName: "LUUT SLU",
     notes,
-    hasReference: refs.length > 0 || Boolean(product?.images?.[0]?.url),
+    hasReference: refs.length > 0 || Boolean(variantImage),
   };
 
   const { route, prompt } = previewPosterFinal(controls, brandStyle);
