@@ -22,6 +22,8 @@ export interface DesktopChromeProps {
   productName?: string;
   productImage?: string;
   productPrice?: number | string;
+  posterPrice?: string;
+  setPosterPrice?: (s: string) => void;
   brandName: string;
   products: { id: string; title: string }[];
   selectedProductId: string;
@@ -231,6 +233,8 @@ export default function DesktopChrome(props: DesktopChromeProps) {
     displayPrompt = "",
     onGenerateDisplay,
     onClearDisplay,
+    posterPrice = "",
+    setPosterPrice,
   } = props;
 
   const displayWired = Boolean(onGenerateDisplay && setDisplayStyle);
@@ -376,6 +380,14 @@ export default function DesktopChrome(props: DesktopChromeProps) {
 
               {/* Tagline */}
               <SidebarField label="Tagline" value={tagline} onChange={setTagline} placeholder="Drop something" />
+
+              {/* Price (editable, rendered on poster) */}
+              <SidebarField
+                label="Price"
+                value={posterPrice}
+                onChange={(v) => setPosterPrice?.(v)}
+                placeholder="EC$120"
+              />
 
               {/* Pickup */}
               <SidebarField
