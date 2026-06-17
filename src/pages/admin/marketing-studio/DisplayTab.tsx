@@ -92,6 +92,8 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
   const [focus, setFocus] = useState<DisplayFocus>("full");
   const [aspect, setAspect] = useState<AspectRatio>("1:1");
   const [notes, setNotes] = useState("");
+  const [promptOverride, setPromptOverride] = useState<string | null>(null);
+  const [lastSeed, setLastSeed] = useState<number | null>(null);
 
   const [generating, setGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
@@ -123,7 +125,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
     if (a.aspectRatio) setAspect(a.aspectRatio);
   };
 
-  const generate = async () => {
+  const generate = async (opts?: { reuseSeed?: boolean }) => {
     if (!product) {
       toast.error("Select a product first");
       return;
@@ -135,6 +137,11 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
         ? [variantImage]
         : [];
 
+    const seed =
+      opts?.reuseSeed && lastSeed != null
+        ? lastSeed
+        : Math.floor(Math.random() * 2_147_483_647);
+
     setGenerating(true);
     setResultUrl(null);
     try {
@@ -143,7 +150,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
         body: {
           task: "display",
           model: route.model,
-          prompt,
+          prompt: promptOverride ?? prompt,
           aspectRatio: aspect,
           referenceImages: sourceRefs,
           styleReferenceImage: getBrandStyleReferenceImage(brandStyle, "display") || undefined,
@@ -151,14 +158,20 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
           productHandle: (product as any).handle || null,
           campaignType: goal,
           style,
+          seed,
         },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (error || (data as any)?.error) {
-        toast.error((data as any)?.error || error?.message || "Generation failed");
+        const raw = (data as any)?.error || error?.message || "Generation failed";
+        const friendly = /insufficient credit/i.test(raw)
+          ? "The image provider is out of credit. Top up Replicate billing and try again."
+          : raw;
+        toast.error(friendly);
         return;
       }
       setResultUrl((data as any).url);
+      setLastSeed(seed);
       toast.success("Display image generated");
     } catch (e: any) {
       toast.error(e?.message || "Generation failed");
@@ -356,15 +369,25 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
           </CardContent>
         </Card>
 
-        <PromptPreview prompt={prompt} />
+        <PromptPreview prompt={prompt} value={promptOverride} onChange={setPromptOverride} />
 
-        <Button onClick={generate} disabled={generating || !product} size="lg" className="w-full">
-          {generating ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
-          ) : (
-            "Generate Display Image"
-          )}
-        </Button>
+        <div className="space-y-2">
+          <Button onClick={() => generate()} disabled={generating || !product} size="lg" className="w-full">
+            {generating ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…</>
+            ) : (
+              "Generate Display Image"
+            )}
+          </Button>
+          <Button
+            onClick={() => generate({ reuseSeed: true })}
+            disabled={generating || !product || lastSeed == null}
+            variant="outline"
+            className="w-full"
+          >
+            Regenerate Same Image{lastSeed != null ? ` (seed ${lastSeed})` : ""}
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-4 lg:sticky lg:top-4">

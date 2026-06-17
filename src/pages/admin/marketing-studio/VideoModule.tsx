@@ -186,7 +186,11 @@ export default function VideoModule({ selectedProduct, activeImageUrl, onOpenPro
       setLastAt(Date.now());
       toast.success("Video ready");
     } catch (e: any) {
-      toast.error(e?.message || "Failed to generate video");
+      const raw = e?.message || "Failed to generate video";
+      const friendly = /insufficient credit/i.test(raw)
+        ? "The video provider is out of credit. Top up Replicate billing and try again."
+        : raw;
+      toast.error(friendly);
     } finally {
       setGenerating(false);
     }

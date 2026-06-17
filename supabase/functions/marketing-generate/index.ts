@@ -38,6 +38,7 @@ interface ReqBody {
   aspectRatio?: string;
   referenceImages?: string[]; // product refs — http(s) URL or data: URL
   styleReferenceImage?: string; // brand-style donor ref — http(s) URL or data: URL
+  seed?: number; // optional deterministic seed for reproducible generations
   // Bookkeeping for the library row:
   productTitle?: string;
   productHandle?: string;
@@ -167,6 +168,7 @@ function buildModelInput(
   aspect: string,
   productRefs: string[],
   styleRef: string | null,
+  seed?: number,
 ): Record<string, unknown> {
   // Combined ref list: product refs first, style donor last.
   const combined = [...productRefs];
@@ -176,6 +178,11 @@ function buildModelInput(
   if (productRefs.length) enhancedPrompt += PRESERVE_INSTRUCTION;
   if (styleRef) enhancedPrompt += STYLE_REF_INSTRUCTION;
 
+  const withSeed = (o: Record<string, unknown>) => {
+    if (typeof seed === "number" && Number.isFinite(seed)) o.seed = seed;
+    return o;
+  };
+
   switch (model) {
     case "ideogram-ai/ideogram-v3-quality": {
       const input: Record<string, unknown> = {
@@ -183,21 +190,17 @@ function buildModelInput(
         aspect_ratio: aspect,
         magic_prompt_option: "Auto",
       };
-      // Ideogram's style_reference_images is style-only by design, so the
-      // brand-style donor fits naturally alongside the product refs here.
       if (combined.length) input.style_reference_images = combined.slice(0, 4);
-      return input;
+      return withSeed(input);
     }
     case "sourceful/riverflow-2.0-pro": {
-      // Riverflow only accepts a single image. Prefer the product ref;
-      // the style donor only contributes via the prompt clause.
       const input: Record<string, unknown> = {
         instruction: enhancedPrompt,
         aspect_ratio: aspect,
       };
       const primary = productRefs[0] || styleRef;
       if (primary) input.image = primary;
-      return input;
+      return withSeed(input);
     }
     case "google/nano-banana-pro": {
       const input: Record<string, unknown> = {
@@ -206,10 +209,10 @@ function buildModelInput(
         output_format: "png",
       };
       if (combined.length) input.image_input = combined.slice(0, 4);
-      return input;
+      return withSeed(input);
     }
     default:
-      return { prompt: enhancedPrompt, aspect_ratio: aspect };
+      return withSeed({ prompt: enhancedPrompt, aspect_ratio: aspect });
   }
 }
 
@@ -244,6 +247,7 @@ Deno.serve(async (req) => {
       aspectRatio = "1:1",
       referenceImages = [],
       styleReferenceImage,
+      seed,
       productTitle,
       productHandle,
       campaignType,
@@ -273,7 +277,7 @@ Deno.serve(async (req) => {
     }
 
     const effectiveModel = resolveModel(model, hostedRefs);
-    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef);
+    const input = buildModelInput(effectiveModel, prompt, aspectRatio, hostedRefs, hostedStyleRef, seed);
     const output = await runReplicate(effectiveModel, input);
     const srcUrl = pickUrl(output);
     if (!srcUrl) throw new Error("Replicate returned no image URL");
@@ -322,10 +326,16 @@ Deno.serve(async (req) => {
       task,
       prompt,
       aspectRatio,
+      seed: seed ?? null,
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("[marketing-generate]", msg);
-    return json({ error: msg }, 500);
+    const raw = e instanceof Error ? e.message : String(e);
+    console.error("[marketing-generate]", raw);
+    const friendly = /insufficient credit/i.test(raw)
+      ? "The image provider (Replicate) has insufficient credit. Top up billing and try again."
+      : /timed out|timeout/i.test(raw)
+        ? "The image provider took too long to respond. Please try again."
+        : raw;
+    return json({ error: friendly }, 500);
   }
 });
