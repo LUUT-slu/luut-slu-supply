@@ -58,8 +58,8 @@ export interface MobileShellProps {
   aiPosterResult: string | null;
   onGenerate: () => void;
   onOpenProductPicker: () => void;
-  customProductImage?: string | null;
-  setCustomProductImage?: (v: string | null) => void;
+  customProductImages?: string[];
+  setCustomProductImages?: (v: string[]) => void;
   displaySlot?: React.ReactNode;
   videoSlot?: React.ReactNode;
 
@@ -135,8 +135,8 @@ export default function MobileShell(props: MobileShellProps) {
     aiPosterResult,
     onGenerate,
     onOpenProductPicker,
-    customProductImage = null,
-    setCustomProductImage,
+    customProductImages = [],
+    setCustomProductImages,
     displaySlot,
     videoSlot,
     displayStyle = "studio",
@@ -676,99 +676,115 @@ export default function MobileShell(props: MobileShellProps) {
               </div>
             </div>
 
-            {/* Source photo override */}
-            {setCustomProductImage && (
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
-                  Source photo
-                </div>
-                <div
-                  style={{
-                    background: "#111",
-                    border: "0.5px solid #1c1c1c",
-                    borderRadius: 8,
-                    padding: 10,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 5,
-                      background: "#161616",
-                      border: "0.5px solid #222",
-                      overflow: "hidden",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {(customProductImage || productImage) && (
-                      <img
-                        src={customProductImage || productImage}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
+            {/* Source photos override (multi-upload, up to 4) */}
+            {setCustomProductImages && (() => {
+              const MAX_REFS = 4;
+              const refs = customProductImages;
+              const canAddMore = refs.length < MAX_REFS;
+              const showPlaceholder = refs.length === 0 && productImage;
+              return (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+                    <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase" }}>
+                      Source photos {refs.length > 0 ? `(${refs.length}/${MAX_REFS})` : ""}
+                    </div>
+                    {refs.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomProductImages([])}
+                        style={{ fontSize: 10, color: "#888", background: "transparent", border: "none" }}
+                      >
+                        Clear all
+                      </button>
                     )}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, color: "#bbb" }}>
-                      {customProductImage ? "Using your upload" : "Using listing image"}
-                    </div>
-                    <div style={{ fontSize: 9, color: "#555", marginTop: 2 }}>
-                      Optional override for the poster pipeline
-                    </div>
-                  </div>
-                  <label
+                  <div
                     style={{
-                      fontSize: 10,
-                      color: "#aaa",
+                      background: "#111",
                       border: "0.5px solid #1c1c1c",
-                      borderRadius: 4,
-                      padding: "3px 7px",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
+                      borderRadius: 8,
+                      padding: 10,
                     }}
                   >
-                    {customProductImage ? "Replace" : "Upload"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      style={{ display: "none" }}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          if (typeof reader.result === "string") {
-                            setCustomProductImage(reader.result);
-                          }
-                        };
-                        reader.readAsDataURL(file);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                  {customProductImage && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomProductImage(null)}
-                      style={{
-                        fontSize: 10,
-                        color: "#888",
-                        background: "transparent",
-                        border: "0.5px solid #1c1c1c",
-                        borderRadius: 4,
-                        padding: "3px 7px",
-                      }}
-                    >
-                      Clear
-                    </button>
-                  )}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {showPlaceholder && (
+                        <div style={{ position: "relative", width: 52, height: 52, borderRadius: 5, overflow: "hidden", border: "0.5px solid #222", background: "#161616" }}>
+                          <img src={productImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }} />
+                          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", color: "#aaa", fontSize: 8, textAlign: "center", padding: "1px 0", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                            Listing
+                          </div>
+                        </div>
+                      )}
+                      {refs.map((src, idx) => (
+                        <div key={idx} style={{ position: "relative", width: 52, height: 52, borderRadius: 5, overflow: "hidden", border: "0.5px solid #2a2a2a", background: "#161616" }}>
+                          <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <button
+                            type="button"
+                            onClick={() => setCustomProductImages(refs.filter((_, i) => i !== idx))}
+                            aria-label="Remove reference"
+                            style={{ position: "absolute", top: -4, right: -4, width: 16, height: 16, borderRadius: 999, background: "#000", color: "#fff", border: "none", fontSize: 10, lineHeight: "16px", padding: 0 }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      {canAddMore && (
+                        <label
+                          style={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: 5,
+                            border: "1px dashed #2a2a2a",
+                            background: "#0c0c0c",
+                            color: "#666",
+                            fontSize: 18,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          +
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            style={{ display: "none" }}
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              if (files.length === 0) return;
+                              const room = MAX_REFS - refs.length;
+                              const next = files.slice(0, room);
+                              Promise.all(
+                                next.map(
+                                  (f) =>
+                                    new Promise<string | null>((resolve) => {
+                                      const reader = new FileReader();
+                                      reader.onload = () =>
+                                        resolve(typeof reader.result === "string" ? reader.result : null);
+                                      reader.onerror = () => resolve(null);
+                                      reader.readAsDataURL(f);
+                                    }),
+                                ),
+                              ).then((results) => {
+                                const added = results.filter((r): r is string => Boolean(r));
+                                if (added.length) setCustomProductImages([...refs, ...added]);
+                              });
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 9, color: "#555", marginTop: 8 }}>
+                      {refs.length === 0
+                        ? "Using listing image. Upload up to 4 reference photos to override."
+                        : `Using your uploaded reference${refs.length > 1 ? "s" : ""}.`}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
 
 
