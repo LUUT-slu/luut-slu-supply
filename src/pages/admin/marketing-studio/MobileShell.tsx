@@ -835,11 +835,354 @@ export default function MobileShell(props: MobileShellProps) {
             )}
           </>
         ) : currentNav === "display" ? (
-          <div className="text-[#e8e8e8]">
-            {displaySlot ?? (
-              <div className="text-center text-xs text-[#555] py-12">Display generator unavailable.</div>
-            )}
-          </div>
+          displayWired ? (
+            <>
+              {/* Product */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                  Product
+                </div>
+                <div
+                  className="flex items-center"
+                  style={{ background: "#111", border: "0.5px solid #1c1c1c", borderRadius: 8, padding: 10, gap: 10 }}
+                >
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 5,
+                      background: "#161616",
+                      border: "0.5px solid #222",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {productImage ? (
+                      <img src={productImage} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <ShoppingBag size={16} color="#333" />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: "#ccc" }} className="truncate">
+                      {productName || "No product selected"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#555", marginTop: 1 }}>
+                      Reference image
+                    </div>
+                  </div>
+                  <button
+                    onClick={onOpenProductPicker}
+                    style={{
+                      marginLeft: "auto",
+                      fontSize: 10,
+                      color: "#aaa",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 4,
+                      padding: "3px 7px",
+                      background: "transparent",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Change
+                  </button>
+                </div>
+              </div>
+
+              {/* Style */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                  Style
+                </div>
+                <div className="grid grid-cols-2" style={{ gap: 5 }}>
+                  {DISPLAY_STYLES_M.map((s) => {
+                    const active = displayStyle === s.key;
+                    return (
+                      <button
+                        key={s.key}
+                        onClick={() => setDisplayStyle?.(s.key)}
+                        style={{
+                          padding: "9px 8px",
+                          borderRadius: 7,
+                          border: active ? "0.5px solid #999" : "0.5px solid #1c1c1c",
+                          background: active ? "#181818" : "#111",
+                          textAlign: "left",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        {s.key === "human" && (
+                          <User size={13} color={active ? "#e8e8e8" : "#666"} />
+                        )}
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 500, color: active ? "#e8e8e8" : "#999" }}>
+                            {s.label}
+                          </div>
+                          <div style={{ fontSize: 9, color: active ? "#555" : "#333", marginTop: 2 }}>
+                            {s.desc}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Human model sub-controls */}
+              {displayStyle === "human" && (
+                <>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                      Model gender
+                    </div>
+                    <div className="flex flex-wrap" style={{ gap: 5 }}>
+                      {GENDERS_M.map((g) => {
+                        const active = modelGender === g.key;
+                        return (
+                          <button
+                            key={g.key}
+                            onClick={() => setModelGender?.(g.key)}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 14,
+                              border: active ? "0.5px solid #999" : "0.5px solid #1c1c1c",
+                              background: active ? "#181818" : "#111",
+                              fontSize: 11,
+                              color: active ? "#e8e8e8" : "#888",
+                            }}
+                          >
+                            {g.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                      Skin tone
+                    </div>
+                    <div className="flex flex-wrap" style={{ gap: 5 }}>
+                      {SKIN_TONES_M.map((t) => {
+                        const active = skinTone === t.key;
+                        return (
+                          <button
+                            key={t.key}
+                            onClick={() => setSkinTone?.(t.key)}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 14,
+                              border: active ? "0.5px solid #999" : "0.5px solid #1c1c1c",
+                              background: active ? "#181818" : "#111",
+                              fontSize: 11,
+                              color: active ? "#e8e8e8" : "#888",
+                            }}
+                          >
+                            {t.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Aspect ratio */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                  Aspect ratio
+                </div>
+                <div className="flex flex-wrap" style={{ gap: 5 }}>
+                  {DISPLAY_FORMATS_M.map((f) => {
+                    const active = displayAspect === f;
+                    return (
+                      <button
+                        key={f}
+                        onClick={() => setDisplayAspect?.(f)}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 14,
+                          border: active ? "0.5px solid #888" : "0.5px solid #1c1c1c",
+                          background: active ? "#e8e8e8" : "#111",
+                          fontSize: 11,
+                          color: active ? "#080808" : "#888",
+                          fontWeight: active ? 600 : 400,
+                        }}
+                      >
+                        {f}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Background */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase", marginBottom: 7 }}>
+                  Background
+                </div>
+                <div className="flex flex-wrap" style={{ gap: 5 }}>
+                  {BACKGROUNDS_M.map((b) => {
+                    const active = displayBackground === b.key;
+                    return (
+                      <button
+                        key={b.key}
+                        onClick={() => setDisplayBackground?.(b.key)}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 14,
+                          border: active ? "0.5px solid #999" : "0.5px solid #1c1c1c",
+                          background: active ? "#181818" : "#111",
+                          fontSize: 11,
+                          color: active ? "#e8e8e8" : "#888",
+                        }}
+                      >
+                        {b.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Details */}
+              <div className="flex flex-col" style={{ gap: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase" }}>
+                  Details
+                </div>
+                <div className="flex flex-col" style={{ gap: 4 }}>
+                  <label style={{ fontSize: 10, color: "#3a3a3a", letterSpacing: "0.04em" }}>Text on image</label>
+                  <input
+                    type="text"
+                    value={displayTextOverlay}
+                    placeholder="e.g. SUMMER DROP"
+                    onChange={(e) => setDisplayTextOverlay?.(e.target.value)}
+                    style={{
+                      background: "#111",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 5,
+                      color: "#bbb",
+                      fontSize: 12,
+                      padding: "8px 10px",
+                      outline: "none",
+                      width: "100%",
+                    }}
+                  />
+                </div>
+                <div className="flex flex-col" style={{ gap: 4 }}>
+                  <label style={{ fontSize: 10, color: "#3a3a3a", letterSpacing: "0.04em" }}>Additional prompt notes</label>
+                  <textarea
+                    value={displayCustomPrompt}
+                    onChange={(e) => setDisplayCustomPrompt?.(e.target.value)}
+                    placeholder="e.g. sunlit countertop, magazine photography..."
+                    style={{
+                      background: "#111",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 5,
+                      color: "#bbb",
+                      fontSize: 12,
+                      padding: "8px 10px",
+                      outline: "none",
+                      width: "100%",
+                      height: 52,
+                      resize: "none",
+                      fontFamily: "inherit",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Save or share — after generation */}
+              {displayResultUrl && (
+                <div className="flex flex-col" style={{ gap: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", color: "#3a3a3a", textTransform: "uppercase" }}>
+                    Save or share
+                  </div>
+                  <button
+                    onClick={handleDisplayDownload}
+                    style={{
+                      width: "100%",
+                      padding: 12,
+                      background: "#e8e8e8",
+                      color: "#080808",
+                      border: "none",
+                      borderRadius: 7,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 7,
+                    }}
+                  >
+                    <Download size={15} /> Download
+                  </button>
+                  <button
+                    onClick={handleDisplayWhatsApp}
+                    style={{
+                      width: "100%",
+                      padding: 10,
+                      background: "#111",
+                      color: "#ccc",
+                      border: "0.5px solid #1c1c1c",
+                      borderRadius: 7,
+                      fontSize: 12,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 7,
+                    }}
+                  >
+                    <MessageCircle size={15} /> Share via WhatsApp
+                  </button>
+                  <div className="grid grid-cols-2" style={{ gap: 6 }}>
+                    <button
+                      onClick={handleDisplayCopyLink}
+                      style={{
+                        padding: 9,
+                        background: "#111",
+                        color: "#777",
+                        border: "0.5px solid #1c1c1c",
+                        borderRadius: 7,
+                        fontSize: 11,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <Copy size={12} /> Copy link
+                    </button>
+                    <button
+                      onClick={() => navigate("/admin/content-library")}
+                      style={{
+                        padding: 9,
+                        background: "#111",
+                        color: "#777",
+                        border: "0.5px solid #1c1c1c",
+                        borderRadius: 7,
+                        fontSize: 11,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <Folder size={12} /> Save to library
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-[#e8e8e8]">
+              {displaySlot ?? (
+                <div className="text-center text-xs text-[#555] py-12">Display generator unavailable.</div>
+              )}
+            </div>
+          )
         ) : currentNav === "video" ? (
           <div className="text-[#e8e8e8]">
             {videoSlot ?? (
@@ -850,7 +1193,7 @@ export default function MobileShell(props: MobileShellProps) {
       </div>
 
       {/* Sticky generate */}
-      {currentNav === "poster" && (
+      {(currentNav === "poster" || (currentNav === "display" && displayWired)) && (
         <div
           className="fixed left-0 right-0"
           style={{
@@ -862,8 +1205,15 @@ export default function MobileShell(props: MobileShellProps) {
           }}
         >
           <button
-            onClick={onGenerate}
-            disabled={aiPosterGenerating || !productName}
+            onClick={() => {
+              if (currentNav === "poster") onGenerate();
+              else onGenerateDisplay?.();
+            }}
+            disabled={
+              currentNav === "poster"
+                ? aiPosterGenerating || !productName
+                : displayLoading || !productName
+            }
             style={{
               width: "100%",
               padding: 13,
@@ -877,16 +1227,21 @@ export default function MobileShell(props: MobileShellProps) {
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
-              opacity: aiPosterGenerating || !productName ? 0.6 : 1,
+              opacity:
+                (currentNav === "poster" ? aiPosterGenerating || !productName : displayLoading || !productName)
+                  ? 0.6
+                  : 1,
             }}
           >
-            {aiPosterGenerating ? (
+            {(currentNav === "poster" ? aiPosterGenerating : displayLoading) ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
                 Generating...
               </>
-            ) : (
+            ) : currentNav === "poster" ? (
               "Generate Poster"
+            ) : (
+              "Generate Display Image"
             )}
           </button>
         </div>
