@@ -1306,16 +1306,59 @@ export default function MarketingStudio() {
   const variantSlot =
     variantOptions.length > 1 ? (
       <section>
-        <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#555]">Variant</div>
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-[#555]">
+            Variant ({variantOptions.length})
+          </div>
+          {selectedVariantIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedVariantIds([]);
+                setVariantMode("single");
+              }}
+              className="text-[10px] text-[#888] hover:text-[#e8e8e8]"
+            >
+              Use listing image
+            </button>
+          )}
+        </div>
         <div className="rounded-md border border-[#1c1c1c] bg-[#111] p-3">
-          <VariantSelector
-            variants={variantOptions}
-            mode="single"
-            onModeChange={setVariantMode}
-            selectedIds={selectedVariantIds}
-            onSelectionChange={setSelectedVariantIds}
-            fallbackImageUrl={selectedProduct?.images?.[0]?.url}
-          />
+          <div className="grid grid-cols-4 gap-2">
+            {variantOptions.map((v) => {
+              const selected = selectedVariantIds[0] === v.id;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => {
+                    setVariantMode("single");
+                    setSelectedVariantIds([v.id]);
+                  }}
+                  className={`group relative overflow-hidden rounded border bg-[#0c0c0c] text-left transition ${
+                    selected ? "border-[#e8e8e8] ring-1 ring-[#e8e8e8]" : "border-[#222] hover:border-[#3a3a3a]"
+                  } ${!v.available ? "opacity-50" : ""}`}
+                  title={v.label}
+                >
+                  <div className="aspect-square w-full overflow-hidden">
+                    {v.imageUrl ? (
+                      <img src={v.imageUrl} alt={v.label} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[9px] text-[#444]">
+                        No image
+                      </div>
+                    )}
+                  </div>
+                  <div className="truncate px-1 py-0.5 text-[9px] text-[#aaa]">{v.label}</div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2 text-[10px] text-[#555]">
+            {selectedVariantIds.length > 0 && variantMode === "single"
+              ? "This variant's image is used for poster, display, and video."
+              : "Using the main listing image."}
+          </div>
         </div>
       </section>
     ) : null;
