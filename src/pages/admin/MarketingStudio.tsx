@@ -69,6 +69,7 @@ import {
   isDefaultCrop,
 } from "@/lib/imageCropState";
 import DesktopChrome from "./marketing-studio/DesktopChrome";
+import MobileShell from "./marketing-studio/MobileShell";
 
 const FORMATS: { key: TemplateFormat; label: string; size: string }[] = [
   { key: "story", label: "Story", size: "1080×1920" },
