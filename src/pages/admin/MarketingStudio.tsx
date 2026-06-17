@@ -360,6 +360,7 @@ export default function MarketingStudio() {
   const [aiPosterResult, setAiPosterResult] = useState<string | null>(null);
   const [aiPosterPrompt, setAiPosterPrompt] = useState("");
   const [aiPosterLastAt, setAiPosterLastAt] = useState<number | null>(null);
+  const [mobileProductPickerOpen, setMobileProductPickerOpen] = useState(false);
 
   const generateAiPoster = async () => {
     if (!productPayload) return;
