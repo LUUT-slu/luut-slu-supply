@@ -77,10 +77,17 @@ serve(async (req) => {
       });
     }
 
-    const url = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders/${order.shopify_draft_order_id}/complete.json?payment_pending=${paymentPending}`;
+    const url = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders/${order.shopify_draft_order_id}/complete.json`;
     const res = await fetch(url, {
       method: "PUT",
-      headers: { "X-Shopify-Access-Token": adminToken, "Content-Type": "application/json" },
+      headers: {
+        "X-Shopify-Access-Token": adminToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        payment_gateway: "manual",
+        payment_pending: false,
+      }),
     });
     const data = await res.json();
     if (!res.ok || !data.draft_order) {
