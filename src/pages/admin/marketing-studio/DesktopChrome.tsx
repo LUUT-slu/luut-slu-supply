@@ -55,6 +55,9 @@ export interface DesktopChromeProps {
   customProductImages?: string[];
   setCustomProductImages?: (v: string[]) => void;
 
+  // Optional variant selector node rendered in the Product section (shared across tabs).
+  variantSlot?: React.ReactNode;
+
   // Optional slots for non-poster tabs (fallback)
   displaySlot?: React.ReactNode;
   videoSlot?: React.ReactNode;
@@ -219,6 +222,7 @@ export default function DesktopChrome(props: DesktopChromeProps) {
     onClear,
     customProductImages = [],
     setCustomProductImages,
+    variantSlot,
     displaySlot,
     videoSlot,
     displayStyle = "studio",
@@ -338,6 +342,10 @@ export default function DesktopChrome(props: DesktopChromeProps) {
                   </select>
                 </div>
               </section>
+
+              {/* Variant selector (shared across tabs) */}
+              {variantSlot}
+
 
               {/* Source photos override (multi-upload, up to 4) */}
               {setCustomProductImages && (() => {
