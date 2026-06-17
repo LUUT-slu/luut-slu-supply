@@ -251,12 +251,13 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                     multiple
                     className="hidden"
                     onChange={async (e) => {
-                      const files = Array.from(e.target.files || []);
+                      const input = e.currentTarget;
+                      const files = Array.from(input.files || []);
                       if (!files.length) return;
                       const room = MAX_REFS - refs.length;
                       const added = await prepareMarketingSourceImages(files, room);
                       if (added.length) setRefs([...refs, ...added]);
-                      e.currentTarget.value = "";
+                      if (input) input.value = "";
                     }}
                   />
                 </label>
