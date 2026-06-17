@@ -82,6 +82,7 @@ export interface DesktopChromeProps {
 }
 
 const STYLES: { key: PosterStyle; label: string }[] = [
+  { key: "default", label: "Default" },
   { key: "hype", label: "Hype" },
   { key: "clean", label: "Clean" },
   { key: "luxury", label: "Luxury" },
