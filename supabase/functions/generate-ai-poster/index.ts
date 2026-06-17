@@ -325,7 +325,7 @@ Deno.serve(async (req) => {
         thumbnail_url: publicUrl,
         generation_type: "poster",
         product_title: body.productTitle,
-        style: "flux-kontext+ideogram",
+        style: `${styleKey}|flux-kontext+ideogram`,
         aspect_ratio: "1:1",
         prompt_used: `[scene] ${scenePrompt}\n[overlay] ${overlayPrompt}`,
         created_by: userId,
