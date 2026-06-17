@@ -678,6 +678,9 @@ export default function MobileShell(props: MobileShellProps) {
               </div>
             </div>
 
+            {/* Variant selector (shared across tabs) */}
+            {variantSlot}
+
             {/* Source photos override (multi-upload, up to 4) */}
             {setCustomProductImages && (() => {
               const MAX_REFS = 4;
