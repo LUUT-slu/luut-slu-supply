@@ -793,6 +793,13 @@ export default function MobileShell(props: MobileShellProps) {
           <span style={{ fontSize: 12, color: "#777", fontWeight: 500 }}>Live</span>
         </div>
       </div>
+
+      <PosterLightbox
+        open={lightboxOpen}
+        src={aiPosterResult}
+        onClose={() => setLightboxOpen(false)}
+        showDownload
+      />
     </div>
   );
 }
