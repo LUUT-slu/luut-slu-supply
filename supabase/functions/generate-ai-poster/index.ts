@@ -273,12 +273,14 @@ Deno.serve(async (req) => {
       if (!body[k]) return json({ error: `Missing required field: ${k}` }, 400);
     }
 
-    const fullPrompt = await refinePromptWithClaude(buildPrompt(body));
-    const bytes = await generateViaGateway(fullPrompt, body.productImageUrl);
+    const { prompt: fullPrompt, plan } = await planPosterWithClaude(body, buildPrompt(body));
+    const productDataUrl = await fetchProductDataUrl(body.productImageUrl);
+    const svg = generatePosterSvg(body, plan, productDataUrl);
+    const bytes = new TextEncoder().encode(svg);
     const path = `ai-poster-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`;
 
     const upload = await admin.storage.from(BUCKET).upload(path, bytes, {
-      contentType: "image/png",
+      contentType: "image/svg+xml",
       upsert: true,
     });
     if (upload.error) {
