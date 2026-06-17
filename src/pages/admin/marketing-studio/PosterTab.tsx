@@ -12,12 +12,14 @@ import { prepareMarketingSourceImages } from "@/lib/marketingSourceImages";
 import {
   type AspectRatio,
   type BrandStyle,
+  type DisplayRealism,
   type PosterCampaign,
   type PosterControls,
   type PosterStyle,
   POSTER_PRESETS,
   previewPosterFinal,
 } from "@/lib/marketingRouting";
+
 import PromptPreview from "./PromptPreview";
 
 const CAMPAIGNS: { key: PosterCampaign; label: string }[] = [
@@ -41,6 +43,14 @@ const STYLES: { key: PosterStyle; label: string }[] = [
 
 const ASPECTS: AspectRatio[] = ["1:1", "4:5", "9:16", "16:9", "3:4"];
 
+const REALISMS: { key: DisplayRealism; label: string }[] = [
+  { key: "standard", label: "Standard" },
+  { key: "premium", label: "Premium" },
+  { key: "hyper", label: "Hyper Realistic" },
+  { key: "luxury", label: "Luxury" },
+];
+
+
 const MAX_REFS = 4;
 
 export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
@@ -62,7 +72,9 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
   const [refs, setRefs] = useState<string[]>([]);
   const [campaign, setCampaign] = useState<PosterCampaign>("sale");
   const [style, setStyle] = useState<PosterStyle>("bold");
+  const [realism, setRealism] = useState<DisplayRealism>("hyper");
   const [aspect, setAspect] = useState<AspectRatio>("4:5");
+
   const [headline, setHeadline] = useState("");
   const [subheadline, setSubheadline] = useState("");
   const [priceText, setPriceText] = useState("");
@@ -77,6 +89,8 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     productPrice: product?.price?.amount ? String(product.price.amount) : undefined,
     campaign,
     style,
+    realism,
+
     aspectRatio: aspect,
     headline,
     subheadline,
@@ -97,7 +111,9 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     const a = preset.apply;
     if (a.campaign) setCampaign(a.campaign);
     if (a.style) setStyle(a.style);
+    if (a.realism) setRealism(a.realism);
     if (a.aspectRatio) setAspect(a.aspectRatio);
+
     if (a.headline !== undefined) setHeadline(a.headline);
     if (a.ctaText !== undefined) setCtaText(a.ctaText);
   };
@@ -303,6 +319,24 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
               </div>
             </div>
             <div>
+              <Label className="text-xs">Realism</Label>
+              <div className="mt-1 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                {REALISMS.map((r) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => setRealism(r.key)}
+                    className={`rounded-md border px-2 py-1.5 text-xs ${
+                      realism === r.key ? "border-foreground bg-foreground/5" : "border-border"
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+
               <Label className="text-xs">Aspect Ratio</Label>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {ASPECTS.map((a) => (
