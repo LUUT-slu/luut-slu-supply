@@ -17,7 +17,9 @@ export interface DesktopChromeProps {
   productImage?: string;
   productPrice?: number | string;
   brandName: string;
-  onChangeProductClick: () => void;
+  products: { id: string; title: string }[];
+  selectedProductId: string;
+  onSelectProduct: (id: string) => void;
 
   // Poster controls
   aiPosterStyle: PosterStyle;
