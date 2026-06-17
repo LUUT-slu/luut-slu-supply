@@ -255,6 +255,9 @@ export default function LayoutPreview(props: LayoutPreviewProps) {
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+        <span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
+          model: {route.model}
+        </span>
         <span className="rounded bg-muted px-1.5 py-0.5">{aspectRatio}</span>
         {style && <span className="rounded bg-muted px-1.5 py-0.5">style: {style}</span>}
         {background && <span className="rounded bg-muted px-1.5 py-0.5">bg: {background}</span>}
@@ -267,7 +270,7 @@ export default function LayoutPreview(props: LayoutPreviewProps) {
         )}
       </div>
       <p className="text-[10px] italic text-muted-foreground">
-        Mockup preview — not a generated image. Updates live as you change settings.
+        Mockup preview — not a generated image. <span className="font-medium">{route.reason}.</span>
       </p>
     </div>
   );
