@@ -177,15 +177,6 @@ function buildModelInput(
       }
       return input;
     }
-    case "google/imagen-4": {
-      // Imagen-4 on Replicate is text-to-image only; no ref support.
-      return {
-        prompt: enhancedPrompt,
-        aspect_ratio: aspect,
-        output_format: "png",
-        safety_filter_level: "block_only_high",
-      };
-    }
     case "sourceful/riverflow-2.0-pro": {
       const input: Record<string, unknown> = {
         instruction: enhancedPrompt,
@@ -208,12 +199,8 @@ function buildModelInput(
   }
 }
 
-// Reroute models that can't accept reference images when refs are provided.
-function resolveModel(model: string, refs: string[]): string {
-  if (refs.length && model === "google/imagen-4") {
-    // Imagen-4 ignores image inputs; nano-banana-pro preserves product identity from refs.
-    return "google/nano-banana-pro";
-  }
+// All supported models accept reference images; no rerouting needed.
+function resolveModel(model: string, _refs: string[]): string {
   return model;
 }
 
