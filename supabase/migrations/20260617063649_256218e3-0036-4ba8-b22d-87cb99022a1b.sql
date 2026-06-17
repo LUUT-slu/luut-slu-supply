@@ -1,0 +1,1 @@
+REVOKE SELECT (phone, whatsapp) ON public.verified_sellers FROM anon;
