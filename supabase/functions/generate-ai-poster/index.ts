@@ -50,7 +50,7 @@ interface StylePreset {
 const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
   default: {
     sceneBackground:
-      "deep matte-black studio background with subtle neon green (#39FF14) rim lighting and soft volumetric haze",
+      "a deep matte-black studio backdrop with subtle neon green (#39FF14) glow CONFINED to the background wall behind and around the product, plus soft volumetric haze in the far background — the coloured glow must stay BEHIND the product and never wrap onto it or tint it",
     paletteText:
       "pitch-black background, neon green accent color (#39FF14), white headline text",
     headlineColor: "large white condensed uppercase headline",
@@ -63,7 +63,7 @@ const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
   },
   hype: {
     sceneBackground:
-      "gritty dark concrete / asphalt urban backdrop with aggressive neon green (#39FF14) rim lighting, smoke haze and graffiti energy",
+      "a gritty dark concrete / asphalt urban backdrop with aggressive neon green (#39FF14) glow RESTRICTED to the background wall behind the product, plus smoke haze and graffiti energy in the far background — coloured light must stay BEHIND the product and never tint or recolour the product itself",
     paletteText:
       "near-black background with neon green (#39FF14) accents, off-white headline text, subtle spray-paint texture",
     headlineColor: "huge off-white condensed uppercase headline with slight grunge edge",
@@ -76,7 +76,7 @@ const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
   },
   clean: {
     sceneBackground:
-      "bright neutral off-white seamless studio backdrop with soft diffused lighting and gentle long shadow",
+      "a bright neutral off-white seamless studio backdrop with soft diffused neutral daylight and a gentle long shadow",
     paletteText:
       "clean white (#FAFAFA) background, charcoal grey (#1F1F1F) text, a single thin black hairline accent — absolutely no neon green",
     headlineColor: "large charcoal (#1F1F1F) modern sans-serif headline, normal case",
@@ -89,7 +89,7 @@ const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
   },
   luxury: {
     sceneBackground:
-      "warm champagne-gold gradient backdrop with soft golden rim light, subtle marble or velvet surface, refined product photography",
+      "a warm champagne-gold gradient backdrop with soft golden glow CONTAINED to the background only, subtle marble or velvet surface beneath the product — keep the key light on the product itself NEUTRAL white so the product's true colours, materials and branding are preserved exactly",
     paletteText:
       "deep ivory / warm cream background, metallic gold (#C9A24B) accents, dark espresso (#2A1E14) headline text — no neon green anywhere",
     headlineColor: "elegant dark espresso (#2A1E14) serif headline",
@@ -102,7 +102,7 @@ const STYLE_PRESETS: Record<PosterStyleKey, StylePreset> = {
   },
   bold: {
     sceneBackground:
-      "stark editorial backdrop with dramatic single-source lighting, deep crisp shadows, no fixed colour cast — let the product colours lead",
+      "a stark editorial backdrop with dramatic single-source NEUTRAL white lighting, deep crisp shadows, absolutely no colour cast on the product — let the product's real colours lead",
     paletteText:
       "pure black (#000) and pure white (#FFF) palette with a single high-impact red (#E5251D) accent — no neon green",
     headlineColor: "massive black-on-white (or white-on-black) condensed headline with extreme scale contrast",
@@ -227,11 +227,12 @@ async function dataUrlToHostedUrl(
 
 function buildScenePrompt(title: string, preset: StylePreset): string {
   return [
-    `Premium marketing scene featuring the exact product shown in the reference image: ${title}.`,
-    `Keep the product 100% accurate — same colors, shape, branding, logos, materials, proportions. Do NOT modify, restyle, or replace the product.`,
-    `Place the product as the dramatic hero against ${preset.sceneBackground}.`,
+    `Premium marketing scene featuring the EXACT product shown in the reference image: ${title}.`,
+    `CRITICAL PRODUCT FIDELITY: the product must appear pixel-accurate to the reference. Preserve its exact colours, hue, saturation, brightness, material, texture, logos, branding, stitching, shape and proportions. Do NOT recolour, restyle, retexture, replace, or "stylise" the product. If the product is black, it stays pure black; if white, stays white; never tint the product to match the scene palette.`,
+    `Light the product itself with a NEUTRAL white softbox key light (around 5500K) so its true colours are preserved. Any coloured ambient light, rim light, glow, haze, or gel from the scene must stay BEHIND the product on the backdrop only — it must not wrap onto, reflect off, or recolour the product surface.`,
+    `Scene / backdrop only (around and behind the product): ${preset.sceneBackground}.`,
     `Aesthetic: ${preset.aesthetic}. Cinematic product photography, sharp focus on the product, shallow depth of field.`,
-    `No text, no logos other than what's on the product, no watermarks, no humans. Square 1:1 framing with generous negative space for typography overlays around the product.`,
+    `No text, no logos other than what's already on the product, no watermarks, no humans, no extra props that obscure the product. Square 1:1 framing with generous negative space around the product for typography overlays.`,
   ].join(" ");
 }
 
