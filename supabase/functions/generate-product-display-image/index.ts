@@ -147,30 +147,8 @@ Deno.serve(async (req) => {
 
     const fullPrompt = buildPrompt(resolvedStyle, productTitle, textOverlay, customPrompt);
 
-    const replicateInput: Record<string, unknown> = {
-      prompt: fullPrompt,
-      input_image: productImageUrl,
-      aspect_ratio: resolvedAspect,
-      output_format: "png",
-      safety_tolerance: 2,
-    };
-    if (referenceImageUrl && referenceImageUrl.length > 0) {
-      replicateInput.reference_image = referenceImageUrl;
-    }
-
-    const output = await runReplicate(
-      "black-forest-labs/flux-kontext-pro",
-      replicateInput,
-    );
-    const replicateUrl = Array.isArray(output) ? String(output[0]) : String(output);
-    if (!replicateUrl || !replicateUrl.startsWith("http")) {
-      throw new Error("Replicate returned no image URL");
-    }
-
-    // Download and upload to storage
-    const imgRes = await fetch(replicateUrl);
-    if (!imgRes.ok) throw new Error(`Failed to fetch generated image: ${imgRes.status}`);
-    const bytes = new Uint8Array(await imgRes.arrayBuffer());
+    // Generate via Lovable AI Gateway (Gemini Nano Banana — image editing with input image)
+    const bytes = await generateViaGateway(fullPrompt, productImageUrl, referenceImageUrl);
     const path = `display-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`;
 
     const { error: uploadErr } = await admin.storage
