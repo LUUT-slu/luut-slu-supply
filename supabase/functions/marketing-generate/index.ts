@@ -391,14 +391,16 @@ Deno.serve(async (req) => {
       seed,
       backgroundPrompt,
       textPrompt,
+      baseImage,
+      maskImage,
       productTitle,
       productHandle,
       campaignType,
       style,
     } = body;
 
-    if (!task || (task !== "poster" && task !== "display")) {
-      return json({ error: "task must be poster or display" }, 400);
+    if (!task || (task !== "poster" && task !== "display" && task !== "text-overlay")) {
+      return json({ error: "task must be poster, display, or text-overlay" }, 400);
     }
 
     const isTwoStagePoster =
@@ -406,11 +408,21 @@ Deno.serve(async (req) => {
       typeof backgroundPrompt === "string" && backgroundPrompt.trim().length >= 4 &&
       typeof textPrompt === "string" && textPrompt.trim().length >= 4;
 
-    if (!isTwoStagePoster) {
+    const isTextOverlay = task === "text-overlay";
+
+    if (!isTwoStagePoster && !isTextOverlay) {
       if (!model || !SUPPORTED_MODELS.has(model)) {
         return json({ error: `Unsupported model: ${model}` }, 400);
       }
       if (!prompt || prompt.trim().length < 4) {
+        return json({ error: "prompt is required" }, 400);
+      }
+    }
+
+    if (isTextOverlay) {
+      if (!baseImage) return json({ error: "baseImage is required" }, 400);
+      if (!maskImage) return json({ error: "maskImage is required" }, 400);
+      if (!prompt || prompt.trim().length < 1) {
         return json({ error: "prompt is required" }, 400);
       }
     }
@@ -431,7 +443,23 @@ Deno.serve(async (req) => {
     let effectiveModel: string;
     let promptForLog: string;
 
-    if (isTwoStagePoster) {
+    if (isTextOverlay) {
+      const hostedBase = await normalizeRef(admin, baseImage!);
+      const hostedMask = await normalizeRef(admin, maskImage!);
+      const ideogramInput: Record<string, unknown> = {
+        prompt,
+        image: hostedBase,
+        mask: hostedMask,
+        magic_prompt_option: "Off",
+        style_type: "General",
+      };
+      if (typeof seed === "number" && Number.isFinite(seed)) ideogramInput.seed = seed;
+      console.log("[text-overlay] Ideogram inpaint starting");
+      const output = await runReplicate("ideogram-ai/ideogram-v3-turbo", ideogramInput);
+      srcUrl = pickUrl(output);
+      effectiveModel = "ideogram-v3-turbo (inpaint)";
+      promptForLog = prompt;
+    } else if (isTwoStagePoster) {
       const refsForGemini = [...hostedRefs];
       if (hostedStyleRef) refsForGemini.push(hostedStyleRef);
       const stage = await runPosterTwoStage(
