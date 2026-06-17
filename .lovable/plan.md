@@ -1,114 +1,66 @@
 ## Goal
 
-Rebuild Marketing Studio around a **centralized routing engine** that silently picks the best AI model per task. Users pick a marketing task — not a model.
+Stop concatenating option labels. Build a single coherent scene description where every selected option modifies the same scene, with the product as the default primary subject.
 
-## Tab structure
+## Scope
 
-Replace today's `Story / Post / Ad / Portrait / Copy` tabs with:
+Only `src/lib/marketingRouting.ts` — specifically `buildDisplayPrompt` (main offender) and `buildPosterPrompt` (apply the same scene-first pattern to its visual layer). No UI changes, no edge function changes, no new options. Existing `DisplayControls` / `PosterControls` shapes stay the same.
 
-1. **Poster** — promotional graphics with text
-2. **Display** — product photography
-3. **Video** — keep existing `VideoModule.tsx` unchanged
-4. **Library** — browse generated assets
+## New prompt-construction model
 
-Shared studio header gains a **Brand Style** selector (Default / Tech / Luxury / Streetwear / Sports / Minimal / Apple Inspired / Nike Inspired) that injects style snippets into every prompt.
+Replace fragment concatenation with a `composeScene()` helper that runs in this order:
 
-## Routing engine — `src/lib/marketingRouting.ts`
+1. **Resolve primary subject** using the priority list:
+   `product > product interaction > human model > environment > style modifiers`.
+   Product is always primary unless `goal === "human_model"` AND `focus !== "detail" && focus !== "in_use"` — but even then the model is "demonstrating" the product, never the focal point.
 
-```text
-MODEL_REGISTRY = {
-  poster:   ideogram-ai/ideogram-v3-quality   (via replicate)
-  display:  google/imagen-4                   (via replicate)
-  closeup:  sourceful/riverflow-2.0-pro       (via replicate)
-  fallback: google/nano-banana-pro            (via replicate)
-}
+2. **Resolve interaction mode** from `focus` + `goal`:
+   - `focus === "in_use"` or `goal === "human_model"` → "a person actively wearing/holding/using the product, product remains the primary subject, no floating product, no product placed beside the person"
+   - `focus === "detail"` / `goal === "product_closeup"` → "extreme close-up, product fills 60–80% of the frame, camera close enough to reveal materials and stitching, no wide angle"
+   - `goal === "product_display"` → "product isolated as the main subject, no distractions, product occupies most of the frame"
+   - `goal === "product_hero"` → "hero composition, dramatic framing, product centered as the focal point"
+   - `goal === "lifestyle_product"` → "product shown in realistic everyday use, environment supports but does not compete with the product"
+   - `goal === "packaging_showcase"` → "retail packshot, packaging fills the frame, label legible"
 
-routeModel(task)                 -> { model, provider, reason }
-buildPrompt(task, controls, brandStyle) -> string
-buildBrandStyleSnippet(brand)   -> string
-```
+3. **Resolve style layer** from `style`:
+   - `studio` → "professional commercial photography setup, controlled studio lighting, clean backdrop, product remains the focal point"
+   - `lifestyle` → "realistic everyday environment, natural light, product remains the focal point"
+   - `minimal` → "minimalist composition, generous negative space, product remains the focal point"
+   - `human` → folds into the human-model interaction clause above (do not also emit a separate style sentence).
 
-Routing rules:
-- Poster tab — always `ideogram-v3-quality`
-- Display tab — `imagen-4` for Product Display / Hero / Lifestyle / Packaging / Human Model; `riverflow-2.0-pro` for Product Closeup
-- Anything unmatched — `nano-banana-pro`
+4. **Resolve realism layer** from `realism`:
+   - `hyper` → "hyper-realistic photograph, natural lighting, real camera depth of field, real textures, real shadows, real materials, no CGI look, no floating objects, no exaggerated textures"
+   - `premium` / `luxury` → existing premium/luxury phrasing but rewritten as one sentence.
+   - `standard` → omitted.
 
-Routing is silent — the UI never names a model.
+5. **Background** only added if it does NOT conflict with style/interaction (e.g. skip `solid` when goal is `lifestyle_product` or `human_model`; skip `lifestyle` bg when style is `studio`).
 
-## Poster tab — `PosterTab.tsx`
+6. **Assemble one paragraph** in this shape:
 
-Controls: Product selector · Reference Images (up to 4) · Campaign Type (Sale / Promotion / New Arrival / Limited Drop / Clearance / Brand Awareness / Event) · Style (Clean / Luxury / Bold / Hype / Modern / Minimal) · Aspect Ratio (1:1 / 4:5 / 9:16 / 16:9 / 3:4) · Text on Image (Headline / Subheadline / Price / CTA) · Additional Prompt Notes · **Generate Poster**.
+   ```
+   <Realism qualifier> <camera/interaction clause> of <product title>[(category)].
+   <Style/environment clause>. <Background clause if not conflicting>.
+   <Brand snippet>. <Reference-preservation clause if hasReference>. <User notes>.
+   Compose strictly in a <aspectRatio> aspect ratio frame.
+   ```
 
-**Quick Presets**: Flash Sale, New Arrival, Limited Drop, Black Friday, Clearance, Brand Awareness — auto-fill controls.
+   Example output for `goal=human_model, focus=in_use, realism=hyper, style=human`:
+   "Hyper-realistic close-up photograph of a person actively wearing and interacting with <product>. The product occupies most of the frame and remains the primary focus; the model exists only to demonstrate real-world use. Natural lighting, real textures and shadows, no floating objects, no secondary focal points. PRESERVE the product exactly as shown in the reference image…"
 
-## Display tab — `DisplayTab.tsx`
+7. **Sanity gate**: before returning, drop any clause that contradicts a higher-priority clause (e.g. if interaction = "product isolated" but style = lifestyle environment, suppress the lifestyle environment clause). Implemented as a small set of suppression rules keyed on `(goal, style, background, focus)`.
 
-Primary control: **Display Goal** (Product Display / Product Closeup / Human Model / Lifestyle Product / Product Hero / Packaging Showcase) — drives routing.
+## Poster builder
 
-Secondary controls: Style (Studio / Lifestyle / Minimal / Human Model) · Background (Solid / Gradient / Studio Backdrop / Lifestyle Scene / Transparent) · Realism (Standard / Premium / Hyper Realistic / Luxury Brand) · Product Focus (Full / Detail / Texture / Packaging / In Use / Hero Angle) · Aspect Ratio.
+Apply the same `composeScene()` to the visual portion of `buildPosterPrompt` (the part describing the product imagery on the poster). Text/headline/CTA/aspect-ratio blocks stay as-is. The poster's `style` (clean/luxury/bold/hype/modern/minimal) continues to drive layout/typography wording, not the product scene.
 
-**Prompt enhancement engine** (auto-appended by `buildPrompt`):
-- Hyper Realistic → "hyper realistic product photography, commercial advertising quality, ultra detailed textures, premium lighting, professional product photography, realistic reflections, 8k detail, studio lighting"
-- Luxury Brand → "luxury advertising campaign, premium brand aesthetic, high-end commercial photography, minimal composition, elegant lighting, luxury product presentation"
-- Product Closeup → "macro photography, product detail focus, texture preservation, ultra sharp detail, close-up composition"
-- Human Model → "commercial lifestyle photography, realistic human interaction, professional model, authentic product usage"
-- Lifestyle Product → "real world environment, natural lighting, lifestyle photography, authentic scene"
-- Studio → "commercial studio photography, seamless backdrop, premium product presentation"
-- Minimal → "minimalist composition, luxury product display, premium negative space"
-- Brand Style snippet appended last
+## Out of scope
 
-**Reference image preservation**: when reference images are present, prompt explicitly instructs "preserve exact product identity, shape, color, branding, logos, materials, and proportions from the reference — enhance presentation only, never redesign the product."
+- No new options in the UI.
+- No changes to `routeForPoster` / `routeForDisplay` model selection.
+- No edge-function changes.
+- Existing constants (`ENHANCE_*`) get replaced by the new resolver helpers; preset shapes stay identical so saved presets keep working.
 
-**Quick Presets**: Amazon Listing, Website Hero, Luxury Product, Instagram Product, Product Closeup, Packaging Showcase.
+## Risks / notes
 
-## Prompt Preview Panel
-
-Collapsible "View Final Prompt" panel on Poster and Display tabs — shows the assembled prompt (base + brand style + goal + enhancements + user notes) before the user spends credits.
-
-## Library tab — `LibraryTab.tsx`
-
-Reads `marketing_generated_images`. Filters: Posters / Display / Videos / by Product / by Date / by Campaign / Favorites / Downloads. Tile actions: open, favorite toggle, download (increments `download_count`).
-
-## Database migration
-
-Add to `marketing_generated_images` if missing:
-- `campaign_type text`
-- `is_favorite boolean default false`
-- `download_count int default 0`
-
-## Edge function — `supabase/functions/marketing-generate/index.ts`
-
-Single generation endpoint. Body: `{ task, model, prompt, referenceImages[], aspectRatio, controls }`.
-
-Responsibilities:
-1. Admin auth check
-2. Normalize reference image URLs (data URL → upload to `marketing-assets`)
-3. Build per-model input shape (Ideogram, Imagen-4, Riverflow, Nano-Banana-Pro)
-4. Call Replicate via the **Replicate connector gateway** (`https://connector-gateway.lovable.dev/replicate/v1/...`) using the existing connector secrets — no `REPLICATE_API_TOKEN` env required
-5. Poll with 429 retry/backoff (reuse pattern from `generate-ai-poster`)
-6. Download output → upload to `marketing-assets` bucket
-7. Insert row in `marketing_generated_images` (`generation_type` = `poster` or `display`, `campaign_type`, `prompt_used`, etc.)
-8. Return long-lived signed URL + DB id
-
-Pre-flight: confirm the Replicate connector is linked. If not, prompt connection during build before deploying the function.
-
-Keep `generate-ai-poster`, `generate-product-display-image`, `generate-product-video`, `generate-product-poster-video` deployed; UI stops calling the first two.
-
-## Files
-
-**New**
-- `src/lib/marketingRouting.ts`
-- `src/pages/admin/marketing-studio/PosterTab.tsx`
-- `src/pages/admin/marketing-studio/DisplayTab.tsx`
-- `src/pages/admin/marketing-studio/LibraryTab.tsx`
-- `src/pages/admin/marketing-studio/BrandStyleSelector.tsx`
-- `src/pages/admin/marketing-studio/PromptPreview.tsx`
-- `supabase/functions/marketing-generate/index.ts`
-
-**Modified**
-- `src/pages/admin/MarketingStudio.tsx` — swap tab list, keep `VideoModule` + `CreditsPanel`
-
-## Out of scope this pass
-
-- Video model routing (Kling/Veo/Seedance/Runway) — Video tab unchanged
-- Deleting the legacy template renderer files (Story/Post/Ad/Portrait components) — just unlinked from tabs
+- Behavior change for every generation. The change is intentional but may shift outputs even for users not selecting human/in-use combos. Acceptable per the request.
+- `PromptPreview` will simply show the new composed prompt — no component edit needed.
