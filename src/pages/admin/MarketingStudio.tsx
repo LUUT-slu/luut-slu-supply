@@ -386,7 +386,7 @@ export default function MarketingStudio() {
   // Reset the override when the user switches products.
   useEffect(() => {
     setCustomProductImage(null);
-  }, [productPayload?.id]);
+  }, [productPayload?.productImage]);
 
   const generateAiPoster = async () => {
     if (!productPayload) return;
