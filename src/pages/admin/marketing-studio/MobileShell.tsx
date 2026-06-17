@@ -134,6 +134,8 @@ export default function MobileShell(props: MobileShellProps) {
     aiPosterResult,
     onGenerate,
     onOpenProductPicker,
+    customProductImage = null,
+    setCustomProductImage,
     displaySlot,
     videoSlot,
     displayStyle = "studio",
