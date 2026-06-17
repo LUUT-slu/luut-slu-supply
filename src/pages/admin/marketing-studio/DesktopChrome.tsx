@@ -51,6 +51,10 @@ export interface DesktopChromeProps {
   onGenerate: () => void;
   onClear: () => void;
 
+  // Optional user-uploaded source photo (data URL) that overrides the listing image
+  customProductImage?: string | null;
+  setCustomProductImage?: (v: string | null) => void;
+
   // Optional slots for non-poster tabs (fallback)
   displaySlot?: React.ReactNode;
   videoSlot?: React.ReactNode;
