@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import VideoModule from "./marketing-studio/VideoModule";
 import CreditsPanel from "./marketing-studio/CreditsPanel";
 import PosterTab from "./marketing-studio/PosterTab";
+import TextOverlayTab from "./marketing-studio/TextOverlayTab";
 import DisplayTab from "./marketing-studio/DisplayTab";
 import LibraryTab from "./marketing-studio/LibraryTab";
 import BrandStyleSelector from "./marketing-studio/BrandStyleSelector";
@@ -16,7 +17,7 @@ import { useHybridProducts } from "@/hooks/useHybridProducts";
 
 export default function MarketingStudio() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"poster" | "display" | "video" | "library">("poster");
+  const [tab, setTab] = useState<"poster" | "text-overlay" | "display" | "video" | "library">("poster");
   const [brandStyle, setBrandStyle] = useState<BrandStyle>("default");
 
   // VideoModule still uses a selected product directly; reuse the hook lightly.
@@ -57,6 +58,7 @@ export default function MarketingStudio() {
           <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
             <TabsList className="mb-4">
               <TabsTrigger value="poster">Poster</TabsTrigger>
+              <TabsTrigger value="text-overlay">Text on Image</TabsTrigger>
               <TabsTrigger value="display">Display</TabsTrigger>
               <TabsTrigger value="video">Video</TabsTrigger>
               <TabsTrigger value="library">Library</TabsTrigger>
@@ -64,6 +66,10 @@ export default function MarketingStudio() {
 
             <TabsContent value="poster">
               <PosterTab brandStyle={brandStyle} />
+            </TabsContent>
+
+            <TabsContent value="text-overlay">
+              <TextOverlayTab />
             </TabsContent>
 
             <TabsContent value="display">
