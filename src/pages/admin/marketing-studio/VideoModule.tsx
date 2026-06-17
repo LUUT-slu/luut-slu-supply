@@ -420,7 +420,7 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
             <ArrowRight className="h-3.5 w-3.5 text-[#2a2a2a]" />
             <div
               className="relative flex flex-col items-center justify-center gap-2.5 overflow-hidden rounded-lg border border-[#1c1c1c] bg-[#0c0c0c]"
-              style={{ width: 200, height: 356 }}
+              style={{ width: previewW, height: previewH }}
             >
               {videoUrl ? (
                 <>
@@ -472,7 +472,7 @@ export default function VideoModule({ selectedProduct, onOpenProductPicker }: Vi
       </section>
 
       {/* ===== Action Strip ===== */}
-      <aside className="flex w-[180px] shrink-0 flex-col gap-1.5 overflow-y-auto border-l border-[#1c1c1c] bg-[#0c0c0c] px-3 py-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <aside className="flex w-full shrink-0 flex-col gap-1.5 overflow-y-auto border-t border-[#1c1c1c] bg-[#0c0c0c] px-3 py-3.5 lg:w-[180px] lg:border-l lg:border-t-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {videoUrl ? (
           <>
             <div className="mb-0.5 text-[9px] uppercase tracking-[0.1em] text-[#3a3a3a]">Ready</div>
