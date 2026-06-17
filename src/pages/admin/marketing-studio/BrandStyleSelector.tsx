@@ -42,10 +42,20 @@ interface DraftState {
   label: string;
   description: string;
   snippet: string;
-  referenceImage?: string;
+  referenceImagePoster?: string;
+  referenceImageDisplay?: string;
 }
 
-const EMPTY_DRAFT: DraftState = { key: null, label: "", description: "", snippet: "", referenceImage: undefined };
+const EMPTY_DRAFT: DraftState = {
+  key: null,
+  label: "",
+  description: "",
+  snippet: "",
+  referenceImagePoster: undefined,
+  referenceImageDisplay: undefined,
+};
+
+type RefSlot = "poster" | "display";
 
 export default function BrandStyleSelector({
   value,
@@ -58,7 +68,8 @@ export default function BrandStyleSelector({
   const [infoOpen, setInfoOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const posterFileRef = useRef<HTMLInputElement>(null);
+  const displayFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setCustom(loadCustomBrandStyles());
@@ -77,12 +88,14 @@ export default function BrandStyleSelector({
       label: def.label,
       description: def.description,
       snippet: def.snippet,
-      referenceImage: def.referenceImage,
+      // Migrate legacy single referenceImage into both slots as a starting point.
+      referenceImagePoster: def.referenceImagePoster ?? def.referenceImage,
+      referenceImageDisplay: def.referenceImageDisplay ?? def.referenceImage,
     });
     setEditorOpen(true);
   };
 
-  const onPickFile = async (file: File | null) => {
+  const onPickFile = async (file: File | null, slot: RefSlot) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Pick an image file");
@@ -90,7 +103,11 @@ export default function BrandStyleSelector({
     }
     try {
       const dataUrl = await fileToDataUrl(file);
-      setDraft((d) => ({ ...d, referenceImage: dataUrl }));
+      setDraft((d) =>
+        slot === "poster"
+          ? { ...d, referenceImagePoster: dataUrl }
+          : { ...d, referenceImageDisplay: dataUrl },
+      );
     } catch (e: any) {
       toast.error(e?.message || "Could not read image");
     }
