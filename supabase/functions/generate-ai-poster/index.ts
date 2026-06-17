@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
     const replicateInput: Record<string, unknown> = {
       prompt: fullPrompt,
       aspect_ratio,
-      style_type: "Design",
+      style_type: "AUTO",
       magic_prompt_option: "On",
     };
     if (body.productImageUrl && /^https?:\/\//i.test(body.productImageUrl)) {
