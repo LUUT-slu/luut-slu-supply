@@ -12,9 +12,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_KEY")!;
-const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/images/generations";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const CLAUDE_MODEL = "claude-sonnet-4-6";
 const BUCKET = "marketing-assets";
@@ -35,6 +33,16 @@ interface PosterInput {
   posterStyle: PosterStyle;
   aspectRatio: AspectRatio;
   customInstructions: string | null;
+}
+
+interface PosterPlan {
+  background: string;
+  accent: string;
+  text: string;
+  muted: string;
+  surface: string;
+  mood: string;
+  layout: "portrait" | "square" | "wide";
 }
 
 function mapAspect(r: AspectRatio): { ratio: string; dimensions: string } {
