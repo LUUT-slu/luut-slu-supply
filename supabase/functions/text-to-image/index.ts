@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          input: { prompt, aspect_ratio, style_type: 'design' },
+          input: { prompt, aspect_ratio, style_type: 'Design' },
         }),
       },
     );
