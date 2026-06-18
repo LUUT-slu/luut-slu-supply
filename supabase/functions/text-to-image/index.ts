@@ -1,7 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const REPLICATE_API_KEY = Deno.env.get('REPLICATE_API_KEY');
+const REPLICATE_API_TOKEN = Deno.env.get('REPLICATE_API_KEY') || Deno.env.get('REPLICATE_API_TOKEN');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
 
   try {
     if (!(await requireAuth(req))) return json({ error: 'Unauthorized' }, 401);
-    if (!REPLICATE_API_KEY) return json({ error: 'REPLICATE_API_KEY is not configured' }, 500);
+    if (!REPLICATE_API_TOKEN) return json({ error: 'Replicate API token is not configured' }, 500);
 
     const body = await req.json().catch(() => ({}));
     const action = body?.action === 'status' ? 'status' : 'start';
@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       const id = typeof body?.id === 'string' ? body.id : '';
       if (!id) return json({ error: 'Missing id' }, 400);
       const res = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
-        headers: { Authorization: `Bearer ${REPLICATE_API_KEY}` },
+        headers: { Authorization: `Token ${REPLICATE_API_TOKEN}` },
       });
       const pred = await res.json().catch(() => ({}));
       if (!res.ok) return json({ error: pred?.detail || 'Status failed' }, res.status);
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${REPLICATE_API_KEY}`,
+          Authorization: `Token ${REPLICATE_API_TOKEN}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
