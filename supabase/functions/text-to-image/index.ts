@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          input: { prompt, aspect_ratio, style_type: 'design' },
+          input: { prompt, aspect_ratio, style_type: 'Design' },
         }),
       },
     );
@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Replicate is out of credit.' }, 402);
     }
     if (!createRes.ok) {
+      console.error('[text-to-image] replicate create failed', createRes.status, createJson);
       return json({ error: createJson?.detail || createJson?.error || 'Replicate request failed' }, createRes.status);
     }
 
