@@ -475,7 +475,7 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
       </div>
 
       <div className="mt-8 border-t pt-6">
-        <TextToImageSection />
+        <TextToImageSection brandStyle={brandStyle} />
       </div>
     </div>
   );
