@@ -59,9 +59,16 @@ Deno.serve(async (req) => {
       brandStyle = "",
       brandSnippet = "",
       additionalNotes = "",
+      referenceImage = "",
     } = body ?? {};
 
-    const userMessage = [
+    const hasReference = typeof referenceImage === "string" && referenceImage.startsWith("data:image/");
+
+    const systemPrompt = hasReference
+      ? `${SYSTEM_PROMPT}\n\nA reference poster has been provided. Analyze it and extract ONLY its design language — the composition structure, how text is positioned and layered, the font personality and weight, how graphic elements are used between background and text, the spacing and hierarchy. Do NOT copy its colors, theme, brand, or subject matter. Use the extracted design intelligence to inform how you compose and describe this new poster.`
+      : SYSTEM_PROMPT;
+
+    const textBlock = [
       `Campaign Type: ${campaignType || "(not set)"}`,
       `Headline: ${headline || "(none)"}`,
       `Subheadline: ${subheadline || "(none)"}`,
@@ -74,6 +81,13 @@ Deno.serve(async (req) => {
       additionalNotes ? `Additional notes: ${additionalNotes}` : "",
     ].filter(Boolean).join("\n");
 
+    const userContent: unknown = hasReference
+      ? [
+          { type: "text", text: textBlock },
+          { type: "image_url", image_url: { url: referenceImage } },
+        ]
+      : textBlock;
+
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -83,8 +97,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userMessage },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
         ],
       }),
     });

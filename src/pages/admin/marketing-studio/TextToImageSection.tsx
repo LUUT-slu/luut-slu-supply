@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Loader2, Download, Wand2 } from "lucide-react";
+import { useState, useRef } from "react";
+import { Loader2, Download, Wand2, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadImage } from "@/lib/downloadImage";
@@ -50,6 +50,23 @@ export default function TextToImageSection({ brandStyle }: Props) {
   const [building, setBuilding] = useState(false);
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const referenceInputRef = useRef<HTMLInputElement>(null);
+
+  const handleReferenceUpload = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Image too large (max 8MB)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setReferenceImage(reader.result as string);
+    reader.onerror = () => toast.error("Could not read image");
+    reader.readAsDataURL(file);
+  };
 
   const handleBuildPrompt = async () => {
     if (!headline.trim() && !subheadline.trim() && !keyDetail.trim()) {
@@ -72,6 +89,7 @@ export default function TextToImageSection({ brandStyle }: Props) {
           brandStyle,
           brandSnippet: brandDef?.snippet ?? "",
           additionalNotes: additionalNotes.trim(),
+          referenceImage: referenceImage ?? undefined,
         },
       });
       const errMsg = (data as any)?.error || error?.message;
@@ -278,6 +296,53 @@ export default function TextToImageSection({ brandStyle }: Props) {
             placeholder="e.g. tropical island vibes, neon accents, warm sunset colors…"
             rows={3}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs uppercase tracking-wide">
+            Reference Poster (optional)
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Upload a poster to reference its design style
+          </p>
+          <input
+            ref={referenceInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleReferenceUpload(f);
+              e.target.value = "";
+            }}
+          />
+          {referenceImage ? (
+            <div className="relative inline-block">
+              <img
+                src={referenceImage}
+                alt="Reference"
+                className="h-32 w-32 rounded border object-cover"
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="destructive"
+                className="absolute -right-2 -top-2 h-6 w-6 rounded-full"
+                onClick={() => setReferenceImage(null)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => referenceInputRef.current?.click()}
+            >
+              <Upload className="mr-2 h-4 w-4" /> Upload reference image
+            </Button>
+          )}
         </div>
 
         <Button
