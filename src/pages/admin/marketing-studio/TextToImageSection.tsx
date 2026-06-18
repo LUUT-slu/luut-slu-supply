@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Loader2, Download, Wand2 } from "lucide-react";
+import { useState, useRef } from "react";
+import { Loader2, Download, Wand2, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadImage } from "@/lib/downloadImage";
