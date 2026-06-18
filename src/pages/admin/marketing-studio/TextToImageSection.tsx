@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const ASPECT_RATIOS = ["1:1", "9:16", "16:9", "4:3", "3:4"] as const;
 type Ratio = (typeof ASPECT_RATIOS)[number];
+const MODEL_NAME = "ideogram-ai/ideogram-v3-turbo";
 
 export default function TextToImageSection() {
   const [prompt, setPrompt] = useState("");
