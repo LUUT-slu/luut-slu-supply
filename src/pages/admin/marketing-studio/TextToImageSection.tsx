@@ -44,41 +44,53 @@ export default function TextToImageSection({ brandStyle }: Props) {
   const [locations, setLocations] = useState("Castries · Gros Islet · Vieux Fort");
   const [style, setStyle] = useState<StyleType>("Clean");
   const [aspectRatio, setAspectRatio] = useState<Ratio>("1:1");
+  const [realism, setRealism] = useState<RealismLevel>("Standard");
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [finalPrompt, setFinalPrompt] = useState("");
+  const [building, setBuilding] = useState(false);
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
-  const buildPrompt = () => {
-    const brandDef = getBrandStyleDef(brandStyle);
-    const brandSnippet = brandDef?.snippet?.trim();
-    const brandLabel = brandDef?.label;
-
-    const parts: string[] = [];
-    parts.push(`${style} ${campaignType} poster design.`);
-    if (headline.trim()) parts.push(`Main headline: "${headline.trim()}".`);
-    if (subheadline.trim()) parts.push(`Subheadline: "${subheadline.trim()}".`);
-    if (keyDetail.trim()) parts.push(`Key detail prominently displayed: "${keyDetail.trim()}".`);
-    if (dateRange.trim()) parts.push(`Dates: "${dateRange.trim()}".`);
-    if (locations.trim()) parts.push(`Locations: "${locations.trim()}".`);
-    if (brandLabel && brandStyle !== "default") {
-      parts.push(`Brand style: ${brandLabel}.`);
-    }
-    if (brandSnippet) parts.push(brandSnippet + ".");
-    parts.push(
-      "Typography-driven layout, high-impact composition, clear visual hierarchy, professional marketing poster, sharp legible text.",
-    );
-    if (additionalNotes.trim()) parts.push(`Additional context: ${additionalNotes.trim()}.`);
-    return parts.join(" ");
-  };
-
-  const handleBuildPrompt = () => {
+  const handleBuildPrompt = async () => {
     if (!headline.trim() && !subheadline.trim() && !keyDetail.trim()) {
       toast.error("Add at least a headline, subheadline, or key detail");
       return;
     }
-    setFinalPrompt(buildPrompt());
-    toast.success("Prompt built — edit below, then generate");
+    setBuilding(true);
+    try {
+      const brandDef = getBrandStyleDef(brandStyle);
+      const { data, error } = await supabase.functions.invoke("build-poster-prompt", {
+        body: {
+          campaignType,
+          headline: headline.trim(),
+          subheadline: subheadline.trim(),
+          keyDetail: keyDetail.trim(),
+          dateRange: dateRange.trim(),
+          locations: locations.trim(),
+          style,
+          realism,
+          brandStyle,
+          brandSnippet: brandDef?.snippet ?? "",
+          additionalNotes: additionalNotes.trim(),
+        },
+      });
+      const errMsg = (data as any)?.error || error?.message;
+      if (errMsg) {
+        toast.error(errMsg);
+        return;
+      }
+      const prompt = (data as any)?.prompt;
+      if (!prompt) {
+        toast.error("No prompt returned");
+        return;
+      }
+      setFinalPrompt(prompt);
+      toast.success("Prompt ready — edit, then generate");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not build prompt");
+    } finally {
+      setBuilding(false);
+    }
   };
 
   const handleGenerate = async () => {
