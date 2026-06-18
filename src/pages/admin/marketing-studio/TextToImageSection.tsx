@@ -298,6 +298,53 @@ export default function TextToImageSection({ brandStyle }: Props) {
           />
         </div>
 
+        <div className="space-y-2">
+          <Label className="text-xs uppercase tracking-wide">
+            Reference Poster (optional)
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Upload a poster to reference its design style
+          </p>
+          <input
+            ref={referenceInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleReferenceUpload(f);
+              e.target.value = "";
+            }}
+          />
+          {referenceImage ? (
+            <div className="relative inline-block">
+              <img
+                src={referenceImage}
+                alt="Reference"
+                className="h-32 w-32 rounded border object-cover"
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="destructive"
+                className="absolute -right-2 -top-2 h-6 w-6 rounded-full"
+                onClick={() => setReferenceImage(null)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => referenceInputRef.current?.click()}
+            >
+              <Upload className="mr-2 h-4 w-4" /> Upload reference image
+            </Button>
+          )}
+        </div>
+
         <Button
           type="button"
           variant="secondary"
