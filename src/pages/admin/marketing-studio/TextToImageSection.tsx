@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Loader2, Download } from "lucide-react";
+import { Loader2, Download, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadImage } from "@/lib/downloadImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBrandStyleDef, type BrandStyle } from "@/lib/marketingRouting";
 
@@ -40,6 +41,8 @@ export default function TextToImageSection({ brandStyle }: Props) {
   const [locations, setLocations] = useState("Castries · Gros Islet · Vieux Fort");
   const [style, setStyle] = useState<StyleType>("Clean");
   const [aspectRatio, setAspectRatio] = useState<Ratio>("1:1");
+  const [additionalNotes, setAdditionalNotes] = useState("");
+  const [finalPrompt, setFinalPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
@@ -62,15 +65,24 @@ export default function TextToImageSection({ brandStyle }: Props) {
     parts.push(
       "Typography-driven layout, high-impact composition, clear visual hierarchy, professional marketing poster, sharp legible text.",
     );
+    if (additionalNotes.trim()) parts.push(`Additional context: ${additionalNotes.trim()}.`);
     return parts.join(" ");
   };
 
-  const handleGenerate = async () => {
+  const handleBuildPrompt = () => {
     if (!headline.trim() && !subheadline.trim() && !keyDetail.trim()) {
       toast.error("Add at least a headline, subheadline, or key detail");
       return;
     }
-    const builtPrompt = buildPrompt();
+    setFinalPrompt(buildPrompt());
+    toast.success("Prompt built — edit below, then generate");
+  };
+
+  const handleGenerate = async () => {
+    if (!finalPrompt.trim()) {
+      toast.error("Build a prompt first");
+      return;
+    }
     setLoading(true);
     setImageUrl(null);
     try {
@@ -78,7 +90,7 @@ export default function TextToImageSection({ brandStyle }: Props) {
       const authHeaders = { Authorization: `Bearer ${session?.access_token}` };
 
       const { data, error } = await supabase.functions.invoke("generate-poster-t2i", {
-        body: { prompt: builtPrompt, aspectRatio },
+        body: { prompt: finalPrompt.trim(), aspectRatio },
         headers: authHeaders,
       });
       const rawError = (data as any)?.error || error?.message;
@@ -113,7 +125,7 @@ export default function TextToImageSection({ brandStyle }: Props) {
             generation_type: "ai_poster",
             style: "text_to_image",
             aspect_ratio: aspectRatio,
-            prompt_used: builtPrompt,
+            prompt_used: finalPrompt.trim(),
             product_title: title.length > 60 ? `${title.slice(0, 57)}…` : title,
             model_used: MODEL_NAME,
           } as any);
@@ -231,20 +243,56 @@ export default function TextToImageSection({ brandStyle }: Props) {
           </div>
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="t2i-notes" className="text-xs uppercase tracking-wide">
+            Theme / Additional Notes
+          </Label>
+          <Textarea
+            id="t2i-notes"
+            value={additionalNotes}
+            onChange={(e) => setAdditionalNotes(e.target.value)}
+            placeholder="e.g. tropical island vibes, neon accents, warm sunset colors…"
+            rows={3}
+          />
+        </div>
+
         <Button
           type="button"
+          variant="secondary"
           className="w-full"
           disabled={loading}
-          onClick={handleGenerate}
+          onClick={handleBuildPrompt}
         >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…
-            </>
-          ) : (
-            "Generate"
-          )}
+          <Wand2 className="mr-2 h-4 w-4" /> Build Prompt
         </Button>
+
+        {finalPrompt && (
+          <div className="space-y-2">
+            <Label htmlFor="t2i-final-prompt" className="text-xs uppercase tracking-wide">
+              Final Prompt — Edit before generating
+            </Label>
+            <Textarea
+              id="t2i-final-prompt"
+              value={finalPrompt}
+              onChange={(e) => setFinalPrompt(e.target.value)}
+              rows={5}
+            />
+            <Button
+              type="button"
+              className="w-full"
+              disabled={loading}
+              onClick={handleGenerate}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…
+                </>
+              ) : (
+                "Generate"
+              )}
+            </Button>
+          </div>
+        )}
 
         {imageUrl && (
           <div className="space-y-3 pt-2">
