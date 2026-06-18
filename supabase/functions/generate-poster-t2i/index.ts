@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     if (prompt.length > 2000) return json({ error: 'Prompt is too long' }, 400);
     if (!ideogramAspectRatio) return json({ error: 'Invalid aspect ratio' }, 400);
 
-    const createRes = await fetch(`${REPLICATE_API}/models/ideogram-ai/ideogram-v3-turbo/predictions`, {
+    const createRes = await fetch(`${REPLICATE_API}/models/ideogram-ai/ideogram-v3-quality/predictions`, {
       method: 'POST',
       headers: {
         Authorization: `Token ${REPLICATE_API_KEY}`,

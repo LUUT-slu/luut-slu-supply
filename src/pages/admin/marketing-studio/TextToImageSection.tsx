@@ -12,7 +12,7 @@ import { getBrandStyleDef, type BrandStyle } from "@/lib/marketingRouting";
 
 const ASPECT_RATIOS = ["1:1", "9:16", "16:9", "4:3", "3:4"] as const;
 type Ratio = (typeof ASPECT_RATIOS)[number];
-const MODEL_NAME = "ideogram-ai/ideogram-v3-turbo";
+const MODEL_NAME = "ideogram-ai/ideogram-v3-quality";
 
 const CAMPAIGN_TYPES = [
   "Sale",
