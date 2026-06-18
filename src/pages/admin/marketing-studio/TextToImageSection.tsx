@@ -78,6 +78,7 @@ export default function TextToImageSection() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Text to Image</CardTitle>
+        <p className="text-xs text-muted-foreground">Model: {MODEL_NAME}</p>
       </CardHeader>
       <CardContent className="space-y-4">
         <Textarea
