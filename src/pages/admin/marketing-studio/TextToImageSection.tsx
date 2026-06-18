@@ -250,6 +250,15 @@ export default function TextToImageSection({ brandStyle }: Props) {
         </div>
 
         <div className="space-y-2">
+          <Label className="text-xs uppercase tracking-wide">Realism Level</Label>
+          <div className="flex flex-wrap gap-2">
+            {REALISM_LEVELS.map((r) => (
+              <Pill key={r} value={r} current={realism} onClick={() => setRealism(r)} />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2">
           <Label className="text-xs uppercase tracking-wide">Aspect Ratio</Label>
           <div className="flex flex-wrap gap-2">
             {ASPECT_RATIOS.map((r) => (
@@ -275,10 +284,18 @@ export default function TextToImageSection({ brandStyle }: Props) {
           type="button"
           variant="secondary"
           className="w-full"
-          disabled={loading}
+          disabled={loading || building}
           onClick={handleBuildPrompt}
         >
-          <Wand2 className="mr-2 h-4 w-4" /> Build Prompt
+          {building ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Writing prompt…
+            </>
+          ) : (
+            <>
+              <Wand2 className="mr-2 h-4 w-4" /> Build Prompt
+            </>
+          )}
         </Button>
 
         {finalPrompt && (
