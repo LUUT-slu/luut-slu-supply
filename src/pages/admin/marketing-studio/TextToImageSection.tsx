@@ -52,6 +52,7 @@ export default function TextToImageSection() {
 
       // Save to library (non-blocking)
       try {
+        const title = trimmed.length > 60 ? `${trimmed.slice(0, 57)}…` : trimmed;
         const { error: insertError } = await supabase
           .from("marketing_generated_images" as any)
           .insert({
@@ -61,6 +62,8 @@ export default function TextToImageSection() {
             style: "text_to_image",
             aspect_ratio: aspectRatio,
             prompt_used: trimmed,
+            product_title: title,
+            model_used: MODEL_NAME,
           } as any);
         if (insertError) throw insertError;
         toast.success("Saved to library");
