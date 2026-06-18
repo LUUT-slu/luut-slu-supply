@@ -50,6 +50,23 @@ export default function TextToImageSection({ brandStyle }: Props) {
   const [building, setBuilding] = useState(false);
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const referenceInputRef = useRef<HTMLInputElement>(null);
+
+  const handleReferenceUpload = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Image too large (max 8MB)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setReferenceImage(reader.result as string);
+    reader.onerror = () => toast.error("Could not read image");
+    reader.readAsDataURL(file);
+  };
 
   const handleBuildPrompt = async () => {
     if (!headline.trim() && !subheadline.trim() && !keyDetail.trim()) {
@@ -72,6 +89,7 @@ export default function TextToImageSection({ brandStyle }: Props) {
           brandStyle,
           brandSnippet: brandDef?.snippet ?? "",
           additionalNotes: additionalNotes.trim(),
+          referenceImage: referenceImage ?? undefined,
         },
       });
       const errMsg = (data as any)?.error || error?.message;
