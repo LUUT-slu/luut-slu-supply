@@ -7,11 +7,11 @@ const REPLICATE_API_KEY = Deno.env.get('REPLICATE_API_KEY') || Deno.env.get('REP
 const REPLICATE_API = 'https://api.replicate.com/v1';
 
 const ASPECT_MAP: Record<string, string> = {
-  '1:1': 'ASPECT_1_1',
-  '9:16': 'ASPECT_9_16',
-  '16:9': 'ASPECT_16_9',
-  '4:3': 'ASPECT_4_3',
-  '3:4': 'ASPECT_3_4',
+  '1:1': '1:1',
+  '9:16': '9:16',
+  '16:9': '16:9',
+  '4:3': '4:3',
+  '3:4': '3:4',
 };
 
 function json(body: unknown, status = 200) {
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
         input: {
           prompt,
           aspect_ratio: ideogramAspectRatio,
-          style_type: 'design',
+          style_type: 'Design',
         },
       }),
     });
