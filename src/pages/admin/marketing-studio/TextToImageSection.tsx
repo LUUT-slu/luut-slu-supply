@@ -28,6 +28,9 @@ type CampaignType = (typeof CAMPAIGN_TYPES)[number];
 const STYLES = ["Clean", "Luxury", "Bold", "Hype", "Modern", "Minimal"] as const;
 type StyleType = (typeof STYLES)[number];
 
+const REALISM_LEVELS = ["Standard", "Premium", "Hyper Realistic"] as const;
+type RealismLevel = (typeof REALISM_LEVELS)[number];
+
 interface Props {
   brandStyle: BrandStyle;
 }
