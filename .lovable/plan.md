@@ -1,40 +1,30 @@
 ## Goal
-Add a new, completely independent "Text to Image" section inside the Posters tab of Marketing Studio. The existing poster flow is left untouched.
 
-## Scope
-- Create a new component: `src/pages/admin/marketing-studio/TextToImageSection.tsx`
-- Mount it inside `PosterTab.tsx` below the existing poster flow (visual separator + heading "Text to Image"). No imports/state shared with the existing flow.
-- Create a new, isolated edge function: `supabase/functions/text-to-image/index.ts` that calls Replicate `ideogram-ai/ideogram-v3-turbo` with `style_type: "design"`. No reuse of `marketing-generate`.
+Upgrade the **Build Prompt** button in `TextToImageSection.tsx` so it sends the structured form fields to Lovable AI Gateway (`google/gemini-2.5-flash`) using the creative-director system prompt provided. The returned prompt is shown in the existing editable textarea and used as-is by Generate.
 
-## UI (TextToImageSection.tsx)
-- Empty `<textarea>` (placeholder: "Describe your poster…"), starts blank every time.
-- Aspect ratio selector (segmented buttons): `1:1`, `9:16`, `16:9`, `4:3`, `3:4`. Default `1:1`.
-- "Generate" button (disabled while loading or when prompt is empty).
-- Loading spinner while waiting.
-- Result `<img>` rendered below once complete.
-- "Download" button on the result (reuses existing `src/lib/downloadImage.ts`).
-- Friendly error message on failure (incl. 402 insufficient-credit).
+## Changes
 
-State is local: `prompt`, `aspectRatio`, `loading`, `imageUrl`, `error`. No product, variant, brand-style, or seed coupling.
+### 1. New edge function: `supabase/functions/build-poster-prompt/index.ts`
+- `verify_jwt = false` style call (matches existing pattern).
+- Accepts JSON: `{ campaignType, headline, subheadline, keyDetail, dateRange, locations, style, realism, brandStyle, brandSnippet }`.
+- POSTs to `https://ai.gateway.lovable.dev/v1/chat/completions` with `Lovable-API-Key: ${LOVABLE_API_KEY}`.
+- Model: `google/gemini-2.5-flash`.
+- System message: the full creative-director prompt from the user message (verbatim).
+- User message: structured list of the campaign fields.
+- Returns `{ prompt: string }`.
+- Handles 429 / 402 with clear error.
 
-## Edge function (`text-to-image`)
-- POST `{ prompt: string, aspect_ratio: "1:1"|"9:16"|"16:9"|"4:3"|"3:4" }`
-- CORS + Zod validation; JWT verified via `getClaims` (consistent with other functions).
-- Calls Replicate REST API directly using `REPLICATE_API_KEY` secret:
-  - `POST https://api.replicate.com/v1/models/ideogram-ai/ideogram-v3-turbo/predictions`
-  - Body: `{ input: { prompt, aspect_ratio, style_type: "design" } }`
-  - Header: `Prefer: wait` for synchronous response; fall back to polling `/v1/predictions/{id}` if status not terminal.
-- Returns `{ imageUrl: string }` (first item from `output`).
-- Maps 402 → `{ error: "Replicate is out of credit." }` with status 402.
+### 2. `src/pages/admin/marketing-studio/TextToImageSection.tsx` (only file edited in frontend)
+- Add a new **Realism Level** pill selector: `Standard | Premium | Hyper Realistic` (state `realism`).
+- Rewrite `handleBuildPrompt` to be `async`:
+  - Validate at least one of headline/subheadline/keyDetail is filled.
+  - Set a `building` loading state; disable button + show spinner with label "Writing prompt…".
+  - Call `supabase.functions.invoke("build-poster-prompt", { body: { ...fields, brandStyle, brandSnippet: getBrandStyleDef(brandStyle)?.snippet ?? "" } })`.
+  - On success: `setFinalPrompt(data.prompt)` and toast "Prompt ready — edit, then generate".
+  - On error: toast the message; do not overwrite existing finalPrompt.
+- Remove the old local `buildPrompt()` string-concatenation helper (no longer used).
+- Keep everything else (Generate button, library save, result display, download) unchanged.
 
-## Client wiring
-- TextToImageSection calls the function via `supabase.functions.invoke("text-to-image", { body: { prompt, aspect_ratio } })`.
-- No changes to `marketingRouting.ts`, `PromptPreview.tsx`, `LayoutPreview.tsx`, or any existing poster code.
-
-## Files
-- New: `src/pages/admin/marketing-studio/TextToImageSection.tsx`
-- New: `supabase/functions/text-to-image/index.ts`
-- Edited (one import + one JSX block at the bottom): `src/pages/admin/marketing-studio/PosterTab.tsx`
-
-## Secrets
-`REPLICATE_API_KEY` already exists in the project (used by `marketing-generate`). No new secret needed.
+## Out of scope
+- No changes to `PosterTab.tsx`, the existing `generate-poster-t2i` function, or any other poster flow.
+- Image style/look is governed by the new AI-written prompt — no code-level layout changes.
