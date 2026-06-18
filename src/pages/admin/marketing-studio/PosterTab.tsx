@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import TextToImageSection from "./TextToImageSection";
+
 import { supabase } from "@/integrations/supabase/client";
 import { downloadImage } from "@/lib/downloadImage";
 import { toast } from "sonner";
@@ -471,6 +473,11 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
           </CardContent>
         </Card>
       </div>
+
+      <div className="mt-8 border-t pt-6">
+        <TextToImageSection />
+      </div>
     </div>
   );
 }
+
