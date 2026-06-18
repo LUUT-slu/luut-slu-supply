@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const ASPECT_RATIOS = ["1:1", "9:16", "16:9", "4:3", "3:4"] as const;
 type Ratio = (typeof ASPECT_RATIOS)[number];
+const MODEL_NAME = "ideogram-ai/ideogram-v3-turbo";
 
 export default function TextToImageSection() {
   const [prompt, setPrompt] = useState("");
@@ -48,6 +49,24 @@ export default function TextToImageSection() {
       }
       setImageUrl(url);
       toast.success("Image generated");
+
+      // Save to library (non-blocking)
+      try {
+        const { error: insertError } = await supabase
+          .from("marketing_generated_images" as any)
+          .insert({
+            image_url: url,
+            thumbnail_url: url,
+            generation_type: "ai_poster",
+            style: "text_to_image",
+            aspect_ratio: aspectRatio,
+            prompt_used: trimmed,
+          } as any);
+        if (insertError) throw insertError;
+        toast.success("Saved to library");
+      } catch (e: any) {
+        toast.error(e?.message || "Could not save to library");
+      }
     } catch (e: any) {
       toast.error(e?.message || "Generation failed");
     } finally {
@@ -59,6 +78,7 @@ export default function TextToImageSection() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Text to Image</CardTitle>
+        <p className="text-xs text-muted-foreground">Model: {MODEL_NAME}</p>
       </CardHeader>
       <CardContent className="space-y-4">
         <Textarea
