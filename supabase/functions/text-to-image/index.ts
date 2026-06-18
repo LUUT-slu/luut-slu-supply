@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Replicate is out of credit.' }, 402);
     }
     if (!createRes.ok) {
+      console.error('[text-to-image] replicate create failed', createRes.status, createJson);
       return json({ error: createJson?.detail || createJson?.error || 'Replicate request failed' }, createRes.status);
     }
 
