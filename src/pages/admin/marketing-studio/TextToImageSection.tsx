@@ -26,21 +26,49 @@ export default function TextToImageSection() {
     setImageUrl(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const { data, error } = await supabase.functions.invoke("text-to-image", {
-        body: { prompt: trimmed, aspect_ratio: aspectRatio },
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+      const authHeaders = { Authorization: `Bearer ${session?.access_token}` };
+
+      // 1) Start the prediction
+      const startRes = await supabase.functions.invoke("text-to-image", {
+        body: { action: "start", prompt: trimmed, aspect_ratio: aspectRatio },
+        headers: authHeaders,
       });
-      const errMsg = (data as any)?.error || error?.message;
-      if (errMsg) {
-        const friendly = /insufficient credit|out of credit/i.test(errMsg)
+      const startErr = (startRes.data as any)?.error || startRes.error?.message;
+      if (startErr) {
+        const friendly = /insufficient credit|out of credit/i.test(startErr)
           ? "Replicate is out of credit. Top up and try again."
-          : errMsg;
+          : startErr;
         toast.error(friendly);
         return;
       }
-      const url = (data as any)?.imageUrl;
+      const id = (startRes.data as any)?.id;
+      if (!id) {
+        toast.error("Failed to start generation");
+        return;
+      }
+
+      // 2) Poll for completion (client-side, no edge timeout)
+      const maxAttempts = 90; // ~3 minutes
+      let url: string | null = null;
+      for (let i = 0; i < maxAttempts; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const pollRes = await supabase.functions.invoke("text-to-image", {
+          body: { action: "status", id },
+          headers: authHeaders,
+        });
+        const status = (pollRes.data as any)?.status;
+        if (status === "succeeded") {
+          url = (pollRes.data as any)?.imageUrl;
+          break;
+        }
+        if (status === "failed" || status === "canceled") {
+          toast.error("Generation failed");
+          return;
+        }
+      }
+
       if (!url) {
-        toast.error("No image returned");
+        toast.error("Generation timed out");
         return;
       }
       setImageUrl(url);
