@@ -65,6 +65,9 @@ export function Footer() {
               <Link to="/refund-policy" className="font-body text-sm text-muted-foreground hover:text-foreground">
                 Refunds & Returns
               </Link>
+              <Link to="/trust" className="font-body text-sm text-muted-foreground hover:text-foreground">
+                Trust, Security & Privacy
+              </Link>
               <Link to="/sell" className="font-body text-sm text-muted-foreground hover:text-foreground">
                 Sell on Luut
               </Link>

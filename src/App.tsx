@@ -44,6 +44,7 @@ const SellOnLuut = lazyRetry(() => import("./pages/SellOnLuut"));
 const MeetupPolicy = lazyRetry(() => import("./pages/MeetupPolicy"));
 const DepositPolicy = lazyRetry(() => import("./pages/DepositPolicy"));
 const RefundPolicy = lazyRetry(() => import("./pages/RefundPolicy"));
+const TrustAndPrivacy = lazyRetry(() => import("./pages/TrustAndPrivacy"));
 const Sellers = lazyRetry(() => import("./pages/Sellers"));
 const SellerProfile = lazyRetry(() => import("./pages/SellerProfile"));
 const Contact = lazyRetry(() => import("./pages/Contact"));
@@ -145,6 +146,7 @@ const App = () => (
             <Route path="/meetup-policy" element={<MeetupPolicy />} />
             <Route path="/deposit-policy" element={<DepositPolicy />} />
             <Route path="/refund-policy" element={<RefundPolicy />} />
+            <Route path="/trust" element={<TrustAndPrivacy />} />
             <Route path="/sellers" element={<Sellers />} />
             <Route path="/seller/:sellerId" element={<SellerProfile />} />
             <Route path="/contact" element={<Contact />} />
