@@ -117,6 +117,12 @@ export default function SellerRegistration() {
         });
       }
 
+      // Fire-and-forget seller welcome email (replaces removed DB trigger)
+      supabase.functions.invoke("send-seller-welcome-email", {
+        body: { userId: user.id, email: user.email },
+      }).catch(() => {});
+
+
       // Fire-and-forget admin alert: new seller application
       supabase.functions.invoke("send-admin-alert", {
         body: {
