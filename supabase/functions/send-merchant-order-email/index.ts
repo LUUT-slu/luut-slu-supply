@@ -114,6 +114,25 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+
+    // Auth: require user JWT or service-role key
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    let authed = token === serviceKey;
+    const adminClient = createClient(supabaseUrl, serviceKey);
+    if (!authed && token) {
+      const { data, error } = await adminClient.auth.getUser(token);
+      authed = !error && !!data?.user;
+    }
+    if (!authed) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { orderId } = await req.json();
     if (!orderId) {
       return new Response(JSON.stringify({ error: "orderId required" }), {
@@ -121,10 +140,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const resendKey = Deno.env.get("RESEND_API_KEY");
 
     if (!resendKey) {
       console.error("Missing RESEND_API_KEY");
@@ -134,7 +149,7 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const supabase = adminClient;
     const { data: order, error } = await supabase
       .from("orders")
       .select("*")
