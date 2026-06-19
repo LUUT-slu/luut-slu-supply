@@ -116,24 +116,29 @@ Deno.serve(async (req) => {
       `Total: EC$${Number(order.total_price ?? 0).toFixed(2)}`,
     ].join("\n");
 
+    const isoDate = parseDateToIso(String(order.preferred_date));
+    if (!isoDate) {
+      return json({ success: false, error: `Unparseable preferred_date: ${order.preferred_date}` }, 400);
+    }
+
     const eventBody: Record<string, unknown> = {
       summary: title,
       description,
     };
 
-    if (order.pickup_time) {
-      const t = String(order.pickup_time);
+    const hms = order.pickup_time ? parseTimeToHms(String(order.pickup_time)) : null;
+    if (hms) {
       eventBody.start = {
-        dateTime: `${order.preferred_date}T${t.length === 5 ? `${t}:00` : t}`,
+        dateTime: `${isoDate}T${hms}`,
         timeZone: "America/St_Lucia",
       };
       eventBody.end = {
-        dateTime: `${order.preferred_date}T${addHour(t).length === 5 ? `${addHour(t)}:00` : addHour(t)}`,
+        dateTime: `${isoDate}T${addHour(hms)}`,
         timeZone: "America/St_Lucia",
       };
     } else {
-      eventBody.start = { date: order.preferred_date };
-      eventBody.end = { date: addDay(order.preferred_date) };
+      eventBody.start = { date: isoDate };
+      eventBody.end = { date: addDay(isoDate) };
     }
 
     const gcalRes = await fetch(GATEWAY_URL, {
