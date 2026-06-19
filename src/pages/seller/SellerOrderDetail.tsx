@@ -48,7 +48,18 @@ import {
   FileText,
   Archive,
   CalendarPlus,
+  CalendarClock,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 // Display preferred_date as-is (canonical string) without re-parsing
@@ -73,6 +84,10 @@ export default function SellerOrderDetail() {
   const { orders, loading, refetch, updateOrderStatus, deleteOrder } = useSellerOrders(profile?.id);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addingToCalendar, setAddingToCalendar] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
+  const [rescheduling, setRescheduling] = useState(false);
 
   const addToCalendar = async () => {
     if (!order) return;
@@ -95,6 +110,82 @@ export default function SellerOrderDetail() {
       toast.error(err?.message || "Failed to add to calendar");
     } finally {
       setAddingToCalendar(false);
+    }
+  };
+
+  // Convert any preferred_date format into "YYYY-MM-DD" for <input type="date">
+  const toIsoDate = (input?: string | null): string => {
+    if (!input) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+    const d = new Date(input);
+    if (isNaN(d.getTime())) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  // Convert "10:30 AM" / "HH:MM" / "HH:MM:SS" into "HH:MM" for <input type="time">
+  const toIsoTime = (input?: string | null): string => {
+    if (!input) return "";
+    const ampm = input.trim().match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+    if (ampm) {
+      let h = parseInt(ampm[1], 10);
+      const isPm = ampm[3].toLowerCase() === "pm";
+      if (h === 12) h = isPm ? 12 : 0;
+      else if (isPm) h += 12;
+      return `${String(h).padStart(2, "0")}:${ampm[2]}`;
+    }
+    const hms = input.trim().match(/^(\d{1,2}):(\d{2})/);
+    if (hms) return `${hms[1].padStart(2, "0")}:${hms[2]}`;
+    return "";
+  };
+
+  const openReschedule = () => {
+    if (!order) return;
+    setNewDate(toIsoDate(order.preferred_date));
+    setNewTime(toIsoTime(order.pickup_time || order.pickup_time_window));
+    setRescheduleOpen(true);
+  };
+
+  const handleReschedule = async () => {
+    if (!order || !newDate) {
+      toast.error("Please pick a date");
+      return;
+    }
+    setRescheduling(true);
+    try {
+      // 1. Update the same order row (not a new order)
+      const { error: updateErr } = await supabase
+        .from("orders")
+        .update({
+          preferred_date: newDate,
+          pickup_time: newTime || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", order.id);
+      if (updateErr) throw updateErr;
+
+      // 2. Delete old calendar event if one exists (no-op if absent)
+      await supabase.functions
+        .invoke("delete-order-calendar-event", { body: { orderId: order.id } })
+        .catch((err) => console.error("Calendar delete error:", err));
+
+      // 3. Create fresh calendar event for the new date/time
+      const { data: createData, error: createErr } = await supabase.functions.invoke(
+        "create-order-calendar-event",
+        { body: { orderId: order.id } },
+      );
+      if (createErr) throw createErr;
+
+      toast.success("Order rescheduled", {
+        action: createData?.htmlLink
+          ? { label: "Open Calendar", onClick: () => window.open(createData.htmlLink, "_blank") }
+          : undefined,
+      });
+      setRescheduleOpen(false);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to reschedule");
+    } finally {
+      setRescheduling(false);
     }
   };
 
@@ -544,6 +635,17 @@ export default function SellerOrderDetail() {
                   <Button
                     className="w-full justify-start"
                     variant="outline"
+                    onClick={openReschedule}
+                    disabled={order.status === "cancelled" || order.status === "completed"}
+                  >
+                    <CalendarClock className="h-4 w-4 mr-2 text-amber-400" />
+                    Reschedule
+                  </Button>
+
+
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
                     onClick={() => setEditDialogOpen(true)}
                     disabled={!isEditable}
                   >
@@ -598,6 +700,49 @@ export default function SellerOrderDetail() {
         onSave={refetch}
       />
       <SellerAIPanel defaultMode="order" />
+
+      <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reschedule pickup</DialogTitle>
+            <DialogDescription>
+              Pick a new date (and optional time) for this order. The Google Calendar event will
+              be updated to match — same order, new day.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="reschedule-date">New date</Label>
+              <Input
+                id="reschedule-date"
+                type="date"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reschedule-time">New time (optional)</Label>
+              <Input
+                id="reschedule-time"
+                type="time"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty to make it an all-day calendar event.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRescheduleOpen(false)} disabled={rescheduling}>
+              Cancel
+            </Button>
+            <Button onClick={handleReschedule} disabled={rescheduling || !newDate}>
+              {rescheduling ? "Rescheduling..." : "Confirm reschedule"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
