@@ -668,6 +668,7 @@ export type Database = {
           accepted_at: string | null
           assigned_at: string | null
           assigned_partner_id: string | null
+          calendar_event_id: string | null
           cancelled_at: string | null
           communication_status: string
           completed_at: string | null
@@ -719,6 +720,7 @@ export type Database = {
           accepted_at?: string | null
           assigned_at?: string | null
           assigned_partner_id?: string | null
+          calendar_event_id?: string | null
           cancelled_at?: string | null
           communication_status?: string
           completed_at?: string | null
@@ -770,6 +772,7 @@ export type Database = {
           accepted_at?: string | null
           assigned_at?: string | null
           assigned_partner_id?: string | null
+          calendar_event_id?: string | null
           cancelled_at?: string | null
           communication_status?: string
           completed_at?: string | null
@@ -1991,6 +1994,7 @@ export type Database = {
           accepted_at: string | null
           assigned_at: string | null
           assigned_partner_id: string | null
+          calendar_event_id: string | null
           cancelled_at: string | null
           communication_status: string
           completed_at: string | null

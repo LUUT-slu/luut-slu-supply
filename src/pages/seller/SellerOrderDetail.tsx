@@ -183,6 +183,25 @@ export default function SellerOrderDetail() {
         })
         .catch((err) => console.error("Calendar event error:", err));
     }
+
+    // Auto-remove from Google Calendar when cancelling or marking no-show
+    if (
+      (newStatus === "cancelled" || newStatus === "no-show") &&
+      prevStatus !== newStatus
+    ) {
+      supabase.functions
+        .invoke("delete-order-calendar-event", { body: { orderId: order.id } })
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Calendar delete error:", error);
+            return;
+          }
+          if (data?.success && !data.skipped) {
+            toast.success("Removed from Google Calendar");
+          }
+        })
+        .catch((err) => console.error("Calendar delete error:", err));
+    }
   };
 
   const handleDelete = async () => {
