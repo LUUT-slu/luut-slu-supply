@@ -18,10 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Minus, Package, X, ShoppingBag, Zap } from "lucide-react";
+import { Plus, Minus, Package, X, ShoppingBag, Zap, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, parse } from "date-fns";
 import { Switch } from "@/components/ui/switch";
+import { fetchProductVariantsById, type ShopifyVariantLite } from "@/lib/shopify";
 
 interface Product {
   id: string;
@@ -29,11 +30,22 @@ interface Product {
   price: number;
   quantity: number;
   images: string[] | null;
+  shopify_product_id: string | null;
 }
 
 interface CartItem {
+  /** Unique cart line key: product.id + variantId (if any) */
+  key: string;
   product: Product;
   quantity: number;
+  /** Real Shopify variant gid when a variant was picked */
+  variantId?: string;
+  /** Display label like "Black / M" */
+  variantTitle?: string;
+  /** Variant-specific price overrides product price when present */
+  variantPrice?: number;
+  /** Variant image override */
+  variantImage?: string | null;
 }
 
 interface CreateOrderDialogProps {
@@ -59,6 +71,11 @@ export function CreateOrderDialog({
   const [submitting, setSubmitting] = useState(false);
   const [discount, setDiscount] = useState("");
 
+  // Variant picker state
+  const [variantPickerProduct, setVariantPickerProduct] = useState<Product | null>(null);
+  const [variantOptions, setVariantOptions] = useState<ShopifyVariantLite[]>([]);
+  const [variantLoading, setVariantLoading] = useState(false);
+
   // Customer form fields
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -77,7 +94,7 @@ export function CreateOrderDialog({
     setLoading(true);
     const { data, error } = await supabase
       .from("seller_products")
-      .select("id, name, price, quantity, images")
+      .select("id, name, price, quantity, images, shopify_product_id")
       .eq("seller_id", sellerId)
       .eq("status", "active")
       .order("name");
@@ -91,26 +108,87 @@ export function CreateOrderDialog({
     setLoading(false);
   };
 
-  const addToCart = (product: Product) => {
-    const existing = cart.find((item) => item.product.id === product.id);
-    if (existing) {
-      setCart(
-        cart.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
-    } else {
-      setCart([...cart, { product, quantity: 1 }]);
-    }
+  const addCartLine = (
+    product: Product,
+    variant?: { id: string; title: string; price: number; image?: string | null }
+  ) => {
+    const key = variant ? `${product.id}::${variant.id}` : product.id;
+    setCart((prev) => {
+      const existing = prev.find((item) => item.key === key);
+      if (existing) {
+        return prev.map((item) =>
+          item.key === key ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          key,
+          product,
+          quantity: 1,
+          variantId: variant?.id,
+          variantTitle: variant?.title,
+          variantPrice: variant?.price,
+          variantImage: variant?.image ?? null,
+        },
+      ];
+    });
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const handleProductClick = async (product: Product) => {
+    // Local product (no Shopify link) → just add
+    if (!product.shopify_product_id) {
+      addCartLine(product);
+      return;
+    }
+    setVariantPickerProduct(product);
+    setVariantLoading(true);
+    setVariantOptions([]);
+    const result = await fetchProductVariantsById(product.shopify_product_id);
+    setVariantLoading(false);
+    if (!result) {
+      toast.error("Failed to load variants");
+      setVariantPickerProduct(null);
+      addCartLine(product);
+      return;
+    }
+    // No variants or only the default single variant → add directly
+    const meaningful = result.variants.filter((v) => v.title && v.title !== "Default Title");
+    if (meaningful.length <= 1) {
+      setVariantPickerProduct(null);
+      const only = result.variants[0];
+      if (only && meaningful.length === 1) {
+        addCartLine(product, {
+          id: only.id,
+          title: only.title,
+          price: parseFloat(only.price.amount) || product.price,
+          image: only.image?.url ?? null,
+        });
+      } else {
+        addCartLine(product);
+      }
+      return;
+    }
+    setVariantOptions(result.variants);
+  };
+
+  const pickVariant = (v: ShopifyVariantLite) => {
+    if (!variantPickerProduct) return;
+    addCartLine(variantPickerProduct, {
+      id: v.id,
+      title: v.title,
+      price: parseFloat(v.price.amount) || variantPickerProduct.price,
+      image: v.image?.url ?? null,
+    });
+    setVariantPickerProduct(null);
+    setVariantOptions([]);
+  };
+
+  const updateQuantity = (key: string, delta: number) => {
     setCart(
       cart
         .map((item) => {
-          if (item.product.id === productId) {
+          if (item.key === key) {
             const newQty = item.quantity + delta;
             if (newQty <= 0) return null;
             return { ...item, quantity: newQty };
@@ -121,13 +199,16 @@ export function CreateOrderDialog({
     );
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(cart.filter((item) => item.product.id !== productId));
+  const removeFromCart = (key: string) => {
+    setCart(cart.filter((item) => item.key !== key));
   };
+
+  const lineUnitPrice = (item: CartItem) =>
+    item.variantPrice ?? item.product.price;
 
   const discountAmount = parseFloat(discount) || 0;
   const subtotal = cart.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
+    (sum, item) => sum + lineUnitPrice(item) * item.quantity,
     0
   );
   const totalPrice = Math.max(0, subtotal - discountAmount);
@@ -183,16 +264,25 @@ export function CreateOrderDialog({
       const formattedDate = format(parsedDate, "EEEE, MMMM d, yyyy");
 
       // Build line items in unified create-draft-order shape
-      const lineItems = cart.map((item) => ({
-        variant_id: `lovable-variant-${item.product.id}`,
-        product_id: item.product.id,
-        quantity: item.quantity,
-        title: item.product.name,
-        price: String(item.product.price),
-        image_url: item.product.images?.[0] || null,
-        source: "lovable" as const,
-        vendor: sellerName,
-      }));
+      const lineItems = cart.map((item) => {
+        const unitPrice = lineUnitPrice(item);
+        const hasShopifyVariant = !!item.variantId;
+        return {
+          variant_id: hasShopifyVariant
+            ? item.variantId!
+            : `lovable-variant-${item.product.id}`,
+          product_id: item.product.id,
+          quantity: item.quantity,
+          title: item.variantTitle
+            ? `${item.product.name} — ${item.variantTitle}`
+            : item.product.name,
+          price: String(unitPrice),
+          image_url: item.variantImage || item.product.images?.[0] || null,
+          source: hasShopifyVariant ? ("shopify" as const) : ("lovable" as const),
+          vendor: sellerName,
+          variant_title: item.variantTitle,
+        };
+      });
 
       const orderNote = [
         note.trim() || null,
@@ -409,7 +499,7 @@ export function CreateOrderDialog({
                 {products.map((product) => (
                   <button
                     key={product.id}
-                    onClick={() => addToCart(product)}
+                    onClick={() => handleProductClick(product)}
                     className="flex items-center gap-2 p-2 rounded-lg border border-border/60 active:bg-muted/50 transition-colors text-left"
                   >
                     {product.images?.[0] ? (
@@ -427,6 +517,7 @@ export function CreateOrderDialog({
                       <p className="text-xs font-medium truncate">{product.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatCurrency(product.price)} · {product.quantity > 0 ? `${product.quantity} left` : "Sold out"}
+                        {product.shopify_product_id ? " · variants" : ""}
                       </p>
                     </div>
                   </button>
@@ -440,63 +531,72 @@ export function CreateOrderDialog({
             <div className="space-y-3">
               <h3 className="text-sm font-medium">Cart ({cart.length} items)</h3>
               <div className="space-y-2">
-                {cart.map((item) => (
-                  <div
-                    key={item.product.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-muted/30 border border-border/40"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      {item.product.images?.[0] ? (
-                        <img
-                          src={item.product.images[0]}
-                          alt={item.product.name}
-                          className="h-8 w-8 rounded object-cover"
-                        />
-                      ) : (
-                        <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
-                          <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                {cart.map((item) => {
+                  const img = item.variantImage || item.product.images?.[0];
+                  const unit = lineUnitPrice(item);
+                  return (
+                    <div
+                      key={item.key}
+                      className="flex items-center justify-between p-2 rounded-lg bg-muted/30 border border-border/40"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {img ? (
+                          <img
+                            src={img}
+                            alt={item.product.name}
+                            className="h-8 w-8 rounded object-cover"
+                          />
+                        ) : (
+                          <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
+                            <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">
+                            {item.product.name}
+                          </p>
+                          {item.variantTitle && (
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {item.variantTitle}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {formatCurrency(unit * item.quantity)}
+                          </p>
                         </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium truncate">
-                          {item.product.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatCurrency(item.product.price * item.quantity)}
-                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => updateQuantity(item.key, -1)}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="text-xs font-medium w-5 text-center">
+                          {item.quantity}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => updateQuantity(item.key, 1)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive"
+                          onClick={() => removeFromCart(item.key)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => updateQuantity(item.product.id, -1)}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="text-xs font-medium w-5 text-center">
-                        {item.quantity}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => updateQuantity(item.product.id, 1)}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-destructive"
-                        onClick={() => removeFromCart(item.product.id)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Discount (full mode) */}
@@ -550,6 +650,69 @@ export function CreateOrderDialog({
           </Button>
         </div>
       </DialogContent>
+
+      {/* Variant Picker Dialog */}
+      <Dialog
+        open={!!variantPickerProduct}
+        onOpenChange={(o) => {
+          if (!o) {
+            setVariantPickerProduct(null);
+            setVariantOptions([]);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              Choose variant
+              {variantPickerProduct ? ` — ${variantPickerProduct.name}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {variantLoading ? (
+            <div className="flex items-center justify-center py-8 text-sm text-muted-foreground gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading variants…
+            </div>
+          ) : variantOptions.length === 0 ? (
+            <div className="text-center py-6 text-sm text-muted-foreground">
+              No variants found.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {variantOptions.map((v) => {
+                const price = parseFloat(v.price.amount) || 0;
+                return (
+                  <button
+                    key={v.id}
+                    disabled={!v.availableForSale}
+                    onClick={() => pickVariant(v)}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border/60 text-left active:bg-muted/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {v.image?.url ? (
+                      <img
+                        src={v.image.url}
+                        alt={v.title}
+                        className="h-10 w-10 rounded object-cover"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{v.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(price)}
+                        {!v.availableForSale ? " · Sold out" : ""}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

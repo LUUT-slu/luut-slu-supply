@@ -345,6 +345,56 @@ export async function fetchProductByHandle(handle: string): Promise<ShopifyProdu
   return data.data.productByHandle;
 }
 
+const PRODUCT_BY_ID_QUERY = `
+  query GetProductById($id: ID!) {
+    node(id: $id) {
+      ... on Product {
+        id
+        title
+        handle
+        images(first: 10) {
+          edges { node { url altText } }
+        }
+        variants(first: 50) {
+          edges {
+            node {
+              id
+              title
+              price { amount currencyCode }
+              availableForSale
+              image { url altText }
+              selectedOptions { name value }
+            }
+          }
+        }
+        options { name values }
+      }
+    }
+  }
+`;
+
+export interface ShopifyVariantLite {
+  id: string;
+  title: string;
+  price: { amount: string; currencyCode: string };
+  availableForSale: boolean;
+  image?: { url: string; altText: string | null } | null;
+  selectedOptions: Array<{ name: string; value: string }>;
+}
+
+export async function fetchProductVariantsById(productGid: string): Promise<{
+  variants: ShopifyVariantLite[];
+  options: Array<{ name: string; values: string[] }>;
+} | null> {
+  const data = await storefrontApiRequest(PRODUCT_BY_ID_QUERY, { id: productGid });
+  const node = data?.data?.node;
+  if (!node) return null;
+  return {
+    variants: node.variants.edges.map((e: { node: ShopifyVariantLite }) => e.node),
+    options: node.options || [],
+  };
+}
+
 // Cart checkout with note support
 const CART_CREATE_MUTATION = `
   mutation cartCreate($input: CartInput!) {
