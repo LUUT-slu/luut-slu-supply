@@ -67,6 +67,16 @@ export function OrderShopifyActions({ order, isAdmin = false, onChanged }: Props
         body: { orderId: order.id, addTags: ["WhatsApp Confirmed"], removeTags: ["Pending WhatsApp Confirmation"] },
       });
     }
+    try {
+      const { data, error: calErr } = await supabase.functions.invoke(
+        "create-order-calendar-event",
+        { body: { orderId: order.id } },
+      );
+      if (calErr) throw calErr;
+      if (data && data.success === false) throw new Error(data.error || "Calendar failed");
+    } catch (e) {
+      toast.message(`Calendar event not created: ${e instanceof Error ? e.message : "unknown error"}`);
+    }
   }, "Marked WhatsApp confirmed");
 
   const markNoResponse = () => run("noresp", async () => {
