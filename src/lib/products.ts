@@ -234,8 +234,20 @@ export async function fetchHybridProducts(options: {
     );
   }
 
+  // Deduplicate: if a local product has a matching Shopify ID, prefer the local
+  // version (it may have updated stock/price) and drop the Shopify duplicate.
+  const localShopifyIds = new Set<string>();
+  unifiedLovable.forEach((p) => {
+    const sid = (p.originalLovableProduct as any)?.shopify_product_id;
+    if (sid) localShopifyIds.add(sid);
+  });
+  const dedupedShopify = unifiedShopify.filter((p) => {
+    const sid = p.originalShopifyProduct?.node?.id;
+    return !sid || !localShopifyIds.has(sid);
+  });
+
   // Combine and sort by stock status: in_stock first, low_stock second, out_of_stock last
-  let combined = [...unifiedLovable, ...unifiedShopify];
+  let combined = [...unifiedLovable, ...dedupedShopify];
 
   // Slug-level exclusions: keep beanies/skull caps out of Hats/Caps even if
   // Shopify's collection or product type categorizes them as Hats.
