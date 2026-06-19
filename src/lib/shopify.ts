@@ -332,10 +332,14 @@ export async function fetchProductsByCollection(
 }
 
 export async function fetchProductsByVendor(vendorFilter: string): Promise<ShopifyProduct[]> {
-  // Fetch all products and filter by vendor containing the filter string
-  const allProducts = await fetchProducts(100);
-  return allProducts.filter(product => 
-    product.node.vendor.toLowerCase().includes(vendorFilter.toLowerCase())
+  // Query Shopify directly by vendor so we don't miss products beyond the first 100.
+  // Use a prefix wildcard so "Luut SLU" also matches "Luut SLU Hub".
+  const escaped = vendorFilter.replace(/"/g, '\\"');
+  const query = `vendor:"${escaped}*"`;
+  const page = await fetchProducts(250, query);
+  // Defensive client-side filter as a fallback.
+  return page.filter((product) =>
+    product.node.vendor?.toLowerCase().includes(vendorFilter.toLowerCase())
   );
 }
 
