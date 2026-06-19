@@ -1,30 +1,34 @@
-## Goal
+# Add Google Calendar Event on Order Confirm
 
-Upgrade the **Build Prompt** button in `TextToImageSection.tsx` so it sends the structured form fields to Lovable AI Gateway (`google/gemini-2.5-flash`) using the creative-director system prompt provided. The returned prompt is shown in the existing editable textarea and used as-is by Generate.
+When an admin clicks **Mark Confirmed** on an order, also create a Google Calendar event using the workspace's Google Calendar connector. Existing confirm logic (`rpc_mark_order_confirmed` + Shopify tag update) stays untouched — calendar creation runs on top.
 
-## Changes
+## Behavior
 
-### 1. New edge function: `supabase/functions/build-poster-prompt/index.ts`
-- `verify_jwt = false` style call (matches existing pattern).
-- Accepts JSON: `{ campaignType, headline, subheadline, keyDetail, dateRange, locations, style, realism, brandStyle, brandSnippet }`.
-- POSTs to `https://ai.gateway.lovable.dev/v1/chat/completions` with `Lovable-API-Key: ${LOVABLE_API_KEY}`.
-- Model: `google/gemini-2.5-flash`.
-- System message: the full creative-director prompt from the user message (verbatim).
-- User message: structured list of the campaign fields.
-- Returns `{ prompt: string }`.
-- Handles 429 / 402 with clear error.
+- **Title**: `#L0042 — John | Castries` (order_number + customer_name + location)
+- **Date**: `orders.preferred_date`
+- **Time**: `orders.pickup_time` if present → 1-hour timed event; otherwise all-day
+- **Description**: customer name, phone, pickup location, line items with quantities, total in EC$
+- **Trigger**: only on the admin confirm action in `OrderShopifyActions.tsx`. Skipped silently if no `preferred_date`. Failure shows a non-blocking toast; the confirm itself is still considered successful.
 
-### 2. `src/pages/admin/marketing-studio/TextToImageSection.tsx` (only file edited in frontend)
-- Add a new **Realism Level** pill selector: `Standard | Premium | Hyper Realistic` (state `realism`).
-- Rewrite `handleBuildPrompt` to be `async`:
-  - Validate at least one of headline/subheadline/keyDetail is filled.
-  - Set a `building` loading state; disable button + show spinner with label "Writing prompt…".
-  - Call `supabase.functions.invoke("build-poster-prompt", { body: { ...fields, brandStyle, brandSnippet: getBrandStyleDef(brandStyle)?.snippet ?? "" } })`.
-  - On success: `setFinalPrompt(data.prompt)` and toast "Prompt ready — edit, then generate".
-  - On error: toast the message; do not overwrite existing finalPrompt.
-- Remove the old local `buildPrompt()` string-concatenation helper (no longer used).
-- Keep everything else (Generate button, library save, result display, download) unchanged.
+## Implementation
+
+### 1. New edge function `supabase/functions/create-order-calendar-event/index.ts`
+- Public CORS, validates `orderId` (zod).
+- Uses service-role client to load the order row (id, order_number, customer_name, customer_phone, location, preferred_date, pickup_time, line_items, total_price).
+- Builds the title/description from those fields.
+- POSTs to the Google Calendar connector gateway:
+  - URL: `https://connector-gateway.lovable.dev/google_calendar/calendar/v3/calendars/primary/events`
+  - Headers: `Authorization: Bearer ${LOVABLE_API_KEY}`, `X-Connection-Api-Key: ${GOOGLE_CALENDAR_API_KEY}`
+  - Body:
+    - If `pickup_time` present: `start.dateTime` = `${preferred_date}T${pickup_time}` with `timeZone: "America/St_Lucia"`, `end.dateTime` = +1h.
+    - Else: `start.date` / `end.date` = `preferred_date` (all-day, end is next day).
+- Returns `{ success, eventId, htmlLink }` or `{ success: false, error }`.
+- Does NOT modify the order row.
+
+### 2. `src/components/orders/OrderShopifyActions.tsx`
+- In `markConfirmed`, after the existing `rpc_mark_order_confirmed` + Shopify tag block, fire-and-await `supabase.functions.invoke("create-order-calendar-event", { body: { orderId: order.id } })` inside a try/catch so a calendar failure only logs `toast.message("Calendar event not created: …")` without throwing — confirm success toast still fires.
+- No other call sites changed.
 
 ## Out of scope
-- No changes to `PosterTab.tsx`, the existing `generate-poster-t2i` function, or any other poster flow.
-- Image style/look is governed by the new AI-written prompt — no code-level layout changes.
+- Reschedule / cancel sync to calendar.
+- Storing the returned `eventId` on the order (can be added later if needed).
