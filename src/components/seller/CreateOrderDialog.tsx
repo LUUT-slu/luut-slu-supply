@@ -71,6 +71,11 @@ export function CreateOrderDialog({
   const [submitting, setSubmitting] = useState(false);
   const [discount, setDiscount] = useState("");
 
+  // Variant picker state
+  const [variantPickerProduct, setVariantPickerProduct] = useState<Product | null>(null);
+  const [variantOptions, setVariantOptions] = useState<ShopifyVariantLite[]>([]);
+  const [variantLoading, setVariantLoading] = useState(false);
+
   // Customer form fields
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -89,7 +94,7 @@ export function CreateOrderDialog({
     setLoading(true);
     const { data, error } = await supabase
       .from("seller_products")
-      .select("id, name, price, quantity, images")
+      .select("id, name, price, quantity, images, shopify_product_id")
       .eq("seller_id", sellerId)
       .eq("status", "active")
       .order("name");
@@ -103,26 +108,87 @@ export function CreateOrderDialog({
     setLoading(false);
   };
 
-  const addToCart = (product: Product) => {
-    const existing = cart.find((item) => item.product.id === product.id);
-    if (existing) {
-      setCart(
-        cart.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
-    } else {
-      setCart([...cart, { product, quantity: 1 }]);
-    }
+  const addCartLine = (
+    product: Product,
+    variant?: { id: string; title: string; price: number; image?: string | null }
+  ) => {
+    const key = variant ? `${product.id}::${variant.id}` : product.id;
+    setCart((prev) => {
+      const existing = prev.find((item) => item.key === key);
+      if (existing) {
+        return prev.map((item) =>
+          item.key === key ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          key,
+          product,
+          quantity: 1,
+          variantId: variant?.id,
+          variantTitle: variant?.title,
+          variantPrice: variant?.price,
+          variantImage: variant?.image ?? null,
+        },
+      ];
+    });
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const handleProductClick = async (product: Product) => {
+    // Local product (no Shopify link) → just add
+    if (!product.shopify_product_id) {
+      addCartLine(product);
+      return;
+    }
+    setVariantPickerProduct(product);
+    setVariantLoading(true);
+    setVariantOptions([]);
+    const result = await fetchProductVariantsById(product.shopify_product_id);
+    setVariantLoading(false);
+    if (!result) {
+      toast.error("Failed to load variants");
+      setVariantPickerProduct(null);
+      addCartLine(product);
+      return;
+    }
+    // No variants or only the default single variant → add directly
+    const meaningful = result.variants.filter((v) => v.title && v.title !== "Default Title");
+    if (meaningful.length <= 1) {
+      setVariantPickerProduct(null);
+      const only = result.variants[0];
+      if (only && meaningful.length === 1) {
+        addCartLine(product, {
+          id: only.id,
+          title: only.title,
+          price: parseFloat(only.price.amount) || product.price,
+          image: only.image?.url ?? null,
+        });
+      } else {
+        addCartLine(product);
+      }
+      return;
+    }
+    setVariantOptions(result.variants);
+  };
+
+  const pickVariant = (v: ShopifyVariantLite) => {
+    if (!variantPickerProduct) return;
+    addCartLine(variantPickerProduct, {
+      id: v.id,
+      title: v.title,
+      price: parseFloat(v.price.amount) || variantPickerProduct.price,
+      image: v.image?.url ?? null,
+    });
+    setVariantPickerProduct(null);
+    setVariantOptions([]);
+  };
+
+  const updateQuantity = (key: string, delta: number) => {
     setCart(
       cart
         .map((item) => {
-          if (item.product.id === productId) {
+          if (item.key === key) {
             const newQty = item.quantity + delta;
             if (newQty <= 0) return null;
             return { ...item, quantity: newQty };
@@ -133,13 +199,16 @@ export function CreateOrderDialog({
     );
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(cart.filter((item) => item.product.id !== productId));
+  const removeFromCart = (key: string) => {
+    setCart(cart.filter((item) => item.key !== key));
   };
+
+  const lineUnitPrice = (item: CartItem) =>
+    item.variantPrice ?? item.product.price;
 
   const discountAmount = parseFloat(discount) || 0;
   const subtotal = cart.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
+    (sum, item) => sum + lineUnitPrice(item) * item.quantity,
     0
   );
   const totalPrice = Math.max(0, subtotal - discountAmount);
