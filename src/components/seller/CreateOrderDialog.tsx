@@ -650,6 +650,69 @@ export function CreateOrderDialog({
           </Button>
         </div>
       </DialogContent>
+
+      {/* Variant Picker Dialog */}
+      <Dialog
+        open={!!variantPickerProduct}
+        onOpenChange={(o) => {
+          if (!o) {
+            setVariantPickerProduct(null);
+            setVariantOptions([]);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              Choose variant
+              {variantPickerProduct ? ` — ${variantPickerProduct.name}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {variantLoading ? (
+            <div className="flex items-center justify-center py-8 text-sm text-muted-foreground gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading variants…
+            </div>
+          ) : variantOptions.length === 0 ? (
+            <div className="text-center py-6 text-sm text-muted-foreground">
+              No variants found.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {variantOptions.map((v) => {
+                const price = parseFloat(v.price.amount) || 0;
+                return (
+                  <button
+                    key={v.id}
+                    disabled={!v.availableForSale}
+                    onClick={() => pickVariant(v)}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border/60 text-left active:bg-muted/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {v.image?.url ? (
+                      <img
+                        src={v.image.url}
+                        alt={v.title}
+                        className="h-10 w-10 rounded object-cover"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{v.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(price)}
+                        {!v.availableForSale ? " · Sold out" : ""}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
