@@ -113,6 +113,82 @@ export default function SellerOrderDetail() {
     }
   };
 
+  // Convert any preferred_date format into "YYYY-MM-DD" for <input type="date">
+  const toIsoDate = (input?: string | null): string => {
+    if (!input) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+    const d = new Date(input);
+    if (isNaN(d.getTime())) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  // Convert "10:30 AM" / "HH:MM" / "HH:MM:SS" into "HH:MM" for <input type="time">
+  const toIsoTime = (input?: string | null): string => {
+    if (!input) return "";
+    const ampm = input.trim().match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+    if (ampm) {
+      let h = parseInt(ampm[1], 10);
+      const isPm = ampm[3].toLowerCase() === "pm";
+      if (h === 12) h = isPm ? 12 : 0;
+      else if (isPm) h += 12;
+      return `${String(h).padStart(2, "0")}:${ampm[2]}`;
+    }
+    const hms = input.trim().match(/^(\d{1,2}):(\d{2})/);
+    if (hms) return `${hms[1].padStart(2, "0")}:${hms[2]}`;
+    return "";
+  };
+
+  const openReschedule = () => {
+    if (!order) return;
+    setNewDate(toIsoDate(order.preferred_date));
+    setNewTime(toIsoTime(order.pickup_time || order.pickup_time_window));
+    setRescheduleOpen(true);
+  };
+
+  const handleReschedule = async () => {
+    if (!order || !newDate) {
+      toast.error("Please pick a date");
+      return;
+    }
+    setRescheduling(true);
+    try {
+      // 1. Update the same order row (not a new order)
+      const { error: updateErr } = await supabase
+        .from("orders")
+        .update({
+          preferred_date: newDate,
+          pickup_time: newTime || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", order.id);
+      if (updateErr) throw updateErr;
+
+      // 2. Delete old calendar event if one exists (no-op if absent)
+      await supabase.functions
+        .invoke("delete-order-calendar-event", { body: { orderId: order.id } })
+        .catch((err) => console.error("Calendar delete error:", err));
+
+      // 3. Create fresh calendar event for the new date/time
+      const { data: createData, error: createErr } = await supabase.functions.invoke(
+        "create-order-calendar-event",
+        { body: { orderId: order.id } },
+      );
+      if (createErr) throw createErr;
+
+      toast.success("Order rescheduled", {
+        action: createData?.htmlLink
+          ? { label: "Open Calendar", onClick: () => window.open(createData.htmlLink, "_blank") }
+          : undefined,
+      });
+      setRescheduleOpen(false);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to reschedule");
+    } finally {
+      setRescheduling(false);
+    }
+  };
+
   const order = orders.find((o) => o.id === orderId);
 
   const formatCurrency = (amount: number) => {
