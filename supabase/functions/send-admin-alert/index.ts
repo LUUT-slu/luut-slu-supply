@@ -178,7 +178,23 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseAnon = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseAnon);
+
+  // Auth: require user JWT or service-role key
+  const authHeader = req.headers.get("authorization") || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  let authed = token === serviceKey;
+  if (!authed && token) {
+    const admin = createClient(supabaseUrl, serviceKey);
+    const { data, error } = await admin.auth.getUser(token);
+    authed = !error && !!data?.user;
+  }
+  if (!authed) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   try {
     const body = (await req.json()) as AdminAlertRequest;

@@ -28,9 +28,10 @@ async function verifyAdmin(req: Request): Promise<boolean> {
 
   try {
     const token = authHeader.replace("Bearer ", "");
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    const userId = payload.sub;
-    if (!userId) return false;
+    // Cryptographically verify the JWT via Supabase Auth.
+    const { data: userRes, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !userRes?.user) return false;
+    const userId = userRes.user.id;
 
     const { data: roles } = await supabase
       .from("user_roles")
