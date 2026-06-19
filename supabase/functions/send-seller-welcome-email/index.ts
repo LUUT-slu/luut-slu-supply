@@ -99,6 +99,22 @@ serve(async (req) => {
       });
     }
 
+    // Auth: require a valid user JWT or the service-role key.
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    let authed = token === supabaseKey;
+    if (!authed && token) {
+      const admin = createClient(supabaseUrl, supabaseKey);
+      const { data, error } = await admin.auth.getUser(token);
+      authed = !error && !!data?.user;
+    }
+    if (!authed) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
     const body = await req.json().catch(() => ({}));
     let { email, userId, sellerId } = body as {
       email?: string;
