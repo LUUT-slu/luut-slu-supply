@@ -141,6 +141,7 @@ Deno.serve(async (req) => {
       eventBody.end = { date: addDay(isoDate) };
     }
 
+    console.log("Calendar event body:", JSON.stringify(eventBody));
     const gcalRes = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: {
