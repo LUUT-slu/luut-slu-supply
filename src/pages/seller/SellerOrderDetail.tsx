@@ -84,6 +84,10 @@ export default function SellerOrderDetail() {
   const { orders, loading, refetch, updateOrderStatus, deleteOrder } = useSellerOrders(profile?.id);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addingToCalendar, setAddingToCalendar] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
+  const [rescheduling, setRescheduling] = useState(false);
 
   const addToCalendar = async () => {
     if (!order) return;
