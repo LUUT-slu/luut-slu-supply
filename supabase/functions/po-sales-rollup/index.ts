@@ -9,6 +9,31 @@ Deno.serve(async (req) => {
   try {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+    // Auth: require admin user JWT, service role key, or cron secret
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    const providedCronSecret = req.headers.get("x-cron-secret");
+    let authed = token === SERVICE_ROLE || !!(cronSecret && providedCronSecret === cronSecret);
+    if (!authed && token) {
+      const { data, error } = await admin.auth.getUser(token);
+      if (!error && data?.user) {
+        const { data: roleRow } = await admin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+        authed = !!roleRow;
+      }
+    }
+    if (!authed) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
     const { data: items } = await admin.from("purchase_order_items").select("id, product_name, category, shopify_product_id, shopify_variant_id, linked_seller_product_id");
     if (!items?.length) return new Response(JSON.stringify({ success: true, updated: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
