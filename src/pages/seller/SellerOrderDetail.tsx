@@ -494,6 +494,16 @@ export default function SellerOrderDetail() {
                   <Button
                     className="w-full justify-start"
                     variant="outline"
+                    onClick={addToCalendar}
+                    disabled={addingToCalendar}
+                  >
+                    <CalendarPlus className="h-4 w-4 mr-2" />
+                    {addingToCalendar ? "Adding..." : "Add to Calendar"}
+                  </Button>
+
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
                     onClick={() => setEditDialogOpen(true)}
                     disabled={!isEditable}
                   >
