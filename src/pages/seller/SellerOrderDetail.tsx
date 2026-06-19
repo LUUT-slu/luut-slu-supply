@@ -635,6 +635,17 @@ export default function SellerOrderDetail() {
                   <Button
                     className="w-full justify-start"
                     variant="outline"
+                    onClick={openReschedule}
+                    disabled={order.status === "cancelled" || order.status === "completed"}
+                  >
+                    <CalendarClock className="h-4 w-4 mr-2 text-amber-400" />
+                    Reschedule
+                  </Button>
+
+
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
                     onClick={() => setEditDialogOpen(true)}
                     disabled={!isEditable}
                   >
