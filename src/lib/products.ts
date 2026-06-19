@@ -154,7 +154,6 @@ export async function fetchLovableProducts(): Promise<LovableProduct[]> {
       seller_profiles!inner(seller_name)
     `)
     .eq('status', 'active')
-    .is('shopify_product_id', null)  // Exclude synced Shopify products to prevent duplicates
     .order('created_at', { ascending: false });
 
   if (error) {
