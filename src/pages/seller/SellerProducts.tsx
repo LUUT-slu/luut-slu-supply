@@ -132,9 +132,12 @@ export default function SellerProducts() {
       }
 
       let syncedCount = 0;
-      let skippedCount = 0;
+      let updatedCount = 0;
 
       for (const { node: product } of shopifyProducts) {
+        const images = product.images.edges.map((img) => img.node.url);
+        const price = parseFloat(product.priceRange.minVariantPrice.amount);
+
         // Check if already synced
         const { data: existing } = await supabase
           .from("seller_products")
@@ -143,22 +146,29 @@ export default function SellerProducts() {
           .maybeSingle();
 
         if (existing) {
-          skippedCount++;
+          // Refresh title, price, images, and category from Shopify so the dashboard stays in sync.
+          const { error } = await supabase
+            .from("seller_products")
+            .update({
+              name: product.title,
+              price,
+              category: product.productType || null,
+              images,
+            })
+            .eq("id", existing.id);
+          if (!error) updatedCount++;
           continue;
         }
 
-        // Get product images
-        const images = product.images.edges.map((img) => img.node.url);
-        
         // Insert new product
         const { error } = await supabase.from("seller_products").insert({
           seller_id: profile.id,
           name: product.title,
-          price: parseFloat(product.priceRange.minVariantPrice.amount),
+          price,
           quantity: 10, // Default stock
           status: "active",
           category: product.productType || null,
-          images: images,
+          images,
           shopify_product_id: product.id,
         });
 
@@ -167,9 +177,10 @@ export default function SellerProducts() {
         }
       }
 
-      toast.success(`Synced ${syncedCount} products`, {
-        description: skippedCount > 0 ? `${skippedCount} already existed` : undefined,
+      toast.success(`Synced ${syncedCount} new · refreshed ${updatedCount}`, {
+        description: `${shopifyProducts.length} Shopify products processed`,
       });
+
       fetchProducts();
     } catch (error) {
       console.error("Sync error:", error);
