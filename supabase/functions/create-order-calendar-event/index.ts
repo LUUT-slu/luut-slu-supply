@@ -158,6 +158,8 @@ Deno.serve(async (req) => {
     }
 
     const data = JSON.parse(gcalText);
+    // Persist the event id so we can delete/update it later
+    await supabase.from("orders").update({ calendar_event_id: data.id }).eq("id", orderId);
     return json({ success: true, eventId: data.id, htmlLink: data.htmlLink });
   } catch (e) {
     console.error("create-order-calendar-event error", e);
