@@ -42,6 +42,9 @@ verify_jwt = false
 [functions.send-welcome-email]
 verify_jwt = false
 
+[functions.send-seller-welcome-email]
+verify_jwt = false
+
 [functions.send-merchant-order-email]
 verify_jwt = false
 
