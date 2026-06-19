@@ -18,10 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Minus, Package, X, ShoppingBag, Zap } from "lucide-react";
+import { Plus, Minus, Package, X, ShoppingBag, Zap, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, parse } from "date-fns";
 import { Switch } from "@/components/ui/switch";
+import { fetchProductVariantsById, type ShopifyVariantLite } from "@/lib/shopify";
 
 interface Product {
   id: string;
@@ -29,11 +30,22 @@ interface Product {
   price: number;
   quantity: number;
   images: string[] | null;
+  shopify_product_id: string | null;
 }
 
 interface CartItem {
+  /** Unique cart line key: product.id + variantId (if any) */
+  key: string;
   product: Product;
   quantity: number;
+  /** Real Shopify variant gid when a variant was picked */
+  variantId?: string;
+  /** Display label like "Black / M" */
+  variantTitle?: string;
+  /** Variant-specific price overrides product price when present */
+  variantPrice?: number;
+  /** Variant image override */
+  variantImage?: string | null;
 }
 
 interface CreateOrderDialogProps {
