@@ -264,16 +264,25 @@ export function CreateOrderDialog({
       const formattedDate = format(parsedDate, "EEEE, MMMM d, yyyy");
 
       // Build line items in unified create-draft-order shape
-      const lineItems = cart.map((item) => ({
-        variant_id: `lovable-variant-${item.product.id}`,
-        product_id: item.product.id,
-        quantity: item.quantity,
-        title: item.product.name,
-        price: String(item.product.price),
-        image_url: item.product.images?.[0] || null,
-        source: "lovable" as const,
-        vendor: sellerName,
-      }));
+      const lineItems = cart.map((item) => {
+        const unitPrice = lineUnitPrice(item);
+        const hasShopifyVariant = !!item.variantId;
+        return {
+          variant_id: hasShopifyVariant
+            ? item.variantId!
+            : `lovable-variant-${item.product.id}`,
+          product_id: item.product.id,
+          quantity: item.quantity,
+          title: item.variantTitle
+            ? `${item.product.name} — ${item.variantTitle}`
+            : item.product.name,
+          price: String(unitPrice),
+          image_url: item.variantImage || item.product.images?.[0] || null,
+          source: hasShopifyVariant ? ("shopify" as const) : ("lovable" as const),
+          vendor: sellerName,
+          variant_title: item.variantTitle,
+        };
+      });
 
       const orderNote = [
         note.trim() || null,
