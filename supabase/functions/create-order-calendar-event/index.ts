@@ -19,11 +19,39 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function addHour(time: string): string {
-  // time format "HH:MM" or "HH:MM:SS"
-  const [hStr, mStr = "0", sStr = "0"] = time.split(":");
-  const h = (parseInt(hStr, 10) + 1) % 24;
-  return `${String(h).padStart(2, "0")}:${mStr.padStart(2, "0")}:${sStr.padStart(2, "0")}`;
+function parseDateToIso(input: string): string | null {
+  // Accepts "YYYY-MM-DD" or human strings like "Saturday, June 20, 2026"
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+  const d = new Date(input);
+  if (isNaN(d.getTime())) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function parseTimeToHms(input: string): string | null {
+  // Accepts "HH:MM", "HH:MM:SS", or "h:MM AM/PM"
+  const ampm = input.trim().match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+  if (ampm) {
+    let h = parseInt(ampm[1], 10);
+    const m = ampm[2];
+    const isPm = ampm[3].toLowerCase() === "pm";
+    if (h === 12) h = isPm ? 12 : 0;
+    else if (isPm) h += 12;
+    return `${String(h).padStart(2, "0")}:${m}:00`;
+  }
+  const hms = input.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (hms) {
+    return `${hms[1].padStart(2, "0")}:${hms[2]}:${hms[3] ?? "00"}`;
+  }
+  return null;
+}
+
+function addHour(hms: string): string {
+  const [h, m, s] = hms.split(":");
+  const nh = (parseInt(h, 10) + 1) % 24;
+  return `${String(nh).padStart(2, "0")}:${m}:${s}`;
 }
 
 function addDay(date: string): string {
@@ -88,24 +116,29 @@ Deno.serve(async (req) => {
       `Total: EC$${Number(order.total_price ?? 0).toFixed(2)}`,
     ].join("\n");
 
+    const isoDate = parseDateToIso(String(order.preferred_date));
+    if (!isoDate) {
+      return json({ success: false, error: `Unparseable preferred_date: ${order.preferred_date}` }, 400);
+    }
+
     const eventBody: Record<string, unknown> = {
       summary: title,
       description,
     };
 
-    if (order.pickup_time) {
-      const t = String(order.pickup_time);
+    const hms = order.pickup_time ? parseTimeToHms(String(order.pickup_time)) : null;
+    if (hms) {
       eventBody.start = {
-        dateTime: `${order.preferred_date}T${t.length === 5 ? `${t}:00` : t}`,
+        dateTime: `${isoDate}T${hms}`,
         timeZone: "America/St_Lucia",
       };
       eventBody.end = {
-        dateTime: `${order.preferred_date}T${addHour(t).length === 5 ? `${addHour(t)}:00` : addHour(t)}`,
+        dateTime: `${isoDate}T${addHour(hms)}`,
         timeZone: "America/St_Lucia",
       };
     } else {
-      eventBody.start = { date: order.preferred_date };
-      eventBody.end = { date: addDay(order.preferred_date) };
+      eventBody.start = { date: isoDate };
+      eventBody.end = { date: addDay(isoDate) };
     }
 
     const gcalRes = await fetch(GATEWAY_URL, {
