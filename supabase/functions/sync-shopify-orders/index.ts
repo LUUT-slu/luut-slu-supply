@@ -102,7 +102,9 @@ Deno.serve(async (req) => {
   }
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
-  const isCron = body?.trigger === "cron";
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const providedCronSecret = req.headers.get("x-cron-secret");
+  const isCron = !!(cronSecret && providedCronSecret && providedCronSecret === cronSecret);
   const fullResync = body?.mode === "full";
   if (!isAdminCall && !isCron) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
