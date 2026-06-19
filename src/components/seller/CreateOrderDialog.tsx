@@ -531,63 +531,72 @@ export function CreateOrderDialog({
             <div className="space-y-3">
               <h3 className="text-sm font-medium">Cart ({cart.length} items)</h3>
               <div className="space-y-2">
-                {cart.map((item) => (
-                  <div
-                    key={item.product.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-muted/30 border border-border/40"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      {item.product.images?.[0] ? (
-                        <img
-                          src={item.product.images[0]}
-                          alt={item.product.name}
-                          className="h-8 w-8 rounded object-cover"
-                        />
-                      ) : (
-                        <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
-                          <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                {cart.map((item) => {
+                  const img = item.variantImage || item.product.images?.[0];
+                  const unit = lineUnitPrice(item);
+                  return (
+                    <div
+                      key={item.key}
+                      className="flex items-center justify-between p-2 rounded-lg bg-muted/30 border border-border/40"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {img ? (
+                          <img
+                            src={img}
+                            alt={item.product.name}
+                            className="h-8 w-8 rounded object-cover"
+                          />
+                        ) : (
+                          <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
+                            <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">
+                            {item.product.name}
+                          </p>
+                          {item.variantTitle && (
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {item.variantTitle}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {formatCurrency(unit * item.quantity)}
+                          </p>
                         </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium truncate">
-                          {item.product.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatCurrency(item.product.price * item.quantity)}
-                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => updateQuantity(item.key, -1)}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="text-xs font-medium w-5 text-center">
+                          {item.quantity}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => updateQuantity(item.key, 1)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive"
+                          onClick={() => removeFromCart(item.key)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => updateQuantity(item.product.id, -1)}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="text-xs font-medium w-5 text-center">
-                        {item.quantity}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => updateQuantity(item.product.id, 1)}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-destructive"
-                        onClick={() => removeFromCart(item.product.id)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Discount (full mode) */}
