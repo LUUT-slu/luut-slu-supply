@@ -27,24 +27,17 @@ async function verifyAdmin(req: Request) {
   const authHeader = req.headers.get("authorization");
   if (!authHeader) throw new Error("Unauthorized");
 
-  // Use service role key to bypass RLS and verify admin role
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Extract user ID from JWT payload
+  // Cryptographically verify the JWT via Supabase Auth.
   const token = authHeader.replace("Bearer ", "");
-  let userId: string;
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    userId = payload.sub;
-    if (!userId) throw new Error("No sub in token");
-  } catch {
-    throw new Error("Unauthorized");
-  }
+  const { data: userRes, error: userErr } = await supabase.auth.getUser(token);
+  if (userErr || !userRes?.user) throw new Error("Unauthorized");
+  const userId = userRes.user.id;
 
-  // Check admin role using service role client
   const { data: roles } = await supabase
     .from("user_roles")
     .select("role")
