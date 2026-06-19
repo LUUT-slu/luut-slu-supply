@@ -113,11 +113,11 @@ serve(async (req) => {
       if (!resolvedUserId && sellerId) {
         const { data: sp } = await supabase
           .from("seller_profiles")
-          .select("user_id, contact_email")
+          .select("user_id, owner_email")
           .eq("id", sellerId)
           .maybeSingle();
         resolvedUserId = sp?.user_id ?? undefined;
-        if (sp?.contact_email) email = sp.contact_email;
+        if (sp?.owner_email) email = sp.owner_email;
       }
       if (!email && resolvedUserId) {
         const { data: u } = await supabase.auth.admin.getUserById(resolvedUserId);
