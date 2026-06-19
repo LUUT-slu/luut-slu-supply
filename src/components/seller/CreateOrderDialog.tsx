@@ -499,7 +499,7 @@ export function CreateOrderDialog({
                 {products.map((product) => (
                   <button
                     key={product.id}
-                    onClick={() => addToCart(product)}
+                    onClick={() => handleProductClick(product)}
                     className="flex items-center gap-2 p-2 rounded-lg border border-border/60 active:bg-muted/50 transition-colors text-left"
                   >
                     {product.images?.[0] ? (
@@ -517,6 +517,7 @@ export function CreateOrderDialog({
                       <p className="text-xs font-medium truncate">{product.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatCurrency(product.price)} · {product.quantity > 0 ? `${product.quantity} left` : "Sold out"}
+                        {product.shopify_product_id ? " · variants" : ""}
                       </p>
                     </div>
                   </button>
