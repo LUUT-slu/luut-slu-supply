@@ -153,6 +153,7 @@ export default function SellerOrderDetail() {
 
   const handleStatusChange = async (newStatus: string) => {
     if (!order) return;
+    const prevStatus = order.status;
     await updateOrderStatus(order.id, newStatus as OrderStatus);
 
     // Trigger email on status change
@@ -161,6 +162,26 @@ export default function SellerOrderDetail() {
       supabase.functions.invoke("send-order-email", {
         body: { orderId: order.id, type: emailType },
       }).catch(err => console.error("Email trigger error:", err));
+    }
+
+    // Auto-add to Google Calendar when transitioning to confirmed
+    if (newStatus === "confirmed" && prevStatus !== "confirmed") {
+      supabase.functions
+        .invoke("create-order-calendar-event", { body: { orderId: order.id } })
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Calendar event error:", error);
+            return;
+          }
+          if (data?.success) {
+            toast.success("Added to Google Calendar", {
+              action: data.htmlLink
+                ? { label: "Open", onClick: () => window.open(data.htmlLink, "_blank") }
+                : undefined,
+            });
+          }
+        })
+        .catch((err) => console.error("Calendar event error:", err));
     }
   };
 
