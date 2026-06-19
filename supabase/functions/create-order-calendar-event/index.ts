@@ -19,11 +19,39 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function addHour(time: string): string {
-  // time format "HH:MM" or "HH:MM:SS"
-  const [hStr, mStr = "0", sStr = "0"] = time.split(":");
-  const h = (parseInt(hStr, 10) + 1) % 24;
-  return `${String(h).padStart(2, "0")}:${mStr.padStart(2, "0")}:${sStr.padStart(2, "0")}`;
+function parseDateToIso(input: string): string | null {
+  // Accepts "YYYY-MM-DD" or human strings like "Saturday, June 20, 2026"
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+  const d = new Date(input);
+  if (isNaN(d.getTime())) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function parseTimeToHms(input: string): string | null {
+  // Accepts "HH:MM", "HH:MM:SS", or "h:MM AM/PM"
+  const ampm = input.trim().match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+  if (ampm) {
+    let h = parseInt(ampm[1], 10);
+    const m = ampm[2];
+    const isPm = ampm[3].toLowerCase() === "pm";
+    if (h === 12) h = isPm ? 12 : 0;
+    else if (isPm) h += 12;
+    return `${String(h).padStart(2, "0")}:${m}:00`;
+  }
+  const hms = input.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (hms) {
+    return `${hms[1].padStart(2, "0")}:${hms[2]}:${hms[3] ?? "00"}`;
+  }
+  return null;
+}
+
+function addHour(hms: string): string {
+  const [h, m, s] = hms.split(":");
+  const nh = (parseInt(h, 10) + 1) % 24;
+  return `${String(nh).padStart(2, "0")}:${m}:${s}`;
 }
 
 function addDay(date: string): string {
