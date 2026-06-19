@@ -48,7 +48,18 @@ import {
   FileText,
   Archive,
   CalendarPlus,
+  CalendarClock,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 // Display preferred_date as-is (canonical string) without re-parsing
