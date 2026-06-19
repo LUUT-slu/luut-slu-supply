@@ -700,6 +700,49 @@ export default function SellerOrderDetail() {
         onSave={refetch}
       />
       <SellerAIPanel defaultMode="order" />
+
+      <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reschedule pickup</DialogTitle>
+            <DialogDescription>
+              Pick a new date (and optional time) for this order. The Google Calendar event will
+              be updated to match — same order, new day.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="reschedule-date">New date</Label>
+              <Input
+                id="reschedule-date"
+                type="date"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reschedule-time">New time (optional)</Label>
+              <Input
+                id="reschedule-time"
+                type="time"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty to make it an all-day calendar event.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRescheduleOpen(false)} disabled={rescheduling}>
+              Cancel
+            </Button>
+            <Button onClick={handleReschedule} disabled={rescheduling || !newDate}>
+              {rescheduling ? "Rescheduling..." : "Confirm reschedule"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
