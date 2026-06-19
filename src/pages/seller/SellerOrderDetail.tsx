@@ -72,6 +72,31 @@ export default function SellerOrderDetail() {
   const { profile } = useSellerProfile();
   const { orders, loading, refetch, updateOrderStatus, deleteOrder } = useSellerOrders(profile?.id);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [addingToCalendar, setAddingToCalendar] = useState(false);
+
+  const addToCalendar = async () => {
+    if (!order) return;
+    setAddingToCalendar(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-order-calendar-event", {
+        body: { orderId: order.id },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast.success("Added to Google Calendar", {
+          action: data.htmlLink
+            ? { label: "Open", onClick: () => window.open(data.htmlLink, "_blank") }
+            : undefined,
+        });
+      } else {
+        toast.error(data?.error || "Failed to add to calendar");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to add to calendar");
+    } finally {
+      setAddingToCalendar(false);
+    }
+  };
 
   const order = orders.find((o) => o.id === orderId);
 
