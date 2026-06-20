@@ -142,8 +142,8 @@ Deno.serve(async (req) => {
       : "1:1";
     const size = SIZE_FOR_ASPECT[aspectRatio] ?? "1024x1024";
 
-    const inputDataUrl = await fetchAsDataUrl(body.imageUrl);
-    const bytes = await generateViaGateway(body.prompt, inputDataUrl, size);
+    const inputBlob = await fetchAsBlob(body.imageUrl);
+    const bytes = await generateViaGateway(body.prompt, inputBlob, size);
 
     const path = `poster-i2i-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`;
     const up = await admin.storage.from(BUCKET).upload(path, bytes, {
