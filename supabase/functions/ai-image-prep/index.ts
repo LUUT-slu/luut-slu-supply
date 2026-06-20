@@ -21,9 +21,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const AI_GATEWAY_CHAT = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const AI_GATEWAY_EDITS = "https://ai.gateway.lovable.dev/v1/images/edits";
-const POSTER_MODEL = "openai/gpt-image-2";
-const DISPLAY_MODEL = "google/gemini-3-pro-image-preview";
+const IMAGE_MODEL = "google/gemini-3-pro-image-preview";
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
@@ -45,69 +43,6 @@ function buildPrompt(mode: PrepMode, format: Format): string {
   // expand
   const ar = ASPECT_RATIO[format];
   return `Outpaint the image so the final composition fits a ${ar} aspect ratio. Naturally extend the existing background, lighting, and scene to fill the new canvas. Do not alter the product itself — same position, size, colors, shape, branding, and proportions. The product must remain the clear hero. Seamless background continuation only.`;
-}
-
-const OPENAI_SIZE_FOR_ASPECT: Record<string, string> = {
-  "1:1": "1024x1024",
-  "4:5": "1024x1536",
-  "2:3": "1024x1536",
-  "3:4": "1024x1536",
-  "9:16": "1024x1536",
-  "16:9": "1536x1024",
-  "3:2": "1536x1024",
-};
-
-async function fetchAsBlob(url: string): Promise<Blob> {
-  if (url.startsWith("data:")) {
-    const m = url.match(/^data:([^;,]+);base64,(.+)$/);
-    if (!m) throw new Error("Invalid data URL");
-    const ct = m[1] || "image/png";
-    const bin = atob(m[2]);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new Blob([bytes], { type: ct });
-  }
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`Failed to fetch input image (${r.status})`);
-  const ct = r.headers.get("content-type") || "image/png";
-  return new Blob([await r.arrayBuffer()], { type: ct });
-}
-
-async function generateOpenAI(
-  model: string,
-  prompt: string,
-  imageUrl: string,
-  aspect: string,
-): Promise<Uint8Array> {
-  // OpenAI image editing uses /v1/images/edits with multipart form-data.
-  const blob = await fetchAsBlob(imageUrl);
-  const ext = blob.type.includes("jpeg") ? "jpg"
-    : blob.type.includes("webp") ? "webp" : "png";
-  const form = new FormData();
-  form.append("model", model);
-  form.append("prompt", prompt);
-  form.append("size", OPENAI_SIZE_FOR_ASPECT[aspect] ?? "1024x1024");
-  form.append("n", "1");
-  form.append("quality", "low");
-  form.append("image", blob, `input.${ext}`);
-
-  const res = await fetch(AI_GATEWAY_EDITS, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}` },
-    body: form,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    const err: any = new Error(`AI Gateway ${res.status}: ${text}`);
-    err.status = res.status;
-    throw err;
-  }
-  const data = await res.json();
-  const b64 = data?.data?.[0]?.b64_json;
-  if (typeof b64 === "string" && b64.length > 0) return base64ToBytes(b64);
-  const url = data?.data?.[0]?.url;
-  if (typeof url === "string") return dataUrlOrUrlToBytes(url);
-  throw new Error("OpenAI image edit returned no image data");
 }
 
 async function generateGemini(
