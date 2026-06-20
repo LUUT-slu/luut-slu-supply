@@ -1,7 +1,9 @@
-// Image-to-image poster generation via Lovable AI Gateway -> openai/gpt-image-2.
-// Takes a product image + prompt and returns an edited poster image directly.
-// Saves to marketing_generated_images with campaign_type = 'poster' and
-// model_used = 'openai/gpt-image-2'.
+// Image-to-image poster generation via Lovable AI Gateway.
+// OpenAI gpt-image-2 cannot do image-to-image through the Gateway (the
+// /v1/images/edits endpoint isn't exposed, and /v1/images/generations rejects
+// the `image` parameter). We use Gemini's image preview model, which supports
+// multimodal image input via the chat-completions endpoint.
+// Saves to marketing_generated_images with campaign_type = 'poster'.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -14,23 +16,12 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
-const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/images/generations";
-const IMAGE_MODEL = "openai/gpt-image-2";
+const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const IMAGE_MODEL = "google/gemini-3-pro-image-preview";
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
 const ALLOWED_ASPECTS = new Set(["1:1", "4:5", "9:16", "16:9", "3:4", "3:2", "2:3"]);
-
-// gpt-image-2 supports a discrete set of canvas sizes; map aspect → nearest.
-const SIZE_FOR_ASPECT: Record<string, string> = {
-  "1:1": "1024x1024",
-  "4:5": "1024x1536",
-  "2:3": "1024x1536",
-  "3:4": "1024x1536",
-  "9:16": "1024x1536",
-  "16:9": "1536x1024",
-  "3:2": "1536x1024",
-};
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -60,8 +51,9 @@ async function fetchAsDataUrl(url: string): Promise<string> {
 async function generateViaGateway(
   prompt: string,
   inputDataUrl: string,
-  size: string,
+  aspectRatio: string,
 ): Promise<Uint8Array> {
+  const fullPrompt = `${prompt}\n\nOutput aspect ratio: ${aspectRatio}.`;
   const res = await fetch(AI_GATEWAY, {
     method: "POST",
     headers: {
@@ -70,11 +62,16 @@ async function generateViaGateway(
     },
     body: JSON.stringify({
       model: IMAGE_MODEL,
-      prompt,
-      size,
-      n: 1,
-      quality: "low",
-      image: [inputDataUrl],
+      modalities: ["image", "text"],
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: fullPrompt },
+            { type: "image_url", image_url: { url: inputDataUrl } },
+          ],
+        },
+      ],
     }),
   });
 
@@ -86,12 +83,16 @@ async function generateViaGateway(
   }
 
   const data = await res.json();
-  const b64 = data?.data?.[0]?.b64_json;
-  if (typeof b64 === "string" && b64.length > 0) return base64ToBytes(b64);
+  const msg = data?.choices?.[0]?.message;
+  const imgs = msg?.images;
+  const imgUrl = imgs?.[0]?.image_url?.url;
 
-  const url = data?.data?.[0]?.url;
-  if (typeof url === "string") {
-    const r = await fetch(url);
+  if (typeof imgUrl === "string") {
+    if (imgUrl.startsWith("data:")) {
+      const m = imgUrl.match(/^data:([^;,]+);base64,(.+)$/);
+      if (m) return base64ToBytes(m[2]);
+    }
+    const r = await fetch(imgUrl);
     if (!r.ok) throw new Error(`Failed to fetch generated image (${r.status})`);
     return new Uint8Array(await r.arrayBuffer());
   }
@@ -134,10 +135,9 @@ Deno.serve(async (req) => {
     const aspectRatio = body.aspectRatio && ALLOWED_ASPECTS.has(body.aspectRatio)
       ? body.aspectRatio
       : "1:1";
-    const size = SIZE_FOR_ASPECT[aspectRatio] ?? "1024x1024";
 
     const inputDataUrl = await fetchAsDataUrl(body.imageUrl);
-    const bytes = await generateViaGateway(body.prompt, inputDataUrl, size);
+    const bytes = await generateViaGateway(body.prompt, inputDataUrl, aspectRatio);
 
     const path = `poster-i2i-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`;
     const up = await admin.storage.from(BUCKET).upload(path, bytes, {
@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
         generation_type: "poster",
         campaign_type: "poster",
         product_title: body.productTitle ?? null,
-        style: body.style ?? "gpt-image-2|img2img",
+        style: body.style ?? "gemini|img2img",
         aspect_ratio: aspectRatio,
         prompt_used: body.prompt,
         reference_image_url: body.imageUrl.startsWith("http") ? body.imageUrl : null,
