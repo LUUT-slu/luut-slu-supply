@@ -550,6 +550,7 @@ Deno.serve(async (req) => {
         image_url: publicUrl,
         thumbnail_url: publicUrl,
         generation_type: "poster",
+        campaign_type: "ai_poster",
         product_title: body.productTitle,
         style: `${styleKey}|${palette.dominant},${palette.accent}|flux-kontext+ideogram`,
         aspect_ratio: "1:1",
