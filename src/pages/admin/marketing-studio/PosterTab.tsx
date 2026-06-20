@@ -146,13 +146,50 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     setResultUrl(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+
+      // Image-to-image: prep the product reference via Gemini (Lovable AI
+      // Gateway) instead of Replicate's nano-banana-pro, which is currently
+      // failing with code PA. The prepped image is then fed into Ideogram
+      // (still on Replicate) as a style reference — Ideogram step unchanged.
+      let prepRefs = sourceRefs;
+      let finalModel = route.model;
+      if (sourceRefs.length > 0) {
+        try {
+          const { data: prepData, error: prepError } = await supabase.functions.invoke(
+            "ai-image-prep",
+            {
+              body: {
+                imageUrl: sourceRefs[0],
+                mode: "expand",
+                aspectRatio: aspect,
+                campaignType: "poster",
+                productTitle: product.title,
+              },
+              headers: { Authorization: `Bearer ${session?.access_token}` },
+            },
+          );
+          if (prepError || (prepData as any)?.error || !(prepData as any)?.url) {
+            const raw =
+              (prepData as any)?.error || prepError?.message || "Image prep failed";
+            toast.error(raw);
+            return;
+          }
+          prepRefs = [(prepData as any).url, ...sourceRefs.slice(1)];
+        } catch (e: any) {
+          toast.error(e?.message || "Image prep failed");
+          return;
+        }
+        // Hand off to Ideogram for the final poster composition.
+        finalModel = "ideogram-ai/ideogram-v3-quality";
+      }
+
       const { data, error } = await supabase.functions.invoke("marketing-generate", {
         body: {
           task: "poster",
-          model: route.model,
+          model: finalModel,
           prompt: promptOverride ?? prompt,
           aspectRatio: aspect,
-          referenceImages: sourceRefs,
+          referenceImages: prepRefs,
           styleReferenceImage: getBrandStyleReferenceImage(brandStyle, "poster") || undefined,
           productTitle: product.title,
           productHandle: (product as any).handle || null,
@@ -162,6 +199,7 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
         },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
+
       if (error || (data as any)?.error) {
         const raw = (data as any)?.error || error?.message || "Generation failed";
         const friendly = /insufficient credit/i.test(raw)
