@@ -14,7 +14,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
-const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/images/edits";
+const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/images/generations";
 const IMAGE_MODEL = "openai/gpt-image-2";
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
@@ -46,42 +46,36 @@ function base64ToBytes(b64: string): Uint8Array {
   return bytes;
 }
 
-async function fetchAsBlob(url: string): Promise<Blob> {
-  if (url.startsWith("data:")) {
-    const m = url.match(/^data:([^;,]+);base64,(.+)$/);
-    if (!m) throw new Error("Invalid data URL");
-    const ct = m[1] || "image/png";
-    const bin = atob(m[2]);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new Blob([bytes], { type: ct });
-  }
+async function fetchAsDataUrl(url: string): Promise<string> {
+  if (url.startsWith("data:")) return url;
   const r = await fetch(url);
   if (!r.ok) throw new Error(`Failed to fetch input image (${r.status})`);
   const ct = r.headers.get("content-type") || "image/png";
-  const buf = await r.arrayBuffer();
-  return new Blob([buf], { type: ct });
+  const buf = new Uint8Array(await r.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+  return `data:${ct};base64,${btoa(bin)}`;
 }
 
 async function generateViaGateway(
   prompt: string,
-  inputImage: Blob,
+  inputDataUrl: string,
   size: string,
 ): Promise<Uint8Array> {
-  const ext = inputImage.type.includes("jpeg") ? "jpg"
-    : inputImage.type.includes("webp") ? "webp" : "png";
-  const form = new FormData();
-  form.append("model", IMAGE_MODEL);
-  form.append("prompt", prompt);
-  form.append("size", size);
-  form.append("n", "1");
-  form.append("quality", "low");
-  form.append("image", inputImage, `input.${ext}`);
-
   const res = await fetch(AI_GATEWAY, {
     method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}` },
-    body: form,
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: IMAGE_MODEL,
+      prompt,
+      size,
+      n: 1,
+      quality: "low",
+      image: [inputDataUrl],
+    }),
   });
 
   if (!res.ok) {
@@ -142,8 +136,8 @@ Deno.serve(async (req) => {
       : "1:1";
     const size = SIZE_FOR_ASPECT[aspectRatio] ?? "1024x1024";
 
-    const inputBlob = await fetchAsBlob(body.imageUrl);
-    const bytes = await generateViaGateway(body.prompt, inputBlob, size);
+    const inputDataUrl = await fetchAsDataUrl(body.imageUrl);
+    const bytes = await generateViaGateway(body.prompt, inputDataUrl, size);
 
     const path = `poster-i2i-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`;
     const up = await admin.storage.from(BUCKET).upload(path, bytes, {
