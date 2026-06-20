@@ -331,7 +331,7 @@ Deno.serve(async (req) => {
         model_used: effectiveModel,
 
         reference_image_url: hostedRefs[0] || null,
-        campaign_type: campaignType || null,
+        campaign_type: task === "poster" ? "poster" : "display",
         created_by: userId,
       })
       .select("id")
