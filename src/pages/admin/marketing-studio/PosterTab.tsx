@@ -147,21 +147,20 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Image-to-image poster: route through ai-image-prep (Nano Banana /
-      // Gemini on the Lovable AI Gateway) instead of Replicate, which is
-      // timing out with code PA. The Gemini output is the final poster —
+      // Image-to-image poster: Replicate flux-kontext-pro. Takes the
+      // product image + prompt and returns the styled poster directly —
       // no Ideogram handoff. Result is saved with campaign_type = 'poster'.
       if (sourceRefs.length > 0) {
         const { data: prepData, error: prepError } = await supabase.functions.invoke(
-          "ai-image-prep",
+          "poster-img2img-flux",
           {
             body: {
               imageUrl: sourceRefs[0],
-              mode: "expand",
-              aspectRatio: aspect,
-              campaignType: "poster",
-              productTitle: product.title,
               prompt: promptOverride ?? prompt,
+              aspectRatio: aspect,
+              productTitle: product.title,
+              campaignType: "poster",
+              style: `${style}|${campaign}|flux-kontext-pro`,
             },
             headers: { Authorization: `Bearer ${session?.access_token}` },
           },
