@@ -46,42 +46,36 @@ function base64ToBytes(b64: string): Uint8Array {
   return bytes;
 }
 
-async function fetchAsBlob(url: string): Promise<Blob> {
-  if (url.startsWith("data:")) {
-    const m = url.match(/^data:([^;,]+);base64,(.+)$/);
-    if (!m) throw new Error("Invalid data URL");
-    const ct = m[1] || "image/png";
-    const bin = atob(m[2]);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new Blob([bytes], { type: ct });
-  }
+async function fetchAsDataUrl(url: string): Promise<string> {
+  if (url.startsWith("data:")) return url;
   const r = await fetch(url);
   if (!r.ok) throw new Error(`Failed to fetch input image (${r.status})`);
   const ct = r.headers.get("content-type") || "image/png";
-  const buf = await r.arrayBuffer();
-  return new Blob([buf], { type: ct });
+  const buf = new Uint8Array(await r.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+  return `data:${ct};base64,${btoa(bin)}`;
 }
 
 async function generateViaGateway(
   prompt: string,
-  inputImage: Blob,
+  inputDataUrl: string,
   size: string,
 ): Promise<Uint8Array> {
-  const ext = inputImage.type.includes("jpeg") ? "jpg"
-    : inputImage.type.includes("webp") ? "webp" : "png";
-  const form = new FormData();
-  form.append("model", IMAGE_MODEL);
-  form.append("prompt", prompt);
-  form.append("size", size);
-  form.append("n", "1");
-  form.append("quality", "low");
-  form.append("image", inputImage, `input.${ext}`);
-
   const res = await fetch(AI_GATEWAY, {
     method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}` },
-    body: form,
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: IMAGE_MODEL,
+      prompt,
+      size,
+      n: 1,
+      quality: "low",
+      image: [inputDataUrl],
+    }),
   });
 
   if (!res.ok) {
