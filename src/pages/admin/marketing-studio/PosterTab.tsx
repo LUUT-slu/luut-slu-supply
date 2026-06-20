@@ -147,12 +147,12 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Image-to-image poster: Replicate flux-kontext-pro. Takes the
-      // product image + prompt and returns the styled poster directly —
-      // no Ideogram handoff. Result is saved with campaign_type = 'poster'.
+      // Image-to-image poster: Lovable AI Gateway -> openai/gpt-image-2.
+      // Takes the product image + prompt and returns the edited poster
+      // directly — no Ideogram handoff. Saved with campaign_type = 'poster'.
       if (sourceRefs.length > 0) {
         const { data: prepData, error: prepError } = await supabase.functions.invoke(
-          "poster-img2img-flux",
+          "poster-img2img-gpt",
           {
             body: {
               imageUrl: sourceRefs[0],
@@ -160,7 +160,7 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
               aspectRatio: aspect,
               productTitle: product.title,
               campaignType: "poster",
-              style: `${style}|${campaign}|flux-kontext-pro`,
+              style: `${style}|${campaign}|gpt-image-2`,
             },
             headers: { Authorization: `Bearer ${session?.access_token}` },
           },
