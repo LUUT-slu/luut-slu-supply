@@ -163,6 +163,12 @@ Deno.serve(async (req) => {
     const rawCampaign = (body?.campaignType ?? "").toString().toLowerCase();
     const campaignType: CampaignType = rawCampaign === "display" ? "display" : "poster";
     const productTitle: string | undefined = body?.productTitle;
+    const promptOverride: string | undefined =
+      typeof body?.prompt === "string" && body.prompt.trim() ? body.prompt.trim() : undefined;
+    const aspectOverride: string | undefined =
+      typeof body?.aspectRatio === "string" && /^\d+:\d+$/.test(body.aspectRatio)
+        ? body.aspectRatio
+        : undefined;
 
     if (!imageUrl || typeof imageUrl !== "string") {
       return json({ error: "imageUrl is required" }, 400);
@@ -171,7 +177,12 @@ Deno.serve(async (req) => {
       return json({ error: "mode must be 'remove-bg' or 'expand'" }, 400);
     }
 
-    const prompt = buildPrompt(mode, format);
+    const basePrompt = promptOverride ?? buildPrompt(mode, format);
+    const resolvedAspect = aspectOverride ?? ASPECT_RATIO[format];
+    const prompt =
+      mode === "expand" && !/aspect ratio/i.test(basePrompt)
+        ? `${basePrompt} Compose the final image strictly in a ${resolvedAspect} aspect ratio frame.`
+        : basePrompt;
     const bytes = await generateViaGateway(prompt, imageUrl);
 
     // Persist to storage.
