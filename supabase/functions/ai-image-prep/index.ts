@@ -251,7 +251,8 @@ Deno.serve(async (req) => {
       mode === "expand" && !/aspect ratio/i.test(basePrompt)
         ? `${basePrompt} Compose the final image strictly in a ${resolvedAspect} aspect ratio frame.`
         : basePrompt;
-    const bytes = await generateViaGateway(prompt, imageUrl);
+    const model = campaignType === "poster" ? POSTER_MODEL : DISPLAY_MODEL;
+    const bytes = await generateViaGateway(model, prompt, imageUrl, resolvedAspect);
 
     // Persist to storage.
     const path = `prep-${mode}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`;
