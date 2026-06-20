@@ -156,6 +156,7 @@ export default function TextToImageSection({ brandStyle }: Props) {
             image_url: url,
             thumbnail_url: url,
             generation_type: "ai_poster",
+            campaign_type: "ai_poster",
             style: "text_to_image",
             aspect_ratio: aspectRatio,
             prompt_used: finalPrompt.trim(),
