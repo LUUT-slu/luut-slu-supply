@@ -147,49 +147,45 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Image-to-image: prep the product reference via Gemini (Lovable AI
-      // Gateway) instead of Replicate's nano-banana-pro, which is currently
-      // failing with code PA. The prepped image is then fed into Ideogram
-      // (still on Replicate) as a style reference — Ideogram step unchanged.
-      let prepRefs = sourceRefs;
-      let finalModel = route.model;
+      // Image-to-image poster: route through ai-image-prep (Nano Banana /
+      // Gemini on the Lovable AI Gateway) instead of Replicate, which is
+      // timing out with code PA. The Gemini output is the final poster —
+      // no Ideogram handoff. Result is saved with campaign_type = 'poster'.
       if (sourceRefs.length > 0) {
-        try {
-          const { data: prepData, error: prepError } = await supabase.functions.invoke(
-            "ai-image-prep",
-            {
-              body: {
-                imageUrl: sourceRefs[0],
-                mode: "expand",
-                aspectRatio: aspect,
-                campaignType: "poster",
-                productTitle: product.title,
-              },
-              headers: { Authorization: `Bearer ${session?.access_token}` },
+        const { data: prepData, error: prepError } = await supabase.functions.invoke(
+          "ai-image-prep",
+          {
+            body: {
+              imageUrl: sourceRefs[0],
+              mode: "expand",
+              aspectRatio: aspect,
+              campaignType: "poster",
+              productTitle: product.title,
+              prompt: promptOverride ?? prompt,
             },
-          );
-          if (prepError || (prepData as any)?.error || !(prepData as any)?.url) {
-            const raw =
-              (prepData as any)?.error || prepError?.message || "Image prep failed";
-            toast.error(raw);
-            return;
-          }
-          prepRefs = [(prepData as any).url, ...sourceRefs.slice(1)];
-        } catch (e: any) {
-          toast.error(e?.message || "Image prep failed");
+            headers: { Authorization: `Bearer ${session?.access_token}` },
+          },
+        );
+        if (prepError || (prepData as any)?.error || !(prepData as any)?.url) {
+          const raw =
+            (prepData as any)?.error || prepError?.message || "Poster generation failed";
+          toast.error(raw);
           return;
         }
-        // Hand off to Ideogram for the final poster composition.
-        finalModel = "ideogram-ai/ideogram-v3-quality";
+        setResultUrl((prepData as any).url);
+        setLastSeed(seed);
+        toast.success("Poster generated");
+        return;
       }
 
+      // Text-to-image (no reference): unchanged Ideogram flow via Replicate.
       const { data, error } = await supabase.functions.invoke("marketing-generate", {
         body: {
           task: "poster",
-          model: finalModel,
+          model: route.model,
           prompt: promptOverride ?? prompt,
           aspectRatio: aspect,
-          referenceImages: prepRefs,
+          referenceImages: sourceRefs,
           styleReferenceImage: getBrandStyleReferenceImage(brandStyle, "poster") || undefined,
           productTitle: product.title,
           productHandle: (product as any).handle || null,
@@ -211,6 +207,7 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
       setResultUrl((data as any).url);
       setLastSeed(seed);
       toast.success("Poster generated");
+
     } catch (e: any) {
       toast.error(e?.message || "Generation failed");
     } finally {
