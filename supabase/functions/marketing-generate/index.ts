@@ -53,7 +53,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function runReplicate(model: string, input: Record<string, unknown>): Promise<unknown> {
+async function runReplicateOnce(model: string, input: Record<string, unknown>): Promise<unknown> {
   const maxAttempts = 5;
   let createRes: Response | null = null;
   let lastText = "";
@@ -106,6 +106,25 @@ async function runReplicate(model: string, input: Record<string, unknown>): Prom
     throw new Error(prediction.error || `Prediction ${prediction.status}`);
   }
   return prediction.output;
+}
+
+async function runReplicate(model: string, input: Record<string, unknown>): Promise<unknown> {
+  // Replicate occasionally returns "Prediction interrupted; please retry (code: PA)"
+  // (transient capacity issue). Retry the whole prediction a few times.
+  const maxRetries = 3;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await runReplicateOnce(model, input);
+    } catch (e) {
+      lastErr = e;
+      const msg = e instanceof Error ? e.message : String(e);
+      const transient = /code:\s*PA|interrupted/i.test(msg);
+      if (!transient || attempt === maxRetries - 1) throw e;
+      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+    }
+  }
+  throw lastErr;
 }
 
 function pickUrl(output: unknown): string | null {
