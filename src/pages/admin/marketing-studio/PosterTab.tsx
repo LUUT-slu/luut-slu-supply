@@ -147,7 +147,7 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Image-to-image poster: Lovable AI Gateway -> openai/gpt-image-2.
+      // Image-to-image poster: Lovable AI Gateway -> google/gemini-3-pro-image-preview.
       // Takes the product image + prompt and returns the edited poster
       // directly — no Ideogram handoff. Saved with campaign_type = 'poster'.
       if (sourceRefs.length > 0) {
@@ -160,7 +160,7 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
               aspectRatio: aspect,
               productTitle: product.title,
               campaignType: "poster",
-              style: `${style}|${campaign}|gpt-image-2`,
+              style: `${style}|${campaign}|gemini-3-pro`,
             },
             headers: { Authorization: `Bearer ${session?.access_token}` },
           },
