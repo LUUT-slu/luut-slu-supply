@@ -136,38 +136,38 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
         : variantImage
         ? [variantImage]
         : [];
+    const imageUrl = sourceRefs[0];
+    if (!imageUrl) {
+      toast.error("Add a reference image or pick a product with an image");
+      return;
+    }
 
     const seed =
       opts?.reuseSeed && lastSeed != null
         ? lastSeed
         : Math.floor(Math.random() * 2_147_483_647);
 
+    // Mode: transparent background -> remove-bg; otherwise outpaint/recompose to target aspect.
+    const mode: "remove-bg" | "expand" = background === "transparent" ? "remove-bg" : "expand";
+
     setGenerating(true);
     setResultUrl(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const { data, error } = await supabase.functions.invoke("marketing-generate", {
+      const { data, error } = await supabase.functions.invoke("ai-image-prep", {
         body: {
-          task: "display",
-          model: route.model,
-          prompt: promptOverride ?? prompt,
+          imageUrl,
+          mode,
           aspectRatio: aspect,
-          referenceImages: sourceRefs,
-          styleReferenceImage: getBrandStyleReferenceImage(brandStyle, "display") || undefined,
+          campaignType: "display",
           productTitle: product.title,
-          productHandle: (product as any).handle || null,
-          campaignType: goal,
-          style,
-          seed,
+          prompt: promptOverride ?? prompt,
         },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (error || (data as any)?.error) {
         const raw = (data as any)?.error || error?.message || "Generation failed";
-        const friendly = /insufficient credit/i.test(raw)
-          ? "The image provider is out of credit. Top up Replicate billing and try again."
-          : raw;
-        toast.error(friendly);
+        toast.error(raw);
         return;
       }
       setResultUrl((data as any).url);
