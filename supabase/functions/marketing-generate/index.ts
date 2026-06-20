@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
       seed,
       productTitle,
       productHandle,
-      campaignType,
+      campaignType: _campaignType,
       style,
     } = body;
 
