@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
         aspect_ratio: resolvedAspect,
         prompt_used: prompt,
         reference_image_url: imageUrl.startsWith("http") ? imageUrl : null,
-        model_used: IMAGE_MODEL,
+        model_used: model,
         created_by: userId,
       });
     } catch (e) {
