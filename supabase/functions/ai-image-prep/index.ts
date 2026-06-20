@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
         campaign_type: campaignType,
         product_title: productTitle || null,
         style: mode,
-        aspect_ratio: ASPECT_RATIO[format],
+        aspect_ratio: resolvedAspect,
         prompt_used: prompt,
         reference_image_url: imageUrl.startsWith("http") ? imageUrl : null,
         model_used: IMAGE_MODEL,
