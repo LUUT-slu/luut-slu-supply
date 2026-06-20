@@ -177,6 +177,7 @@ Deno.serve(async (req) => {
         image_url: publicUrl,
         thumbnail_url: publicUrl,
         generation_type: "display",
+        campaign_type: "display",
         product_title: productTitle,
         style: resolvedStyle,
         aspect_ratio: resolvedAspect,
