@@ -97,14 +97,11 @@ async function generateGemini(
   throw new Error("Gemini image edit returned no image data");
 }
 
-async function generateViaGateway(
-  model: string,
+async function generateImage(
   prompt: string,
   imageUrl: string,
-  aspect: string,
 ): Promise<Uint8Array> {
-  if (model.startsWith("openai/")) return generateOpenAI(model, prompt, imageUrl, aspect);
-  return generateGemini(model, prompt, imageUrl);
+  return generateGemini(IMAGE_MODEL, prompt, imageUrl);
 }
 
 function base64ToBytes(b64: string): Uint8Array {
