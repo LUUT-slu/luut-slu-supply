@@ -21,7 +21,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const IMAGE_MODEL = "google/gemini-2.5-flash-image"; // Nano Banana (current working model)
+const IMAGE_MODEL = "google/imagen-3"; // Imagen 3 image generation model
 const BUCKET = "marketing-assets";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10;
 
