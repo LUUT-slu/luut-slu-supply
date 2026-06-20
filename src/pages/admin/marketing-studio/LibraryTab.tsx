@@ -303,11 +303,12 @@ export default function LibraryTab() {
                     <span>{r.generation_type}</span>
                     <span>{r.aspect_ratio || ""}</span>
                   </div>
-                  {r.model_used && (
-                    <div className="truncate font-mono text-[10px] text-muted-foreground" title={r.model_used}>
-                      {r.model_used}
-                    </div>
-                  )}
+                  <div
+                    className="inline-block max-w-full truncate rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+                    title={r.model_used || "Model not recorded"}
+                  >
+                    {r.model_used || "model: unknown"}
+                  </div>
                   <div className="flex gap-1">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => handleDownload(r)}>
                       <Download className="mr-1 h-3 w-3" /> {r.download_count || 0}
