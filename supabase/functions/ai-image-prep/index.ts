@@ -47,18 +47,83 @@ function buildPrompt(mode: PrepMode, format: Format): string {
   return `Outpaint the image so the final composition fits a ${ar} aspect ratio. Naturally extend the existing background, lighting, and scene to fill the new canvas. Do not alter the product itself — same position, size, colors, shape, branding, and proportions. The product must remain the clear hero. Seamless background continuation only.`;
 }
 
-async function generateViaGateway(
+const OPENAI_SIZE_FOR_ASPECT: Record<string, string> = {
+  "1:1": "1024x1024",
+  "4:5": "1024x1536",
+  "2:3": "1024x1536",
+  "3:4": "1024x1536",
+  "9:16": "1024x1536",
+  "16:9": "1536x1024",
+  "3:2": "1536x1024",
+};
+
+async function fetchAsBlob(url: string): Promise<Blob> {
+  if (url.startsWith("data:")) {
+    const m = url.match(/^data:([^;,]+);base64,(.+)$/);
+    if (!m) throw new Error("Invalid data URL");
+    const ct = m[1] || "image/png";
+    const bin = atob(m[2]);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: ct });
+  }
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Failed to fetch input image (${r.status})`);
+  const ct = r.headers.get("content-type") || "image/png";
+  return new Blob([await r.arrayBuffer()], { type: ct });
+}
+
+async function generateOpenAI(
+  model: string,
+  prompt: string,
+  imageUrl: string,
+  aspect: string,
+): Promise<Uint8Array> {
+  // OpenAI image editing uses /v1/images/edits with multipart form-data.
+  const blob = await fetchAsBlob(imageUrl);
+  const ext = blob.type.includes("jpeg") ? "jpg"
+    : blob.type.includes("webp") ? "webp" : "png";
+  const form = new FormData();
+  form.append("model", model);
+  form.append("prompt", prompt);
+  form.append("size", OPENAI_SIZE_FOR_ASPECT[aspect] ?? "1024x1024");
+  form.append("n", "1");
+  form.append("quality", "low");
+  form.append("image", blob, `input.${ext}`);
+
+  const res = await fetch(AI_GATEWAY_EDITS, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    const err: any = new Error(`AI Gateway ${res.status}: ${text}`);
+    err.status = res.status;
+    throw err;
+  }
+  const data = await res.json();
+  const b64 = data?.data?.[0]?.b64_json;
+  if (typeof b64 === "string" && b64.length > 0) return base64ToBytes(b64);
+  const url = data?.data?.[0]?.url;
+  if (typeof url === "string") return dataUrlOrUrlToBytes(url);
+  throw new Error("OpenAI image edit returned no image data");
+}
+
+async function generateGemini(
+  model: string,
   prompt: string,
   imageUrl: string,
 ): Promise<Uint8Array> {
-  const res = await fetch(AI_GATEWAY, {
+  // Gemini image editing uses chat-completions multimodal shape.
+  const res = await fetch(AI_GATEWAY_CHAT, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: IMAGE_MODEL,
+      model,
       messages: [
         {
           role: "user",
@@ -71,39 +136,40 @@ async function generateViaGateway(
       modalities: ["image", "text"],
     }),
   });
-
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     const err: any = new Error(`AI Gateway ${res.status}: ${text}`);
     err.status = res.status;
     throw err;
   }
-
   const data = await res.json();
 
-  // Response parsing — Gemini image responses arrive as either:
-  //  (a) data.data[0].b64_json (OpenAI-normalized shape), or
-  //  (b) chat-completion shape with an image in choices[0].message.images[].image_url.url
-  //      as a data: URL.
+  // Normalized OpenAI-images shape.
   const directB64 = data?.data?.[0]?.b64_json;
   if (typeof directB64 === "string" && directB64.length > 0) {
     return base64ToBytes(directB64);
   }
-
+  // Chat-completion shape: image is on choices[0].message.images[].image_url.url
   const choice = data?.choices?.[0]?.message;
   const imgFromImages = choice?.images?.[0]?.image_url?.url;
-  if (typeof imgFromImages === "string") {
-    return dataUrlOrUrlToBytes(imgFromImages);
-  }
-  // Some providers put the data: URL inside content blocks.
+  if (typeof imgFromImages === "string") return dataUrlOrUrlToBytes(imgFromImages);
   if (Array.isArray(choice?.content)) {
     for (const block of choice.content) {
       const url = block?.image_url?.url;
       if (typeof url === "string") return dataUrlOrUrlToBytes(url);
     }
   }
+  throw new Error("Gemini image edit returned no image data");
+}
 
-  throw new Error("AI Gateway returned no image data");
+async function generateViaGateway(
+  model: string,
+  prompt: string,
+  imageUrl: string,
+  aspect: string,
+): Promise<Uint8Array> {
+  if (model.startsWith("openai/")) return generateOpenAI(model, prompt, imageUrl, aspect);
+  return generateGemini(model, prompt, imageUrl);
 }
 
 function base64ToBytes(b64: string): Uint8Array {
