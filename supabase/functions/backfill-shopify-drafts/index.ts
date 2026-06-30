@@ -33,7 +33,22 @@ async function findOrCreateShopifyCustomer(
     const r = await fetch(searchUrl, { headers: { "X-Shopify-Access-Token": adminToken } });
     if (r.ok) {
       const d = await r.json();
-      if (d.customers?.length > 0) return d.customers[0].id;
+      if (d.customers?.length > 0) {
+        const existing = d.customers[0];
+        if (!existing.phone) {
+          try {
+            await fetch(
+              `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/${existing.id}.json`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": adminToken },
+                body: JSON.stringify({ customer: { id: existing.id, phone: normalizedPhone } }),
+              },
+            );
+          } catch (_) { /* noop */ }
+        }
+        return existing.id;
+      }
     }
   } catch (_) { /* noop */ }
 

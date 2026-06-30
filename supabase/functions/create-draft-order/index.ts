@@ -74,8 +74,30 @@ async function findOrCreateShopifyCustomer(
     if (searchRes.ok) {
       const searchData = await searchRes.json();
       if (searchData.customers && searchData.customers.length > 0) {
-        console.log("Found existing Shopify customer:", searchData.customers[0].id);
-        return searchData.customers[0].id;
+        const existing = searchData.customers[0];
+        console.log("Found existing Shopify customer:", existing.id);
+        // Ensure phone is set on the customer record so it appears in Shopify "Contact information"
+        if (!existing.phone) {
+          try {
+            await fetch(
+              `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/${existing.id}.json`,
+              {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Shopify-Access-Token": adminToken,
+                },
+                body: JSON.stringify({
+                  customer: { id: existing.id, phone: normalizedPhone },
+                }),
+              }
+            );
+            console.log("Patched existing customer with phone:", normalizedPhone);
+          } catch (e) {
+            console.warn("Could not patch customer phone (non-fatal):", e);
+          }
+        }
+        return existing.id;
       }
     } else {
       console.error("Customer search failed:", searchRes.status, await searchRes.text());
