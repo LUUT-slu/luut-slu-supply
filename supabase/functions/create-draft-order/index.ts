@@ -522,15 +522,37 @@ serve(async (req) => {
           }
         }
 
+        // ========== STRUCTURED NOTE ATTRIBUTES (appear as "Additional details" in Shopify draft) ==========
+        const noteAttributes: Array<{ name: string; value: string }> = [
+          { name: "Pickup Location", value: location },
+          { name: "Pickup Date", value: preferredDate },
+          { name: "Customer Name", value: customerName },
+          { name: "Customer Phone", value: normalizedPhone },
+          { name: "Order Source", value: orderSource },
+          { name: "Website Order ID", value: localOrder.id },
+          { name: "Website Order #", value: `#L${String(localOrder.order_number).padStart(4, '0')}` },
+          { name: "Payment", value: "Pay on pickup" },
+          { name: "Communication Status", value: "pending_whatsapp" },
+        ];
+        if (pickupTime) noteAttributes.push({ name: "Pickup Time", value: pickupTime });
+        if (customerEmail) noteAttributes.push({ name: "Customer Email", value: customerEmail });
+        if (note) noteAttributes.push({ name: "Customer Note", value: note });
+        if (discountCode) noteAttributes.push({ name: "Discount Code", value: discountCode });
+        if (isSellerCreated && sellerName) noteAttributes.push({ name: "Seller", value: sellerName });
+        if (createdBySellerId) noteAttributes.push({ name: "Seller ID", value: createdBySellerId });
+
         // ========== BUILD PAYLOAD ==========
         const draftOrderPayload: any = {
           draft_order: {
             line_items: shopifyLineItems,
             note: shopifyNote,
+            email: customerEmail || undefined,
+            phone: normalizedPhone,
             customer: shopifyCustomerId ? { id: shopifyCustomerId } : {
               first_name: firstName,
               last_name: lastName,
               phone: normalizedPhone,
+              email: customerEmail || undefined,
             },
             shipping_address: {
               first_name: firstName,
@@ -541,8 +563,18 @@ serve(async (req) => {
               country: "Saint Lucia",
               country_code: "LC",
             },
+            billing_address: {
+              first_name: firstName,
+              last_name: lastName,
+              phone: normalizedPhone,
+              address1: "Pickup",
+              city: location,
+              country: "Saint Lucia",
+              country_code: "LC",
+            },
             use_customer_default_address: false,
             tags: Array.from(tagSet).join(', '),
+            note_attributes: noteAttributes,
             metafields: [
               { namespace: "pickup", key: "location", value: location, type: "single_line_text_field" },
               { namespace: "pickup", key: "date", value: preferredDate, type: "single_line_text_field" },
