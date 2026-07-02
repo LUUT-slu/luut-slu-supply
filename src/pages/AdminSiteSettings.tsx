@@ -18,6 +18,7 @@ import { HomepageEditor } from "@/components/admin/HomepageEditor";
 import { NotificationsSection } from "@/components/admin/NotificationsSection";
 import { MarketingDefaultsCard } from "@/components/marketing/MarketingDefaultsCard";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminSiteSettings() {
   const navigate = useNavigate();

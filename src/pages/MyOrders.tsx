@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Package, Clock, CheckCircle, XCircle, ShoppingBag, ChevronRight } from "lucide-react";
+import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
 
 interface Order {
   id: string;

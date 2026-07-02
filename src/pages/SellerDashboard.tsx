@@ -9,6 +9,7 @@ import { DollarSign, Package, TrendingUp, Calendar, LogOut, Store, ShieldX, Cloc
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import { useSellerApproval } from "@/hooks/useSellerApproval";
+import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
 
 interface SellerProfile {
   id: string;

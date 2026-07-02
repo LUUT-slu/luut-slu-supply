@@ -6,6 +6,8 @@ import { ShieldCheck, ArrowLeft, MapPin, Phone, Package, MessageCircle } from "l
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ProductGridSkeleton } from "@/components/skeletons/ProductGridSkeleton";
 
 export default function SellerProfile() {
   const { sellerId } = useParams<{ sellerId: string }>();

@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, MapPin, Calendar, Clock, Package } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface OrderRow {
   id: string;
