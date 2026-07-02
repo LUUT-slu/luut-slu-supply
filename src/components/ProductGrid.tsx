@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ShopifyProduct, fetchProducts, ProductSortKey } from "@/lib/shopify";
 import { ProductCard } from "./ProductCard";
-import { Loader2 } from "lucide-react";
+import { ProductGridSkeleton } from "./skeletons/ProductGridSkeleton";
 
 interface ProductGridProps {
   query?: string;
@@ -35,8 +35,9 @@ export function ProductGrid({ query, limit = 20, title, sortKey = 'CREATED_AT', 
 
   if (loading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        {title && <h2 className="font-display text-2xl md:text-3xl">{title}</h2>}
+        <ProductGridSkeleton count={limit > 12 ? 12 : limit} />
       </div>
     );
   }
