@@ -703,12 +703,18 @@ serve(async (req) => {
         }
       } catch (shopifyError) {
         const errMsg = shopifyError instanceof Error ? shopifyError.message : String(shopifyError);
-        console.error("Shopify draft order creation failed:", errMsg);
-        await supabase.from("orders").update({
-          shopify_sync_status: 'draft_failed',
-          shopify_sync_error: errMsg,
-        }).eq("id", localOrder.id);
+        // Customer-sync-failed skip signal: preserve the more specific status we already wrote.
+        if (errMsg === '__skip_draft_customer_sync_failed__') {
+          console.log("Draft order skipped due to customer sync failure (already recorded).");
+        } else {
+          console.error("Shopify draft order creation failed:", errMsg);
+          await supabase.from("orders").update({
+            shopify_sync_status: 'draft_failed',
+            shopify_sync_error: errMsg,
+          }).eq("id", localOrder.id);
+        }
       }
+
     } else if (lovableItems.length > 0 && shopifyItems.length === 0) {
       console.log("Order contains only Lovable products — skipping Shopify draft order");
     } else {
