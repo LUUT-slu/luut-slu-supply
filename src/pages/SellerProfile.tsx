@@ -6,6 +6,8 @@ import { ShieldCheck, ArrowLeft, MapPin, Phone, Package, MessageCircle } from "l
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ProductGridSkeleton } from "@/components/skeletons/ProductGridSkeleton";
 
 export default function SellerProfile() {
   const { sellerId } = useParams<{ sellerId: string }>();
@@ -89,8 +91,15 @@ export default function SellerProfile() {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
-        <main className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <main className="container flex-1 py-8 space-y-6">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-20 w-20 rounded-full" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+          <ProductGridSkeleton count={6} />
         </main>
         <Footer />
       </div>

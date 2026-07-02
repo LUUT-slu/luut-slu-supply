@@ -18,6 +18,7 @@ import { HomepageEditor } from "@/components/admin/HomepageEditor";
 import { NotificationsSection } from "@/components/admin/NotificationsSection";
 import { MarketingDefaultsCard } from "@/components/marketing/MarketingDefaultsCard";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminSiteSettings() {
   const navigate = useNavigate();
@@ -62,8 +63,15 @@ export default function AdminSiteSettings() {
       <AdminAuth>
         <div className="flex min-h-screen flex-col bg-background">
           <Header />
-          <div className="flex flex-1 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="container flex-1 py-8 space-y-6">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-96" />
+            <div className="grid gap-4 md:grid-cols-2">
+              <Skeleton className="h-40 w-full rounded-md" />
+              <Skeleton className="h-40 w-full rounded-md" />
+              <Skeleton className="h-40 w-full rounded-md" />
+              <Skeleton className="h-40 w-full rounded-md" />
+            </div>
           </div>
         </div>
       </AdminAuth>

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Package, Clock, CheckCircle, XCircle, ShoppingBag, ChevronRight } from "lucide-react";
+import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
 
 interface Order {
   id: string;
@@ -118,9 +119,7 @@ export default function MyOrders() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
+          <ListItemSkeleton rows={4} />
         ) : orders.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">

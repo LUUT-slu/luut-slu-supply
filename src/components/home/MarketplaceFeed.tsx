@@ -7,6 +7,7 @@ import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitt
 import { sortByStockStatus } from "@/lib/stockSort";
 import { shuffleArray } from "@/lib/utils";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
+import { ProductGridSkeleton } from "@/components/skeletons/ProductGridSkeleton";
 import { cn } from "@/lib/utils";
 
 export function MarketplaceFeed() {
@@ -76,11 +77,10 @@ export function MarketplaceFeed() {
 
         {/* Feed */}
         {loading ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="aspect-square animate-pulse rounded-xl bg-muted/40" />
-            ))}
-          </div>
+          <ProductGridSkeleton
+            count={10}
+            className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+          />
         ) : displayProducts.length === 0 ? (
           <p className="py-12 text-center text-sm text-muted-foreground">
             No products in this category yet.

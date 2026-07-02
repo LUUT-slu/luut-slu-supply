@@ -11,6 +11,7 @@ import { useBestSellersUnified } from "@/hooks/useBestSellersUnified";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { Package, Star } from "lucide-react";
+import { ProductGridSkeleton } from "@/components/skeletons/ProductGridSkeleton";
 
 interface Review {
   id: string;
@@ -72,9 +73,7 @@ export default function BestSellers() {
         <section className="py-8 md:py-12">
           <div className="container">
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              </div>
+              <ProductGridSkeleton count={isMobile ? 6 : 8} className="grid gap-3 md:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4" />
             ) : bestSellerEntries.length === 0 ? (
               <div className="text-center py-12">
                 <Package className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />

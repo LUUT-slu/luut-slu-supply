@@ -4,7 +4,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useProductSalesCounts, lookupSoldCount } from "@/hooks/useProductSalesCounts";
 import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitter";
 import { sortByStockStatus } from "@/lib/stockSort";
-import { Loader2 } from "lucide-react";
+import { ProductGridSkeleton } from "./skeletons/ProductGridSkeleton";
 import { useMemo } from "react";
 
 interface HybridProductGridProps {
@@ -46,10 +46,11 @@ export function HybridProductGrid({ categorySlug, shopifyQuery, limit = 20, titl
   }, [products, siteSettings?.hideSoldOut, siteSettings?.colorVariantCards]);
 
   if (loading) {
-    if (hideWhenEmpty) return null; // Don't show spinner for homepage category rows
+    if (hideWhenEmpty) return null; // Don't show skeleton for homepage category rows
     return (
-      <div className="flex min-h-[300px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        {title && <h2 className="font-display text-2xl md:text-3xl">{title}</h2>}
+        <ProductGridSkeleton count={8} />
       </div>
     );
   }

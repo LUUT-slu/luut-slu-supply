@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
+import { StatCardGridSkeleton } from "@/components/skeletons/StatCardSkeleton";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { supabase } from "@/integrations/supabase/client";
@@ -208,8 +210,9 @@ export default function SellerAnalytics() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="space-y-6">
+              <StatCardGridSkeleton count={4} />
+              <ListItemSkeleton rows={4} />
             </div>
           ) : (
             <>

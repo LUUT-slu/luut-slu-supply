@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 
@@ -390,9 +391,7 @@ export default function LuutConnectAdmin() {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
+                <ListItemSkeleton rows={5} />
               ) : filteredOrders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Package className="mb-4 h-12 w-12 text-muted-foreground" />

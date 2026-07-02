@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { BackButton } from "@/components/BackButton";
@@ -298,9 +299,7 @@ export default function AdminSellersNew() {
         {/* Sellers Table */}
         <div className="rounded-lg border border-border/60 bg-card/50">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <div className="p-4"><ListItemSkeleton rows={5} /></div>
           ) : filteredSellers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Users className="mb-4 h-10 w-10 text-muted-foreground" />

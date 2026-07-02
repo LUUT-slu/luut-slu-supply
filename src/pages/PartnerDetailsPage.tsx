@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { BackButton } from "@/components/BackButton";
@@ -500,9 +501,7 @@ export default function PartnerDetailsPage() {
           </div>
           
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <ListItemSkeleton rows={5} />
           ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Package className="mb-4 h-10 w-10 text-muted-foreground" />

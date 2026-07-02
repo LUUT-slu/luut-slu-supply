@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, MapPin, Calendar, Clock, Package } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface OrderRow {
   id: string;
@@ -76,8 +77,11 @@ export default function OrderStatus() {
       <Header />
       <main className="flex-1 container max-w-2xl mx-auto px-4 py-8">
         {loading ? (
-          <div className="flex justify-center items-center py-24">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="space-y-4 py-6">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-64" />
+            <Skeleton className="h-40 w-full rounded-md" />
+            <Skeleton className="h-32 w-full rounded-md" />
           </div>
         ) : error ? (
           <Card>

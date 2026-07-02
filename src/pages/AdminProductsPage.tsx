@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { BackButton } from "@/components/BackButton";
@@ -274,8 +275,8 @@ export default function AdminProductsPage() {
         {!selectedSeller && (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {loading ? (
-              <div className="col-span-full flex justify-center py-12">
-                <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+              <div className="col-span-full">
+                <ListItemSkeleton rows={4} />
               </div>
             ) : sellers.length === 0 ? (
               <Card className="col-span-full border-dashed">
