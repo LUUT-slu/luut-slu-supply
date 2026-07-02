@@ -106,12 +106,13 @@ Deno.serve(async (req) => {
 
     const [firstName, ...rest] = (profile.full_name ?? "").trim().split(/\s+/);
     const lastName = rest.join(" ") || null;
+    const normalizedPhone = normalizePhone(profile.phone);
 
     const customerPayload: Record<string, unknown> = {
       email: profile.email,
       first_name: firstName || null,
       last_name: lastName,
-      phone: profile.phone || null,
+      phone: normalizedPhone,
       tags: "lovable-signup",
       accepts_marketing: false,
     };
@@ -132,24 +133,33 @@ Deno.serve(async (req) => {
         }
       );
     } else {
-      // Try to find by email first to avoid 422 duplicates
-      const search = await fetch(
-        `https://${SHOPIFY_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/search.json?query=${encodeURIComponent(
-          `email:${profile.email}`
-        )}`,
-        {
-          headers: {
-            "X-Shopify-Access-Token": SHOPIFY_TOKEN,
-            "Content-Type": "application/json",
-          },
+      // Phone-primary lookup, email-secondary. Prevents duplicate customers for repeat orderers.
+      if (normalizedPhone) {
+        const phoneSearch = await searchShopifyCustomer(
+          SHOPIFY_DOMAIN, SHOPIFY_TOKEN, SHOPIFY_API_VERSION, `phone:${normalizedPhone}`,
+        );
+        if (!phoneSearch.ok) {
+          console.error("[sync-shopify-customer] phone search failed:", phoneSearch.error);
+          return new Response(
+            JSON.stringify({ error: "Shopify customer lookup failed", detail: phoneSearch.error }),
+            { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
         }
-      );
-      if (search.ok) {
-        const sjson = await search.json();
-        const existing = sjson?.customers?.[0];
-        if (existing?.id) {
-          shopifyCustomerId = String(existing.id);
+        if (phoneSearch.customer?.id) shopifyCustomerId = String(phoneSearch.customer.id);
+      }
+
+      if (!shopifyCustomerId && profile.email) {
+        const emailSearch = await searchShopifyCustomer(
+          SHOPIFY_DOMAIN, SHOPIFY_TOKEN, SHOPIFY_API_VERSION, `email:${profile.email}`,
+        );
+        if (!emailSearch.ok) {
+          console.error("[sync-shopify-customer] email search failed:", emailSearch.error);
+          return new Response(
+            JSON.stringify({ error: "Shopify customer lookup failed", detail: emailSearch.error }),
+            { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
         }
+        if (emailSearch.customer?.id) shopifyCustomerId = String(emailSearch.customer.id);
       }
 
       if (shopifyCustomerId) {
@@ -178,6 +188,7 @@ Deno.serve(async (req) => {
         );
       }
     }
+
 
     const responseText = await response.text();
     if (!response.ok) {
