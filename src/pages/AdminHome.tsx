@@ -19,6 +19,7 @@ import {
   Tag,
 } from "lucide-react";
 import { toast } from "sonner";
+import { CustomerLoyaltyPanel } from "@/components/admin/CustomerLoyaltyPanel";
 
 interface AdminStats {
   totalOrders: number;
