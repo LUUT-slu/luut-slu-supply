@@ -102,11 +102,18 @@ export function OrderShopifyActions({ order, isAdmin = false, onChanged }: Props
   }, "Order cancelled");
 
   const complete = () => run("complete", async () => {
-    const { error } = await supabase.functions.invoke("complete-draft-order", {
+    const { data, error } = await supabase.functions.invoke("complete-draft-order", {
       body: { orderId: order.id, paymentPending: false },
     });
     if (error) throw error;
+    // Local completion always succeeds first; Shopify sync may fail separately.
+    if (data?.shopifySync === "failed") {
+      toast.warning("Order completed locally, but Shopify sync failed", {
+        description: data.shopifySyncError?.slice(0, 200) || "Use Retry to resync",
+      });
+    }
   }, "Shopify order completed (paid)");
+
 
   const requestCompletion = () => run("reqcomplete", async () => {
     const { data: u } = await supabase.auth.getUser();
