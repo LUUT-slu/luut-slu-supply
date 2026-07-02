@@ -55,58 +55,73 @@ function normalizePhone(phone: string): string {
   return `+${digits}`;
 }
 
-// Look up or create a Shopify customer by phone, returns customer ID
+// Look up or create a Shopify customer. Phone (normalized) is the primary identity,
+// email is the secondary identity. Returns { id } on success; { id: null, error }
+// on hard failure so callers can record it and refuse to proceed without a link.
 async function findOrCreateShopifyCustomer(
   adminToken: string,
   firstName: string,
   lastName: string,
-  phone: string
-): Promise<number | null> {
+  phone: string,
+  email: string | null
+): Promise<{ id: number | null; error?: string }> {
   const normalizedPhone = normalizePhone(phone);
-  
-  // Step 1: Search for existing customer by phone
-  try {
-    const searchUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/search.json?query=phone:${encodeURIComponent(normalizedPhone)}`;
-    const searchRes = await fetch(searchUrl, {
-      headers: { "X-Shopify-Access-Token": adminToken },
-    });
 
-    if (searchRes.ok) {
-      const searchData = await searchRes.json();
-      if (searchData.customers && searchData.customers.length > 0) {
-        const existing = searchData.customers[0];
-        console.log("Found existing Shopify customer:", existing.id);
-        // Ensure phone is set on the customer record so it appears in Shopify "Contact information"
-        if (!existing.phone) {
-          try {
-            await fetch(
-              `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/${existing.id}.json`,
-              {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-Shopify-Access-Token": adminToken,
-                },
-                body: JSON.stringify({
-                  customer: { id: existing.id, phone: normalizedPhone },
-                }),
-              }
-            );
-            console.log("Patched existing customer with phone:", normalizedPhone);
-          } catch (e) {
-            console.warn("Could not patch customer phone (non-fatal):", e);
-          }
-        }
-        return existing.id;
+  const searchByQuery = async (query: string): Promise<{ ok: boolean; customer?: any; error?: string }> => {
+    try {
+      const url = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/search.json?query=${encodeURIComponent(query)}`;
+      const res = await fetch(url, { headers: { "X-Shopify-Access-Token": adminToken } });
+      if (!res.ok) {
+        const body = await res.text();
+        return { ok: false, error: `search "${query}" ${res.status}: ${body}`.slice(0, 400) };
       }
-    } else {
-      console.error("Customer search failed:", searchRes.status, await searchRes.text());
+      const data = await res.json();
+      return { ok: true, customer: data?.customers?.[0] ?? null };
+    } catch (err) {
+      return { ok: false, error: `search "${query}" network: ${String(err)}`.slice(0, 400) };
     }
-  } catch (err) {
-    console.error("Customer search error (non-fatal):", err);
+  };
+
+  // Step 1: Primary identity — phone (normalized).
+  const phoneSearch = await searchByQuery(`phone:${normalizedPhone}`);
+  if (!phoneSearch.ok) {
+    return { id: null, error: phoneSearch.error };
+  }
+  let existing = phoneSearch.customer;
+
+  // Step 2: Secondary identity — email.
+  if (!existing && email) {
+    const emailSearch = await searchByQuery(`email:${email}`);
+    if (!emailSearch.ok) {
+      return { id: null, error: emailSearch.error };
+    }
+    existing = emailSearch.customer;
   }
 
-  // Step 2: Create new customer
+  if (existing?.id) {
+    console.log("Matched existing Shopify customer:", existing.id);
+    // Ensure phone is set on the customer record (needed for future phone-primary matching).
+    if (!existing.phone || existing.phone !== normalizedPhone) {
+      try {
+        await fetch(
+          `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/${existing.id}.json`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Shopify-Access-Token": adminToken,
+            },
+            body: JSON.stringify({ customer: { id: existing.id, phone: normalizedPhone } }),
+          }
+        );
+      } catch (e) {
+        console.warn("Could not patch existing customer phone (non-fatal):", e);
+      }
+    }
+    return { id: existing.id };
+  }
+
+  // Step 3: Create new customer with normalized phone.
   try {
     const createUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers.json`;
     const createRes = await fetch(createUrl, {
@@ -120,6 +135,7 @@ async function findOrCreateShopifyCustomer(
           first_name: firstName,
           last_name: lastName,
           phone: normalizedPhone,
+          email: email || undefined,
           tags: "luut-connect",
           verified_email: false,
           send_email_invite: false,
@@ -130,33 +146,32 @@ async function findOrCreateShopifyCustomer(
     if (createRes.ok) {
       const createData = await createRes.json();
       console.log("Created new Shopify customer:", createData.customer?.id);
-      return createData.customer?.id || null;
-    } else {
-      const errBody = await createRes.text();
-      console.error("Customer creation failed:", createRes.status, errBody);
-      // If phone already taken (422), try search again with looser query
-      if (createRes.status === 422 && errBody.includes("phone")) {
-        try {
-          const retryUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/search.json?query=${encodeURIComponent(normalizedPhone)}`;
-          const retryRes = await fetch(retryUrl, {
-            headers: { "X-Shopify-Access-Token": adminToken },
-          });
-          if (retryRes.ok) {
-            const retryData = await retryRes.json();
-            if (retryData.customers?.length > 0) {
-              console.log("Found customer on retry:", retryData.customers[0].id);
-              return retryData.customers[0].id;
-            }
-          }
-        } catch (_) { /* ignore */ }
+      return { id: createData.customer?.id || null };
+    }
+
+    const errBody = await createRes.text();
+    console.error("Customer creation failed:", createRes.status, errBody);
+
+    // 422 duplicate — someone else owns this phone/email; retry lookups to find them.
+    if (createRes.status === 422) {
+      const retryPhone = await searchByQuery(normalizedPhone);
+      if (retryPhone.ok && retryPhone.customer?.id) {
+        return { id: retryPhone.customer.id };
+      }
+      if (email) {
+        const retryEmail = await searchByQuery(`email:${email}`);
+        if (retryEmail.ok && retryEmail.customer?.id) {
+          return { id: retryEmail.customer.id };
+        }
       }
     }
-  } catch (err) {
-    console.error("Customer creation error (non-fatal):", err);
-  }
 
-  return null;
+    return { id: null, error: `create ${createRes.status}: ${errBody}`.slice(0, 400) };
+  } catch (err) {
+    return { id: null, error: `create network: ${String(err)}`.slice(0, 400) };
+  }
 }
+
 
 // Look up discount code and return applied_discount object
 async function resolveDiscountForDraftOrder(
