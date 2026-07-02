@@ -63,3 +63,6 @@ verify_jwt = false
 [functions.po-sales-rollup]
 verify_jwt = false
 
+
+[functions.grant-loyalty-rewards]
+verify_jwt = false

@@ -328,6 +328,16 @@ export const usePartnerActions = () => {
       }
 
       setUpdating(null);
+
+      // Fire-and-forget: grant loyalty rewards (LUUT Regular / VIP / Referral)
+      (async () => {
+        try {
+          await supabase.functions.invoke('grant-loyalty-rewards', { body: { order_id: orderId } });
+        } catch (e) {
+          console.warn('Loyalty reward grant failed:', e);
+        }
+      })();
+
       return { success: true };
     } catch (err) {
       console.error("Mark completed exception:", err);
