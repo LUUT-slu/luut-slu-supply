@@ -55,7 +55,10 @@ serve(async (req) => {
     }
 
     const { data: order, error } = await supabase
-      .from("orders").select("shopify_draft_order_id, assigned_partner_id, created_by_seller_id").eq("id", orderId).single();
+      .from("orders")
+      .select("shopify_draft_order_id, assigned_partner_id, created_by_seller_id, order_status")
+      .eq("id", orderId)
+      .single();
     if (error || !order?.shopify_draft_order_id) {
       return new Response(JSON.stringify({ error: "No Shopify draft order linked" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -77,40 +80,101 @@ serve(async (req) => {
       });
     }
 
-    const url = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders/${order.shopify_draft_order_id}/complete.json`;
-    const res = await fetch(url, {
-      method: "PUT",
-      headers: {
-        "X-Shopify-Access-Token": adminToken,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        payment_gateway: "manual",
-        payment_pending: false,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.draft_order) {
-      const errMsg = JSON.stringify(data?.errors || data).slice(0, 500);
-      await supabase.from("orders").update({
-        shopify_sync_status: "draft_failed",
-        shopify_sync_error: `complete failed: ${errMsg}`,
+    // STEP 1: Mark the order COMPLETED locally FIRST so a Shopify failure never
+    // blocks the local completion. If already COMPLETED (e.g. partner path
+    // completed via rpc_mark_completed and this call is the follow-up sync),
+    // don't overwrite completed_at.
+    const alreadyCompleted = order.order_status === "COMPLETED";
+    if (!alreadyCompleted) {
+      const { error: localErr } = await supabase.from("orders").update({
+        order_status: "COMPLETED",
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        shopify_sync_status: "syncing",
+        updated_at: new Date().toISOString(),
       }).eq("id", orderId);
-      return new Response(JSON.stringify({ error: errMsg }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (localErr) {
+        return new Response(JSON.stringify({ error: `Local completion failed: ${localErr.message}` }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      await supabase.from("order_events").insert({
+        order_id: orderId,
+        actor_user_id: uid,
+        event_type: "completed",
+        event_payload: { source: "complete-draft-order", payment_pending: paymentPending },
       });
     }
 
-    const completedDraft = data.draft_order;
+    // STEP 2: Attempt Shopify draft completion. Any failure is recorded on the
+    // order row but does NOT roll back the local COMPLETED status.
+    const url = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders/${order.shopify_draft_order_id}/complete.json`;
+    let shopifyRes: Response;
+    let shopifyData: any;
+    try {
+      shopifyRes = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "X-Shopify-Access-Token": adminToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          payment_gateway: "manual",
+          payment_pending: false,
+        }),
+      });
+      shopifyData = await shopifyRes.json().catch(() => ({}));
+    } catch (netErr) {
+      const errMsg = `complete network error: ${netErr instanceof Error ? netErr.message : String(netErr)}`.slice(0, 500);
+      await supabase.from("orders").update({
+        shopify_sync_status: "draft_failed",
+        shopify_sync_error: errMsg,
+        updated_at: new Date().toISOString(),
+      }).eq("id", orderId);
+      await supabase.from("order_events").insert({
+        order_id: orderId,
+        actor_user_id: uid,
+        event_type: "shopify_sync_failed",
+        event_payload: { stage: "complete_draft", error: errMsg },
+      });
+      // Return 200 — local order is COMPLETED; caller can surface the sync warning.
+      return new Response(JSON.stringify({
+        success: true,
+        localCompleted: true,
+        shopifySync: "failed",
+        shopifySyncError: errMsg,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (!shopifyRes.ok || !shopifyData?.draft_order) {
+      const errMsg = `complete failed: ${JSON.stringify(shopifyData?.errors || shopifyData).slice(0, 480)}`;
+      await supabase.from("orders").update({
+        shopify_sync_status: "draft_failed",
+        shopify_sync_error: errMsg,
+        updated_at: new Date().toISOString(),
+      }).eq("id", orderId);
+      await supabase.from("order_events").insert({
+        order_id: orderId,
+        actor_user_id: uid,
+        event_type: "shopify_sync_failed",
+        event_payload: { stage: "complete_draft", status: shopifyRes.status, error: errMsg },
+      });
+      return new Response(JSON.stringify({
+        success: true,
+        localCompleted: true,
+        shopifySync: "failed",
+        shopifySyncError: errMsg,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const completedDraft = shopifyData.draft_order;
     await supabase.from("orders").update({
       shopify_order_id: completedDraft.order_id ? String(completedDraft.order_id) : null,
       shopify_order_name: completedDraft.name || null,
       shopify_sync_status: "completed",
       shopify_sync_error: null,
       shopify_synced_at: new Date().toISOString(),
-      order_status: "COMPLETED",
-      status: "completed",
-      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }).eq("id", orderId);
 
     await supabase.from("order_events").insert({
@@ -122,9 +186,12 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
+      localCompleted: true,
+      shopifySync: "completed",
       shopifyOrderId: completedDraft.order_id,
       shopifyOrderName: completedDraft.name,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
