@@ -7,6 +7,7 @@ import { splitByVisualOptions, VariantListingProduct } from "@/lib/variantSplitt
 import { sortByStockStatus } from "@/lib/stockSort";
 import { shuffleArray } from "@/lib/utils";
 import { UnifiedProductCard } from "@/components/UnifiedProductCard";
+import { ProductGridSkeleton } from "@/components/skeletons/ProductGridSkeleton";
 import { cn } from "@/lib/utils";
 
 export function MarketplaceFeed() {
