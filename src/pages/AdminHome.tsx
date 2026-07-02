@@ -19,6 +19,7 @@ import {
   Tag,
 } from "lucide-react";
 import { toast } from "sonner";
+import { CustomerLoyaltyPanel } from "@/components/admin/CustomerLoyaltyPanel";
 
 interface AdminStats {
   totalOrders: number;
@@ -292,6 +293,9 @@ export default function AdminHome() {
             </div>
           ))}
         </div>
+
+        {/* Customer Loyalty Panel */}
+        <CustomerLoyaltyPanel />
 
         {/* Action Cards */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
