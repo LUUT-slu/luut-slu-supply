@@ -15,6 +15,7 @@ import {
   getFiltersForMain,
 } from '@/components/filters/registry';
 import { Loader2 } from 'lucide-react';
+import { ProductGridSkeleton } from '@/components/skeletons/ProductGridSkeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -173,9 +174,7 @@ export default function CategorySub() {
               <div className="hidden lg:block">{FilterSidebar}</div>
               <div>
                 {loading ? (
-                  <div className="flex min-h-[300px] items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
+                  <ProductGridSkeleton count={9} className="grid grid-cols-2 gap-3 md:grid-cols-3 sm:gap-4" />
                 ) : sorted.length === 0 ? (
                   <div className="flex min-h-[300px] flex-col items-center justify-center text-center">
                     <p className="mb-2 font-body text-lg text-muted-foreground">No products match your filters</p>

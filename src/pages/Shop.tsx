@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { BackButton } from "@/components/BackButton";
 import { ChatButton } from "@/components/ChatButton";
 import { useShopifyCollections, getCollectionPath } from "@/hooks/useShopifyCollections";
-import { Loader2 } from "lucide-react";
+import { ProductGridSkeleton } from "@/components/skeletons/ProductGridSkeleton";
 
 // Fallback categories if Shopify collections aren't available
 const fallbackCategories = [
@@ -98,9 +98,10 @@ export default function Shop() {
         <section className="px-4 py-6 md:py-8">
           <div className="container">
             {loading ? (
-              <div className="flex min-h-[300px] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+              <ProductGridSkeleton
+                count={8}
+                className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 md:gap-4"
+              />
             ) : (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 md:gap-4">
                 {categories.map((category, index) => (
