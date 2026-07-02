@@ -47,12 +47,18 @@ export function useEnsureCustomerProfile() {
         }
       }
 
-      // Fire-and-forget Shopify sync for social signups
+      // Fire Shopify sync for social signups. Failures are surfaced (not silently swallowed)
+      // so they show up in logs; the order-time customer sync in create-draft-order is the
+      // authoritative sync and records its own failures on orders.shopify_sync_error.
       if (provider !== "email") {
         supabase.functions
           .invoke("sync-shopify-customer", { body: { user_id: user.id } })
-          .catch((e) => console.warn("[shopify-sync] non-blocking", e));
+          .then(({ error }) => {
+            if (error) console.error("[shopify-sync] signup sync failed:", error);
+          })
+          .catch((e) => console.error("[shopify-sync] signup sync error:", e));
       }
+
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

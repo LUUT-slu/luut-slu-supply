@@ -9,6 +9,41 @@ const corsHeaders = {
 const SHOPIFY_DOMAIN = "lovable-project-yf43m.myshopify.com";
 const SHOPIFY_API_VERSION = "2025-07";
 
+// Normalize phone to E.164 for Saint Lucia (matches create-draft-order).
+function normalizePhone(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = String(phone).replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length === 7) return `+1758${digits}`;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (String(phone).startsWith("+")) return String(phone);
+  return `+${digits}`;
+}
+
+async function searchShopifyCustomer(
+  domain: string,
+  token: string,
+  version: string,
+  query: string,
+): Promise<{ ok: boolean; customer?: any; error?: string }> {
+  try {
+    const res = await fetch(
+      `https://${domain}/admin/api/${version}/customers/search.json?query=${encodeURIComponent(query)}`,
+      { headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" } },
+    );
+    if (!res.ok) {
+      const body = await res.text();
+      return { ok: false, error: `search "${query}" ${res.status}: ${body}`.slice(0, 400) };
+    }
+    const data = await res.json();
+    return { ok: true, customer: data?.customers?.[0] ?? null };
+  } catch (err) {
+    return { ok: false, error: `search "${query}" network: ${String(err)}`.slice(0, 400) };
+  }
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -71,12 +106,13 @@ Deno.serve(async (req) => {
 
     const [firstName, ...rest] = (profile.full_name ?? "").trim().split(/\s+/);
     const lastName = rest.join(" ") || null;
+    const normalizedPhone = normalizePhone(profile.phone);
 
     const customerPayload: Record<string, unknown> = {
       email: profile.email,
       first_name: firstName || null,
       last_name: lastName,
-      phone: profile.phone || null,
+      phone: normalizedPhone,
       tags: "lovable-signup",
       accepts_marketing: false,
     };
@@ -97,24 +133,33 @@ Deno.serve(async (req) => {
         }
       );
     } else {
-      // Try to find by email first to avoid 422 duplicates
-      const search = await fetch(
-        `https://${SHOPIFY_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/search.json?query=${encodeURIComponent(
-          `email:${profile.email}`
-        )}`,
-        {
-          headers: {
-            "X-Shopify-Access-Token": SHOPIFY_TOKEN,
-            "Content-Type": "application/json",
-          },
+      // Phone-primary lookup, email-secondary. Prevents duplicate customers for repeat orderers.
+      if (normalizedPhone) {
+        const phoneSearch = await searchShopifyCustomer(
+          SHOPIFY_DOMAIN, SHOPIFY_TOKEN, SHOPIFY_API_VERSION, `phone:${normalizedPhone}`,
+        );
+        if (!phoneSearch.ok) {
+          console.error("[sync-shopify-customer] phone search failed:", phoneSearch.error);
+          return new Response(
+            JSON.stringify({ error: "Shopify customer lookup failed", detail: phoneSearch.error }),
+            { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
         }
-      );
-      if (search.ok) {
-        const sjson = await search.json();
-        const existing = sjson?.customers?.[0];
-        if (existing?.id) {
-          shopifyCustomerId = String(existing.id);
+        if (phoneSearch.customer?.id) shopifyCustomerId = String(phoneSearch.customer.id);
+      }
+
+      if (!shopifyCustomerId && profile.email) {
+        const emailSearch = await searchShopifyCustomer(
+          SHOPIFY_DOMAIN, SHOPIFY_TOKEN, SHOPIFY_API_VERSION, `email:${profile.email}`,
+        );
+        if (!emailSearch.ok) {
+          console.error("[sync-shopify-customer] email search failed:", emailSearch.error);
+          return new Response(
+            JSON.stringify({ error: "Shopify customer lookup failed", detail: emailSearch.error }),
+            { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
         }
+        if (emailSearch.customer?.id) shopifyCustomerId = String(emailSearch.customer.id);
       }
 
       if (shopifyCustomerId) {
@@ -143,6 +188,7 @@ Deno.serve(async (req) => {
         );
       }
     }
+
 
     const responseText = await response.text();
     if (!response.ok) {
