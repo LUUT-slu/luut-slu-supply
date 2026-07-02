@@ -42,43 +42,75 @@ serve(async (req) => {
 
     console.log("Cancelling order:", { draftOrderId, localOrderId });
 
+    // Track Shopify cancellation outcome so we can record it on the local order row.
+    // Values: 'cancelled' (deleted OK or already not-open), 'cancel_failed' (any error),
+    // 'skipped' (no draft id supplied). null if not attempted.
+    let shopifySyncStatus: string | null = null;
+    let shopifySyncError: string | null = null;
+    let shopifyDraftStatus: string | null = null;
+
     // Cancel draft order in Shopify if we have the ID
     if (draftOrderId) {
-      // First get the draft order details
-      const getUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders/${draftOrderId}.json`;
-      
-      const getResponse = await fetch(getUrl, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Access-Token": shopifyAccessToken,
-        },
-      });
+      try {
+        const getUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders/${draftOrderId}.json`;
 
-      if (getResponse.ok) {
-        const orderData = await getResponse.json();
-        const draftOrder = orderData.draft_order;
-        
-        // Only delete if not already completed/invoiced
-        if (draftOrder.status === 'open') {
-          const deleteUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders/${draftOrderId}.json`;
-          
-          const deleteResponse = await fetch(deleteUrl, {
-            method: "DELETE",
-            headers: {
-              "X-Shopify-Access-Token": shopifyAccessToken,
-            },
-          });
+        const getResponse = await fetch(getUrl, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": shopifyAccessToken,
+          },
+        });
 
-          if (!deleteResponse.ok) {
-            console.error("Failed to delete Shopify draft order:", await deleteResponse.text());
+        if (!getResponse.ok) {
+          const body = await getResponse.text();
+          if (getResponse.status === 404) {
+            // Draft already gone — treat as cancelled.
+            shopifySyncStatus = "cancelled";
+            shopifyDraftStatus = "not_found";
+            console.log("Shopify draft order not found (already gone):", draftOrderId);
           } else {
-            console.log("Shopify draft order deleted:", draftOrderId);
+            shopifySyncStatus = "cancel_failed";
+            shopifySyncError = `GET draft_order ${getResponse.status}: ${body}`.slice(0, 500);
+            console.error("Failed to fetch Shopify draft order:", shopifySyncError);
           }
         } else {
-          console.log("Draft order not open, status:", draftOrder.status);
+          const orderData = await getResponse.json();
+          const draftOrder = orderData.draft_order;
+          shopifyDraftStatus = draftOrder?.status ?? null;
+
+          if (draftOrder?.status === "open") {
+            const deleteUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders/${draftOrderId}.json`;
+            const deleteResponse = await fetch(deleteUrl, {
+              method: "DELETE",
+              headers: {
+                "X-Shopify-Access-Token": shopifyAccessToken,
+              },
+            });
+
+            if (!deleteResponse.ok) {
+              const body = await deleteResponse.text();
+              shopifySyncStatus = "cancel_failed";
+              shopifySyncError = `DELETE draft_order ${deleteResponse.status}: ${body}`.slice(0, 500);
+              console.error("Failed to delete Shopify draft order:", shopifySyncError);
+            } else {
+              shopifySyncStatus = "cancelled";
+              console.log("Shopify draft order deleted:", draftOrderId);
+            }
+          } else {
+            // Already completed/invoiced — nothing to delete, but note it.
+            shopifySyncStatus = "cancel_failed";
+            shopifySyncError = `Draft order not open (status: ${draftOrder?.status}); cannot delete. Manual review required.`;
+            console.log("Draft order not open, status:", draftOrder?.status);
+          }
         }
+      } catch (netErr) {
+        shopifySyncStatus = "cancel_failed";
+        shopifySyncError = `network error: ${String(netErr)}`.slice(0, 500);
+        console.error("Network error cancelling Shopify draft:", netErr);
       }
+    } else {
+      shopifySyncStatus = "skipped";
     }
 
     // Update local order status if we have the ID
@@ -106,13 +138,19 @@ serve(async (req) => {
         );
       }
 
-      // Update status to cancelled
+      const updatePayload: Record<string, unknown> = {
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      if (shopifySyncStatus) {
+        updatePayload.shopify_sync_status = shopifySyncStatus;
+        updatePayload.shopify_sync_error = shopifySyncError;
+      }
+
       const { data: updatedOrder, error: updateError } = await supabase
         .from("orders")
-        .update({
-          status: "cancelled",
-          cancelled_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", localOrderId)
         .select("*")
         .single();
@@ -123,8 +161,34 @@ serve(async (req) => {
       }
 
       localOrder = updatedOrder;
-      console.log("Local order cancelled:", localOrderId);
+
+      // Audit event for Shopify sync failure so it's visible in order history.
+      if (shopifySyncStatus === "cancel_failed") {
+        await supabase.from("order_events").insert({
+          order_id: localOrderId,
+          event_type: "shopify_sync_failed",
+          payload: {
+            operation: "cancel_draft_order",
+            draft_order_id: draftOrderId,
+            error: shopifySyncError,
+            shopify_draft_status: shopifyDraftStatus,
+          },
+        });
+      }
+
+      console.log("Local order cancelled:", localOrderId, "shopify:", shopifySyncStatus);
+    } else if (draftOrderId && shopifySyncStatus) {
+      // No local order id supplied, but we may still be able to record on the row keyed by draft id.
+      await supabase
+        .from("orders")
+        .update({
+          shopify_sync_status: shopifySyncStatus,
+          shopify_sync_error: shopifySyncError,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("shopify_draft_order_id", String(draftOrderId));
     }
+
 
     // Generate WhatsApp notification for merchant
     const cancelMessage = `❌ *ORDER CANCELLED*\n\nOrder has been cancelled by the customer.\n\n${localOrder ? `Order #L${String(localOrder.order_number).padStart(4, '0')}\nCustomer: ${localOrder.customer_name}\nPhone: ${localOrder.customer_phone}` : `Shopify Draft Order ID: ${draftOrderId}`}`;
