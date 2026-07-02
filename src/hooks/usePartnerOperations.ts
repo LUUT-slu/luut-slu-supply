@@ -133,20 +133,33 @@ export const usePartnerOperations = () => {
       }
     })();
 
-    // Fire-and-forget: mark the linked Shopify draft order as completed/paid
+    // Fire-and-forget: mark the linked Shopify draft order as completed/paid.
+    // The edge function itself records shopify_sync_status/error on Shopify
+    // failures; this catch is a safety net for invoke/network errors so the
+    // failure is still surfaced on the order row (not just console).
     (async () => {
       try {
         const { data: ord } = await supabase
           .from('orders').select('shopify_draft_order_id').eq('id', orderId).maybeSingle();
-        if (ord?.shopify_draft_order_id) {
-          await supabase.functions.invoke('complete-draft-order', {
-            body: { orderId, paymentPending: false },
-          });
+        if (!ord?.shopify_draft_order_id) return;
+        const { data, error: invokeErr } = await supabase.functions.invoke('complete-draft-order', {
+          body: { orderId, paymentPending: false },
+        });
+        if (invokeErr) throw invokeErr;
+        if (data?.shopifySync === 'failed') {
+          console.warn('Shopify completion sync failed (recorded on order):', data.shopifySyncError);
         }
       } catch (e) {
-        console.warn('Shopify completion sync failed:', e);
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn('Shopify completion sync invoke failed:', msg);
+        await supabase.from('orders').update({
+          shopify_sync_status: 'draft_failed',
+          shopify_sync_error: `complete invoke failed: ${msg}`.slice(0, 500),
+          updated_at: new Date().toISOString(),
+        }).eq('id', orderId);
       }
     })();
+
 
     // Fire-and-forget low-stock check + admin alert
     (async () => {
