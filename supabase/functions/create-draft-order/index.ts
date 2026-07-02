@@ -489,10 +489,32 @@ serve(async (req) => {
         const lastName = customerName.split(' ').slice(1).join(' ') || '';
         const normalizedPhone = normalizePhone(customerPhone);
 
-        // ========== CUSTOMER LOOKUP/CREATE ==========
-        const shopifyCustomerId = await findOrCreateShopifyCustomer(
-          shopifyAdminToken, firstName, lastName, customerPhone
+        // ========== CUSTOMER LOOKUP/CREATE (phone-primary, email-secondary) ==========
+        const customerResult = await findOrCreateShopifyCustomer(
+          shopifyAdminToken, firstName, lastName, customerPhone, customerEmail || null
         );
+        const shopifyCustomerId = customerResult.id;
+
+        // If customer sync hard-failed, refuse to create a draft with no/wrong customer.
+        // Record the failure on the order so it's visible in the same shopify sync columns.
+        if (!shopifyCustomerId) {
+          const errMsg = `customer_sync_failed: ${customerResult.error ?? "unknown"}`.slice(0, 500);
+          console.error("Shopify customer sync failed — skipping draft order:", errMsg);
+          await supabase.from("orders").update({
+            shopify_sync_status: 'customer_sync_failed',
+            shopify_sync_error: errMsg,
+            updated_at: new Date().toISOString(),
+          }).eq("id", localOrder.id);
+          await supabase.from("order_events").insert({
+            order_id: localOrder.id,
+            event_type: 'shopify_sync_failed',
+            event_payload: { operation: 'customer_sync', error: customerResult.error ?? null },
+          });
+          // Fall through past the draft creation block by throwing into the outer catch,
+          // which is a no-op here (we've already recorded), so use an explicit skip.
+          throw new Error('__skip_draft_customer_sync_failed__');
+        }
+
 
         // ========== BUILD NOTE (per spec, source-aware) ==========
         const intro = isSellerCreated
