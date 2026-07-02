@@ -30,6 +30,9 @@ verify_jwt = false
 [functions.shopify-health-check]
 verify_jwt = false
 
+[functions.shopify-analytics]
+verify_jwt = false
+
 [functions.send-order-email]
 verify_jwt = false
 
