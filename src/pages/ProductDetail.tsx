@@ -140,8 +140,8 @@ export default function ProductDetail() {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
-        <main className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <main className="flex-1">
+          <ProductDetailSkeleton />
         </main>
         <Footer />
       </div>);
