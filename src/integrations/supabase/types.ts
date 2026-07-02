@@ -231,6 +231,8 @@ export type Database = {
           discount_type: string
           id: string
           is_used: boolean
+          shopify_code: string | null
+          shopify_price_rule_id: number | null
           used_at: string | null
           used_on_order_id: string | null
           user_id: string
@@ -242,6 +244,8 @@ export type Database = {
           discount_type?: string
           id?: string
           is_used?: boolean
+          shopify_code?: string | null
+          shopify_price_rule_id?: number | null
           used_at?: string | null
           used_on_order_id?: string | null
           user_id: string
@@ -253,6 +257,8 @@ export type Database = {
           discount_type?: string
           id?: string
           is_used?: boolean
+          shopify_code?: string | null
+          shopify_price_rule_id?: number | null
           used_at?: string | null
           used_on_order_id?: string | null
           user_id?: string
@@ -1975,6 +1981,7 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_apply_referral_code: { Args: { p_code: string }; Returns: Json }
       rpc_assign_order: {
         Args: {
           p_commission_type?: string
