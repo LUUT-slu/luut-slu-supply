@@ -200,11 +200,14 @@ serve(async (req) => {
         message: "Order cancelled successfully",
         localOrder,
         whatsappUrl,
+        shopifySyncStatus,
+        shopifySyncError,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
+
   } catch (error) {
     console.error("Error cancelling order:", error);
     return new Response(
