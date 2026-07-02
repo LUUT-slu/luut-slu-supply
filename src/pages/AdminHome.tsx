@@ -294,6 +294,9 @@ export default function AdminHome() {
           ))}
         </div>
 
+        {/* Customer Loyalty Panel */}
+        <CustomerLoyaltyPanel />
+
         {/* Action Cards */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {actionCards.map((card) => (
