@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
 import { SellerAIPanel } from "@/components/seller/SellerAIPanel";
 import { useNavigate, useSearchParams } from "react-router-dom";
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";

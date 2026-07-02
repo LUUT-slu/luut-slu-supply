@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { AIOrderHelper } from "@/components/seller/AIOrderHelper";
 import { SellerAIPanel } from "@/components/seller/SellerAIPanel";

@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
+import { StatCardGridSkeleton } from "@/components/skeletons/StatCardSkeleton";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { supabase } from "@/integrations/supabase/client";
