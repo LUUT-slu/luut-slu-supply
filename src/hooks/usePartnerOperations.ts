@@ -124,6 +124,15 @@ export const usePartnerOperations = () => {
     const commissionEarned = result?.commission_earned as number | undefined;
     toast.success(`Order completed! Commission: EC$${commissionEarned?.toFixed(2) || '0'}`);
 
+    // Fire-and-forget: grant loyalty rewards (LUUT Regular / VIP / Referral)
+    (async () => {
+      try {
+        await supabase.functions.invoke('grant-loyalty-rewards', { body: { order_id: orderId } });
+      } catch (e) {
+        console.warn('Loyalty reward grant failed:', e);
+      }
+    })();
+
     // Fire-and-forget: mark the linked Shopify draft order as completed/paid
     (async () => {
       try {
