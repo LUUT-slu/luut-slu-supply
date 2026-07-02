@@ -274,10 +274,14 @@ export default function OrderDetails() {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
-        <main className="container flex-1 py-8">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <main className="container flex-1 py-8 space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <Skeleton className="h-40 w-full rounded-md" />
+            <Skeleton className="h-40 w-full rounded-md" />
           </div>
+          <Skeleton className="h-64 w-full rounded-md" />
         </main>
         <Footer />
       </div>
