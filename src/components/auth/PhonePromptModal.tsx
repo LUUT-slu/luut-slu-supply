@@ -78,10 +78,14 @@ export function PhonePromptModal() {
 
       if (error) throw error;
 
-      // Sync to Shopify in the background
+      // Sync to Shopify (phone-primary matching upstream). Errors surfaced to logs.
       supabase.functions
         .invoke("sync-shopify-customer", { body: { user_id: userId } })
-        .catch((e) => console.warn("[shopify-sync] non-blocking error", e));
+        .then(({ error }) => {
+          if (error) console.error("[shopify-sync] phone-save sync failed:", error);
+        })
+        .catch((e) => console.error("[shopify-sync] phone-save sync error:", e));
+
 
       toast.success("Phone saved");
       setOpen(false);
