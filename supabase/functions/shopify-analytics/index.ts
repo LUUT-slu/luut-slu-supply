@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const SHOPIFY_STORE_DOMAIN = "lovable-project-yf43m.myshopify.com";
-const SHOPIFY_API_VERSION = "2025-01";
+const SHOPIFY_API_VERSION = "2025-07";
 
 async function verifyAdmin(req: Request): Promise<boolean> {
   const authHeader = req.headers.get("authorization");
