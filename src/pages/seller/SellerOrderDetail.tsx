@@ -333,10 +333,8 @@ export default function SellerOrderDetail() {
     return (
       <div className="flex min-h-screen flex-col bg-background">
           <SellerNav sellerName={profile?.seller_name} logoUrl={profile?.logo_url || undefined} sellerId={profile?.id} />
-          <main className="container flex-1 py-6">
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+          <main className="container flex-1 py-6 space-y-4">
+            <ListItemSkeleton rows={4} />
           </main>
         </div>
     );

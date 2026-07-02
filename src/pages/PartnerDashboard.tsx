@@ -371,9 +371,7 @@ export default function PartnerDashboard() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
+              <ListItemSkeleton rows={4} />
             ) : activeOrders.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Package className="mb-4 h-12 w-12 text-muted-foreground" />

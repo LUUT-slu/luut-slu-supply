@@ -377,9 +377,7 @@ export default function AdminSellerRequests() {
               <Card>
                 <CardContent className="pt-6">
                   {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
+                    <ListItemSkeleton rows={5} />
                   ) : filteredApplications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <Users className="mb-4 h-12 w-12 text-muted-foreground" />

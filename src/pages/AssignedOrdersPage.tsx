@@ -273,8 +273,10 @@ export default function AssignedOrdersPage() {
 
   if (loading && orders.length === 0) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="min-h-screen bg-background">
+        <div className="container py-6">
+          <ListItemSkeleton rows={5} />
+        </div>
       </div>
     );
   }

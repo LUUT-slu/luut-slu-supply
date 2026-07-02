@@ -281,9 +281,7 @@ export default function SellerProducts() {
           {/* Products Table */}
           <div className="rounded-lg border border-border/60 bg-card/50">
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
+              <div className="p-4"><ListItemSkeleton rows={5} /></div>
             ) : filteredProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Package className="mb-4 h-10 w-10 text-muted-foreground" />

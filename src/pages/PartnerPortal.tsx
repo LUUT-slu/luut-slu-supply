@@ -478,8 +478,8 @@ function OrdersView({
 
   if (loading && orders.length === 0) {
     return (
-      <div className="flex justify-center py-8">
-        <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+      <div className="py-4">
+        <ListItemSkeleton rows={4} />
       </div>
     );
   }
