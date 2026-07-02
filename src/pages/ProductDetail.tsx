@@ -30,6 +30,7 @@ import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 import { ProductReviews } from "@/components/ProductReviews";
 import { ReviewPopup } from "@/components/ReviewPopup";
 import { SEO } from "@/components/SEO";
+import { ProductDetailSkeleton } from "@/components/skeletons/ProductDetailSkeleton";
 
 const WHATSAPP_NUMBER = "17587185478";
 const COLOR_OPTION_NAMES = ["color", "colour"];
