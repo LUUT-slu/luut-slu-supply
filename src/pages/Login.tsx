@@ -165,7 +165,7 @@ export default function Login() {
       passwordSchema.parse(password);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        toast.error(err.errors[0].message);
+        toast.error(err.issues[0].message);
         return;
       }
     }
@@ -212,7 +212,7 @@ export default function Login() {
       passwordSchema.parse(signupPassword);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        toast.error(err.errors[0].message);
+        toast.error(err.issues[0].message);
         return;
       }
     }
