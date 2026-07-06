@@ -110,6 +110,13 @@ function escape(s: string | null | undefined): string {
     .replace(/'/g, "&#39;");
 }
 
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -129,17 +136,12 @@ serve(async (req) => {
       authed = !error && !!data?.user;
     }
     if (!authed) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
     const { orderId } = await req.json();
     if (!orderId) {
-      return new Response(JSON.stringify({ error: "orderId required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "orderId required" }, 400);
     }
 
     if (!resendKey || !lovableApiKey) {
@@ -147,10 +149,7 @@ serve(async (req) => {
         hasResendKey: !!resendKey,
         hasLovableApiKey: !!lovableApiKey,
       });
-      return new Response(JSON.stringify({ error: "Email not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: false, skipped: true, reason: "email_not_configured" });
     }
 
     const supabase = adminClient;
@@ -162,10 +161,7 @@ serve(async (req) => {
 
     if (error || !order) {
       console.error("Order fetch failed:", error);
-      return new Response(JSON.stringify({ error: "Order not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Order not found" }, 404);
     }
 
     const orderNumber = `#L${String(order.order_number).padStart(4, "0")}`;
@@ -200,21 +196,16 @@ serve(async (req) => {
     }
     if (!resp.ok) {
       console.error("Resend error:", resp.status, result);
-      return new Response(JSON.stringify({ error: "Email send failed", detail: result }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: false, skipped: true, reason: "email_provider_error", providerStatus: resp.status });
     }
 
     console.log("Merchant email sent for order", orderNumber, "id:", result.id);
-    return new Response(JSON.stringify({ success: true, id: result.id }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ success: true, id: result.id });
   } catch (e) {
     console.error("send-merchant-order-email error:", e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ success: false, skipped: true, reason: "email_function_error" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
