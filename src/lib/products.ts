@@ -246,6 +246,27 @@ export async function fetchHybridProducts(options: {
     return !sid || !localShopifyIds.has(sid);
   });
 
+  // Hide archived/unlisted Shopify products: Shopify's Storefront API only
+  // returns products published to the online store, so any local seller_products
+  // row that MIRRORS a Shopify product (has shopify_product_id) but whose
+  // shopify_product_id did NOT come back from Shopify is now archived or
+  // unpublished — drop it until it's relisted. Purely local products
+  // (no shopify_product_id) are always kept.
+  // Only apply when we actually fetched Shopify products (no filter override
+  // that returned zero rows), to avoid hiding everything on a Shopify outage.
+  const shopifyReturnedIds = new Set(
+    unifiedShopify
+      .map((p) => p.originalShopifyProduct?.node?.id)
+      .filter(Boolean) as string[]
+  );
+  if (shopifyReturnedIds.size > 0) {
+    unifiedLovable = unifiedLovable.filter((p) => {
+      const sid = (p.originalLovableProduct as any)?.shopify_product_id;
+      if (!sid) return true; // purely local product
+      return shopifyReturnedIds.has(sid);
+    });
+  }
+
   // Combine and sort by stock status: in_stock first, low_stock second, out_of_stock last
   let combined = [...unifiedLovable, ...dedupedShopify];
 
