@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "luut-slu-mcp",
+      "version": "0.1.0",
+      "title": "Luut SLU Marketplace"
+    },
+    "tools": [
+      {
+        "name": "search_products",
+        "title": "Search products",
+        "description": "Search the Luut SLU marketplace catalog for active seller products by keyword and/or category.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "query": {
+              "description": "Keyword to match in product name or description.",
+              "type": "string"
+            },
+            "category": {
+              "description": "Filter by category (e.g. Beanies, Hoodies).",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Max results, default 20.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_sellers",
+        "title": "List sellers",
+        "description": "List approved sellers on Luut SLU, optionally filtered by location.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "location": {
+              "description": "Filter by seller location (e.g. Castries).",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Max results, default 20.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_platform_info",
+        "title": "Get platform info",
+        "description": "Return static facts about Luut SLU: payment model, meetup locations, categories, currency.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
