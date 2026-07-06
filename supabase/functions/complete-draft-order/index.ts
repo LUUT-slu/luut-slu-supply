@@ -108,7 +108,10 @@ serve(async (req) => {
 
     // STEP 2: Attempt Shopify draft completion. Any failure is recorded on the
     // order row but does NOT roll back the local COMPLETED status.
-    const url = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders/${order.shopify_draft_order_id}/complete.json`;
+    // Shopify's complete-draft endpoint reads `payment_pending` as a QUERY
+    // parameter, not a body field. Passing false marks the resulting order as
+    // Paid (financial_status=paid) via the manual gateway.
+    const url = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders/${order.shopify_draft_order_id}/complete.json?payment_pending=${paymentPending ? "true" : "false"}`;
     let shopifyRes: Response;
     let shopifyData: any;
     try {
@@ -118,10 +121,6 @@ serve(async (req) => {
           "X-Shopify-Access-Token": adminToken,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          payment_gateway: "manual",
-          payment_pending: false,
-        }),
       });
       shopifyData = await shopifyRes.json().catch(() => ({}));
     } catch (netErr) {
