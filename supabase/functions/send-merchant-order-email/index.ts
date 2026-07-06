@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const MERCHANT_EMAIL = "usual.suspect.118@gmail.com";
-const RESEND_URL = "https://api.resend.com/emails";
+const RESEND_GATEWAY_URL = "https://connector-gateway.lovable.dev/resend/emails";
 const SITE_URL = "https://luut-slu-supply.lovable.app";
 
 interface LineItem {
@@ -117,6 +117,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendKey = Deno.env.get("RESEND_API_KEY");
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
 
     // Auth: require user JWT or service-role key
     const authHeader = req.headers.get("authorization") || "";
@@ -141,8 +142,11 @@ serve(async (req) => {
       });
     }
 
-    if (!resendKey) {
-      console.error("Missing RESEND_API_KEY");
+    if (!resendKey || !lovableApiKey) {
+      console.error("Missing email connector configuration", {
+        hasResendKey: !!resendKey,
+        hasLovableApiKey: !!lovableApiKey,
+      });
       return new Response(JSON.stringify({ error: "Email not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -172,11 +176,12 @@ serve(async (req) => {
     const subject = `New Order ${orderNumber} — ${firstItem}`;
     const html = buildHtml(order);
 
-    const resp = await fetch(RESEND_URL, {
+    const resp = await fetch(RESEND_GATEWAY_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${resendKey}`,
+        Authorization: `Bearer ${lovableApiKey}`,
+        "X-Connection-Api-Key": resendKey,
       },
       body: JSON.stringify({
         from: Deno.env.get("RESEND_FROM_EMAIL") || "Luut SLU <onboarding@resend.dev>",
@@ -186,7 +191,13 @@ serve(async (req) => {
       }),
     });
 
-    const result = await resp.json();
+    const responseText = await resp.text();
+    let result: any = null;
+    try {
+      result = responseText ? JSON.parse(responseText) : {};
+    } catch (_) {
+      result = { message: responseText || "Email provider returned an unreadable response" };
+    }
     if (!resp.ok) {
       console.error("Resend error:", resp.status, result);
       return new Response(JSON.stringify({ error: "Email send failed", detail: result }), {
