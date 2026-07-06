@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "development" && componentTagger(),
+    mcpPlugin(),
     ViteImageOptimizer({
       png: { quality: 60 },
       jpeg: { quality: 60 },
