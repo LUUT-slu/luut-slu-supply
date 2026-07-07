@@ -66,8 +66,6 @@ verify_jwt = false
 [functions.po-sales-rollup]
 verify_jwt = false
 
-[functions.import-shopify-po-drafts]
-verify_jwt = false
 
 
 [functions.grant-loyalty-rewards]
