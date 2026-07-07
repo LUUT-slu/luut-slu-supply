@@ -12,8 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, ShoppingCart, EyeOff, Tag, Save, Loader2, Wifi, CheckCircle2, Palette } from "lucide-react";
 import { useSiteSettings, updateSiteSetting, CheckoutReminderSetting, ColorVariantCardsSetting, HomepageLayout } from "@/hooks/useSiteSettings";
-import { PopupsSection } from "@/components/admin/PopupsSection";
-import { DiscountsSection } from "@/components/admin/DiscountsSection";
 import { HomepageEditor } from "@/components/admin/HomepageEditor";
 import { NotificationsSection } from "@/components/admin/NotificationsSection";
 import { MarketingDefaultsCard } from "@/components/marketing/MarketingDefaultsCard";
@@ -290,21 +288,8 @@ export default function AdminSiteSettings() {
                   </CardContent>
                 )}
               </Card>
-            </div>
+          </div>
 
-            <Separator />
-
-            {/* ========== DISCOUNTS MANAGER (full width) ========== */}
-            <section>
-              <DiscountsSection />
-            </section>
-
-            <Separator />
-
-            {/* ========== POPUPS MANAGER (full width) ========== */}
-            <section>
-              <PopupsSection initialPopups={settings?.popups || []} />
-            </section>
           </div>
 
         </main>
