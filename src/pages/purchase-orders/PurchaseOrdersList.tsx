@@ -16,6 +16,8 @@ export default function PurchaseOrdersList({ basePath }: { basePath: "/admin/pur
   const createPO = useCreatePO();
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const isAdmin = basePath.startsWith("/admin");
 
   const handleCreate = async () => {
     if (!name.trim()) return;
