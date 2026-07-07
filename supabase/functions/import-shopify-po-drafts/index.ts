@@ -20,7 +20,7 @@ const PRODUCTS_QUERY = `
           title
           vendor
           featuredImage { url }
-          variants(first: 100) {
+          variants(first: 10) {
             edges {
               node {
                 id
@@ -31,7 +31,7 @@ const PRODUCTS_QUERY = `
                 image { url }
                 inventoryItem {
                   unitCost { amount }
-                  inventoryLevels(first: 20) {
+                  inventoryLevels(first: 3) {
                     edges {
                       node {
                         location { id name }
@@ -49,7 +49,7 @@ const PRODUCTS_QUERY = `
   }
 `;
 
-async function shopifyGraphQL(query: string, variables: any) {
+async function shopifyGraphQL(query: string, variables: any, attempt = 0): Promise<any> {
   const res = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/graphql.json`, {
     method: "POST",
     headers: {
@@ -60,7 +60,14 @@ async function shopifyGraphQL(query: string, variables: any) {
   });
   if (!res.ok) throw new Error(`Shopify HTTP ${res.status}: ${await res.text()}`);
   const json = await res.json();
-  if (json.errors) throw new Error(`Shopify GraphQL: ${JSON.stringify(json.errors)}`);
+  if (json.errors) {
+    const throttled = json.errors.some((e: any) => e?.extensions?.code === "THROTTLED");
+    if (throttled && attempt < 4) {
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+      return shopifyGraphQL(query, variables, attempt + 1);
+    }
+    throw new Error(`Shopify GraphQL: ${JSON.stringify(json.errors)}`);
+  }
   return json.data;
 }
 
@@ -117,7 +124,7 @@ Deno.serve(async (req) => {
     let cursor: string | null = null;
     let pages = 0;
     do {
-      const data = await shopifyGraphQL(PRODUCTS_QUERY, { first: 100, cursor });
+      const data = await shopifyGraphQL(PRODUCTS_QUERY, { first: 15, cursor });
       pages++;
       for (const pe of data.products.edges) {
         const p = pe.node;
@@ -164,7 +171,9 @@ Deno.serve(async (req) => {
         }
       }
       cursor = data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null;
-      if (pages > 50) break; // safety
+      if (pages > 400) break; // safety
+      // Small delay to respect throttling
+      await new Promise((r) => setTimeout(r, 200));
     } while (cursor);
 
     // Duplicate check: for each group, look for existing draft POs with same vendor whose items overlap product IDs
