@@ -223,6 +223,44 @@ export type Database = {
         }
         Relationships: []
       }
+      claim_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          ip: string | null
+          ok: boolean
+          profile_id: string | null
+          token_prefix: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          ok: boolean
+          profile_id?: string | null
+          token_prefix?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          ok?: boolean
+          profile_id?: string | null
+          token_prefix?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_attempts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_discounts: {
         Row: {
           created_at: string
@@ -302,6 +340,11 @@ export type Database = {
           auth_provider: string | null
           avatar_url: string | null
           calendar_connected: boolean
+          claim_attempts: number
+          claim_locked_until: string | null
+          claim_token: string | null
+          claim_token_issued_at: string | null
+          claimed_at: string | null
           created_at: string
           document_url: string | null
           email: string | null
@@ -318,12 +361,17 @@ export type Database = {
           signup_source: string | null
           tiktok_url: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           auth_provider?: string | null
           avatar_url?: string | null
           calendar_connected?: boolean
+          claim_attempts?: number
+          claim_locked_until?: string | null
+          claim_token?: string | null
+          claim_token_issued_at?: string | null
+          claimed_at?: string | null
           created_at?: string
           document_url?: string | null
           email?: string | null
@@ -340,12 +388,17 @@ export type Database = {
           signup_source?: string | null
           tiktok_url?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           auth_provider?: string | null
           avatar_url?: string | null
           calendar_connected?: boolean
+          claim_attempts?: number
+          claim_locked_until?: string | null
+          claim_token?: string | null
+          claim_token_issued_at?: string | null
+          claimed_at?: string | null
           created_at?: string
           document_url?: string | null
           email?: string | null
@@ -362,7 +415,7 @@ export type Database = {
           signup_source?: string | null
           tiktok_url?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -684,6 +737,7 @@ export type Database = {
           customer_email: string | null
           customer_name: string
           customer_phone: string | null
+          customer_profile_id: string | null
           customer_user_id: string | null
           id: string
           last_edited_at: string | null
@@ -736,6 +790,7 @@ export type Database = {
           customer_email?: string | null
           customer_name: string
           customer_phone?: string | null
+          customer_profile_id?: string | null
           customer_user_id?: string | null
           id?: string
           last_edited_at?: string | null
@@ -788,6 +843,7 @@ export type Database = {
           customer_email?: string | null
           customer_name?: string
           customer_phone?: string | null
+          customer_profile_id?: string | null
           customer_user_id?: string | null
           id?: string
           last_edited_at?: string | null
@@ -826,7 +882,15 @@ export type Database = {
           total_price?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_profile_id_fkey"
+            columns: ["customer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       partner_cash_ledger: {
         Row: {
@@ -1934,6 +1998,10 @@ export type Database = {
       }
     }
     Functions: {
+      ensure_customer_profile_for_order: {
+        Args: { p_email?: string; p_name: string; p_phone: string }
+        Returns: string
+      }
       format_order_number: { Args: { order_num: number }; Returns: string }
       get_partner_totals: { Args: { p_partner_id?: string }; Returns: Json }
       has_role: {
@@ -2012,6 +2080,7 @@ export type Database = {
           customer_email: string | null
           customer_name: string
           customer_phone: string | null
+          customer_profile_id: string | null
           customer_user_id: string | null
           id: string
           last_edited_at: string | null
