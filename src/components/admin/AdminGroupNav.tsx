@@ -94,7 +94,7 @@ export function AdminGroupNav({ group, className }: Props) {
   return (
     <div
       className={cn(
-        "sticky top-14 z-30 w-full border-b border-border/60 bg-background/95 backdrop-blur",
+        "w-full border-b border-border/60 bg-background/95",
         className,
       )}
     >
