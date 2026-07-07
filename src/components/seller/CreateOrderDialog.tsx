@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { format, parse } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { fetchProductVariantsById, type ShopifyVariantLite } from "@/lib/shopify";
+import { phoneInputProps } from "@/lib/text";
 
 interface Product {
   id: string;
