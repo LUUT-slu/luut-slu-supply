@@ -355,6 +355,33 @@ serve(async (req) => {
 
     console.log(`[${orderSource}] Creating order for:`, customerName, "phone:", customerPhone, "at", location);
 
+    // ============================================================
+    // Match returning customer by normalized phone (primary key).
+    // Never overwrites the profile's name — the customer typing a
+    // different name should not create a duplicate identity.
+    // ============================================================
+    const canonicalPhone = normalizePhone(customerPhone);
+    let matchedCustomerUserId: string | null = null;
+    let matchedShopifyCustomerId: string | null = null;
+    if (canonicalPhone) {
+      const { data: matchedProfile, error: matchErr } = await supabase
+        .from("customer_profiles")
+        .select("user_id, shopify_customer_id")
+        .eq("phone", canonicalPhone)
+        .maybeSingle();
+      if (matchErr) {
+        console.warn("customer_profiles phone match failed (non-fatal):", matchErr.message);
+      } else if (matchedProfile?.user_id) {
+        matchedCustomerUserId = matchedProfile.user_id;
+        matchedShopifyCustomerId = matchedProfile.shopify_customer_id || null;
+        console.log(
+          "Matched returning customer by phone:", canonicalPhone,
+          "user_id:", matchedCustomerUserId,
+          "shopify_customer_id:", matchedShopifyCustomerId,
+        );
+      }
+    }
+
     // Separate Shopify and Lovable products
     const shopifyItems = lineItems.filter(item => 
       !item.source || item.source === 'shopify' || item.variant_id.startsWith('gid://shopify/')
@@ -386,8 +413,9 @@ serve(async (req) => {
         .from("orders")
         .insert({
           customer_name: customerName,
-          customer_phone: customerPhone,
+          customer_phone: canonicalPhone ?? customerPhone,
           customer_email: customerEmail || null,
+          customer_user_id: matchedCustomerUserId,
           location: location,
           preferred_date: preferredDate,
           pickup_time: pickupTime || null,
@@ -409,8 +437,9 @@ serve(async (req) => {
         throw new Error(`Failed to create order: ${insertError.message}`);
       }
       localOrder = inserted;
-      console.log("Local order created:", localOrder.id);
+      console.log("Local order created:", localOrder.id, "linked user:", matchedCustomerUserId ?? "(guest)");
     }
+
 
     // ============================================================
     // Create order_items (skip when resyncing existing order)
