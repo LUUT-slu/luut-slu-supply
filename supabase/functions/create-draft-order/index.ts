@@ -391,7 +391,6 @@ serve(async (req) => {
     // Never overwrites the profile's name — the customer typing a
     // different name should not create a duplicate identity.
     // ============================================================
-    const canonicalPhone = normalizePhone(customerPhone);
     let matchedCustomerUserId: string | null = null;
     let matchedShopifyCustomerId: string | null = null;
     if (canonicalPhone) {
