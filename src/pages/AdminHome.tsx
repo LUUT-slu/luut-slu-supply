@@ -19,7 +19,6 @@ import {
   Tag,
 } from "lucide-react";
 import { toast } from "sonner";
-import { CustomerLoyaltyPanel } from "@/components/admin/CustomerLoyaltyPanel";
 
 interface AdminStats {
   totalOrders: number;
@@ -131,14 +130,11 @@ export default function AdminHome() {
     },
     {
       title: "Customer Info",
-      description: "Customers, signups, WhatsApp, referrals & discounts",
+      description: "Accounts, unclaimed, spend, loyalty & signups — all in one place",
       icon: Users,
       href: "/admin/customers",
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
-      subLinks: [
-        { label: "Unclaimed Customers", href: "/admin/unclaimed-customers" },
-      ],
     },
     {
       title: "Order Management",
@@ -297,8 +293,6 @@ export default function AdminHome() {
           ))}
         </div>
 
-        {/* Customer Loyalty Panel */}
-        <CustomerLoyaltyPanel />
 
         {/* Action Cards */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
