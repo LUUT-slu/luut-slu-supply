@@ -34,7 +34,9 @@ export interface SellerOrder {
   source?: string | null;
   shopify_order_id?: string | null;
   shopify_order_name?: string | null;
+  order_token?: string | null;
   items: SellerOrderItem[];
+
 }
 
 export type OrderStatus = "pending" | "confirmed" | "completed" | "cancelled" | "no-show";
