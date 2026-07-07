@@ -1,82 +1,80 @@
-## Current state (what's actually wired up)
+## Goal
 
-**Shopify side — `supabase/functions/create-draft-order/index.ts` → `findOrCreateShopifyCustomer` (lines 61–173).** Already phone‑primary in intent: normalizes to E.164 via `normalizePhone`, searches `phone:<normalized>`, falls back to `email:<email>`, then creates. On a 422 duplicate it retries — but the retry sends the raw normalized number instead of `phone:<normalized>`, so it can miss. On a match it does NOT overwrite first/last name (correct — name typed this order is ignored). Good baseline; two rough edges to fix.
+Every order auto-creates a claimable "shadow" customer keyed by phone. Customer claims via a per-customer link + phone confirmation, then gets a persistent session showing order history, live stock, and eligible discounts. Admin has a page to view and blast claim links to all unclaimed customers.
 
-**Local side — same file, order insert at lines 346–366.** Order rows get `customer_name`, `customer_phone` (raw, as typed), `customer_email`. `orders.customer_user_id` exists in the schema and is used elsewhere (loyalty, admin customer view, `sync-shopify-orders` at line 299), but **`create-draft-order` never sets it**. So a returning customer who checks out as guest — or a seller‑dashboard order for a known number — is not linked to their existing `customer_profiles` row. Both customer_checkout and seller_dashboard paths share this insert.
+## Security model (locked in)
 
-**`customer_profiles.phone`** is stored as whatever was typed (no normalization). `handle_new_customer` trigger doesn't touch phone; `sync-shopify-customer` normalizes only when calling Shopify, not before writing the profile. That means a "match by phone" query today only works when the two strings happen to be identical.
+- **Primary factor:** unguessable per-customer `claim_token` (32-byte URL-safe), sent by you via WhatsApp.
+- **Confirmation:** customer types their phone; must match (normalized) the phone on the shadow profile the token points to.
+- **Rate limit:** max 5 wrong phone attempts per token per 15 min → token locked for 1 hour; admin can reset. Attempts logged.
+- **Session:** after successful claim, we issue a long-lived Supabase session for that user (persisted, auto-refresh). Device stays signed in.
+- **New device:** re-open the same claim link → enter phone → new session. Token stays valid (per-customer, not per-device) until customer opts to add a stronger factor later.
+- **Future-ready:** the confirmation step is a single isolated function (`verify-claim`). Swapping "phone equality" for "phone equality + SMS OTP" later is a 1-file change — no schema or UX rebuild.
 
-**`supabase/functions/sync-shopify-orders/index.ts`** (line 247–259) resolves `customer_user_id` for Shopify‑originated orders by `email OR phone` against `customer_profiles`, but uses the raw phone from Shopify — will miss when stored profile phones aren't normalized to the same form.
+## Database changes
 
-## Goal restated
+1. **`customer_profiles` becomes claimable without an auth user.**
+   - Make `user_id` nullable (drop NOT NULL, keep unique-when-present).
+   - Add: `claim_token text unique`, `claim_token_issued_at timestamptz`, `claimed_at timestamptz`, `claim_attempts int default 0`, `claim_locked_until timestamptz`, `is_shadow boolean generated as (user_id is null)`.
+   - Backfill `claim_token` for every existing profile whose phone has orders but no `user_id` (there shouldn't be any today, but safe).
 
-Normalized phone is the primary customer identity across the platform. Name typed on a given order is a per‑order label, never used for identity, never overwrites a stored name, and never blocks an order.
+2. **Order → profile linkage by phone** (already partly done in previous turn).
+   - On every order insert (checkout + seller dashboard + Shopify sync), normalize phone and:
+     - if a `customer_profiles` row exists for that phone → link `orders.customer_profile_id` (add column) and, if profile has `user_id`, also set `orders.customer_user_id`.
+     - else → create a shadow profile (phone + name from order, `user_id = null`, fresh `claim_token`) and link it.
+   - Handled in a `SECURITY DEFINER` function `public.ensure_customer_profile_for_order(phone, name)` called from the create-draft-order edge function and from a trigger for direct DB inserts.
 
-## Plan
+3. **Claim on signup / login.**
+   - Extend `handle_new_customer` trigger: when a new `auth.users` row appears, if a shadow profile exists with the same phone (from `raw_user_meta_data.phone` passed during claim), attach `user_id` to it instead of creating a new profile. Clear `claim_token`, set `claimed_at`.
 
-### 1. One shared phone normalizer, applied everywhere phone is written or matched
+4. **RLS.**
+   - Shadow profiles readable only by `service_role` (never by anon/authenticated) — the claim edge function is the only public read path, and it goes by token.
+   - Orders remain readable by owning `user_id`; after claim, the newly-attached `user_id` unlocks history automatically via existing policy.
 
-Extract the existing `normalizePhone` (already duplicated in `create-draft-order` and `sync-shopify-customer`) into `supabase/functions/_shared/phone.ts` and import it from all three edge functions plus `sync-shopify-orders`. Same E.164 rules: 7 digits → `+1758…`, 10 → `+1…`, 11 starting `1` → `+…`, already `+` kept, else prefix `+`.
+5. **Attempt log table** `claim_attempts` (token, ip, ok, at) — for rate-limit tracking and audit.
 
-### 2. Normalize `customer_profiles.phone` at the DB layer
+## Edge functions
 
-Migration:
-- Add SQL helper `public.normalize_phone(text) returns text` implementing the same rules (immutable, safe for expression indexes).
-- `BEFORE INSERT OR UPDATE OF phone` trigger on `customer_profiles` that sets `NEW.phone = normalize_phone(NEW.phone)`.
-- One‑time backfill: `UPDATE customer_profiles SET phone = normalize_phone(phone) WHERE phone IS NOT NULL`.
-- Partial unique index `CREATE UNIQUE INDEX customer_profiles_phone_unique ON customer_profiles (phone) WHERE phone IS NOT NULL` so we never accumulate duplicates going forward. (If backfill surfaces existing duplicates we'll merge oldest‑wins before adding the index; migration will detect and abort with a clear message if any remain.)
+- **`issue-claim-link`** (admin-only): given a `customer_profile_id` or phone, mint/rotate a token, return `https://<site>/claim/<token>` + a prewritten WhatsApp message.
+- **`verify-claim`** (public): input `{ token, phone }`.
+  - Check token exists, not locked, not already claimed by another user.
+  - Normalize both phones, compare.
+  - On mismatch: increment attempts, lock after 5.
+  - On match: create/sign-in an anonymous-linked Supabase user *bound to that phone*, run the trigger that attaches the shadow profile, return a session (access + refresh token) the client stores in Supabase auth.
+  - Idempotent: if already claimed, and phone matches, just return a fresh session for the linked user.
+- **`admin-list-unclaimed`** (admin-only): paginated list of shadow profiles with phone, name, order count, last order date, claim URL; CSV export endpoint.
 
-This is the only schema change in the plan.
+## Frontend
 
-### 3. Link every new order to `customer_profiles` by normalized phone
+- **`/claim/:token`** page:
+  - Step 1: phone input (autofocus, tel keyboard, normalized on submit).
+  - Step 2 (after verify): success screen → auto-redirect to `/account`.
+  - Handles locked/expired token states with a "message Luut on WhatsApp" fallback.
+- **`/account`** (existing customer dashboard, if present — otherwise minimal new page):
+  - Order history (already-wired queries just work once `user_id` is attached).
+  - "Browse current stock" CTA → `/shop`.
+  - "Your discounts" section listing rows from `customer_discounts` for this user.
+- **Admin → Unclaimed Customers** page under existing admin area:
+  - Table: phone, name, #orders, last order, claim link (copy button), WhatsApp button (opens wa.me with prewritten message + link), "reset lock" action.
+  - "Export CSV" and "Copy all as WhatsApp broadcast" (one message per customer, tab-separated).
+  - Per-order "Send claim link" button on the admin order detail view.
 
-In `create-draft-order`, before the `orders` insert (around line 346):
-1. `const normalizedPhone = normalizePhone(customerPhone)`.
-2. Query `customer_profiles.select("user_id, full_name, email, shopify_customer_id").eq("phone", normalizedPhone).maybeSingle()`.
-3. If a match is found:
-   - Set `customer_user_id = profile.user_id` on the insert.
-   - Store `customer_phone = normalizedPhone` (canonical), not the raw string.
-   - Keep `customer_name` = whatever the caller typed (order label). **Do not** overwrite `customer_profiles.full_name`.
-   - If `profile.shopify_customer_id` is set, pass it into `findOrCreateShopifyCustomer` as a fast‑path so we skip the Shopify search entirely.
-4. If no match: still store the normalized phone; leave `customer_user_id` NULL (guest order).
+## Session persistence
 
-Applies identically to `orderSource === 'customer_checkout'` and `'seller_dashboard'` because the insert is shared.
+- Supabase client is already configured with `persistSession: true` / `autoRefreshToken: true` (default). After `verify-claim` returns tokens, call `supabase.auth.setSession(...)` on the client — user stays signed in across reloads and days until they log out.
 
-### 4. Harden `findOrCreateShopifyCustomer` (Shopify side)
+## Forward compatibility with SMS OTP
 
-Same file, lines 61–173:
-- Accept an optional `knownShopifyCustomerId` param. When provided, skip search and return it. Powers the fast‑path from step 3.
-- Query with the field prefix on **both** the normalized number and the last‑10 digits: `phone:<normalized> OR phone:<last10>`. Shopify's search index sometimes stores older records without the country code; this eliminates a whole class of false negatives that today force a new customer.
-- Fix the 422 retry (line 157) to send `phone:<normalized>` (currently sends the bare number, which searches all fields and can miss).
-- Keep the current behavior of never overwriting `first_name`/`last_name` on match. Only patch `phone` when missing/different. Explicitly, when the typed name differs from the stored Shopify name we log it and move on — no update, no error.
-- If both search and create still fail (e.g. Shopify 401/5xx), keep today's "record failure, don't create draft" behavior. Not a regression, and the token issue is orthogonal.
+- `verify-claim` is the single choke point. Adding SMS later = enable Supabase phone auth, and inside `verify-claim` replace the phone-equality branch with "send OTP → second call with code → then issue session." Token, shadow-profile model, claim URL, admin page, and `/claim/:token` UI all stay identical.
 
-### 5. Normalize before matching in `sync-shopify-orders`
+## Out of scope for this pass
 
-Line 247–259: run the imported `normalizePhone` on `customer.phone` before the `.or("email.eq…,phone.eq…")` query. Ensures Shopify‑originated orders link back to the same local profile the checkout path uses.
+- Actual SMS provider wiring (planned ~2 weeks out per your note).
+- Merging two shadow profiles that end up on the same phone due to legacy dirty data — handled by the unique phone index; migration will dedupe by keeping the oldest and re-pointing orders.
 
-### 6. Normalize on write in `sync-shopify-customer` and profile updates
+## Technical notes
 
-`sync-shopify-customer/index.ts` and any place we write `customer_profiles.phone` from the app (Account Settings, phone prompt modal) should normalize before writing. The DB trigger from step 2 is a belt‑and‑braces safety net; keeping app code consistent avoids surprising the user with a "changed" phone value.
-
-## Explicit non‑goals
-
-- No changes to `customer_name` handling. The typed name always appears on that specific order; the profile's stored name is untouched.
-- No new UI, no changes to auth, no changes to seller/vendor logic.
-- No touching `orders.customer_phone` on already‑saved orders (out of scope for identity going forward).
-- No merging of existing duplicate `customer_profiles` rows in this plan beyond what step 2's index requires; if duplicates block the unique index we'll surface a small merge report and address it as a follow‑up.
-
-## Files touched
-
-- New: `supabase/functions/_shared/phone.ts`
-- Edited: `supabase/functions/create-draft-order/index.ts` (order insert block + `findOrCreateShopifyCustomer` signature/logic)
-- Edited: `supabase/functions/sync-shopify-customer/index.ts` (import shared normalizer; normalize before profile write)
-- Edited: `supabase/functions/sync-shopify-orders/index.ts` (normalize before profile lookup)
-- New migration: `normalize_phone` function + trigger + backfill + unique index on `customer_profiles.phone`
-
-## Verification after build
-
-1. New guest checkout with a phone that matches an existing profile → resulting `orders` row has `customer_user_id` populated and `customer_phone` in E.164; no new Shopify customer created; existing Shopify first/last name unchanged even if a different name was typed.
-2. Same but with a phone that has no match → order created, `customer_user_id` NULL, Shopify creates a new customer.
-3. Seller‑dashboard order for a known phone with a deliberately mistyped name → order links to correct profile, no error, no duplicate Shopify customer.
-4. `sync-shopify-orders` run after a POS sale from a known phone → local order links to the same profile.
+- Phone normalization uses the shared `normalize_phone` SQL function + `_shared/phone.ts` already added.
+- Tokens: `crypto.randomUUID()` is not enough entropy for a bearer secret — use `crypto.getRandomValues(new Uint8Array(32))` → base64url.
+- Rate-limit counter is per-token, stored on the profile row; `claim_attempts` table is for forensics, not the gate.
+- Admin auth for the two admin functions uses existing `has_role(auth.uid(), 'admin')`.
