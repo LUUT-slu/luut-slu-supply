@@ -130,14 +130,11 @@ export default function AdminHome() {
     },
     {
       title: "Customer Info",
-      description: "Customers, signups, WhatsApp, referrals & discounts",
+      description: "Accounts, unclaimed, spend, loyalty & signups — all in one place",
       icon: Users,
       href: "/admin/customers",
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
-      subLinks: [
-        { label: "Unclaimed Customers", href: "/admin/unclaimed-customers" },
-      ],
     },
     {
       title: "Order Management",
