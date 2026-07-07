@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, CheckCircle2, ShieldAlert, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { phoneInputProps } from "@/lib/text";
 
 export default function ClaimAccount() {
   const { token } = useParams<{ token: string }>();
