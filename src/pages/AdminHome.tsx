@@ -136,6 +136,9 @@ export default function AdminHome() {
       href: "/admin/customers",
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
+      subLinks: [
+        { label: "Unclaimed Customers", href: "/admin/unclaimed-customers" },
+      ],
     },
     {
       title: "Order Management",
