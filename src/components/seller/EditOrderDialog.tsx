@@ -303,10 +303,12 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
           <div className="space-y-2">
             <Label>Customer Phone</Label>
             <Input
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
+              {...phoneInputProps(customerPhone, setCustomerPhone)}
+              type="tel"
+              inputMode="tel"
               placeholder="Phone number"
             />
+
           </div>
 
           {/* Pickup Date */}
