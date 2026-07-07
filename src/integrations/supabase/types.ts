@@ -1950,6 +1950,7 @@ export type Database = {
         Args: { p_seller_id: string }
         Returns: boolean
       }
+      normalize_phone: { Args: { p: string }; Returns: string }
       recalc_po_item_from_variants: {
         Args: { p_item_id: string }
         Returns: undefined

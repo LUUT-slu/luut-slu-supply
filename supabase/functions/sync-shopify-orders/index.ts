@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { normalizePhone } from "../_shared/phone.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -243,16 +245,17 @@ Deno.serve(async (req) => {
         }
         if (derivedStatus === "COMPLETED") completedCount++;
 
-        // Customer linkage (best-effort)
+        // Customer linkage (best-effort). Match by normalized phone first, email as fallback.
+        const normalizedCustomerPhone = normalizePhone(customer?.phone);
         let customerUserId: string | null = null;
-        if (customer?.email || customer?.phone) {
+        if (customer?.email || normalizedCustomerPhone) {
           try {
             const { data: existing } = await admin
               .from("customer_profiles")
               .select("user_id")
               .or([
+                normalizedCustomerPhone ? `phone.eq.${normalizedCustomerPhone}` : null,
                 customer?.email ? `email.ilike.${customer.email}` : null,
-                customer?.phone ? `phone.eq.${customer.phone}` : null,
               ].filter(Boolean).join(","))
               .limit(1)
               .maybeSingle();
@@ -295,9 +298,10 @@ Deno.serve(async (req) => {
           shopify_synced_at: new Date().toISOString(),
           customer_name: customerName,
           customer_email: customer?.email ?? null,
-          customer_phone: customer?.phone ?? null,
+          customer_phone: normalizedCustomerPhone ?? customer?.phone ?? null,
           customer_user_id: customerUserId,
           location: node.retailLocation?.name ?? node.shippingAddress?.city ?? "Shopify",
+
           preferred_date: new Date(node.createdAt).toISOString(),
           total_price: total,
           currency_code: node.currencyCode ?? "XCD",

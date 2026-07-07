@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { normalizePhone, last10Digits } from "../_shared/phone.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,15 +47,8 @@ function normalizeVendorName(vendor: string): string {
   return vendor;
 }
 
-// Normalize phone to E.164 format for Saint Lucia
-function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 7) return `+1758${digits}`;
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-  if (phone.startsWith('+')) return phone;
-  return `+${digits}`;
-}
+// (phone normalization comes from ../_shared/phone.ts)
+
 
 // Look up or create a Shopify customer. Phone (normalized) is the primary identity,
 // email is the secondary identity. Returns { id } on success; { id: null, error }
@@ -63,9 +58,11 @@ async function findOrCreateShopifyCustomer(
   firstName: string,
   lastName: string,
   phone: string,
-  email: string | null
+  email: string | null,
+  knownShopifyCustomerId?: string | null,
 ): Promise<{ id: number | null; error?: string }> {
   const normalizedPhone = normalizePhone(phone);
+  const last10 = last10Digits(phone);
 
   const searchByQuery = async (query: string): Promise<{ ok: boolean; customer?: any; error?: string }> => {
     try {
@@ -82,12 +79,44 @@ async function findOrCreateShopifyCustomer(
     }
   };
 
-  // Step 1: Primary identity — phone (normalized).
-  const phoneSearch = await searchByQuery(`phone:${normalizedPhone}`);
-  if (!phoneSearch.ok) {
-    return { id: null, error: phoneSearch.error };
+  const fetchById = async (id: string): Promise<any | null> => {
+    try {
+      const res = await fetch(
+        `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/${id}.json`,
+        { headers: { "X-Shopify-Access-Token": adminToken } },
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.customer ?? null;
+    } catch { return null; }
+  };
+
+  let existing: any = null;
+
+  // Step 0: Fast-path — known Shopify customer id from our local profile.
+  if (knownShopifyCustomerId) {
+    const byId = await fetchById(knownShopifyCustomerId);
+    if (byId?.id) existing = byId;
   }
-  let existing = phoneSearch.customer;
+
+  // Step 1: Primary identity — phone (normalized).
+  if (!existing && normalizedPhone) {
+    const phoneSearch = await searchByQuery(`phone:${normalizedPhone}`);
+    if (!phoneSearch.ok) {
+      return { id: null, error: phoneSearch.error };
+    }
+    existing = phoneSearch.customer;
+  }
+
+  // Step 1b: Secondary phone search using the last 10 digits, in case
+  // Shopify stored the customer's phone without a leading '+1'.
+  if (!existing && last10) {
+    const altSearch = await searchByQuery(`phone:${last10}`);
+    if (!altSearch.ok) {
+      return { id: null, error: altSearch.error };
+    }
+    existing = altSearch.customer;
+  }
 
   // Step 2: Secondary identity — email.
   if (!existing && email) {
@@ -101,7 +130,8 @@ async function findOrCreateShopifyCustomer(
   if (existing?.id) {
     console.log("Matched existing Shopify customer:", existing.id);
     // Ensure phone is set on the customer record (needed for future phone-primary matching).
-    if (!existing.phone || existing.phone !== normalizedPhone) {
+    // Never overwrite first_name/last_name on match — the existing customer wins.
+    if (normalizedPhone && (!existing.phone || existing.phone !== normalizedPhone)) {
       try {
         await fetch(
           `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/${existing.id}.json`,
@@ -154,9 +184,17 @@ async function findOrCreateShopifyCustomer(
 
     // 422 duplicate — someone else owns this phone/email; retry lookups to find them.
     if (createRes.status === 422) {
-      const retryPhone = await searchByQuery(normalizedPhone);
-      if (retryPhone.ok && retryPhone.customer?.id) {
-        return { id: retryPhone.customer.id };
+      if (normalizedPhone) {
+        const retryPhone = await searchByQuery(`phone:${normalizedPhone}`);
+        if (retryPhone.ok && retryPhone.customer?.id) {
+          return { id: retryPhone.customer.id };
+        }
+      }
+      if (last10) {
+        const retryLast10 = await searchByQuery(`phone:${last10}`);
+        if (retryLast10.ok && retryLast10.customer?.id) {
+          return { id: retryLast10.customer.id };
+        }
       }
       if (email) {
         const retryEmail = await searchByQuery(`email:${email}`);
@@ -171,6 +209,7 @@ async function findOrCreateShopifyCustomer(
     return { id: null, error: `create network: ${String(err)}`.slice(0, 400) };
   }
 }
+
 
 
 // Look up discount code and return applied_discount object
@@ -316,6 +355,33 @@ serve(async (req) => {
 
     console.log(`[${orderSource}] Creating order for:`, customerName, "phone:", customerPhone, "at", location);
 
+    // ============================================================
+    // Match returning customer by normalized phone (primary key).
+    // Never overwrites the profile's name — the customer typing a
+    // different name should not create a duplicate identity.
+    // ============================================================
+    const canonicalPhone = normalizePhone(customerPhone);
+    let matchedCustomerUserId: string | null = null;
+    let matchedShopifyCustomerId: string | null = null;
+    if (canonicalPhone) {
+      const { data: matchedProfile, error: matchErr } = await supabase
+        .from("customer_profiles")
+        .select("user_id, shopify_customer_id")
+        .eq("phone", canonicalPhone)
+        .maybeSingle();
+      if (matchErr) {
+        console.warn("customer_profiles phone match failed (non-fatal):", matchErr.message);
+      } else if (matchedProfile?.user_id) {
+        matchedCustomerUserId = matchedProfile.user_id;
+        matchedShopifyCustomerId = matchedProfile.shopify_customer_id || null;
+        console.log(
+          "Matched returning customer by phone:", canonicalPhone,
+          "user_id:", matchedCustomerUserId,
+          "shopify_customer_id:", matchedShopifyCustomerId,
+        );
+      }
+    }
+
     // Separate Shopify and Lovable products
     const shopifyItems = lineItems.filter(item => 
       !item.source || item.source === 'shopify' || item.variant_id.startsWith('gid://shopify/')
@@ -347,8 +413,9 @@ serve(async (req) => {
         .from("orders")
         .insert({
           customer_name: customerName,
-          customer_phone: customerPhone,
+          customer_phone: canonicalPhone ?? customerPhone,
           customer_email: customerEmail || null,
+          customer_user_id: matchedCustomerUserId,
           location: location,
           preferred_date: preferredDate,
           pickup_time: pickupTime || null,
@@ -370,8 +437,9 @@ serve(async (req) => {
         throw new Error(`Failed to create order: ${insertError.message}`);
       }
       localOrder = inserted;
-      console.log("Local order created:", localOrder.id);
+      console.log("Local order created:", localOrder.id, "linked user:", matchedCustomerUserId ?? "(guest)");
     }
+
 
     // ============================================================
     // Create order_items (skip when resyncing existing order)
@@ -491,8 +559,10 @@ serve(async (req) => {
 
         // ========== CUSTOMER LOOKUP/CREATE (phone-primary, email-secondary) ==========
         const customerResult = await findOrCreateShopifyCustomer(
-          shopifyAdminToken, firstName, lastName, customerPhone, customerEmail || null
+          shopifyAdminToken, firstName, lastName, customerPhone, customerEmail || null,
+          matchedShopifyCustomerId,
         );
+
         const shopifyCustomerId = customerResult.id;
 
         // If customer sync hard-failed, refuse to create a draft with no/wrong customer.
@@ -693,6 +763,16 @@ serve(async (req) => {
             shopify_sync_error: null,
             shopify_synced_at: new Date().toISOString(),
           }).eq("id", localOrder.id);
+
+          // Backfill shopify_customer_id on the matched profile so future
+          // orders can hit the fast-path.
+          if (matchedCustomerUserId && shopifyCustomerId && !matchedShopifyCustomerId) {
+            await supabase
+              .from("customer_profiles")
+              .update({ shopify_customer_id: String(shopifyCustomerId) })
+              .eq("user_id", matchedCustomerUserId);
+          }
+
         } else {
           const errMsg = JSON.stringify(shopifyData?.errors || shopifyData).slice(0, 500);
           console.error("Shopify API error:", errMsg);
