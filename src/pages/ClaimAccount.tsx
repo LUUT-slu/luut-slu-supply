@@ -108,10 +108,10 @@ export default function ClaimAccount() {
                   inputMode="tel"
                   autoFocus
                   placeholder="758 XXX XXXX"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  {...phoneInputProps(phone, setPhone)}
                   disabled={submitting || !!locked}
                 />
+
               </div>
 
               {error && (
