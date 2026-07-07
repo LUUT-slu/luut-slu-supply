@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Users, UserPlus } from "lucide-react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Users, UserPlus, Crown, ShieldAlert, TrendingUp, ContactRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CustomerTable } from "@/components/admin/customers/CustomerTable";
 import { CustomerFilters, type CustomerFiltersValue } from "@/components/admin/customers/CustomerFilters";
 import { SignupsTab } from "@/components/admin/customers/SignupsTab";
+import { UnclaimedCustomersTab } from "@/components/admin/customers/UnclaimedCustomersTab";
+import { CustomerLoyaltyPanel } from "@/components/admin/CustomerLoyaltyPanel";
 import { useAdminCustomers } from "@/hooks/useAdminCustomers";
 import { useCustomerInterests } from "@/hooks/useCustomerInterests";
 import { differenceInDays } from "date-fns";
@@ -21,11 +23,18 @@ const initialFilters: CustomerFiltersValue = {
   tags: [],
 };
 
+const VALID_TABS = ["directory", "claimed", "unclaimed", "spend", "loyalty", "signups"] as const;
+type TabKey = typeof VALID_TABS[number];
+
 export default function AdminCustomers() {
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const initialTab = (VALID_TABS as readonly string[]).includes(params.get("tab") || "")
+    ? (params.get("tab") as TabKey)
+    : "directory";
+  const [tab, setTab] = useState<TabKey>(initialTab);
   const [filters, setFilters] = useState<CustomerFiltersValue>(initialFilters);
   const { data: customers = [], isLoading } = useAdminCustomers();
-  // Compute & persist interest tags in the background; refreshes the customer list once tags are written.
   useCustomerInterests();
 
   const availableTags = useMemo(() => {
@@ -36,22 +45,17 @@ export default function AdminCustomers() {
 
   const filtered = useMemo(() => {
     return customers.filter((c) => {
-      // search
       if (filters.search) {
         const q = filters.search.toLowerCase();
         const hay = `${c.full_name || ""} ${c.email || ""} ${c.phone || ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
-      // account
       if (filters.account === "account" && !c.email) return false;
       if (filters.account === "guest" && c.email) return false;
-      // orders
       if (filters.orders === "0" && c.total_orders > 0) return false;
       if (filters.orders === "1+" && c.total_orders < 1) return false;
       if (filters.orders === "5+" && c.total_orders < 5) return false;
-      // discount
       if (filters.hasDiscount && !c.has_active_discount) return false;
-      // contact
       if (filters.contact === "never" && c.last_contacted_at) return false;
       if (filters.contact === "30d") {
         if (!c.last_contacted_at || differenceInDays(new Date(), new Date(c.last_contacted_at)) <= 30) return false;
@@ -59,7 +63,6 @@ export default function AdminCustomers() {
       if (filters.contact === "7d") {
         if (!c.last_contacted_at || differenceInDays(new Date(), new Date(c.last_contacted_at)) > 7) return false;
       }
-      // tags (must include all selected)
       if (filters.tags.length > 0) {
         if (!filters.tags.every((t) => c.tags.includes(t))) return false;
       }
@@ -67,12 +70,32 @@ export default function AdminCustomers() {
     });
   }, [customers, filters]);
 
+  // "Claimed" = customers with an email/account
+  const claimed = useMemo(
+    () => filtered.filter((c) => !!c.email),
+    [filtered],
+  );
+
+  // Top spenders view (uses full customer set, ignores filters for a clean leaderboard)
+  const topSpenders = useMemo(
+    () => [...customers].sort((a, b) => b.total_spent - a.total_spent).slice(0, 100),
+    [customers],
+  );
+
   const stats = useMemo(() => {
     const total = customers.length;
     const withOrders = customers.filter((c) => c.total_orders > 0).length;
     const totalSpent = customers.reduce((s, c) => s + c.total_spent, 0);
     return { total, withOrders, totalSpent };
   }, [customers]);
+
+  const onTabChange = (v: string) => {
+    const next = (VALID_TABS as readonly string[]).includes(v) ? (v as TabKey) : "directory";
+    setTab(next);
+    const p = new URLSearchParams(params);
+    p.set("tab", next);
+    setParams(p, { replace: true });
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -82,9 +105,7 @@ export default function AdminCustomers() {
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline">Admin</span>
           </Button>
-          <Link to="/" className="ml-auto font-display text-base text-primary">
-            Home
-          </Link>
+          <Link to="/" className="ml-auto font-display text-base text-primary">Home</Link>
         </div>
       </header>
 
@@ -95,52 +116,70 @@ export default function AdminCustomers() {
             <h1 className="font-display text-xl md:text-2xl">Customer Info</h1>
           </div>
           <p className="text-xs text-muted-foreground">
-            Manage customers, signups, WhatsApp outreach, referrals, and discounts.
+            One place for accounts, unclaimed shadow profiles, spend, loyalty tiers, and signups.
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-2 mb-4">
-          <Card>
-            <CardContent className="p-3">
-              <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Total</div>
-              <div className="text-lg font-semibold">{isLoading ? "…" : stats.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3">
-              <div className="text-[10px] uppercase text-muted-foreground tracking-wide">With orders</div>
-              <div className="text-lg font-semibold">{isLoading ? "…" : stats.withOrders}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3">
-              <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Total spent</div>
-              <div className="text-lg font-semibold">EC${isLoading ? "…" : stats.totalSpent.toFixed(0)}</div>
-            </CardContent>
-          </Card>
+          <Card><CardContent className="p-3">
+            <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Total</div>
+            <div className="text-lg font-semibold">{isLoading ? "…" : stats.total}</div>
+          </CardContent></Card>
+          <Card><CardContent className="p-3">
+            <div className="text-[10px] uppercase text-muted-foreground tracking-wide">With orders</div>
+            <div className="text-lg font-semibold">{isLoading ? "…" : stats.withOrders}</div>
+          </CardContent></Card>
+          <Card><CardContent className="p-3">
+            <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Total spent</div>
+            <div className="text-lg font-semibold">EC${isLoading ? "…" : stats.totalSpent.toFixed(0)}</div>
+          </CardContent></Card>
         </div>
 
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 h-10">
-            <TabsTrigger value="overview" className="gap-1.5">
-              <Users className="h-4 w-4" /> Overview
-            </TabsTrigger>
-            <TabsTrigger value="signups" className="gap-1.5">
-              <UserPlus className="h-4 w-4" /> Signups
-            </TabsTrigger>
+        <Tabs value={tab} onValueChange={onTabChange} className="w-full">
+          <TabsList className="w-full grid grid-cols-3 md:grid-cols-6 h-auto">
+            <TabsTrigger value="directory" className="gap-1.5"><ContactRound className="h-4 w-4" /> Directory</TabsTrigger>
+            <TabsTrigger value="claimed" className="gap-1.5"><Users className="h-4 w-4" /> Claimed</TabsTrigger>
+            <TabsTrigger value="unclaimed" className="gap-1.5"><ShieldAlert className="h-4 w-4" /> Unclaimed</TabsTrigger>
+            <TabsTrigger value="spend" className="gap-1.5"><TrendingUp className="h-4 w-4" /> Spend</TabsTrigger>
+            <TabsTrigger value="loyalty" className="gap-1.5"><Crown className="h-4 w-4" /> Loyalty</TabsTrigger>
+            <TabsTrigger value="signups" className="gap-1.5"><UserPlus className="h-4 w-4" /> Signups</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="mt-4 space-y-4">
+          <TabsContent value="directory" className="mt-4 space-y-4">
             <CustomerFilters value={filters} onChange={setFilters} availableTags={availableTags} />
             {isLoading ? (
-              <div className="space-y-2">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
+              <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
             ) : (
               <CustomerTable customers={filtered} />
             )}
+          </TabsContent>
+
+          <TabsContent value="claimed" className="mt-4 space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Customers who have signed up or claimed their account. {claimed.length} shown.
+            </p>
+            {isLoading ? (
+              <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+            ) : (
+              <CustomerTable customers={claimed} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="unclaimed" className="mt-4">
+            <UnclaimedCustomersTab />
+          </TabsContent>
+
+          <TabsContent value="spend" className="mt-4 space-y-3">
+            <p className="text-xs text-muted-foreground">Top 100 customers by lifetime spend.</p>
+            {isLoading ? (
+              <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+            ) : (
+              <CustomerTable customers={topSpenders} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="loyalty" className="mt-4">
+            <CustomerLoyaltyPanel />
           </TabsContent>
 
           <TabsContent value="signups" className="mt-4">
