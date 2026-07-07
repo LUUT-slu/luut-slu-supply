@@ -277,7 +277,14 @@ Deno.serve(async (req) => {
           [customer?.firstName, customer?.lastName].filter(Boolean).join(" ").trim() ||
           customer?.email ||
           null;
-        const customerName = cleanCustomerName(rawName, source);
+        let customerName = cleanCustomerName(rawName);
+        // If the name is missing/phone-like, pull a unique placeholder from
+        // the DB and reuse it everywhere (order row + shadow profile).
+        if (!customerName) {
+          const { data: placeholder } = await admin.rpc("next_luut_customer_placeholder");
+          customerName = (typeof placeholder === "string" && placeholder) || "Luut Customer";
+        }
+
         const total = Number(node.totalPriceSet?.shopMoney?.amount ?? 0);
         const discounts = Number(node.totalDiscountsSet?.shopMoney?.amount ?? 0);
         const lineItems = (node.lineItems?.edges ?? []).map((e: any) => e.node);
