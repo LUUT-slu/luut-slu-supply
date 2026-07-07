@@ -42,6 +42,7 @@ import {
 } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
 import { cn } from "@/lib/utils";
+import { phoneInputProps } from "@/lib/text";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
