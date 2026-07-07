@@ -125,10 +125,10 @@ export function PhonePromptModal() {
             type="tel"
             inputMode="tel"
             placeholder="+1 758 ..."
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            {...phoneInputProps(phone, setPhone)}
             autoFocus
           />
+
         </div>
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="ghost" onClick={skip} disabled={saving}>
