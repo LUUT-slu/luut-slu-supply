@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Megaphone, Plus, Pencil, Trash2, Calendar, Tag, Loader2 } from "lucide-react";
 import {
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   usePromotionCampaigns,
   useDeletePromotionCampaign,
   deriveStatus,
@@ -100,6 +101,7 @@ export default function PromotionsManager() {
     <AdminAuth>
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
+      <AdminGroupNav group="marketing" />
         <main className="container flex-1 py-6">
           <div className="mb-5 flex flex-wrap items-center gap-3">
             <BackButton to="/admin" />

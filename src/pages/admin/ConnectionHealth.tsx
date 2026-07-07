@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   CheckCircle2,
   XCircle,
   Loader2,
@@ -164,6 +165,7 @@ export default function ConnectionHealth() {
     <AdminAuth>
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
+      <AdminGroupNav group="insights" />
         <main className="container flex-1 py-8 space-y-6 max-w-4xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

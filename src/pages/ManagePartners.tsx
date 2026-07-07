@@ -6,6 +6,7 @@ import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   Table,
   TableBody,
   TableCell,
@@ -249,6 +250,7 @@ export default function ManagePartners() {
           </Button>
         </div>
       </header>
+      <AdminGroupNav group="roster" />
       
       <main className="container flex-1 py-4 md:py-6">
         {/* Header */}

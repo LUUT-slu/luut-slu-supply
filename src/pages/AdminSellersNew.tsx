@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   Table,
   TableBody,
   TableCell,
@@ -254,6 +255,7 @@ export default function AdminSellersNew() {
           </Button>
         </div>
       </header>
+      <AdminGroupNav group="roster" />
       
       <main className="container flex-1 py-4 md:py-6">
         {/* Header */}

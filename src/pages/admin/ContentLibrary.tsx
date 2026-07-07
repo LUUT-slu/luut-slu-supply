@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   Dialog,
   DialogContent,
   DialogHeader,
@@ -139,6 +140,7 @@ export default function ContentLibrary() {
     <AdminAuth>
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
+      <AdminGroupNav group="marketing" />
         <main className="container flex-1 py-6 space-y-6">
           <div className="flex items-center gap-3">
             <BackButton />

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   Dialog,
   DialogContent,
   DialogDescription,
@@ -235,6 +236,7 @@ export default function AdminProductsPage() {
           </Button>
         </div>
       </header>
+      <AdminGroupNav group="catalog" />
 
       <main className="container flex-1 py-4 md:py-6">
         {/* Page Header */}

@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   Dialog,
   DialogContent,
   DialogHeader,
@@ -163,6 +164,7 @@ export default function CategoryImagesManager() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <AdminGroupNav group="catalog" />
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
         <BackButton />
         <div className="flex items-center justify-between flex-wrap gap-3">

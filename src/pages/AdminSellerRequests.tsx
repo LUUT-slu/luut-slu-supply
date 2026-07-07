@@ -3,6 +3,7 @@ import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 import { AdminAuth } from "@/components/AdminAuth";
 import { BackButton } from "@/components/BackButton";
@@ -300,6 +301,7 @@ export default function AdminSellerRequests() {
     <AdminAuth>
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
+      <AdminGroupNav group="roster" />
 
         <main className="container flex-1 py-8">
           {/* Header */}

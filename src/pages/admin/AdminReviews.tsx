@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Star, Check, X, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 interface Review {
   id: string;
@@ -74,6 +75,7 @@ export default function AdminReviews() {
           <h1 className="font-display text-lg">Review Management</h1>
         </div>
       </header>
+      <AdminGroupNav group="catalog" />
 
       <main className="container flex-1 py-4 space-y-4">
         <div className="flex items-center gap-3">
