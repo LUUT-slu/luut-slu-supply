@@ -20,7 +20,7 @@ const PRODUCTS_QUERY = `
           title
           vendor
           featuredImage { url }
-          variants(first: 25) {
+          variants(first: 10) {
             edges {
               node {
                 id
@@ -31,7 +31,7 @@ const PRODUCTS_QUERY = `
                 image { url }
                 inventoryItem {
                   unitCost { amount }
-                  inventoryLevels(first: 5) {
+                  inventoryLevels(first: 3) {
                     edges {
                       node {
                         location { id name }
