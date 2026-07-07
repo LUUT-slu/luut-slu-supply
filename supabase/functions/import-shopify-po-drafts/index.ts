@@ -164,7 +164,9 @@ Deno.serve(async (req) => {
         }
       }
       cursor = data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null;
-      if (pages > 50) break; // safety
+      if (pages > 400) break; // safety
+      // Small delay to respect throttling
+      await new Promise((r) => setTimeout(r, 200));
     } while (cursor);
 
     // Duplicate check: for each group, look for existing draft POs with same vendor whose items overlap product IDs
