@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { normalizePhone } from "../_shared/phone.ts";
+import { sanitizeText, looksLikePhone } from "../_shared/text.ts";
+
 
 
 const corsHeaders = {
