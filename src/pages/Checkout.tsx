@@ -42,6 +42,7 @@ import {
 import { useCartStore } from "@/stores/cartStore";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 import { cn } from "@/lib/utils";
+import { phoneInputProps, sanitizeText } from "@/lib/text";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
