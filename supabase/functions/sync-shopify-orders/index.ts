@@ -87,18 +87,18 @@ function extractPhone(node: any, customer: any): string | null {
 }
 
 /**
- * If Shopify's customer name is literally a phone number (a known quirk on
- * this store), don't let it poison the customer directory.
+ * Returns a clean customer name, or null when the incoming value is missing
+ * or is itself just a phone number. Callers should then substitute a unique
+ * "Luut Customer #N" placeholder pulled from the DB so the SAME name lands
+ * on both the local profile and the Shopify customer record.
  */
-function cleanCustomerName(name: string | null | undefined, source: string): string {
-  const fallback = source === "shopify_pos" ? "Walk-in Customer" : "Shopify Customer";
-  if (!name) return fallback;
-  const trimmed = name.trim();
-  if (!trimmed) return fallback;
-  const digits = trimmed.replace(/\D/g, "");
-  if (/^[\d\s\-().+]+$/.test(trimmed) && digits.length >= 7) return fallback;
+function cleanCustomerName(name: string | null | undefined): string | null {
+  const trimmed = sanitizeText(name);
+  if (!trimmed) return null;
+  if (looksLikePhone(trimmed)) return null;
   return trimmed;
 }
+
 
 async function shopifyAdmin(token: string, query: string, variables: Record<string, unknown>) {
   const r = await fetch(
