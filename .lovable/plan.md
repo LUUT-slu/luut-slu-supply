@@ -1,80 +1,97 @@
-## Goal
 
-Every order auto-creates a claimable "shadow" customer keyed by phone. Customer claims via a per-customer link + phone confirmation, then gets a persistent session showing order history, live stock, and eligible discounts. Admin has a page to view and blast claim links to all unclaimed customers.
+# Admin Hub Audit & Reorganization Proposal
 
-## Security model (locked in)
+## (a) Hub cards that exist today
 
-- **Primary factor:** unguessable per-customer `claim_token` (32-byte URL-safe), sent by you via WhatsApp.
-- **Confirmation:** customer types their phone; must match (normalized) the phone on the shadow profile the token points to.
-- **Rate limit:** max 5 wrong phone attempts per token per 15 min → token locked for 1 hour; admin can reset. Attempts logged.
-- **Session:** after successful claim, we issue a long-lived Supabase session for that user (persisted, auto-refresh). Device stays signed in.
-- **New device:** re-open the same claim link → enter phone → new session. Token stays valid (per-customer, not per-device) until customer opts to add a stronger factor later.
-- **Future-ready:** the confirmation step is a single isolated function (`verify-claim`). Swapping "phone equality" for "phone equality + SMS OTP" later is a 1-file change — no schema or UX rebuild.
+Current `/admin` (AdminHome) shows 15 cards:
 
-## Database changes
+1. **Manage Sellers** → sub-links `/admin/approvals`, `/admin/sellers`
+2. **Customer Info** → `/admin/customers` (already consolidated ✓)
+3. **Order Management** → `/admin/orders`
+4. **Partner Management** → `/admin/partners`
+5. **All Products** → `/admin/products`
+6. **Dispatch Control Tower** → `/connect`
+7. **Analysis** → `/admin/analytics`
+8. **Site Settings** → `/admin/site-settings`
+9. **Reviews** → `/admin/reviews`
+10. **Marketing Studio** → `/admin/marketing-studio`
+11. **Promotions Manager** → `/admin/promotions`
+12. **Purchase Orders** → `/admin/purchase-orders`
+13. **Category Images** → `/admin/category-images`
+14. **Seller Portal** → `/seller/dashboard` (personal shortcut)
+15. **Main Storefront** → `/`
 
-1. **`customer_profiles` becomes claimable without an auth user.**
-   - Make `user_id` nullable (drop NOT NULL, keep unique-when-present).
-   - Add: `claim_token text unique`, `claim_token_issued_at timestamptz`, `claimed_at timestamptz`, `claim_attempts int default 0`, `claim_locked_until timestamptz`, `is_shadow boolean generated as (user_id is null)`.
-   - Backfill `claim_token` for every existing profile whose phone has orders but no `user_id` (there shouldn't be any today, but safe).
+## (b) Orphaned / invisible / dead pages
 
-2. **Order → profile linkage by phone** (already partly done in previous turn).
-   - On every order insert (checkout + seller dashboard + Shopify sync), normalize phone and:
-     - if a `customer_profiles` row exists for that phone → link `orders.customer_profile_id` (add column) and, if profile has `user_id`, also set `orders.customer_user_id`.
-     - else → create a shadow profile (phone + name from order, `user_id = null`, fresh `claim_token`) and link it.
-   - Handled in a `SECURITY DEFINER` function `public.ensure_customer_profile_for_order(phone, name)` called from the create-draft-order edge function and from a trigger for direct DB inserts.
+**Routed but NOT linked from the hub (URL-only):**
+- `/admin/connection-health` — Shopify diagnostics page, no card
+- `/admin/content-library` — AI image library, only reachable inside Marketing Studio
+- `/admin-orders` — duplicate route to `AdminOrdersPage` (legacy alias)
+- `/admin/unclaimed-customers` — now a redirect to `/admin/customers?tab=unclaimed` (fine to keep as bookmark redirect)
 
-3. **Claim on signup / login.**
-   - Extend `handle_new_customer` trigger: when a new `auth.users` row appears, if a shadow profile exists with the same phone (from `raw_user_meta_data.phone` passed during claim), attach `user_id` to it instead of creating a new profile. Clear `claim_token`, set `claimed_at`.
+**Files that exist but are not routed anywhere (fully dead code):**
+- `src/pages/AdminHub.tsx` — older hub prototype, superseded by AdminHome
+- `src/pages/admin/MarketingControl.tsx` — points to non-existent `/admin/marketing/discounts` and `/admin/marketing/popups`
+- `src/pages/admin/DiscountsManager.tsx` — never routed
+- `src/pages/admin/PopupsManager.tsx` — never routed (discounts + popups live inside AdminSiteSettings instead)
+- `src/pages/AdminOrders.tsx` — old, replaced by `AdminOrdersPage.tsx`
+- `src/pages/AdminSellers.tsx` — old, replaced by `AdminSellersNew.tsx`
+- `src/pages/AdminLogin.tsx` — auth flow now uses `/seller-auth` / `/auth`
 
-4. **RLS.**
-   - Shadow profiles readable only by `service_role` (never by anon/authenticated) — the claim edge function is the only public read path, and it goes by token.
-   - Orders remain readable by owning `user_id`; after claim, the newly-attached `user_id` unlocks history automatically via existing policy.
+## (c) Duplication / overlap
 
-5. **Attempt log table** `claim_attempts` (token, ip, ok, at) — for rate-limit tracking and audit.
+- **Orders**: `/admin/orders` and `/admin-orders` both render `AdminOrdersPage`. Second route is legacy and should be removed (or 301'd).
+- **Sellers**: three files exist — `AdminSellersNew` (live), `AdminSellers` (dead), `AdminSellerRequests` (live, at `/admin/approvals`). "Manage Sellers" card exposes both approvals and directory as sub-links but they're really two views of the same subject.
+- **Marketing surface is fragmented**: Marketing Studio, Content Library, Promotions Manager, Category Images, and the Discounts/Popups sections inside Site Settings are all marketing-adjacent but scattered across 4 cards + a settings subtab.
+- **Analytics vs. Connection Health**: both are "operational health" views but live in unrelated places (one has a card, one is orphaned).
+- **Orders vs. Purchase Orders vs. Dispatch**: three separate order-adjacent cards — customer orders, stock buys, and partner dispatch — that all deal with order lifecycles.
 
-## Edge functions
+## Recommended reorganization — 8 cards, everything tabbed inside
 
-- **`issue-claim-link`** (admin-only): given a `customer_profile_id` or phone, mint/rotate a token, return `https://<site>/claim/<token>` + a prewritten WhatsApp message.
-- **`verify-claim`** (public): input `{ token, phone }`.
-  - Check token exists, not locked, not already claimed by another user.
-  - Normalize both phones, compare.
-  - On mismatch: increment attempts, lock after 5.
-  - On match: create/sign-in an anonymous-linked Supabase user *bound to that phone*, run the trigger that attaches the shadow profile, return a session (access + refresh token) the client stores in Supabase auth.
-  - Idempotent: if already claimed, and phone matches, just return a fresh session for the linked user.
-- **`admin-list-unclaimed`** (admin-only): paginated list of shadow profiles with phone, name, order count, last order date, claim URL; CSV export endpoint.
+```
+Admin Hub
+├── 1. Orders & Fulfillment
+│      tabs: Customer Orders │ Dispatch (Partners jobs) │ Purchase Orders │ Reports
+│      merges: /admin/orders, /connect, /admin/purchase-orders(+reports), /admin-orders (drop)
+│
+├── 2. Customer Info  ✓ (already done)
+│      tabs: Directory │ Claimed │ Unclaimed │ Spend │ Loyalty │ Signups
+│
+├── 3. Sellers & Partners
+│      tabs: Seller Approvals │ Verified Sellers │ Delivery Partners
+│      merges: /admin/approvals, /admin/sellers, /admin/partners
+│      (Dispatch stays under Orders since it's operational, not roster)
+│
+├── 4. Catalog
+│      tabs: All Products │ Category Images │ Reviews
+│      merges: /admin/products, /admin/category-images, /admin/reviews
+│
+├── 5. Marketing
+│      tabs: Promotions │ Marketing Studio │ Content Library │ Discounts │ Popups
+│      merges: /admin/promotions, /admin/marketing-studio, /admin/content-library,
+│              + Discounts and Popups sections lifted out of Site Settings
+│      (retires dead MarketingControl / DiscountsManager / PopupsManager files)
+│
+├── 6. Analytics & Health
+│      tabs: Sales & Traffic │ Shopify Connection Health │ Sync Status
+│      merges: /admin/analytics, /admin/connection-health (currently orphaned)
+│
+├── 7. Site Settings
+│      keeps: hero, homepage editor, checkout controls, product visibility
+│      loses: discounts, popups (moved to Marketing)
+│
+└── 8. Shortcuts (not a card group — small footer row)
+       "My Seller Dashboard" • "Open Storefront"
+```
 
-## Frontend
+### Cleanup to do alongside the reorg
+- Delete dead files: `AdminHub.tsx`, `MarketingControl.tsx`, `DiscountsManager.tsx`, `PopupsManager.tsx`, `AdminOrders.tsx`, `AdminSellers.tsx`, `AdminLogin.tsx`.
+- Remove the duplicate `/admin-orders` route (keep `/admin/orders`).
+- Keep `/admin/unclaimed-customers` and `/admin/connection-health` as valid URLs so old bookmarks still work; just make sure everything is *also* reachable from a hub card.
 
-- **`/claim/:token`** page:
-  - Step 1: phone input (autofocus, tel keyboard, normalized on submit).
-  - Step 2 (after verify): success screen → auto-redirect to `/account`.
-  - Handles locked/expired token states with a "message Luut on WhatsApp" fallback.
-- **`/account`** (existing customer dashboard, if present — otherwise minimal new page):
-  - Order history (already-wired queries just work once `user_id` is attached).
-  - "Browse current stock" CTA → `/shop`.
-  - "Your discounts" section listing rows from `customer_discounts` for this user.
-- **Admin → Unclaimed Customers** page under existing admin area:
-  - Table: phone, name, #orders, last order, claim link (copy button), WhatsApp button (opens wa.me with prewritten message + link), "reset lock" action.
-  - "Export CSV" and "Copy all as WhatsApp broadcast" (one message per customer, tab-separated).
-  - Per-order "Send claim link" button on the admin order detail view.
+### Assumptions to confirm
+- Site Settings currently owns Discounts and Popups as inline sections; my plan moves those into the Marketing card. If you'd rather keep them in Site Settings, we drop them from card 5.
+- Dispatch belongs under Orders (operational routing), not under Sellers & Partners (roster management). Say the word if you'd prefer it under Partners.
+- Card 8 shortcuts can stay as full-size cards if you'd rather not shrink them.
 
-## Session persistence
-
-- Supabase client is already configured with `persistSession: true` / `autoRefreshToken: true` (default). After `verify-claim` returns tokens, call `supabase.auth.setSession(...)` on the client — user stays signed in across reloads and days until they log out.
-
-## Forward compatibility with SMS OTP
-
-- `verify-claim` is the single choke point. Adding SMS later = enable Supabase phone auth, and inside `verify-claim` replace the phone-equality branch with "send OTP → second call with code → then issue session." Token, shadow-profile model, claim URL, admin page, and `/claim/:token` UI all stay identical.
-
-## Out of scope for this pass
-
-- Actual SMS provider wiring (planned ~2 weeks out per your note).
-- Merging two shadow profiles that end up on the same phone due to legacy dirty data — handled by the unique phone index; migration will dedupe by keeping the oldest and re-pointing orders.
-
-## Technical notes
-
-- Phone normalization uses the shared `normalize_phone` SQL function + `_shared/phone.ts` already added.
-- Tokens: `crypto.randomUUID()` is not enough entropy for a bearer secret — use `crypto.getRandomValues(new Uint8Array(32))` → base64url.
-- Rate-limit counter is per-token, stored on the profile row; `claim_attempts` table is for forensics, not the gate.
-- Admin auth for the two admin functions uses existing `has_role(auth.uid(), 'admin')`.
+If you approve, next step is a build-mode pass that: creates tabbed shells for cards 1, 3, 4, 5, 6; migrates the existing pages' content into tabs; updates AdminHome to the 8-card layout; and deletes the dead files.
