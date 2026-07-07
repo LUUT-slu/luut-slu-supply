@@ -324,6 +324,11 @@ const App = () => (
                 <AdminCustomerDetail />
               </RouteGuard>
             } />
+            <Route path="/admin/unclaimed-customers" element={
+              <RouteGuard requiredRole="admin">
+                <AdminUnclaimedCustomers />
+              </RouteGuard>
+            } />
             <Route path="/admin/category-images" element={
               <RouteGuard requiredRole="admin">
                 <CategoryImagesManager />
