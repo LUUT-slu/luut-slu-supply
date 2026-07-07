@@ -559,8 +559,10 @@ serve(async (req) => {
 
         // ========== CUSTOMER LOOKUP/CREATE (phone-primary, email-secondary) ==========
         const customerResult = await findOrCreateShopifyCustomer(
-          shopifyAdminToken, firstName, lastName, customerPhone, customerEmail || null
+          shopifyAdminToken, firstName, lastName, customerPhone, customerEmail || null,
+          matchedShopifyCustomerId,
         );
+
         const shopifyCustomerId = customerResult.id;
 
         // If customer sync hard-failed, refuse to create a draft with no/wrong customer.
