@@ -763,6 +763,16 @@ serve(async (req) => {
             shopify_sync_error: null,
             shopify_synced_at: new Date().toISOString(),
           }).eq("id", localOrder.id);
+
+          // Backfill shopify_customer_id on the matched profile so future
+          // orders can hit the fast-path.
+          if (matchedCustomerUserId && shopifyCustomerId && !matchedShopifyCustomerId) {
+            await supabase
+              .from("customer_profiles")
+              .update({ shopify_customer_id: String(shopifyCustomerId) })
+              .eq("user_id", matchedCustomerUserId);
+          }
+
         } else {
           const errMsg = JSON.stringify(shopifyData?.errors || shopifyData).slice(0, 500);
           console.error("Shopify API error:", errMsg);
