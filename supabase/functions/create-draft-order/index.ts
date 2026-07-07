@@ -47,15 +47,8 @@ function normalizeVendorName(vendor: string): string {
   return vendor;
 }
 
-// Normalize phone to E.164 format for Saint Lucia
-function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 7) return `+1758${digits}`;
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-  if (phone.startsWith('+')) return phone;
-  return `+${digits}`;
-}
+// (phone normalization comes from ../_shared/phone.ts)
+
 
 // Look up or create a Shopify customer. Phone (normalized) is the primary identity,
 // email is the secondary identity. Returns { id } on success; { id: null, error }
