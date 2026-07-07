@@ -191,9 +191,14 @@ export default function SellerOrders() {
 
   // Derive unique locations and dates from orders for advanced filters
   const uniqueLocations = useMemo(() => {
-    const locs = new Set(orders.map((o) => o.location));
+    const locs = new Set(
+      orders
+        .map((o) => (typeof o.location === "string" ? o.location.trim() : ""))
+        .filter((l) => l.length > 0)
+    );
     return [...locs].sort();
   }, [orders]);
+
 
   // Filter and sort orders
   const filteredOrders = useMemo(() => {
