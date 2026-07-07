@@ -42,6 +42,7 @@ import {
 } from "./ui/sheet";
 import { useCartStore } from "@/stores/cartStore";
 import { cn } from "@/lib/utils";
+import { phoneInputProps } from "@/lib/text";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -490,11 +491,12 @@ export function CartDrawer() {
                       <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         placeholder="e.g. 758-123-4567"
-                        value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        {...phoneInputProps(customerPhone, setCustomerPhone)}
                         className="pl-10"
                         type="tel"
+                        inputMode="tel"
                       />
+
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       We'll use this to contact you about your order

@@ -42,6 +42,7 @@ import {
 import { useCartStore } from "@/stores/cartStore";
 import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
 import { cn } from "@/lib/utils";
+import { phoneInputProps, sanitizeText } from "@/lib/text";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -575,11 +576,12 @@ export default function Checkout() {
                 <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="e.g. 758-123-4567"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  {...phoneInputProps(customerPhone, setCustomerPhone)}
                   className="pl-10"
                   type="tel"
+                  inputMode="tel"
                 />
+
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 We'll use this to contact you about your order

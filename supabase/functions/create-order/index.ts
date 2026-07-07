@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { normalizePhone } from "../_shared/phone.ts";
+import { sanitizeText, looksLikePhone } from "../_shared/text.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,24 +74,33 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: OrderRequest = await req.json();
-    const { customerName, customerPhone, location, preferredDate, note, lineItems, totalPrice } = body;
+    const { customerName: rawName, customerPhone: rawPhone, location, preferredDate, note, lineItems, totalPrice } = body;
 
-    // Validate required fields
-    if (!customerName || !customerPhone || !location || !preferredDate || !lineItems?.length) {
+    // Sanitize free-text inputs so pasted invisibles never reach the DB.
+    const cleanedName = sanitizeText(rawName);
+    const canonicalPhone = normalizePhone(rawPhone);
+
+    if (!cleanedName || !canonicalPhone || !location || !preferredDate || !lineItems?.length) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: name, phone, location, date, and items are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Creating order for:", customerName, "phone:", customerPhone, "at", location);
+    // Auto-assign a unique placeholder when the name is blank or phone-like.
+    let customerName = cleanedName;
+    if (!customerName || looksLikePhone(customerName)) {
+      const { data: placeholder } = await supabase.rpc("next_luut_customer_placeholder");
+      customerName = (typeof placeholder === "string" && placeholder) || "Luut Customer";
+    }
 
-    // Insert order into database
+    console.log("Creating order for:", customerName, "phone:", canonicalPhone, "at", location);
+
     const { data: order, error: insertError } = await supabase
       .from("orders")
       .insert({
         customer_name: customerName,
-        customer_phone: customerPhone,
+        customer_phone: canonicalPhone,
         location: location,
         preferred_date: preferredDate,
         note: note || null,
@@ -98,6 +110,7 @@ serve(async (req) => {
         status: "pending",
       })
       .select("*")
+
       .single();
 
     if (insertError) {

@@ -2012,12 +2012,14 @@ export type Database = {
         Returns: boolean
       }
       is_partner: { Args: { _user_id: string }; Returns: boolean }
+      is_phone_like_name: { Args: { p: string }; Returns: boolean }
       is_po_owner: { Args: { p_po_id: string }; Returns: boolean }
       is_seller_for_order: { Args: { p_order_id: string }; Returns: boolean }
       is_seller_for_order_item: {
         Args: { p_seller_id: string }
         Returns: boolean
       }
+      next_luut_customer_placeholder: { Args: never; Returns: string }
       normalize_phone: { Args: { p: string }; Returns: string }
       recalc_po_item_from_variants: {
         Args: { p_item_id: string }

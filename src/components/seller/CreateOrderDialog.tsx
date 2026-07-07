@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { format, parse } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { fetchProductVariantsById, type ShopifyVariantLite } from "@/lib/shopify";
+import { phoneInputProps } from "@/lib/text";
 
 interface Product {
   id: string;
@@ -385,11 +386,13 @@ export function CreateOrderDialog({
                 </Label>
                 <Input
                   id="customerPhone"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  {...phoneInputProps(customerPhone, setCustomerPhone)}
+                  type="tel"
+                  inputMode="tel"
                   placeholder="758-XXX-XXXX"
                   className="h-9"
                 />
+
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

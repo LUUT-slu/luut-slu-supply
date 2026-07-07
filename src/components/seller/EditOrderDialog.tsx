@@ -29,6 +29,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { phoneInputProps } from "@/lib/text";
 
 interface EditOrderDialogProps {
   open: boolean;
@@ -302,10 +303,12 @@ export function EditOrderDialog({ open, onOpenChange, order, onSave }: EditOrder
           <div className="space-y-2">
             <Label>Customer Phone</Label>
             <Input
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
+              {...phoneInputProps(customerPhone, setCustomerPhone)}
+              type="tel"
+              inputMode="tel"
               placeholder="Phone number"
             />
+
           </div>
 
           {/* Pickup Date */}

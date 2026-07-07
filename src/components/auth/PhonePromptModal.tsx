@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { z } from "zod";
+import { phoneInputProps } from "@/lib/text";
 
 const phoneSchema = z
   .string()
@@ -124,10 +125,10 @@ export function PhonePromptModal() {
             type="tel"
             inputMode="tel"
             placeholder="+1 758 ..."
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            {...phoneInputProps(phone, setPhone)}
             autoFocus
           />
+
         </div>
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="ghost" onClick={skip} disabled={saving}>

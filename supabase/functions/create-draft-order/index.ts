@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { normalizePhone, last10Digits } from "../_shared/phone.ts";
+import { sanitizeText, looksLikePhone } from "../_shared/text.ts";
+
 
 
 const corsHeaders = {
@@ -338,7 +340,10 @@ serve(async (req) => {
 
     const body: DraftOrderRequest = await req.json();
     const {
-      customerName, customerPhone, customerEmail, location, preferredDate,
+      customerName: rawCustomerName,
+      customerPhone: rawCustomerPhone,
+      customerEmail: rawCustomerEmail,
+      location, preferredDate,
       pickupTime, note, lineItems, totalPrice, discountCode,
       orderSource = 'customer_checkout',
       createdBySellerId = null,
@@ -346,16 +351,37 @@ serve(async (req) => {
       existingOrderId = null,
     } = body;
 
+    // Sanitize free-text fields BEFORE anything else. Pasted invisibles
+    // (zero-width, LRM, NBSP, fancy dashes) otherwise leak into Shopify.
+    const cleanedName = sanitizeText(rawCustomerName);
+    const cleanedEmail = sanitizeText(rawCustomerEmail) || null;
+    const canonicalPhone = normalizePhone(rawCustomerPhone);
+
     // Only enforce required fields for NEW orders. Resyncs (existingOrderId)
     // reuse the already-persisted row, so missing/empty payload fields are fine.
     if (!existingOrderId) {
-      if (!customerName || !customerPhone || !location || !preferredDate || !lineItems?.length) {
+      if (!cleanedName || !canonicalPhone || !location || !preferredDate || !lineItems?.length) {
         return new Response(
           JSON.stringify({ error: "Missing required fields: name, phone, location, date, and items are required" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
+
+    // Auto-assign a unique placeholder when the name is blank or is itself a
+    // phone number. This gives us a stable "Luut Customer #47"-style handle
+    // we reuse on BOTH the local profile and the Shopify customer record.
+    let customerName = cleanedName;
+    if (!existingOrderId && (!customerName || looksLikePhone(customerName))) {
+      const { data: placeholder } = await (createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      )).rpc("next_luut_customer_placeholder");
+      customerName = (typeof placeholder === "string" && placeholder) || "Luut Customer";
+    }
+    const customerPhone = canonicalPhone ?? sanitizeText(rawCustomerPhone);
+    const customerEmail = cleanedEmail;
+
 
 
     console.log(`[${orderSource}] Creating order for:`, customerName, "phone:", customerPhone, "at", location);
@@ -365,7 +391,6 @@ serve(async (req) => {
     // Never overwrites the profile's name — the customer typing a
     // different name should not create a duplicate identity.
     // ============================================================
-    const canonicalPhone = normalizePhone(customerPhone);
     let matchedCustomerUserId: string | null = null;
     let matchedShopifyCustomerId: string | null = null;
     if (canonicalPhone) {
