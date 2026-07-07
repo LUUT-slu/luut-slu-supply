@@ -27,8 +27,13 @@ const ORDERS_QUERY = `
           currencyCode
           totalPriceSet { shopMoney { amount } }
           totalDiscountsSet { shopMoney { amount } }
-          customer { id email phone firstName lastName }
-          shippingAddress { address1 city }
+          customer {
+            id email phone firstName lastName
+            defaultAddress { phone }
+            addresses(first: 5) { phone }
+          }
+          shippingAddress { address1 city phone }
+          billingAddress { phone }
           retailLocation { id name }
           channelInformation { displayName channelDefinition { handle } }
           lineItems(first: 50) {
@@ -47,6 +52,51 @@ const ORDERS_QUERY = `
     }
   }
 `;
+
+/**
+ * Extract a usable customer phone from a Shopify order, falling back through:
+ *   1. customer.phone
+ *   2. shipping / billing / default address phone
+ *   3. any address on the customer that carries a phone
+ *   4. digits stashed in firstName / lastName (POS operators sometimes type
+ *      the customer's number straight into the name field)
+ */
+function extractPhone(node: any, customer: any): string | null {
+  const direct = [
+    customer?.phone,
+    node?.shippingAddress?.phone,
+    node?.billingAddress?.phone,
+    customer?.defaultAddress?.phone,
+    ...((customer?.addresses ?? []).map((a: any) => a?.phone)),
+  ];
+  for (const c of direct) {
+    const n = normalizePhone(c);
+    if (n) return n;
+  }
+  for (const s of [customer?.firstName, customer?.lastName, `${customer?.firstName ?? ""} ${customer?.lastName ?? ""}`]) {
+    if (!s) continue;
+    const digits = String(s).replace(/\D/g, "");
+    if (digits.length === 7 || digits.length === 10 || (digits.length === 11 && digits.startsWith("1"))) {
+      const n = normalizePhone(digits);
+      if (n) return n;
+    }
+  }
+  return null;
+}
+
+/**
+ * If Shopify's customer name is literally a phone number (a known quirk on
+ * this store), don't let it poison the customer directory.
+ */
+function cleanCustomerName(name: string | null | undefined, source: string): string {
+  const fallback = source === "shopify_pos" ? "Walk-in Customer" : "Shopify Customer";
+  if (!name) return fallback;
+  const trimmed = name.trim();
+  if (!trimmed) return fallback;
+  const digits = trimmed.replace(/\D/g, "");
+  if (/^[\d\s\-().+]+$/.test(trimmed) && digits.length >= 7) return fallback;
+  return trimmed;
+}
 
 async function shopifyAdmin(token: string, query: string, variables: Record<string, unknown>) {
   const r = await fetch(
