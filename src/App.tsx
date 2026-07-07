@@ -93,6 +93,8 @@ const AuthCallback = lazyRetry(() => import("./pages/AuthCallback"));
 const PurchaseOrdersList = lazyRetry(() => import("./pages/purchase-orders/PurchaseOrdersList"));
 const PurchaseOrderDetail = lazyRetry(() => import("./pages/purchase-orders/PurchaseOrderDetail"));
 const PurchaseOrderReports = lazyRetry(() => import("./pages/purchase-orders/PurchaseOrderReports"));
+const ClaimAccount = lazyRetry(() => import("./pages/ClaimAccount"));
+const AdminUnclaimedCustomers = lazyRetry(() => import("./pages/admin/AdminUnclaimedCustomers"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -322,6 +324,11 @@ const App = () => (
                 <AdminCustomerDetail />
               </RouteGuard>
             } />
+            <Route path="/admin/unclaimed-customers" element={
+              <RouteGuard requiredRole="admin">
+                <AdminUnclaimedCustomers />
+              </RouteGuard>
+            } />
             <Route path="/admin/category-images" element={
               <RouteGuard requiredRole="admin">
                 <CategoryImagesManager />
@@ -362,7 +369,10 @@ const App = () => (
             
             {/* Discount redirect route */}
             <Route path="/discount/:code" element={<DiscountRedirect />} />
-            
+
+            {/* Claim account via personal token link */}
+            <Route path="/claim/:token" element={<ClaimAccount />} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

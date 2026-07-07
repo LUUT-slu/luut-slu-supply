@@ -49,13 +49,8 @@ export default function MyOrders() {
         localStorage.getItem("luut-order-tokens") || "{}",
       );
 
-      if (savedOrderIds.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      // Fetch each order via the secure token-based RPC in parallel.
-      const results = await Promise.all(
+      // 1. Token-based (guest) orders
+      const tokenResults = await Promise.all(
         savedOrderIds.map(async (id) => {
           const token = orderTokens[id];
           if (!token) return null;
@@ -72,11 +67,27 @@ export default function MyOrders() {
         }),
       );
 
-      const fetched = results
-        .filter((r): r is NonNullable<typeof r> => r !== null)
-        .sort((a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-        );
+      // 2. Signed-in / claimed orders (RLS scoped by customer_user_id)
+      const { data: sessionData } = await supabase.auth.getSession();
+      let claimedResults: any[] = [];
+      if (sessionData?.session?.user?.id) {
+        const uid = sessionData.session.user.id;
+        const { data } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("customer_user_id", uid)
+          .order("created_at", { ascending: false })
+          .limit(200);
+        claimedResults = data || [];
+      }
+
+      const byId = new Map<string, any>();
+      for (const r of [...tokenResults, ...claimedResults]) {
+        if (r && r.id && !byId.has(r.id)) byId.set(r.id, r);
+      }
+      const fetched = Array.from(byId.values()).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
 
       setOrders(fetched as unknown as Order[]);
       setLoading(false);
@@ -84,6 +95,7 @@ export default function MyOrders() {
 
     fetchMyOrders();
   }, []);
+
 
   const formatOrderNumber = (num: number) => `#L${String(num).padStart(4, '0')}`;
   
