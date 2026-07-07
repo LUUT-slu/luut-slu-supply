@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   Dialog,
   DialogContent,
   DialogDescription,
@@ -42,6 +41,7 @@ import {
   Megaphone,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 interface Seller {
   id: string;

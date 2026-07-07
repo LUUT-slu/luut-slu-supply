@@ -8,7 +8,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Megaphone, Plus, Pencil, Trash2, Calendar, Tag, Loader2 } from "lucide-react";
 import {
-import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   usePromotionCampaigns,
   useDeletePromotionCampaign,
   deriveStatus,
@@ -27,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 const STATUS_LABEL: Record<CampaignStatus, string> = {
   active: "Active",

@@ -6,7 +6,6 @@ import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   Table,
   TableBody,
   TableCell,
@@ -47,6 +46,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssignOrderModal } from "@/components/admin/AssignOrderModal";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 interface Partner {
   id: string;

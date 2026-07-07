@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   Dialog,
   DialogContent,
   DialogHeader,
@@ -26,6 +25,7 @@ import {
 import { Download, Trash2, Images, Loader2, Wand2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 type GenType = "display" | "poster" | "video";
 

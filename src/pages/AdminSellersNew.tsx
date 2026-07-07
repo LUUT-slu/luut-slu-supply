@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   Table,
   TableBody,
   TableCell,
@@ -40,6 +39,7 @@ import { Users, RefreshCw, Eye, Check, X, Trash2, ShieldCheck, LogOut, Ban, Stor
 import { toast } from "sonner";
 import { CreateSellerDialog } from "@/components/admin/CreateSellerDialog";
 import { AssignSellerDialog } from "@/components/admin/AssignSellerDialog";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 const PLACEHOLDER_USER_ID = "00000000-0000-0000-0000-000000000000";
 

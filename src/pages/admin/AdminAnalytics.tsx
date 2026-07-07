@@ -15,11 +15,11 @@ import { AnalyticsLeaderboard } from "@/components/admin/AnalyticsLeaderboard";
 import { AnalyticsInsights } from "@/components/admin/AnalyticsInsights";
 import { ProductAnalyticsDetail } from "@/components/admin/ProductAnalyticsDetail";
 import {
-import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
   useAnalyticsData,
   computeMetrics,
   type AnalyticsFilters,
 } from "@/hooks/useAnalyticsData";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 export default function AdminAnalytics() {
   const navigate = useNavigate();
