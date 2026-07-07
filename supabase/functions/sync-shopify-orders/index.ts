@@ -271,10 +271,11 @@ Deno.serve(async (req) => {
         else onlineCount++;
 
         const customer = node.customer;
-        const customerName =
+        const rawName =
           [customer?.firstName, customer?.lastName].filter(Boolean).join(" ").trim() ||
           customer?.email ||
-          (source === "shopify_pos" ? "Walk-in Customer" : "Shopify Customer");
+          null;
+        const customerName = cleanCustomerName(rawName, source);
         const total = Number(node.totalPriceSet?.shopMoney?.amount ?? 0);
         const discounts = Number(node.totalDiscountsSet?.shopMoney?.amount ?? 0);
         const lineItems = (node.lineItems?.edges ?? []).map((e: any) => e.node);
@@ -296,7 +297,7 @@ Deno.serve(async (req) => {
         if (derivedStatus === "COMPLETED") completedCount++;
 
         // Customer linkage (best-effort). Match by normalized phone first, email as fallback.
-        const normalizedCustomerPhone = normalizePhone(customer?.phone);
+        const normalizedCustomerPhone = extractPhone(node, customer);
         let customerUserId: string | null = null;
         if (customer?.email || normalizedCustomerPhone) {
           try {
@@ -312,6 +313,7 @@ Deno.serve(async (req) => {
             if (existing?.user_id) customerUserId = existing.user_id;
           } catch { /* ignore */ }
         }
+
 
         // Look up existing by shopify_order_id (the only dedupe key)
         const { data: existingOrder, error: lookupErr } = await admin
