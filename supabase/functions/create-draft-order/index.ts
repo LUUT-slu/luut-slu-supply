@@ -346,12 +346,17 @@ serve(async (req) => {
       existingOrderId = null,
     } = body;
 
-    if (!customerName || !customerPhone || !location || !preferredDate || !lineItems?.length) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields: name, phone, location, date, and items are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Only enforce required fields for NEW orders. Resyncs (existingOrderId)
+    // reuse the already-persisted row, so missing/empty payload fields are fine.
+    if (!existingOrderId) {
+      if (!customerName || !customerPhone || !location || !preferredDate || !lineItems?.length) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields: name, phone, location, date, and items are required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
+
 
     console.log(`[${orderSource}] Creating order for:`, customerName, "phone:", customerPhone, "at", location);
 
