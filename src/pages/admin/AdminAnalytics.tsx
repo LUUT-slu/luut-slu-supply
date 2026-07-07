@@ -19,6 +19,7 @@ import {
   computeMetrics,
   type AnalyticsFilters,
 } from "@/hooks/useAnalyticsData";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 export default function AdminAnalytics() {
   const navigate = useNavigate();
@@ -92,6 +93,7 @@ export default function AdminAnalytics() {
     <AdminAuth>
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
+      <AdminGroupNav group="insights" />
         <main className="container flex-1 py-6 space-y-6">
           {/* Header */}
           <div className="flex flex-wrap items-center justify-between gap-3">

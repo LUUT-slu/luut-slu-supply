@@ -39,6 +39,7 @@ import { Users, RefreshCw, Eye, Check, X, Trash2, ShieldCheck, LogOut, Ban, Stor
 import { toast } from "sonner";
 import { CreateSellerDialog } from "@/components/admin/CreateSellerDialog";
 import { AssignSellerDialog } from "@/components/admin/AssignSellerDialog";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 const PLACEHOLDER_USER_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -254,6 +255,7 @@ export default function AdminSellersNew() {
           </Button>
         </div>
       </header>
+      <AdminGroupNav group="roster" />
       
       <main className="container flex-1 py-4 md:py-6">
         {/* Header */}

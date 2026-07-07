@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 const STATUS_LABEL: Record<CampaignStatus, string> = {
   active: "Active",
@@ -100,6 +101,7 @@ export default function PromotionsManager() {
     <AdminAuth>
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
+      <AdminGroupNav group="marketing" />
         <main className="container flex-1 py-6">
           <div className="mb-5 flex flex-wrap items-center gap-3">
             <BackButton to="/admin" />

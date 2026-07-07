@@ -17,6 +17,7 @@ import { Loader2, RefreshCw, Upload, Check, X, Pencil, Image as ImageIcon } from
 import { fetchTaxonomy } from "@/lib/taxonomy";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 type CategoryRow = {
   category_key: string;
@@ -163,6 +164,7 @@ export default function CategoryImagesManager() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <AdminGroupNav group="catalog" />
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
         <BackButton />
         <div className="flex items-center justify-between flex-wrap gap-3">

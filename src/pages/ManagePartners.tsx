@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssignOrderModal } from "@/components/admin/AssignOrderModal";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 interface Partner {
   id: string;
@@ -249,6 +250,7 @@ export default function ManagePartners() {
           </Button>
         </div>
       </header>
+      <AdminGroupNav group="roster" />
       
       <main className="container flex-1 py-4 md:py-6">
         {/* Header */}

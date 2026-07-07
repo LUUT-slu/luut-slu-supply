@@ -41,6 +41,7 @@ import {
   Megaphone,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 interface Seller {
   id: string;
@@ -235,6 +236,7 @@ export default function AdminProductsPage() {
           </Button>
         </div>
       </header>
+      <AdminGroupNav group="catalog" />
 
       <main className="container flex-1 py-4 md:py-6">
         {/* Page Header */}

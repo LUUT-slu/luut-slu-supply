@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -557,6 +558,7 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <AdminGroupNav group="fulfillment" />
       <div className="container py-4 md:py-6">
         {/* Header */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

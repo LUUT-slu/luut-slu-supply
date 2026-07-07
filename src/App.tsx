@@ -95,6 +95,8 @@ const PurchaseOrderDetail = lazyRetry(() => import("./pages/purchase-orders/Purc
 const PurchaseOrderReports = lazyRetry(() => import("./pages/purchase-orders/PurchaseOrderReports"));
 const ClaimAccount = lazyRetry(() => import("./pages/ClaimAccount"));
 const AdminUnclaimedCustomers = lazyRetry(() => import("./pages/admin/AdminUnclaimedCustomers"));
+const AdminDiscounts = lazyRetry(() => import("./pages/admin/AdminDiscounts"));
+const AdminPopups = lazyRetry(() => import("./pages/admin/AdminPopups"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -334,9 +336,14 @@ const App = () => (
                 <CategoryImagesManager />
               </RouteGuard>
             } />
-            <Route path="/admin-orders" element={
+            <Route path="/admin/discounts" element={
               <RouteGuard requiredRole="admin">
-                <AdminOrdersPage />
+                <AdminDiscounts />
+              </RouteGuard>
+            } />
+            <Route path="/admin/popups" element={
+              <RouteGuard requiredRole="admin">
+                <AdminPopups />
               </RouteGuard>
             } />
             <Route path="/admin/purchase-orders" element={

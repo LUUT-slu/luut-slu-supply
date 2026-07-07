@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ListItemSkeleton } from "@/components/skeletons/TableSkeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 import { AdminAuth } from "@/components/AdminAuth";
 import { BackButton } from "@/components/BackButton";
@@ -271,6 +272,7 @@ export default function LuutConnectAdmin() {
     <AdminAuth>
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
+      <AdminGroupNav group="fulfillment" />
         
         <main className="container flex-1 py-8">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">

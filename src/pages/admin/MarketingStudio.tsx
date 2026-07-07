@@ -13,6 +13,7 @@ import LibraryTab from "./marketing-studio/LibraryTab";
 import BrandStyleSelector from "./marketing-studio/BrandStyleSelector";
 import type { BrandStyle } from "@/lib/marketingRouting";
 import { useHybridProducts } from "@/hooks/useHybridProducts";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 export default function MarketingStudio() {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ export default function MarketingStudio() {
   return (
     <AdminAuth>
       <Header />
+      <AdminGroupNav group="marketing" />
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-4 py-6">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">

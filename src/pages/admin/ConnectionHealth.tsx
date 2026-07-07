@@ -22,6 +22,7 @@ import {
   Bug,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 interface TestResult {
   name: string;
@@ -164,6 +165,7 @@ export default function ConnectionHealth() {
     <AdminAuth>
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
+      <AdminGroupNav group="insights" />
         <main className="container flex-1 py-8 space-y-6 max-w-4xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
