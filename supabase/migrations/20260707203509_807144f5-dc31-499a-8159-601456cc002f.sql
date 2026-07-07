@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.next_luut_customer_placeholder() FROM anon, PUBLIC;
