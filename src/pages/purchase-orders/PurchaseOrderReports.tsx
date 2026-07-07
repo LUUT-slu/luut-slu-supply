@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "XCD", maximumFractionDigits: 0 }).format(n || 0);
 
@@ -56,6 +57,7 @@ export default function PurchaseOrderReports({ basePath }: { basePath: "/admin/p
 
   return (
     <div className="min-h-screen bg-background">
+      {basePath.startsWith("/admin") && <AdminGroupNav group="fulfillment" />}
       <div className="container mx-auto max-w-5xl px-4 py-4">
         <div className="flex items-center justify-between mb-4">
           <Button asChild variant="ghost" size="sm">

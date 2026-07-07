@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { POStatusBadge } from "@/components/purchase-orders/POStatusBadge";
 import { Plus, Package, ArrowLeft, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
 
 export default function PurchaseOrdersList({ basePath }: { basePath: "/admin/purchase-orders" | "/seller/purchase-orders" }) {
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ export default function PurchaseOrdersList({ basePath }: { basePath: "/admin/pur
           </Button>
         </div>
       </header>
+      {basePath.startsWith("/admin") && <AdminGroupNav group="fulfillment" />}
 
       <main className="container mx-auto px-4 py-4 max-w-3xl space-y-4">
         <Card className="border-border/60">
