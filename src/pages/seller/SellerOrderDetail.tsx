@@ -231,8 +231,12 @@ export default function SellerOrderDetail() {
     const cleanPhone = normalizePhone(order.customer_phone);
     const orderNum = formatOrderNumber(order.order_number);
     const items = order.items.map(i => `${i.product_name} ×${i.quantity}`).join(", ");
-    const message = `Hi ${order.customer_name}! This is ${profile?.seller_name || "your seller"} regarding your order ${orderNum}.\n\n📦 Items: ${items}\n📍 Pickup: ${order.location}\n📅 Date: ${displayDate(order.preferred_date)}${order.pickup_time || order.pickup_time_window ? `\n🕐 Time: ${order.pickup_time || order.pickup_time_window}` : ""}\n💰 Total: ${formatCurrency(order.total_price)}\n\nLet me know if you have any questions!`;
+    const trackLink = order.order_token
+      ? `\n\n🔗 Track your order & create an account: ${window.location.origin}/order-status/${order.id}?token=${order.order_token}`
+      : "";
+    const message = `Hi ${order.customer_name}! This is ${profile?.seller_name || "your seller"} regarding your order ${orderNum}.\n\n📦 Items: ${items}\n📍 Pickup: ${order.location}\n📅 Date: ${displayDate(order.preferred_date)}${order.pickup_time || order.pickup_time_window ? `\n🕐 Time: ${order.pickup_time || order.pickup_time_window}` : ""}\n💰 Total: ${formatCurrency(order.total_price)}${trackLink}\n\nLet me know if you have any questions!`;
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank");
+
   };
 
   const callCustomer = () => {
