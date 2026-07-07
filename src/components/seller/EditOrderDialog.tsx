@@ -29,6 +29,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { phoneInputProps } from "@/lib/text";
 
 interface EditOrderDialogProps {
   open: boolean;
