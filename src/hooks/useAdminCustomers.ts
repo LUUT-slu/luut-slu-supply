@@ -32,7 +32,9 @@ export function useAdminCustomers() {
     queryFn: async (): Promise<CustomerListItem[]> => {
       const [profilesRes, ordersRes, tagsRes, discountsRes] = await Promise.all([
         supabase.from("customer_profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("orders").select("customer_user_id, customer_email, total_price, created_at"),
+        supabase
+          .from("orders")
+          .select("customer_user_id, customer_email, customer_phone, customer_profile_id, total_price, created_at"),
         supabase.from("customer_tags").select("user_id, tag"),
         supabase.from("customer_discounts").select("user_id, is_used").eq("is_used", false),
       ]);
@@ -42,26 +44,27 @@ export function useAdminCustomers() {
       const tags = tagsRes.data || [];
       const discounts = discountsRes.data || [];
 
-      const ordersByUser = new Map<string, { count: number; spent: number; last: string | null }>();
-      const ordersByEmail = new Map<string, { count: number; spent: number; last: string | null }>();
+      type Agg = { count: number; spent: number; last: string | null };
+      const bump = (m: Map<string, Agg>, key: string | null | undefined, total: number, created_at: string) => {
+        if (!key) return;
+        const cur = m.get(key) || { count: 0, spent: 0, last: null };
+        cur.count += 1;
+        cur.spent += total;
+        if (!cur.last || created_at > cur.last) cur.last = created_at;
+        m.set(key, cur);
+      };
+
+      const ordersByUser = new Map<string, Agg>();
+      const ordersByEmail = new Map<string, Agg>();
+      const ordersByProfileId = new Map<string, Agg>();
+      const ordersByPhone = new Map<string, Agg>();
 
       for (const o of orders) {
         const total = Number(o.total_price || 0);
-        if (o.customer_user_id) {
-          const cur = ordersByUser.get(o.customer_user_id) || { count: 0, spent: 0, last: null };
-          cur.count += 1;
-          cur.spent += total;
-          if (!cur.last || o.created_at > cur.last) cur.last = o.created_at;
-          ordersByUser.set(o.customer_user_id, cur);
-        }
-        if (o.customer_email) {
-          const key = o.customer_email.toLowerCase();
-          const cur = ordersByEmail.get(key) || { count: 0, spent: 0, last: null };
-          cur.count += 1;
-          cur.spent += total;
-          if (!cur.last || o.created_at > cur.last) cur.last = o.created_at;
-          ordersByEmail.set(key, cur);
-        }
+        bump(ordersByUser, o.customer_user_id, total, o.created_at);
+        bump(ordersByEmail, o.customer_email?.toLowerCase(), total, o.created_at);
+        bump(ordersByProfileId, (o as any).customer_profile_id, total, o.created_at);
+        bump(ordersByPhone, o.customer_phone, total, o.created_at);
       }
 
       const tagsByUser = new Map<string, string[]>();
@@ -73,11 +76,17 @@ export function useAdminCustomers() {
 
       const discountUsers = new Set(discounts.map((d) => d.user_id));
 
+      const empty: Agg = { count: 0, spent: 0, last: null };
       return profiles.map((p) => {
-        const byUser = ordersByUser.get(p.user_id);
-        const byEmail = p.email ? ordersByEmail.get(p.email.toLowerCase()) : undefined;
-        // prefer user_id match, fall back to email
-        const agg = byUser || byEmail || { count: 0, spent: 0, last: null };
+        // Match on every stable key we have. Shadow profiles (user_id = null)
+        // still show their real order count because orders link back via
+        // customer_profile_id or phone.
+        const agg =
+          ordersByProfileId.get(p.id) ||
+          (p.user_id ? ordersByUser.get(p.user_id) : undefined) ||
+          (p.phone ? ordersByPhone.get(p.phone) : undefined) ||
+          (p.email ? ordersByEmail.get(p.email.toLowerCase()) : undefined) ||
+          empty;
         return {
           user_id: p.user_id,
           full_name: p.full_name,
