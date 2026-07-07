@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { POStatusBadge } from "@/components/purchase-orders/POStatusBadge";
-import { Plus, Package, ArrowLeft, BarChart3 } from "lucide-react";
+import { Plus, Package, ArrowLeft, BarChart3, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
+import { ImportShopifyDraftsDialog } from "@/components/purchase-orders/ImportShopifyDraftsDialog";
 
 export default function PurchaseOrdersList({ basePath }: { basePath: "/admin/purchase-orders" | "/seller/purchase-orders" }) {
   const navigate = useNavigate();
