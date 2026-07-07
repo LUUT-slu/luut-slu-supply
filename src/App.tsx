@@ -369,7 +369,10 @@ const App = () => (
             
             {/* Discount redirect route */}
             <Route path="/discount/:code" element={<DiscountRedirect />} />
-            
+
+            {/* Claim account via personal token link */}
+            <Route path="/claim/:token" element={<ClaimAccount />} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
