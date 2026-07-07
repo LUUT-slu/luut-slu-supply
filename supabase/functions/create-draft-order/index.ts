@@ -58,9 +58,11 @@ async function findOrCreateShopifyCustomer(
   firstName: string,
   lastName: string,
   phone: string,
-  email: string | null
+  email: string | null,
+  knownShopifyCustomerId?: string | null,
 ): Promise<{ id: number | null; error?: string }> {
   const normalizedPhone = normalizePhone(phone);
+  const last10 = last10Digits(phone);
 
   const searchByQuery = async (query: string): Promise<{ ok: boolean; customer?: any; error?: string }> => {
     try {
@@ -77,12 +79,44 @@ async function findOrCreateShopifyCustomer(
     }
   };
 
-  // Step 1: Primary identity — phone (normalized).
-  const phoneSearch = await searchByQuery(`phone:${normalizedPhone}`);
-  if (!phoneSearch.ok) {
-    return { id: null, error: phoneSearch.error };
+  const fetchById = async (id: string): Promise<any | null> => {
+    try {
+      const res = await fetch(
+        `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/${id}.json`,
+        { headers: { "X-Shopify-Access-Token": adminToken } },
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.customer ?? null;
+    } catch { return null; }
+  };
+
+  let existing: any = null;
+
+  // Step 0: Fast-path — known Shopify customer id from our local profile.
+  if (knownShopifyCustomerId) {
+    const byId = await fetchById(knownShopifyCustomerId);
+    if (byId?.id) existing = byId;
   }
-  let existing = phoneSearch.customer;
+
+  // Step 1: Primary identity — phone (normalized).
+  if (!existing && normalizedPhone) {
+    const phoneSearch = await searchByQuery(`phone:${normalizedPhone}`);
+    if (!phoneSearch.ok) {
+      return { id: null, error: phoneSearch.error };
+    }
+    existing = phoneSearch.customer;
+  }
+
+  // Step 1b: Secondary phone search using the last 10 digits, in case
+  // Shopify stored the customer's phone without a leading '+1'.
+  if (!existing && last10) {
+    const altSearch = await searchByQuery(`phone:${last10}`);
+    if (!altSearch.ok) {
+      return { id: null, error: altSearch.error };
+    }
+    existing = altSearch.customer;
+  }
 
   // Step 2: Secondary identity — email.
   if (!existing && email) {
@@ -96,7 +130,8 @@ async function findOrCreateShopifyCustomer(
   if (existing?.id) {
     console.log("Matched existing Shopify customer:", existing.id);
     // Ensure phone is set on the customer record (needed for future phone-primary matching).
-    if (!existing.phone || existing.phone !== normalizedPhone) {
+    // Never overwrite first_name/last_name on match — the existing customer wins.
+    if (normalizedPhone && (!existing.phone || existing.phone !== normalizedPhone)) {
       try {
         await fetch(
           `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/customers/${existing.id}.json`,
@@ -149,9 +184,17 @@ async function findOrCreateShopifyCustomer(
 
     // 422 duplicate — someone else owns this phone/email; retry lookups to find them.
     if (createRes.status === 422) {
-      const retryPhone = await searchByQuery(normalizedPhone);
-      if (retryPhone.ok && retryPhone.customer?.id) {
-        return { id: retryPhone.customer.id };
+      if (normalizedPhone) {
+        const retryPhone = await searchByQuery(`phone:${normalizedPhone}`);
+        if (retryPhone.ok && retryPhone.customer?.id) {
+          return { id: retryPhone.customer.id };
+        }
+      }
+      if (last10) {
+        const retryLast10 = await searchByQuery(`phone:${last10}`);
+        if (retryLast10.ok && retryLast10.customer?.id) {
+          return { id: retryLast10.customer.id };
+        }
       }
       if (email) {
         const retryEmail = await searchByQuery(`email:${email}`);
@@ -166,6 +209,7 @@ async function findOrCreateShopifyCustomer(
     return { id: null, error: `create network: ${String(err)}`.slice(0, 400) };
   }
 }
+
 
 
 // Look up discount code and return applied_discount object
