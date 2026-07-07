@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { POStatusBadge } from "@/components/purchase-orders/POStatusBadge";
-import { Plus, Package, ArrowLeft, BarChart3 } from "lucide-react";
+import { Plus, Package, ArrowLeft, BarChart3, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AdminGroupNav } from "@/components/admin/AdminGroupNav";
+import { ImportShopifyDraftsDialog } from "@/components/purchase-orders/ImportShopifyDraftsDialog";
 
 export default function PurchaseOrdersList({ basePath }: { basePath: "/admin/purchase-orders" | "/seller/purchase-orders" }) {
   const navigate = useNavigate();
@@ -15,6 +16,8 @@ export default function PurchaseOrdersList({ basePath }: { basePath: "/admin/pur
   const createPO = useCreatePO();
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const isAdmin = basePath.startsWith("/admin");
 
   const handleCreate = async () => {
     if (!name.trim()) return;
@@ -35,12 +38,20 @@ export default function PurchaseOrdersList({ basePath }: { basePath: "/admin/pur
             <Link to={homeHref} className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-5 w-5" /></Link>
             <h1 className="text-lg font-semibold">Purchase Orders</h1>
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate(`${basePath}/reports`)}>
-            <BarChart3 className="h-4 w-4 mr-1" /> Reports
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                <Download className="h-4 w-4 mr-1" /> Import from Shopify
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => navigate(`${basePath}/reports`)}>
+              <BarChart3 className="h-4 w-4 mr-1" /> Reports
+            </Button>
+          </div>
         </div>
       </header>
-      {basePath.startsWith("/admin") && <AdminGroupNav group="fulfillment" />}
+      {isAdmin && <AdminGroupNav group="fulfillment" />}
+      {isAdmin && <ImportShopifyDraftsDialog open={importOpen} onOpenChange={setImportOpen} />}
 
       <main className="container mx-auto px-4 py-4 max-w-3xl space-y-4">
         <Card className="border-border/60">
