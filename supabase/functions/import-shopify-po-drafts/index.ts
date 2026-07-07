@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
     let cursor: string | null = null;
     let pages = 0;
     do {
-      const data = await shopifyGraphQL(PRODUCTS_QUERY, { first: 100, cursor });
+      const data = await shopifyGraphQL(PRODUCTS_QUERY, { first: 15, cursor });
       pages++;
       for (const pe of data.products.edges) {
         const p = pe.node;
