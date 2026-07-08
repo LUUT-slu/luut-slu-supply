@@ -170,6 +170,28 @@ export function useSellerStats(sellerId: string | undefined, dateRange: DateRang
         }
       });
 
+      // Today-scoped aggregates (local time)
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const todayStr = `${startOfToday.getFullYear()}-${String(startOfToday.getMonth() + 1).padStart(2, "0")}-${String(startOfToday.getDate()).padStart(2, "0")}`;
+
+      const todaysOrders = ordersData.filter(
+        (o) => o.created_at && new Date(o.created_at) >= startOfToday
+      );
+      const todaysCompletedIds = new Set(
+        todaysOrders.filter((o) => o.status === "completed").map((o) => o.id)
+      );
+      const todayRevenue = orderItems
+        .filter((i) => todaysCompletedIds.has(i.order_id))
+        .reduce((sum, i) => sum + Number(i.total_price), 0);
+      const todayReadyForPickup = ordersData.filter(
+        (o) =>
+          o.preferred_date === todayStr &&
+          o.status !== "cancelled" &&
+          o.status !== "completed" &&
+          o.status !== "no-show"
+      ).length;
+
       setStats({
         totalRevenue,
         totalOrders: ordersData.length,
@@ -180,6 +202,9 @@ export function useSellerStats(sellerId: string | undefined, dateRange: DateRang
         cancelledOrders: statusCounts.cancelled,
         noShowOrders: statusCounts["no-show"],
         pendingOrders: statusCounts.pending + statusCounts.confirmed,
+        todayRevenue,
+        todayOrders: todaysOrders.length,
+        todayReadyForPickup,
       });
     } catch (error) {
       console.error("Error fetching seller stats:", error);
