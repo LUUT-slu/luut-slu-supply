@@ -207,7 +207,7 @@ export function useSellerStats(
       const todayStr = `${todayOnly.getFullYear()}-${String(todayOnly.getMonth() + 1).padStart(2, "0")}-${String(todayOnly.getDate()).padStart(2, "0")}`;
 
       const periodOrders = ordersData.filter(
-        (o) => o.created_at && new Date(o.created_at) >= startOfPeriod
+        (o) => effectiveOrderDate(o) >= startOfPeriod
       );
       const periodCompletedIds = new Set(
         periodOrders.filter((o) => o.status === "completed").map((o) => o.id)
