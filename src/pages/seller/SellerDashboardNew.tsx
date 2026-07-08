@@ -152,6 +152,24 @@ export default function SellerDashboardNew() {
             </div>
           </div>
 
+          {/* Period toggle */}
+          <div className="mb-3 inline-flex rounded-lg border border-border/60 bg-card p-0.5">
+            {(["day", "week", "month"] as StatsPeriod[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  period === p
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {p === "day" ? "Day" : p === "week" ? "Week" : "Month"}
+              </button>
+            ))}
+          </div>
+
           {/* KPI cards (2x2 mobile, 4-col desktop) */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-5">
             {kpiCards.map((kpi) => (
