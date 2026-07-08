@@ -247,13 +247,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
       toast.error("Select a product first");
       return;
     }
-    const sourceRefs =
-      refs.length > 0
-        ? refs
-        : autoRefAvailable && variantImage
-        ? [variantImage]
-        : [];
-    const imageUrl = sourceRefs[0];
+    const imageUrl = productImageUrl;
 
     const seed =
       opts?.reuseSeed && lastSeed != null
@@ -262,7 +256,11 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
 
     const effectivePrompt = promptOverride ?? prompt;
     if (!imageUrl && (!effectivePrompt || effectivePrompt.trim().length < 2)) {
-      toast.error("Add a reference image or write a prompt first");
+      if (sourceMode === "upload") {
+        toast.error("Upload a product image or write a prompt first");
+      } else {
+        toast.error("Write a prompt first");
+      }
       return;
     }
 
