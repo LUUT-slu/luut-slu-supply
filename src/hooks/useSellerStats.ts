@@ -241,12 +241,12 @@ export function useSellerStats(
         return !successKeys.has(key);
       });
 
-      const periodCompletedIds = new Set(
-        dedupedPeriodOrders.filter((o) => o.status === "completed").map((o) => o.id)
+      const periodCompletedOrders = dedupedPeriodOrders.filter((o) => o.status === "completed");
+      const todayRevenue = periodCompletedOrders.reduce(
+        (sum, o) => sum + Number(o.total_price),
+        0
       );
-      const todayRevenue = orderItems
-        .filter((i) => periodCompletedIds.has(i.order_id))
-        .reduce((sum, i) => sum + Number(i.total_price), 0);
+
       const todayReadyForPickup = ordersData.filter(
         (o) =>
           o.preferred_date === todayStr &&
