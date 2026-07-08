@@ -379,6 +379,11 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                 );
               })}
             </div>
+            <p className="mb-3 text-[11px]" style={{ color: TEXT }}>
+              This image is used as the product. It defines exactly how the product looks in the result.
+            </p>
+
+
 
             {sourceMode === "shopify" && (
               <div
