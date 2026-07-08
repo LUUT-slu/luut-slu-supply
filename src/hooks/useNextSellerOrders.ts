@@ -43,7 +43,6 @@ export function useNextSellerOrders(sellerId: string | undefined, limit = 5) {
           .select("id, order_number, customer_name, location, total_price, status, preferred_date, created_at")
           .in("id", orderIds)
           .in("status", ["pending", "confirmed"])
-          .order("preferred_date", { ascending: true, nullsFirst: false })
           .order("created_at", { ascending: true })
           .limit(limit);
 
