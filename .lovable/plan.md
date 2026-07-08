@@ -1,72 +1,49 @@
+## Goal
 
-# Import Shopify Products as Draft POs
+Restructure `src/pages/seller/SellerOrderDetail.tsx` so the action surface matches the attached reference: a small set of primary actions always visible, everything else collapsed under "More options", plus a new "WhatsApp Quick Messages" section with editable pre-filled templates.
 
-Good news from the investigation: no schema changes needed. `purchase_orders.status='draft'` is already the default, `purchase_order_items.source_type='shopify'` and `source_product_ref` already exist, and there's a per-variant table (`purchase_order_item_variants`) with a `shopify_variant_id` column. Shopify env vars (`SHOPIFY_ADMIN_TOKEN`, `SHOPIFY_STORE_DOMAIN`) are already wired.
+Scope: presentation only. All existing handlers (status changes, calendar, reschedule, edit, archive, delete, Shopify sync) are reused as-is — nothing is removed, just regrouped.
 
-## What gets pulled from Shopify
+## Layout (top → bottom)
 
-Single Admin GraphQL query (API `2025-07`) that paginates products and returns, per variant:
+1. **Header** — back button, order number, status badge, "Created …" line. Status `<Select>` stays for quick status jumps (kept — sellers rely on it).
+2. **Customer + Pickup card** — merged card, name/phone with Call + WhatsApp icon buttons on the right, divider, pickup location/date/time. Matches reference.
+3. **Order Items card** — collapsible (closed by default on mobile, open on desktop), header shows "N items · EC$total". Notes render inside when expanded.
+4. **WhatsApp Quick Messages card** — new. 2-col grid of template chips: Confirm Order, Item Out of Stock, No-Show Follow-Up, Thank You, Pickup Reminder, Reschedule. Tapping one opens a bottom-sheet modal with editable textarea pre-filled from order data, then Copy / Send via WhatsApp buttons.
+5. **Primary actions row** — 2-col grid, always visible:
+   - **Mark Completed** (primary/gold styling via existing `default` button variant) → `handleStatusChange("completed")`. Hidden if already completed/cancelled.
+   - **Message Customer** → opens the Confirm Order template modal (same flow as quick messages).
+6. **Open Shopify Draft** — full-width outlined button, only shown when `order.shopify_draft_order_id` exists. Opens `https://lovable-project-yf43m.myshopify.com/admin/draft_orders/{id}` in a new tab (same base URL already used in `OrderShopifyActions`).
+7. **More options** toggle → expands a card listing: Mark No-Show, Reschedule, Add to Calendar, Edit Order, Resync (Shopify), Request Admin Completion (non-admins only), Cancel Order, Archive Order, Delete Order (when `canDelete`). Each wired to its existing handler.
+8. **Shopify status strip** — keep the compact status/badges portion of `OrderShopifyActions` (sync status, WA comm status, draft name, error). Move its buttons into "More options" so the badges stay visible but the button clutter is gone. Simplest path: render a slim inline strip here and skip mounting `OrderShopifyActions` at the top; wire Resync / Request Admin Completion in the More menu directly (small duplication of two `supabase.functions.invoke` calls already in that component).
+9. **AI Order Helper** and **SellerAIPanel** remain where they are (unchanged).
 
-- `product.vendor` → PO `supplier_name`
-- `product.title` / `variant.title` / options → item + variant rows
-- `variant.inventoryItem.unitCost.amount` → `cost_per_item`
-- `variant.inventoryItem.inventoryLevels`: `quantities(names:["available"])` + `location { id name }` → `quantity_ordered` per location
-- `product.id`, `variant.id`, image, price → link + snapshot fields
+Sidebar/Quick Actions card (lines 566–692) is removed — its actions are redistributed into Primary + More options.
 
-Anything not derivable from Shopify (customs cost, supplier link, notes, date_ordered, etc.) is left blank on purpose.
+## WhatsApp templates
 
-## Grouping rule (one PO per group)
+All templates receive `{ order, profile }` and produce a string that includes the order token track link (existing pattern from `messageCustomer`). Templates:
 
-**One draft PO per `(vendor, location)`** — because supplier is a PO-level field and stock lives per location. Each variant of a product becomes a `purchase_order_item_variants` row grouped under one `purchase_order_items` line for its parent product. Products with no vendor go to a group with `supplier_name = "Unknown supplier"`. Variants with no stock at that location are skipped (nothing to reorder).
+- **Confirm Order** — greeting + items + pickup + total + track link.
+- **Item Out of Stock** — apology, offer swap/refund.
+- **No-Show Follow-Up** — missed you, want to reschedule?
+- **Thank You** — post-pickup thanks + IG tag.
+- **Pickup Reminder** — date/time/location reminder.
+- **Reschedule** — ask for new day/time.
 
-Naming: `Shopify import · {Vendor} · {Location} · {YYYY-MM-DD}`.
-Every imported PO gets `notes = "Imported from Shopify on {date}. Draft — fill customs cost and any missing fields before finalizing."` so it's obvious in the UI.
+Template modal (new small component or inline): bottom sheet on mobile (`fixed inset-x-0 bottom-0`), centered dialog on desktop via shadcn `Dialog`. Contents: title with icon, editable `<Textarea>` seeded from template, Copy button, "Send via WhatsApp" button that opens `https://wa.me/{normalizedPhone}?text={encoded draft}`.
 
-## Draft marking
+## Technical notes
 
-- Rely on the existing `status='draft'` — the `POStatusBadge` already renders it grey.
-- Line items get `source_type='shopify'` and `shopify_sync_status='imported_draft'` so the detail page can show a small "from Shopify" chip.
-- No new column, no new enum value.
+- New file `src/components/seller/WhatsAppQuickMessages.tsx` exporting the templates array + the section UI + the preview modal. Keeps `SellerOrderDetail.tsx` from bloating.
+- Reuse existing `normalizePhone`, `formatCurrency`, `formatOrderNumber`, `displayDate` — pass them in or duplicate the small helpers inside the component.
+- "Message Customer" primary button reuses the same modal by preselecting the Confirm Order template (so sellers still get an editable preview instead of jumping straight to WhatsApp — this is a small UX upgrade over today's behavior, matching the reference).
+- No design tokens changed. Uses existing shadcn `Card`, `Button`, `Dialog`, `Textarea`, `Separator`. No hardcoded colors — the reference's gold/navy is achieved via existing `primary` / `secondary` variants so it stays consistent with the app's Inter/dark ecommerce theme.
+- No backend, RLS, schema, or hook changes. `useSellerOrders`, `EditOrderDialog`, calendar functions, RPCs all untouched.
+- Mobile-first: primary row and template grid are 2-col; "More options" content collapses to a single vertical list. Desktop keeps the 3-col grid layout you have today (main content + this action stack on the right), so nothing regresses on wide screens.
 
-## Duplicate skipping
+## Files touched
 
-Before inserting, for each candidate `(vendor, location)` group, query existing POs where `status='draft'` AND `supplier_name = vendor` AND at least one existing item's `shopify_product_id` overlaps with the group's product IDs. If overlap exists → **skip the whole group** and return it in the response as `skipped: [{ vendor, location, existingPoId, overlapCount }]` so the UI can show "3 groups skipped — already have a draft".
-
-## Trigger UI (as you asked — button on Purchase Orders page)
-
-On `/admin/purchase-orders` (list page), add a header button **"Import from Shopify"** next to the existing Reports button (admin-only; hidden when `basePath` is `/seller/...`). Clicking it opens a dialog:
-
-1. **Preview step** — dialog calls the edge function with `{ dryRun: true }`. Shows a summary table:
-   ```
-   Vendor          Location    Products   Variants   Total qty   Status
-   Nike            Castries    12         38         420         Will create
-   Adidas          Vieux Fort  6          14         180         Will create
-   Unknown         Castries    2          2          30          Will create
-   Puma            Castries    8          22         —           Skipped (draft PO-1042 exists)
-   ```
-2. **Confirm** → same function with `{ dryRun: false }` runs the actual insert. Shows a success toast with counts + list of created PO IDs. Query cache invalidates so the list refreshes and the new drafts appear at the top.
-
-## Edge function
-
-New: `supabase/functions/import-shopify-po-drafts/index.ts`
-
-- Verify caller is admin (bearer JWT → `user_roles` check) — non-admins get 403.
-- Reads `SHOPIFY_ADMIN_TOKEN` and `SHOPIFY_STORE_DOMAIN` (with the existing fallback).
-- Paginates `products` (250 per page) with `first: 250, after: cursor` including `variants.inventoryItem.unitCost` and `inventoryLevels`.
-- Groups results in memory by `(vendor, locationId)` → skips zero-stock variants → runs the duplicate check → inserts.
-- Insert path: one `purchase_orders` row per group, one `purchase_order_items` row per product, one `purchase_order_item_variants` row per variant. Uses the service-role client (bypasses RLS but records `owner_user_id = caller.id`, `owner_role='admin'`).
-- Response: `{ created: [...poIds], skipped: [...], preview: {...} }`.
-
-## Existing-product linking
-
-For each imported line, look up `seller_products.shopify_product_id` (already `UNIQUE`) and set `linked_seller_product_id` when it matches. If no match, leave null — user can link later.
-
-## Assumptions to confirm
-
-1. **Grouping = one PO per (vendor, location)** — say the word if you'd prefer per-vendor only (rolling up all locations) or a single giant PO.
-2. **Zero-stock variants skipped**. If you actually want them included so you can plan a full restock, we include everything and let you set qty manually.
-3. **Duplicate rule = skip whole vendor+location group when ANY overlap exists with an existing draft**. Alternative: item-level dedup (skip only the overlapping products, still create a PO for the rest).
-4. **Vendor missing → "Unknown supplier" group**. Alternative: skip those entirely.
-5. Import button lives only on the **admin** Purchase Orders page, not seller portal.
-
-If you're good with those, I'll build it: edge function + dialog + list-page button + preview/confirm flow. No DB migration needed.
+- `src/pages/seller/SellerOrderDetail.tsx` — reorganize JSX below the header; remove the Quick Actions sidebar card; add Primary row, Shopify Draft button, More options collapsible, and mount the new WhatsApp section.
+- `src/components/seller/WhatsAppQuickMessages.tsx` — new component (templates + grid + preview modal).
+- `src/components/orders/OrderShopifyActions.tsx` — leave file in place (still used elsewhere); on the order detail page we render a slim inline badges strip instead. No edits to this file required.
