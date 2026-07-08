@@ -2,6 +2,21 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DateRange } from "react-day-picker";
 
+// Shopify orders get created_at = sync time, not real order time.
+// Real order time for Shopify-sourced rows is stored in preferred_date as ISO.
+function effectiveOrderDate(o: { source?: string | null; preferred_date?: string | null; created_at: string }): Date {
+  if (
+    o.source &&
+    o.source.startsWith("shopify") &&
+    o.preferred_date &&
+    /^\d{4}-\d{2}-\d{2}T/.test(o.preferred_date)
+  ) {
+    return new Date(o.preferred_date);
+  }
+  return new Date(o.created_at);
+}
+
+
 interface SellerStats {
   totalRevenue: number;
   totalOrders: number;
