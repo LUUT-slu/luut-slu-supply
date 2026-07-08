@@ -1,50 +1,39 @@
-## Step 0 — Inventory (from `src/pages/admin/marketing-studio/DisplayTab.tsx`)
+## Two fixes for the Display tab
 
-- **Shopify products & variants**: `useHybridProducts({ limit: 100 })` → `products[]`. Local `selectedId` / `selectedVariantId` derive `product` and `variant`. Variants from `product.variants[]`.
-- **Reference image ("Auto" listing image)**: `variantImage = variant?.image?.url || product?.images?.[0]?.url`. When `refs[]` is empty, `variantImage` is auto-used inside `generate()`.
-- **Prompt compiler**: `previewDisplayFinal(controls, brandStyle)` in `src/lib/marketingRouting.ts` (wraps `buildDisplayPrompt`). `controls` built from `goal/style/background/realism/focus/aspect/notes/hasReference/productTitle/productCategory`. Edits handled in `PromptPreview` via `promptOverride`.
-- **Generate call**: `supabase.functions.invoke("ai-image-prep", { body: { imageUrl, mode, aspectRatio, campaignType: "display", productTitle, prompt: promptOverride ?? prompt } })`. `mode = background === "transparent" ? "remove-bg" : "expand"`. Seed via `lastSeed`; result → `resultUrl`.
+### 1. Make reference image optional (text-to-image fallback)
 
-All four stay wired exactly as-is.
+Right now `generate()` errors with "Add a reference image or pick a product with an image" when there's nothing to send, because `ai-image-prep` requires `imageUrl`. Fix by branching on whether a reference exists:
 
-## Restyle plan (visual only)
+- If a reference image is present → keep the current call: `supabase.functions.invoke("ai-image-prep", …)` (image-to-image via Nano Banana Pro). No change.
+- If no reference image is present → call the existing `supabase.functions.invoke("text-to-image", { body: { action: "start", prompt, aspect_ratio } })` edge function, then poll `{ action: "status", id }` until it returns `imageUrl`. Set `resultUrl` to that URL. Same toasts / spinner / seed handling.
 
-**Scope**: only `src/pages/admin/marketing-studio/DisplayTab.tsx` and a light restyle of `src/pages/admin/marketing-studio/PromptPreview.tsx`. No changes to `marketingRouting.ts`, `useHybridProducts`, `ai-image-prep`, `MarketingStudio.tsx` shell, Poster/Video/Library tabs, routing, or auth.
+Aspect ratio mapping for text-to-image: `text-to-image` allows `1:1 | 9:16 | 16:9 | 4:3 | 3:4`. Map `4:5 → 3:4` at call time (visual pick still shows 4:5).
 
-### Tokens (scoped inline to Display tab; no global theme edits)
-bg `#0B0A0D`, card `#161419`, raised `#211E26`, border `#2C2833`, text `#B4AEBE`, white for emphasis, gold `#E0A82E`, gold-2 `#F5C451`, active fill `#E0A82E14`, CTA gradient `linear-gradient(135deg,#E0A82E,#F5C451)` with soft gold glow.
+Reference image opt-out UI:
+- The auto "AUTO" thumb (product listing image in Shopify mode) becomes dismissible. Add a small `×` on it that sets `autoRefDismissed = true`. Once dismissed, it's not used as fallback.
+- In `upload` and `none` source modes, no auto-attach happens (already true for `none`; add it for `upload` — today `upload` also has no auto-attach).
+- `hasReference` in `controls` (feeds the prompt compiler) becomes: `refs.length > 0 || (sourceMode === "shopify" && !autoRefDismissed && !!variantImage)`.
+- Section subtext gets an "(optional)" hint.
 
-### Layout (top → bottom, mobile-first; `lg:` keeps right rail for Live Preview / Result)
+### 2. Always render the Variants section when the product has any variants
 
-1. **Product Source** — new segmented toggle `sourceMode: 'shopify' | 'upload' | 'none'`.
-   - `shopify`: card with thumb + "SHOPIFY PRODUCT" gold eyebrow + name + current variant + "Change" button (reopens the existing `<select>`). Variant pills rendered **only if** `product.variants.length > 1`; drives the same `selectedVariantId`. Auto reference flow unchanged.
-   - `upload`: reuses `prepareMarketingSourceImages` → writes into `refs[0]`; shows thumb + Replace.
-   - `none`: dashed card. `hasReference` = `refs.length > 0 || (sourceMode === 'shopify' && !!variantImage)`; `productTitle` empty when `none`. Compiler untouched — only its inputs change.
+Currently the pill row only renders when `product.variants.length > 1`, which is why "SCVCN UV Protective Glasses" (single "Default Title" variant on Shopify) shows nothing to switch. Change to render whenever `product.variants?.length >= 1`:
 
-2. **Describe your image** — a single textarea bound to the existing `notes` state (renamed section, replaces the old "Additional Notes" card entirely per option A). Includes a gold "Auto prompt" chip that focuses the field.
+- Multiple variants → interactive gold pills (as today).
+- Single variant → one non-interactive pill labeled with the variant title (e.g. "Default"), plus subtext "Only one variant available. Add more in Shopify to pick a specific one here."
 
-3. **Reference This Image** — relocates the existing `Reference Images (0/4)` card + Auto thumb here. Copy updated verbatim: "Use this image to create the structure of how the image will look, do not copy any contents inside." Same `refs` state, `MAX_REFS=4`, same upload handler.
-
-4. **Quick Presets** — existing `DISPLAY_PRESETS` as horizontal-scroll gold pills. Same `applyPreset`.
-
-5. **Visual picker rows** (horizontal scroll, cards = swatch tile + label; selected = gold border + `#E0A82E14`):
-   Display Goal · Style · Background · Realism · Product Focus — same option arrays and setters. Background swatch tiles get hinted previews (transparent = checkerboard, studio = grey soft gradient, gradient = warm gradient, lifestyle = scene gradient, solid = flat tint).
-
-6. **Choose Shape (Aspect Ratio)** — cards with a mini rectangle in true proportion per `ASPECTS` entry. Same `aspect` state.
-
-7. **Final Prompt** — pass-through to existing `PromptPreview`, restyled dark. Compile logic, override state, Edit/Reset/Copy behavior, and 8 ADD TO PROMPT chips unchanged.
-
-8. **Live Preview** — existing `LayoutPreview` inside restyled card with small tag chips summarizing selections.
-
-9. **Result** — existing `resultUrl` render inside restyled dashed placeholder.
-
-10. **Sticky Generate bar** — full-width gold-gradient "Generate Display Image" + "Regenerate Same Image" underneath. Same `generate()` calls, same seed logic. `sticky bottom-0` with blurred dark backdrop on mobile.
-
-### What stays exactly the same
-`useHybridProducts`, product/variant state, `controls` shape and `previewDisplayFinal` call, `refs` + `prepareMarketingSourceImages` + `MAX_REFS`, `PromptPreview` compile/override behavior, `supabase.functions.invoke("ai-image-prep", …)` payload, `lastSeed`/`resultUrl`/`downloadImage`, toast messages, Marketing Studio shell (Header, AdminGroupNav, Admin back, Brand Style, Credits & Status, task tabs).
+This makes it obvious the picker exists and that the current product simply has no alternative variants — not a UI bug.
 
 ### Files touched
-- `src/pages/admin/marketing-studio/DisplayTab.tsx` — full JSX restyle + `sourceMode` local state + local `VisualPickCard` component.
-- `src/pages/admin/marketing-studio/PromptPreview.tsx` — restyle only (dark card, gold accents, chip pills). Logic unchanged.
+- `src/pages/admin/marketing-studio/DisplayTab.tsx` only.
+  - Add `autoRefDismissed` state and `×` on AUTO thumb.
+  - Refactor `generate()` into a small `generateWithReference()` (existing `ai-image-prep` path) + new `generateFromText()` (text-to-image polling). Pick one based on whether an image is available.
+  - Loosen variants block to render at length ≥ 1 with the single-variant fallback UI.
 
-No other files touched.
+### What stays untouched
+- Prompt compiler (`previewDisplayFinal` / `buildDisplayPrompt`).
+- `ai-image-prep` edge function and its request payload.
+- `text-to-image` edge function (already exists; used as-is).
+- `useHybridProducts`, product/variant state derivation, `refs` handling, `MAX_REFS`, `PromptPreview`, `LayoutPreview`, sticky Generate bar, Marketing Studio shell, Poster/Video/Library tabs.
+
+No backend changes.
