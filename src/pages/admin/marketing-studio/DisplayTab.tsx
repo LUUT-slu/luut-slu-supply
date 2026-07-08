@@ -433,7 +433,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                   </div>
                 )}
 
-                {product && product.variants && product.variants.length > 1 && (
+                {product && product.variants && product.variants.length >= 1 && (
                   <div
                     className="mt-3 rounded-lg p-3"
                     style={{ background: INK, border: `1px solid ${LINE}` }}
@@ -443,19 +443,29 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                         Variants
                       </span>
                       <span className="text-[10px]" style={{ color: TEXT }}>
-                        {product.variants.length} options
+                        {product.variants.length} option{product.variants.length === 1 ? "" : "s"}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {product.variants.map((v) => {
                         const active = (variant?.id || product.variants[0].id) === v.id;
+                        const only = product.variants.length === 1;
                         return (
-                          <GoldPill key={v.id} active={active} onClick={() => setSelectedVariantId(v.id)}>
+                          <GoldPill
+                            key={v.id}
+                            active={active}
+                            onClick={only ? undefined : () => setSelectedVariantId(v.id)}
+                          >
                             {v.title}{v.availableForSale ? "" : " · oos"}
                           </GoldPill>
                         );
                       })}
                     </div>
+                    {product.variants.length === 1 && (
+                      <p className="mt-2 text-[10px]" style={{ color: TEXT }}>
+                        Only one variant available. Add more in Shopify to pick a specific one here.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -532,8 +542,8 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
             />
           </SectionCard>
 
-          {/* 3. Reference This Image */}
-          <SectionCard title={`Reference This Image (${refs.length}/${MAX_REFS})`}>
+          {/* 3. Reference This Image (optional) */}
+          <SectionCard title={`Reference This Image (${refs.length}/${MAX_REFS}) · optional`}>
             <div className="flex flex-wrap gap-2">
               {refs.map((src, i) => (
                 <div key={i} className="relative h-16 w-16 overflow-hidden rounded-lg" style={{ border: `1px solid ${LINE}` }}>
@@ -548,12 +558,21 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                   </button>
                 </div>
               ))}
-              {refs.length === 0 && sourceMode === "shopify" && variantImage && (
+              {refs.length === 0 && autoRefAvailable && variantImage && (
                 <div
                   className="relative h-16 w-16 overflow-hidden rounded-lg"
                   style={{ border: `1px dashed ${GOLD}66` }}
                 >
                   <img src={variantImage} alt="Product listing" className="h-full w-full object-cover opacity-80" />
+                  <button
+                    type="button"
+                    onClick={() => setAutoRefDismissed(true)}
+                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full shadow"
+                    style={{ background: INK, color: "#fff", border: `1px solid ${LINE}` }}
+                    aria-label="Remove auto reference"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                   <span
                     className="absolute inset-x-0 bottom-0 text-center text-[9px] font-bold py-0.5"
                     style={{ background: `${GOLD}dd`, color: "#1a1400" }}
@@ -582,9 +601,19 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                   />
                 </label>
               )}
+              {sourceMode === "shopify" && autoRefDismissed && refs.length === 0 && variantImage && (
+                <button
+                  type="button"
+                  onClick={() => setAutoRefDismissed(false)}
+                  className="rounded-lg px-2 text-[10px] font-semibold"
+                  style={{ background: RAISED, border: `1px dashed ${LINE}`, color: TEXT }}
+                >
+                  Restore auto
+                </button>
+              )}
             </div>
             <p className="mt-2 text-[11px]" style={{ color: TEXT }}>
-              Use this image to create the structure of how the image will look, do not copy any contents inside.
+              Optional. If left empty, the image is generated purely from your prompt. When present, it defines the structure — do not expect its contents to be copied.
             </p>
           </SectionCard>
 
