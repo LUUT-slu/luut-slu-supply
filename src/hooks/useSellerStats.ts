@@ -111,6 +111,9 @@ export function useSellerStats(sellerId: string | undefined, dateRange: DateRang
           cancelledOrders: 0,
           noShowOrders: 0,
           pendingOrders: 0,
+          todayRevenue: 0,
+          todayOrders: 0,
+          todayReadyForPickup: 0,
         });
         setLoading(false);
         return;
