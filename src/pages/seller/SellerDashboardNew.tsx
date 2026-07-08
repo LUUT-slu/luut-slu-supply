@@ -26,8 +26,12 @@ import {
 export default function SellerDashboardNew() {
   const navigate = useNavigate();
   const { profile } = useSellerProfile();
-  const { stats, loading: statsLoading } = useSellerStats(profile?.id, undefined);
+  const [period, setPeriod] = useState<StatsPeriod>("day");
+  const { stats, loading: statsLoading } = useSellerStats(profile?.id, undefined, period);
   const { orders: nextOrders, loading: nextLoading } = useNextSellerOrders(profile?.id, 5);
+
+  const periodLabel = period === "day" ? "Today" : period === "week" ? "This Week" : "This Month";
+  const periodSubOrders = period === "day" ? "today" : period === "week" ? "this week" : "this month";
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-US", {
