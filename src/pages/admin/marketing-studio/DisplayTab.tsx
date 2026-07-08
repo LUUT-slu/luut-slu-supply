@@ -477,11 +477,11 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                 className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl px-3 py-8 text-center"
                 style={{ background: RAISED, border: `1.5px dashed ${LINE}` }}
               >
-                {refs[0] ? (
+                {uploadedProductUrl ? (
                   <div className="flex items-center gap-3">
-                    <img src={refs[0]} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                    <img src={uploadedProductUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
                     <div className="text-left">
-                      <div className="text-sm font-semibold text-white">Uploaded</div>
+                      <div className="text-sm font-semibold text-white">Uploaded product</div>
                       <div className="text-[11px]" style={{ color: TEXT }}>Tap to replace</div>
                     </div>
                   </div>
@@ -489,17 +489,19 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                   <>
                     <Upload size={22} color={GOLD} />
                     <div className="text-sm font-semibold text-white">Upload your product</div>
-                    <div className="text-[11px]" style={{ color: TEXT }}>Use any image of your choice</div>
+                    <div className="text-[11px]" style={{ color: TEXT }}>This image defines exactly how the product looks</div>
                   </>
                 )}
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => {
-                    const files = Array.from(e.currentTarget.files || []);
-                    handleFilesPicked(files, true);
-                    e.currentTarget.value = "";
+                  onChange={async (e) => {
+                    const input = e.currentTarget;
+                    const files = Array.from(input.files || []);
+                    const added = await prepareMarketingSourceImages(files, 1);
+                    if (added[0]) setUploadedProductUrl(added[0]);
+                    if (input) input.value = "";
                   }}
                 />
               </label>
