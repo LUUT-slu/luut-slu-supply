@@ -211,13 +211,16 @@ export function useSellerStats(
       } else {
         startOfPeriod = new Date(Date.UTC(sluY, sluM, sluD) + SLU_OFFSET_MS);
       }
+      // Period ends at "now" so week/month are calendar-to-date, not rolling windows.
+      const periodEnd = new Date();
       // End of today (SLU) as UTC instant, for the "ready for pickup today" card.
       const endOfTodaySlu = new Date(Date.UTC(sluY, sluM, sluD + 1) + SLU_OFFSET_MS);
       const todayStr = `${sluY}-${String(sluM + 1).padStart(2, "0")}-${String(sluD).padStart(2, "0")}`;
 
       const periodOrders = ordersData.filter((o) => {
-        const d = effectiveOrderDate(o);
-        return d >= startOfPeriod && d < endOfTodaySlu;
+        // Use created_at (sale time) so pickup date can't push a sale into another week/month.
+        const d = new Date(o.created_at);
+        return d >= startOfPeriod && d <= periodEnd;
       });
 
       // Deduplicate: when a Shopify sync failed row (e.g. "draft_failed",
