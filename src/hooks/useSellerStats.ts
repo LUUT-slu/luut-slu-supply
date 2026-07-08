@@ -18,7 +18,13 @@ interface SellerStats {
   todayReadyForPickup: number;
 }
 
-export function useSellerStats(sellerId: string | undefined, dateRange: DateRange | undefined) {
+export type StatsPeriod = "day" | "week" | "month";
+
+export function useSellerStats(
+  sellerId: string | undefined,
+  dateRange: DateRange | undefined,
+  period: StatsPeriod = "day"
+) {
   const [stats, setStats] = useState<SellerStats>({
     totalRevenue: 0,
     totalOrders: 0,
@@ -42,7 +48,7 @@ export function useSellerStats(sellerId: string | undefined, dateRange: DateRang
     }
     
     fetchStats();
-  }, [sellerId, dateRange]);
+  }, [sellerId, dateRange, period]);
 
   const fetchStats = async () => {
     if (!sellerId) return;
