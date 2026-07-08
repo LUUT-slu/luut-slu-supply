@@ -13,6 +13,9 @@ interface SellerStats {
   cancelledOrders: number;
   noShowOrders: number;
   pendingOrders: number;
+  todayRevenue: number;
+  todayOrders: number;
+  todayReadyForPickup: number;
 }
 
 export function useSellerStats(sellerId: string | undefined, dateRange: DateRange | undefined) {
