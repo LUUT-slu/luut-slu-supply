@@ -191,24 +191,34 @@ export function useSellerStats(
         }
       });
 
-      // Period-scoped aggregates (local time). Field names kept as `today*` for compatibility.
-      const startOfPeriod = new Date();
-      startOfPeriod.setHours(0, 0, 0, 0);
-      if (period === "week") {
-        // Start of week = Monday
-        const day = startOfPeriod.getDay(); // 0=Sun..6=Sat
-        const diff = day === 0 ? 6 : day - 1;
-        startOfPeriod.setDate(startOfPeriod.getDate() - diff);
-      } else if (period === "month") {
-        startOfPeriod.setDate(1);
-      }
-      const todayOnly = new Date();
-      todayOnly.setHours(0, 0, 0, 0);
-      const todayStr = `${todayOnly.getFullYear()}-${String(todayOnly.getMonth() + 1).padStart(2, "0")}-${String(todayOnly.getDate()).padStart(2, "0")}`;
+      // Period-scoped aggregates in Saint Lucia time (UTC-4, no DST).
+      // Field names kept as `today*` for compatibility.
+      const SLU_OFFSET_MS = 4 * 60 * 60 * 1000; // UTC-4
+      // "Now" shifted so that UTC-midnight of the shifted date == SLU-midnight in UTC.
+      const nowSlu = new Date(Date.now() - SLU_OFFSET_MS);
+      const sluY = nowSlu.getUTCFullYear();
+      const sluM = nowSlu.getUTCMonth();
+      const sluD = nowSlu.getUTCDate();
 
-      const periodOrders = ordersData.filter(
-        (o) => effectiveOrderDate(o) >= startOfPeriod
-      );
+      // Start of period in SLU local, expressed as a UTC instant.
+      let startOfPeriod: Date;
+      if (period === "week") {
+        const dow = nowSlu.getUTCDay(); // 0=Sun..6=Sat
+        const diff = dow === 0 ? 6 : dow - 1; // Monday start
+        startOfPeriod = new Date(Date.UTC(sluY, sluM, sluD - diff) + SLU_OFFSET_MS);
+      } else if (period === "month") {
+        startOfPeriod = new Date(Date.UTC(sluY, sluM, 1) + SLU_OFFSET_MS);
+      } else {
+        startOfPeriod = new Date(Date.UTC(sluY, sluM, sluD) + SLU_OFFSET_MS);
+      }
+      // End of today (SLU) as UTC instant, for the "ready for pickup today" card.
+      const endOfTodaySlu = new Date(Date.UTC(sluY, sluM, sluD + 1) + SLU_OFFSET_MS);
+      const todayStr = `${sluY}-${String(sluM + 1).padStart(2, "0")}-${String(sluD).padStart(2, "0")}`;
+
+      const periodOrders = ordersData.filter((o) => {
+        const d = effectiveOrderDate(o);
+        return d >= startOfPeriod && d < endOfTodaySlu;
+      });
       const periodCompletedIds = new Set(
         periodOrders.filter((o) => o.status === "completed").map((o) => o.id)
       );
