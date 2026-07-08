@@ -184,6 +184,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
   const variantImage = variant?.image?.url || product?.images?.[0]?.url || null;
 
   const [refs, setRefs] = useState<string[]>([]);
+  const [uploadedProductUrl, setUploadedProductUrl] = useState<string | null>(null);
   const notesRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [goal, setGoal] = useState<DisplayGoal>("product_display");
@@ -195,7 +196,6 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
   const [notes, setNotes] = useState("");
   const [promptOverride, setPromptOverride] = useState<string | null>(null);
   const [lastSeed, setLastSeed] = useState<number | null>(null);
-  const [autoRefDismissed, setAutoRefDismissed] = useState(false);
 
   const [generating, setGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
@@ -203,9 +203,12 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
   // Effective product context depending on sourceMode
   const activeProductTitle = sourceMode === "shopify" ? product?.title || "" : "";
   const activeProductCategory = sourceMode === "shopify" ? product?.category || undefined : undefined;
-  const autoRefAvailable =
-    sourceMode === "shopify" && !autoRefDismissed && Boolean(variantImage);
-  const hasReference = refs.length > 0 || autoRefAvailable;
+
+  // Authoritative product image — always sent to generation to keep the product exact.
+  const productImageUrl: string | null =
+    sourceMode === "shopify" ? variantImage :
+    sourceMode === "upload" ? uploadedProductUrl :
+    null;
 
   const controls: DisplayControls = {
     productTitle: activeProductTitle,
@@ -213,7 +216,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
     goal, style, background, realism, focus,
     aspectRatio: aspect,
     notes,
-    hasReference,
+    hasReference: !!productImageUrl,
   };
 
   const { prompt } = previewDisplayFinal(controls, brandStyle);
