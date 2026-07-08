@@ -382,9 +382,17 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                 )}
 
                 {product && product.variants && product.variants.length > 1 && (
-                  <div className="mt-3">
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: TEXT }}>
-                      Change variant
+                  <div
+                    className="mt-3 rounded-lg p-3"
+                    style={{ background: INK, border: `1px solid ${LINE}` }}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: GOLD }}>
+                        Variants
+                      </span>
+                      <span className="text-[10px]" style={{ color: TEXT }}>
+                        {product.variants.length} options
+                      </span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {product.variants.map((v) => {

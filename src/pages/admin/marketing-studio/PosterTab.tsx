@@ -235,19 +235,34 @@ export default function PosterTab({ brandStyle }: { brandStyle: BrandStyle }) {
               ))}
             </select>
             {product && product.variants?.length > 1 && (
-              <div>
-                <Label className="text-xs">Variant</Label>
-                <select
-                  value={variant?.id || ""}
-                  onChange={(e) => setSelectedVariantId(e.target.value)}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
-                >
-                  {product.variants.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.title}{v.availableForSale ? "" : " — out of stock"}
-                    </option>
-                  ))}
-                </select>
+              <div className="rounded-md border bg-muted/30 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest">
+                    Variants
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground">
+                    {product.variants.length} options
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {product.variants.map((v) => {
+                    const active = (variant?.id || product.variants[0].id) === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setSelectedVariantId(v.id)}
+                        className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                          active
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-background hover:border-foreground/50"
+                        }`}
+                      >
+                        {v.title}{v.availableForSale ? "" : " · oos"}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </CardContent>
