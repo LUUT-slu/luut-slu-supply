@@ -421,113 +421,109 @@ export default function SellerOrderDetail() {
             </div>
           </div>
 
-          <div className="mb-6">
-            <OrderShopifyActions order={order as any} onChanged={refetch} />
-          </div>
-
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      Customer Info
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <p className="font-medium">{order.customer_name}</p>
+            <div className="lg:col-span-2 space-y-4">
+              {/* Customer + Pickup combined */}
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{order.customer_name}</p>
                       {order.customer_phone && (
-                        <p className="text-sm text-muted-foreground">{order.customer_phone}</p>
+                        <p className="text-xs text-muted-foreground truncate">{order.customer_phone}</p>
                       )}
                     </div>
                     {order.customer_phone && (
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={callCustomer} className="flex-1">
-                          <Phone className="h-4 w-4 mr-1" />
-                          Call
+                      <div className="flex gap-2 shrink-0">
+                        <Button size="icon" variant="secondary" onClick={callCustomer} aria-label="Call customer">
+                          <Phone className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={messageCustomer} className="flex-1">
-                          <MessageCircle className="h-4 w-4 mr-1" />
-                          WhatsApp
+                        <Button size="icon" variant="secondary" onClick={() => setQuickMsgKey("confirm")} aria-label="WhatsApp customer">
+                          <MessageCircle className="h-4 w-4" />
                         </Button>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Pickup Info
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
+                  </div>
+                  <Separator />
+                  <div className="space-y-1.5 text-sm">
                     <div className="flex items-start gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                       <span>{order.location}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs pl-6">
+                      <Calendar className="h-3.5 w-3.5" />
                       <span>{displayDate(order.preferred_date)}</span>
-                    </div>
-                    {(order.pickup_time || order.pickup_time_window) && (
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>{order.pickup_time || order.pickup_time_window}</span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Order Items */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">Order Items</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {order.items.map((item) => (
-                      <div key={item.id} className="flex items-center gap-4">
-                        {item.product_image_url ? (
-                          <img
-                            src={item.product_image_url}
-                            alt={item.product_name}
-                            className="h-16 w-16 rounded-lg object-cover"
-                          />
-                        ) : (
-                          <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center">
-                            <Package className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm line-clamp-1">{item.product_name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatCurrency(item.unit_price)} × {item.quantity}
-                          </p>
-                        </div>
-                        <p className="font-medium">{formatCurrency(item.total_price)}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Separator className="my-4" />
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span>{formatCurrency(itemsTotal)}</span>
-                    </div>
-                    <div className="flex justify-between font-medium text-lg">
-                      <span>Total</span>
-                      <span className="text-primary">{formatCurrency(order.total_price)}</span>
+                      {(order.pickup_time || order.pickup_time_window) && (
+                        <>
+                          <span>·</span>
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>{order.pickup_time || order.pickup_time_window}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </CardContent>
+              </Card>
+
+              {/* Order Items — collapsible */}
+              <Card>
+                <button
+                  type="button"
+                  onClick={() => setItemsOpen(!itemsOpen)}
+                  className="w-full flex items-center justify-between p-4 text-sm touch-manipulation"
+                >
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      {order.items.length} {order.items.length === 1 ? "item" : "items"} · {formatCurrency(order.total_price)}
+                    </span>
+                  </div>
+                  {itemsOpen ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </button>
+                {itemsOpen && (
+                  <CardContent className="pt-0">
+                    <div className="space-y-3">
+                      {order.items.map((item) => (
+                        <div key={item.id} className="flex items-center gap-3">
+                          {item.product_image_url ? (
+                            <img
+                              src={item.product_image_url}
+                              alt={item.product_name}
+                              className="h-12 w-12 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
+                              <Package className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm line-clamp-1">{item.product_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatCurrency(item.unit_price)} × {item.quantity}
+                            </p>
+                          </div>
+                          <p className="font-medium text-sm">{formatCurrency(item.total_price)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <Separator className="my-3" />
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Subtotal</span>
+                        <span>{formatCurrency(itemsTotal)}</span>
+                      </div>
+                      <div className="flex justify-between font-medium">
+                        <span>Total</span>
+                        <span className="text-primary">{formatCurrency(order.total_price)}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                )}
               </Card>
 
               {(order.note || order.seller_notes) && (
@@ -573,139 +569,187 @@ export default function SellerOrderDetail() {
               </Card>
             </div>
 
-            {/* Sidebar Actions */}
-            <div className="space-y-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {order.status === "pending" && (
-                    <Button
-                      className="w-full justify-start"
-                      variant="outline"
-                      onClick={() => handleStatusChange("confirmed")}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2 text-blue-400" />
-                      Confirm Order
-                    </Button>
-                  )}
+            {/* Right column — actions */}
+            <div className="space-y-3">
+              {/* WhatsApp Quick Messages */}
+              <WhatsAppQuickMessages
+                order={order as any}
+                sellerName={profile?.seller_name}
+                openKey={quickMsgKey}
+                onOpenChange={setQuickMsgKey}
+              />
 
-                  {(order.status === "pending" || order.status === "confirmed") && (
-                    <Button
-                      className="w-full justify-start"
-                      variant="outline"
-                      onClick={() => handleStatusChange("completed")}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-400" />
-                      Mark Completed
-                    </Button>
-                  )}
-
-                  {order.status !== "cancelled" && order.status !== "completed" && (
-                    <Button
-                      className="w-full justify-start"
-                      variant="outline"
-                      onClick={() => handleStatusChange("cancelled")}
-                    >
-                      <XCircle className="h-4 w-4 mr-2 text-red-400" />
-                      Cancel Order
-                    </Button>
-                  )}
-
-                  {order.status !== "no-show" && order.status !== "completed" && (
-                    <Button
-                      className="w-full justify-start"
-                      variant="outline"
-                      onClick={() => handleStatusChange("no-show")}
-                    >
-                      <AlertTriangle className="h-4 w-4 mr-2 text-muted-foreground" />
-                      Mark No-Show
-                    </Button>
-                  )}
-
-                  <Separator className="my-2" />
-
+              {/* Primary actions — always visible */}
+              {order.status !== "completed" && order.status !== "cancelled" && (
+                <div className="grid grid-cols-2 gap-2">
                   <Button
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={messageCustomer}
+                    className="h-11"
+                    onClick={() => handleStatusChange("completed")}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1.5" />
+                    Mark Completed
+                  </Button>
+                  <Button
+                    className="h-11"
+                    variant="secondary"
+                    onClick={() => setQuickMsgKey("confirm")}
                     disabled={!order.customer_phone}
                   >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Message Customer
+                    <Send className="h-4 w-4 mr-1.5" />
+                    Message
                   </Button>
+                </div>
+              )}
 
-                  <Button
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={addToCalendar}
-                    disabled={addingToCalendar}
+              {order.shopify_draft_order_id && (
+                <Button
+                  variant="outline"
+                  className="w-full h-11 border-dashed"
+                  asChild
+                >
+                  <a
+                    href={`https://lovable-project-yf43m.myshopify.com/admin/draft_orders/${order.shopify_draft_order_id}`}
+                    target="_blank"
+                    rel="noreferrer"
                   >
-                    <CalendarPlus className="h-4 w-4 mr-2" />
-                    {addingToCalendar ? "Adding..." : "Add to Calendar"}
-                  </Button>
+                    <ExternalLink className="h-4 w-4 mr-2 text-primary" />
+                    Open Shopify Draft
+                  </a>
+                </Button>
+              )}
 
-                  <Button
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={openReschedule}
-                    disabled={order.status === "cancelled" || order.status === "completed"}
-                  >
-                    <CalendarClock className="h-4 w-4 mr-2 text-amber-400" />
-                    Reschedule
-                  </Button>
-
-
-                  <Button
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={() => setEditDialogOpen(true)}
-                    disabled={!isEditable}
-                  >
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit Order
-                  </Button>
-
-                  <Button
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={toggleArchive}
-                  >
-                    <Archive className="h-4 w-4 mr-2" />
-                    Archive Order
-                  </Button>
-
-                  {canDelete && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button className="w-full justify-start" variant="destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Order
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Order?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the order
-                            and all its items.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+              {/* Shopify status badges strip (compact) */}
+              {(order.shopify_sync_status || order.shopify_draft_order_name) && (
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground px-1">
+                  {order.shopify_sync_status && (
+                    <Badge variant="outline" className="text-[10px]">
+                      Shopify: {String(order.shopify_sync_status).replace(/_/g, " ")}
+                    </Badge>
                   )}
-                </CardContent>
-              </Card>
+                  {order.shopify_draft_order_name && (
+                    <span className="font-mono">{order.shopify_draft_order_name}</span>
+                  )}
+                </div>
+              )}
 
+              {/* More options toggle */}
+              <button
+                type="button"
+                onClick={() => setMoreOpen(!moreOpen)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 text-xs text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+                {moreOpen ? "Fewer options" : "More options"}
+              </button>
+
+              {moreOpen && (
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="divide-y divide-border">
+                      {order.status === "pending" && (
+                        <button
+                          type="button"
+                          onClick={() => handleStatusChange("confirmed")}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-accent touch-manipulation"
+                        >
+                          <CheckCircle className="h-4 w-4 text-blue-400" />
+                          Confirm Order
+                        </button>
+                      )}
+                      {order.status !== "no-show" && order.status !== "completed" && (
+                        <button
+                          type="button"
+                          onClick={() => handleStatusChange("no-show")}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-accent touch-manipulation"
+                        >
+                          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                          Mark No-Show
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={openReschedule}
+                        disabled={order.status === "cancelled" || order.status === "completed"}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-accent disabled:opacity-50 touch-manipulation"
+                      >
+                        <CalendarClock className="h-4 w-4 text-amber-400" />
+                        Reschedule
+                      </button>
+                      <button
+                        type="button"
+                        onClick={addToCalendar}
+                        disabled={addingToCalendar}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-accent disabled:opacity-50 touch-manipulation"
+                      >
+                        <CalendarPlus className="h-4 w-4" />
+                        {addingToCalendar ? "Adding..." : "Add to Calendar"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditDialogOpen(true)}
+                        disabled={!isEditable}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-accent disabled:opacity-50 touch-manipulation"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit Order
+                      </button>
+                      <button
+                        type="button"
+                        onClick={toggleArchive}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-accent touch-manipulation"
+                      >
+                        <Archive className="h-4 w-4" />
+                        Archive Order
+                      </button>
+                      {order.status !== "cancelled" && order.status !== "completed" && (
+                        <button
+                          type="button"
+                          onClick={() => handleStatusChange("cancelled")}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left text-destructive hover:bg-accent touch-manipulation"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Cancel Order
+                        </button>
+                      )}
+                      {canDelete && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button
+                              type="button"
+                              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left text-destructive hover:bg-accent touch-manipulation"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete Order
+                            </button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Order?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the order
+                                and all its items.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
+                    {/* Full Shopify actions (resync, request completion, etc.) */}
+                    <div className="p-3 border-t border-border">
+                      <OrderShopifyActions order={order as any} onChanged={refetch} />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         </main>
       </div>
+
 
       <EditOrderDialog
         open={editDialogOpen}
