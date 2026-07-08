@@ -349,9 +349,9 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
       className="-mx-4 -mb-6 px-4 pb-32 pt-2"
       style={{ background: INK, color: TEXT, minHeight: "calc(100vh - 220px)" }}
     >
-      <div className="grid gap-5 lg:grid-cols-[1fr_400px]">
+      <div className="grid gap-5 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px]">
         {/* LEFT column */}
-        <div className="space-y-5">
+        <div className="space-y-5 min-w-0">
           {/* 1. Product Source */}
           <SectionCard title="Product Source">
             <div className="mb-3 grid grid-cols-3 gap-2">
