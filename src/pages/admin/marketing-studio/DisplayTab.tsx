@@ -548,6 +548,9 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
           {/* 3. Reference This Image (optional) */}
           <SectionCard title={`Reference This Image (${refs.length}/${MAX_REFS}) · optional`}>
             <div className="flex flex-wrap gap-2">
+          {/* 3. Style Reference (optional) */}
+          <SectionCard title={`Style Reference (${refs.length}/${MAX_REFS}) · optional`}>
+            <div className="flex flex-wrap gap-2">
               {refs.map((src, i) => (
                 <div key={i} className="relative h-16 w-16 overflow-hidden rounded-lg" style={{ border: `1px solid ${LINE}` }}>
                   <img src={src} alt="" className="h-full w-full object-cover" />
@@ -561,29 +564,6 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                   </button>
                 </div>
               ))}
-              {refs.length === 0 && autoRefAvailable && variantImage && (
-                <div
-                  className="relative h-16 w-16 overflow-hidden rounded-lg"
-                  style={{ border: `1px dashed ${GOLD}66` }}
-                >
-                  <img src={variantImage} alt="Product listing" className="h-full w-full object-cover opacity-80" />
-                  <button
-                    type="button"
-                    onClick={() => setAutoRefDismissed(true)}
-                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full shadow"
-                    style={{ background: INK, color: "#fff", border: `1px solid ${LINE}` }}
-                    aria-label="Remove auto reference"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                  <span
-                    className="absolute inset-x-0 bottom-0 text-center text-[9px] font-bold py-0.5"
-                    style={{ background: `${GOLD}dd`, color: "#1a1400" }}
-                  >
-                    AUTO
-                  </span>
-                </div>
-              )}
               {refs.length < MAX_REFS && (
                 <label
                   className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-lg text-2xl"
@@ -604,21 +584,12 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                   />
                 </label>
               )}
-              {sourceMode === "shopify" && autoRefDismissed && refs.length === 0 && variantImage && (
-                <button
-                  type="button"
-                  onClick={() => setAutoRefDismissed(false)}
-                  className="rounded-lg px-2 text-[10px] font-semibold"
-                  style={{ background: RAISED, border: `1px dashed ${LINE}`, color: TEXT }}
-                >
-                  Restore auto
-                </button>
-              )}
             </div>
             <p className="mt-2 text-[11px]" style={{ color: TEXT }}>
-              Optional. If left empty, the image is generated purely from your prompt. When present, it defines the structure — do not expect its contents to be copied.
+              Optional. Shows how you'd like the final image to look and feel — mood, lighting, composition. The product itself is always taken from Product Source above.
             </p>
           </SectionCard>
+
 
           {/* 4. Quick Presets */}
           <SectionCard title="Quick Presets" right={<span className="text-[11px] font-semibold" style={{ color: GOLD }}>See All</span>}>
