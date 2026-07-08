@@ -222,7 +222,7 @@ export function useSellerStats(
           o.status !== "completed" &&
           o.status !== "no-show"
       ).length;
-      const todaysOrders = periodOrders;
+      const todaysOrders = periodOrders.filter((o) => o.status === "completed");
 
 
 
