@@ -195,6 +195,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
   const [notes, setNotes] = useState("");
   const [promptOverride, setPromptOverride] = useState<string | null>(null);
   const [lastSeed, setLastSeed] = useState<number | null>(null);
+  const [autoRefDismissed, setAutoRefDismissed] = useState(false);
 
   const [generating, setGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
@@ -202,8 +203,9 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
   // Effective product context depending on sourceMode
   const activeProductTitle = sourceMode === "shopify" ? product?.title || "" : "";
   const activeProductCategory = sourceMode === "shopify" ? product?.category || undefined : undefined;
-  const hasReference =
-    refs.length > 0 || (sourceMode === "shopify" && Boolean(variantImage));
+  const autoRefAvailable =
+    sourceMode === "shopify" && !autoRefDismissed && Boolean(variantImage);
+  const hasReference = refs.length > 0 || autoRefAvailable;
 
   const controls: DisplayControls = {
     productTitle: activeProductTitle,
@@ -245,42 +247,92 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
     const sourceRefs =
       refs.length > 0
         ? refs
-        : sourceMode === "shopify" && variantImage
+        : autoRefAvailable && variantImage
         ? [variantImage]
         : [];
     const imageUrl = sourceRefs[0];
-    if (!imageUrl) {
-      toast.error("Add a reference image or pick a product with an image");
-      return;
-    }
+
     const seed =
       opts?.reuseSeed && lastSeed != null
         ? lastSeed
         : Math.floor(Math.random() * 2_147_483_647);
 
-    const mode: "remove-bg" | "expand" = background === "transparent" ? "remove-bg" : "expand";
+    const effectivePrompt = promptOverride ?? prompt;
+    if (!imageUrl && (!effectivePrompt || effectivePrompt.trim().length < 2)) {
+      toast.error("Add a reference image or write a prompt first");
+      return;
+    }
 
     setGenerating(true);
     setResultUrl(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const { data, error } = await supabase.functions.invoke("ai-image-prep", {
-        body: {
-          imageUrl,
-          mode,
-          aspectRatio: aspect,
-          campaignType: "display",
-          productTitle: activeProductTitle,
-          prompt: promptOverride ?? prompt,
-        },
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-      if (error || (data as any)?.error) {
-        const raw = (data as any)?.error || error?.message || "Generation failed";
-        toast.error(raw);
-        return;
+
+      if (imageUrl) {
+        // Image-to-image via ai-image-prep (unchanged path)
+        const mode: "remove-bg" | "expand" = background === "transparent" ? "remove-bg" : "expand";
+        const { data, error } = await supabase.functions.invoke("ai-image-prep", {
+          body: {
+            imageUrl,
+            mode,
+            aspectRatio: aspect,
+            campaignType: "display",
+            productTitle: activeProductTitle,
+            prompt: effectivePrompt,
+          },
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
+        if (error || (data as any)?.error) {
+          const raw = (data as any)?.error || error?.message || "Generation failed";
+          toast.error(raw);
+          return;
+        }
+        setResultUrl((data as any).url);
+      } else {
+        // Text-to-image fallback via existing text-to-image edge function.
+        // Allowed ratios: 1:1, 9:16, 16:9, 4:3, 3:4. Map 4:5 → 3:4.
+        const t2iRatio = aspect === "4:5" ? "3:4" : aspect;
+        const auth = { Authorization: `Bearer ${session?.access_token}` };
+        const start = await supabase.functions.invoke("text-to-image", {
+          body: { action: "start", prompt: effectivePrompt, aspect_ratio: t2iRatio },
+          headers: auth,
+        });
+        if (start.error || (start.data as any)?.error) {
+          const raw = (start.data as any)?.error || start.error?.message || "Generation failed";
+          toast.error(raw);
+          return;
+        }
+        const predId = (start.data as any)?.id;
+        if (!predId) {
+          toast.error("Generation failed to start");
+          return;
+        }
+        // Poll until succeeded/failed. ~90s cap.
+        let url: string | null = null;
+        for (let i = 0; i < 45; i++) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const s = await supabase.functions.invoke("text-to-image", {
+            body: { action: "status", id: predId },
+            headers: auth,
+          });
+          const sd = s.data as any;
+          if (s.error || sd?.error) {
+            toast.error(sd?.error || s.error?.message || "Generation failed");
+            return;
+          }
+          if (sd?.status === "succeeded" && sd?.imageUrl) { url = sd.imageUrl; break; }
+          if (sd?.status === "failed" || sd?.status === "canceled") {
+            toast.error("Generation failed");
+            return;
+          }
+        }
+        if (!url) {
+          toast.error("Generation timed out");
+          return;
+        }
+        setResultUrl(url);
       }
-      setResultUrl((data as any).url);
+
       setLastSeed(seed);
       toast.success("Display image generated");
     } catch (e: any) {
