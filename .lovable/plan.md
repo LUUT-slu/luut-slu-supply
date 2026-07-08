@@ -1,49 +1,66 @@
-## Goal
+# Dashboard Restructure Plan
 
-Restructure `src/pages/seller/SellerOrderDetail.tsx` so the action surface matches the attached reference: a small set of primary actions always visible, everything else collapsed under "More options", plus a new "WhatsApp Quick Messages" section with editable pre-filled templates.
+Only the body of `src/pages/seller/SellerDashboardNew.tsx` changes. Top nav, header (logo, ID, Approved badge), and bottom quick-access grid remain untouched.
 
-Scope: presentation only. All existing handlers (status changes, calendar, reschedule, edit, archive, delete, Shopify sync) are reused as-is — nothing is removed, just regrouped.
+## Data audit (current state)
 
-## Layout (top → bottom)
+The existing dashboard uses `useSellerStats(profile.id, dateRange)` which queries Supabase live:
+- `order_items` filtered by `seller_id` → joined to `orders` → filters revenue to `status='completed'`.
+- `seller_products` count for active products.
+- All values (Total Revenue, Orders, Units Sold, Active Products, Best Seller) are **live**. Nothing is hardcoded.
 
-1. **Header** — back button, order number, status badge, "Created …" line. Status `<Select>` stays for quick status jumps (kept — sellers rely on it).
-2. **Customer + Pickup card** — merged card, name/phone with Call + WhatsApp icon buttons on the right, divider, pickup location/date/time. Matches reference.
-3. **Order Items card** — collapsible (closed by default on mobile, open on desktop), header shows "N items · EC$total". Notes render inside when expanded.
-4. **WhatsApp Quick Messages card** — new. 2-col grid of template chips: Confirm Order, Item Out of Stock, No-Show Follow-Up, Thank You, Pickup Reminder, Reschedule. Tapping one opens a bottom-sheet modal with editable textarea pre-filled from order data, then Copy / Send via WhatsApp buttons.
-5. **Primary actions row** — 2-col grid, always visible:
-   - **Mark Completed** (primary/gold styling via existing `default` button variant) → `handleStatusChange("completed")`. Hidden if already completed/cancelled.
-   - **Message Customer** → opens the Confirm Order template modal (same flow as quick messages).
-6. **Open Shopify Draft** — full-width outlined button, only shown when `order.shopify_draft_order_id` exists. Opens `https://lovable-project-yf43m.myshopify.com/admin/draft_orders/{id}` in a new tab (same base URL already used in `OrderShopifyActions`).
-7. **More options** toggle → expands a card listing: Mark No-Show, Reschedule, Add to Calendar, Edit Order, Resync (Shopify), Request Admin Completion (non-admins only), Cancel Order, Archive Order, Delete Order (when `canDelete`). Each wired to its existing handler.
-8. **Shopify status strip** — keep the compact status/badges portion of `OrderShopifyActions` (sync status, WA comm status, draft name, error). Move its buttons into "More options" so the badges stay visible but the button clutter is gone. Simplest path: render a slim inline strip here and skip mounting `OrderShopifyActions` at the top; wire Resync / Request Admin Completion in the More menu directly (small duplication of two `supabase.functions.invoke` calls already in that component).
-9. **AI Order Helper** and **SellerAIPanel** remain where they are (unchanged).
+The dashboard does NOT currently fetch "next orders to complete" or any today-scoped metrics — those need to be added.
 
-Sidebar/Quick Actions card (lines 566–692) is removed — its actions are redistributed into Primary + More options.
+## Changes
 
-## WhatsApp templates
+### 1. Extend `src/hooks/useSellerStats.ts`
+Add today-scoped aggregates without removing existing fields. New returned stats:
+- `todayRevenue` — sum of `order_items.total_price` where the parent order was `created_at >= startOfToday` (local) AND `status='completed'`.
+- `todayOrders` — count of distinct orders `created_at >= startOfToday`.
+- `todayReadyForPickup` — of today's orders, count where `preferred_date = today` OR `status in ('confirmed','pending')` (whichever matches "ready for pickup today"; I'll use `preferred_date = today AND status != 'cancelled'`).
 
-All templates receive `{ order, profile }` and produce a string that includes the order token track link (existing pattern from `messageCustomer`). Templates:
+All queries reuse the existing `order_items → orders` join pattern — no new tables. Existing `totalRevenue`, `totalOrders`, `totalUnitsSold`, `productsActive` stay live.
 
-- **Confirm Order** — greeting + items + pickup + total + track link.
-- **Item Out of Stock** — apology, offer swap/refund.
-- **No-Show Follow-Up** — missed you, want to reschedule?
-- **Thank You** — post-pickup thanks + IG tag.
-- **Pickup Reminder** — date/time/location reminder.
-- **Reschedule** — ask for new day/time.
+### 2. New hook `src/hooks/useNextSellerOrders.ts`
+Fetches next 5 pending orders for the seller:
+- `order_items` where `seller_id = profile.id` → `orders` where `status IN ('pending','confirmed')` ordered by `preferred_date ASC NULLS LAST, created_at ASC`, limit 5.
+- Returns `{ id, order_number, items_summary, customer_name, location, total_price, status }`.
 
-Template modal (new small component or inline): bottom sheet on mobile (`fixed inset-x-0 bottom-0`), centered dialog on desktop via shadcn `Dialog`. Contents: title with icon, editable `<Textarea>` seeded from template, Copy button, "Send via WhatsApp" button that opens `https://wa.me/{normalizedPhone}?text={encoded draft}`.
+All live from Supabase.
 
-## Technical notes
+### 3. Rewrite body of `SellerDashboardNew.tsx`
+Keep imports, `SellerNav`, header block (logo/name/ID/Approved), `SellerAIPanel`, and the bottom quick-access grid (Manage Products, View Orders, Analytics, Purchase Orders) exactly as-is.
 
-- New file `src/components/seller/WhatsAppQuickMessages.tsx` exporting the templates array + the section UI + the preview modal. Keeps `SellerOrderDetail.tsx` from bloating.
-- Reuse existing `normalizePhone`, `formatCurrency`, `formatOrderNumber`, `displayDate` — pass them in or duplicate the small helpers inside the component.
-- "Message Customer" primary button reuses the same modal by preselecting the Confirm Order template (so sellers still get an editable preview instead of jumping straight to WhatsApp — this is a small UX upgrade over today's behavior, matching the reference).
-- No design tokens changed. Uses existing shadcn `Card`, `Button`, `Dialog`, `Textarea`, `Separator`. No hardcoded colors — the reference's gold/navy is achieved via existing `primary` / `secondary` variants so it stays consistent with the app's Inter/dark ecommerce theme.
-- No backend, RLS, schema, or hook changes. `useSellerOrders`, `EditOrderDialog`, calendar functions, RPCs all untouched.
-- Mobile-first: primary row and template grid are 2-col; "More options" content collapses to a single vertical list. Desktop keeps the 3-col grid layout you have today (main content + this action stack on the right), so nothing regresses on wide screens.
+Replace the middle section with:
+
+**A. KPI grid (2×2 mobile, 4-col desktop)** — new order:
+1. Today's Revenue (green DollarSign) — value `todayRevenue`, subtitle `{todayOrders} orders today`
+2. Today's Orders (blue ShoppingBag) — value `todayOrders`, subtitle `{todayReadyForPickup} ready for pickup`
+3. Total Revenue (purple TrendingUp) — value `totalRevenue`, subtitle "all-time"
+4. Total Orders (gold Package) — value `totalOrders`, subtitle `{totalUnitsSold} units sold`
+
+Remove the existing DateRangePicker from the dashboard (it only makes sense on analytics; today/all-time is fixed). Best Seller card also removed to match the reference layout.
+
+**B. Marketing Studio card** — full-width `<Card>` with gold Sparkles icon in rounded square, title "Marketing Studio", subtitle "Generate posters & content", ChevronRight on right.
+- **Route note:** the only existing Marketing Studio route is `/admin/marketing-studio` (admin-only). There is no seller-facing marketing studio route. I will wire the card to `/admin/marketing-studio` since admins operate as the primary seller (per project memory), and flag this in the summary so you can confirm or provide a different path.
+
+**C. Next Orders to Complete section**
+- Small uppercase label "NEXT ORDERS TO COMPLETE".
+- Rows from `useNextSellerOrders`: colored status dot (green=Ready/confirmed, gold=En route, silver=Processing/pending), order number in gold, item summary (`Nx product · Nx product`), customer + location line, `EC$` amount, status label.
+- Empty state: centered Inbox icon, "No orders logged", subtext "New orders will show up here as they come in.", and a "Create Order" button reusing existing `CreateOrderDialog`.
+
+**D. Quick-access grid** — unchanged.
+
+## Styling
+Uses existing shadcn `Card` + Tailwind semantic tokens; no hardcoded hex values in components. The reference palette (#0A0A0B / #16161A / #26262A / #E0A82E / #A1A1AA) already matches the app's dark theme tokens, so `bg-background`, `bg-card`, `border-border`, `text-muted-foreground`, and existing `text-primary` gold accents cover it. Numbers get `tabular-nums font-mono` (or Space Grotesk if already registered — will check `tailwind.config.ts` at build time and fall back to `font-mono tabular-nums`).
 
 ## Files touched
+- `src/hooks/useSellerStats.ts` — extend (no removals)
+- `src/hooks/useNextSellerOrders.ts` — new
+- `src/pages/seller/SellerDashboardNew.tsx` — restructure body only
 
-- `src/pages/seller/SellerOrderDetail.tsx` — reorganize JSX below the header; remove the Quick Actions sidebar card; add Primary row, Shopify Draft button, More options collapsible, and mount the new WhatsApp section.
-- `src/components/seller/WhatsAppQuickMessages.tsx` — new component (templates + grid + preview modal).
-- `src/components/orders/OrderShopifyActions.tsx` — leave file in place (still used elsewhere); on the order detail page we render a slim inline badges strip instead. No edits to this file required.
+Nothing else — no routing, auth, or other pages.
+
+## Post-change summary I'll report
+- Live: Today's Revenue, Today's Orders, Today's Ready for Pickup subtitle, Total Revenue, Total Orders, Units Sold subtitle, Next Orders list.
+- Placeholder/assumption: Marketing Studio link points to `/admin/marketing-studio` — confirm or supply seller-facing path.
