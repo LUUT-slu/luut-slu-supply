@@ -545,12 +545,10 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
             />
           </SectionCard>
 
-          {/* 3. Reference This Image (optional) */}
-          <SectionCard title={`Reference This Image (${refs.length}/${MAX_REFS}) · optional`}>
-            <div className="flex flex-wrap gap-2">
           {/* 3. Style Reference (optional) */}
           <SectionCard title={`Style Reference (${refs.length}/${MAX_REFS}) · optional`}>
             <div className="flex flex-wrap gap-2">
+
               {refs.map((src, i) => (
                 <div key={i} className="relative h-16 w-16 overflow-hidden rounded-lg" style={{ border: `1px solid ${LINE}` }}>
                   <img src={src} alt="" className="h-full w-full object-cover" />
