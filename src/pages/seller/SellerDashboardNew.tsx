@@ -42,17 +42,17 @@ export default function SellerDashboardNew() {
 
   const kpiCards = [
     {
-      title: "Today's Revenue",
+      title: `${periodLabel}'s Revenue`,
       value: formatCurrency(stats.todayRevenue),
-      subtitle: `${stats.todayOrders} order${stats.todayOrders === 1 ? "" : "s"} today`,
+      subtitle: `${stats.todayOrders} order${stats.todayOrders === 1 ? "" : "s"} ${periodSubOrders}`,
       icon: DollarSign,
       color: "text-green-500",
       bgColor: "bg-green-500/10",
     },
     {
-      title: "Today's Orders",
+      title: `${periodLabel}'s Orders`,
       value: stats.todayOrders.toString(),
-      subtitle: `${stats.todayReadyForPickup} ready for pickup`,
+      subtitle: `${stats.todayReadyForPickup} ready for pickup today`,
       icon: ShoppingBag,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
