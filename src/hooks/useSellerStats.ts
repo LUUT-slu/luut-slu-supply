@@ -218,8 +218,9 @@ export function useSellerStats(
       const todayStr = `${sluY}-${String(sluM + 1).padStart(2, "0")}-${String(sluD).padStart(2, "0")}`;
 
       const periodOrders = ordersData.filter((o) => {
-        // Use created_at (sale time) so pickup date can't push a sale into another week/month.
-        const d = new Date(o.created_at);
+        // Use effective sale/pickup date (preferred_date for Shopify rows) so bulk-sync time
+        // doesn't dump historical orders into the current period.
+        const d = effectiveOrderDate(o);
         return d >= startOfPeriod && d <= periodEnd;
       });
 
