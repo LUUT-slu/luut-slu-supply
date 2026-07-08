@@ -96,12 +96,16 @@ export default function SellerOrderDetail() {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
   const [rescheduling, setRescheduling] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [itemsOpen, setItemsOpen] = useState(true);
+  const [quickMsgKey, setQuickMsgKey] = useState<string | null>(null);
 
   const addToCalendar = async () => {
     if (!order) return;
     setAddingToCalendar(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-order-calendar-event", {
+
         body: { orderId: order.id },
       });
       if (error) throw error;
