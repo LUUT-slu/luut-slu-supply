@@ -184,6 +184,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
   const variantImage = variant?.image?.url || product?.images?.[0]?.url || null;
 
   const [refs, setRefs] = useState<string[]>([]);
+  const [uploadedProductUrl, setUploadedProductUrl] = useState<string | null>(null);
   const notesRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [goal, setGoal] = useState<DisplayGoal>("product_display");
@@ -195,7 +196,6 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
   const [notes, setNotes] = useState("");
   const [promptOverride, setPromptOverride] = useState<string | null>(null);
   const [lastSeed, setLastSeed] = useState<number | null>(null);
-  const [autoRefDismissed, setAutoRefDismissed] = useState(false);
 
   const [generating, setGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
@@ -203,9 +203,12 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
   // Effective product context depending on sourceMode
   const activeProductTitle = sourceMode === "shopify" ? product?.title || "" : "";
   const activeProductCategory = sourceMode === "shopify" ? product?.category || undefined : undefined;
-  const autoRefAvailable =
-    sourceMode === "shopify" && !autoRefDismissed && Boolean(variantImage);
-  const hasReference = refs.length > 0 || autoRefAvailable;
+
+  // Authoritative product image — always sent to generation to keep the product exact.
+  const productImageUrl: string | null =
+    sourceMode === "shopify" ? variantImage :
+    sourceMode === "upload" ? uploadedProductUrl :
+    null;
 
   const controls: DisplayControls = {
     productTitle: activeProductTitle,
@@ -213,7 +216,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
     goal, style, background, realism, focus,
     aspectRatio: aspect,
     notes,
-    hasReference,
+    hasReference: !!productImageUrl,
   };
 
   const { prompt } = previewDisplayFinal(controls, brandStyle);
@@ -244,13 +247,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
       toast.error("Select a product first");
       return;
     }
-    const sourceRefs =
-      refs.length > 0
-        ? refs
-        : autoRefAvailable && variantImage
-        ? [variantImage]
-        : [];
-    const imageUrl = sourceRefs[0];
+    const imageUrl = productImageUrl;
 
     const seed =
       opts?.reuseSeed && lastSeed != null
@@ -259,7 +256,11 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
 
     const effectivePrompt = promptOverride ?? prompt;
     if (!imageUrl && (!effectivePrompt || effectivePrompt.trim().length < 2)) {
-      toast.error("Add a reference image or write a prompt first");
+      if (sourceMode === "upload") {
+        toast.error("Upload a product image or write a prompt first");
+      } else {
+        toast.error("Write a prompt first");
+      }
       return;
     }
 
@@ -378,6 +379,11 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                 );
               })}
             </div>
+            <p className="mb-3 text-[11px]" style={{ color: TEXT }}>
+              This image is used as the product. It defines exactly how the product looks in the result.
+            </p>
+
+
 
             {sourceMode === "shopify" && (
               <div
@@ -476,11 +482,11 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                 className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl px-3 py-8 text-center"
                 style={{ background: RAISED, border: `1.5px dashed ${LINE}` }}
               >
-                {refs[0] ? (
+                {uploadedProductUrl ? (
                   <div className="flex items-center gap-3">
-                    <img src={refs[0]} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                    <img src={uploadedProductUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
                     <div className="text-left">
-                      <div className="text-sm font-semibold text-white">Uploaded</div>
+                      <div className="text-sm font-semibold text-white">Uploaded product</div>
                       <div className="text-[11px]" style={{ color: TEXT }}>Tap to replace</div>
                     </div>
                   </div>
@@ -488,17 +494,19 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                   <>
                     <Upload size={22} color={GOLD} />
                     <div className="text-sm font-semibold text-white">Upload your product</div>
-                    <div className="text-[11px]" style={{ color: TEXT }}>Use any image of your choice</div>
+                    <div className="text-[11px]" style={{ color: TEXT }}>This image defines exactly how the product looks</div>
                   </>
                 )}
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => {
-                    const files = Array.from(e.currentTarget.files || []);
-                    handleFilesPicked(files, true);
-                    e.currentTarget.value = "";
+                  onChange={async (e) => {
+                    const input = e.currentTarget;
+                    const files = Array.from(input.files || []);
+                    const added = await prepareMarketingSourceImages(files, 1);
+                    if (added[0]) setUploadedProductUrl(added[0]);
+                    if (input) input.value = "";
                   }}
                 />
               </label>
@@ -542,9 +550,10 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
             />
           </SectionCard>
 
-          {/* 3. Reference This Image (optional) */}
-          <SectionCard title={`Reference This Image (${refs.length}/${MAX_REFS}) · optional`}>
+          {/* 3. Style Reference (optional) */}
+          <SectionCard title={`Style Reference (${refs.length}/${MAX_REFS}) · optional`}>
             <div className="flex flex-wrap gap-2">
+
               {refs.map((src, i) => (
                 <div key={i} className="relative h-16 w-16 overflow-hidden rounded-lg" style={{ border: `1px solid ${LINE}` }}>
                   <img src={src} alt="" className="h-full w-full object-cover" />
@@ -558,29 +567,6 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                   </button>
                 </div>
               ))}
-              {refs.length === 0 && autoRefAvailable && variantImage && (
-                <div
-                  className="relative h-16 w-16 overflow-hidden rounded-lg"
-                  style={{ border: `1px dashed ${GOLD}66` }}
-                >
-                  <img src={variantImage} alt="Product listing" className="h-full w-full object-cover opacity-80" />
-                  <button
-                    type="button"
-                    onClick={() => setAutoRefDismissed(true)}
-                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full shadow"
-                    style={{ background: INK, color: "#fff", border: `1px solid ${LINE}` }}
-                    aria-label="Remove auto reference"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                  <span
-                    className="absolute inset-x-0 bottom-0 text-center text-[9px] font-bold py-0.5"
-                    style={{ background: `${GOLD}dd`, color: "#1a1400" }}
-                  >
-                    AUTO
-                  </span>
-                </div>
-              )}
               {refs.length < MAX_REFS && (
                 <label
                   className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-lg text-2xl"
@@ -601,21 +587,12 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
                   />
                 </label>
               )}
-              {sourceMode === "shopify" && autoRefDismissed && refs.length === 0 && variantImage && (
-                <button
-                  type="button"
-                  onClick={() => setAutoRefDismissed(false)}
-                  className="rounded-lg px-2 text-[10px] font-semibold"
-                  style={{ background: RAISED, border: `1px dashed ${LINE}`, color: TEXT }}
-                >
-                  Restore auto
-                </button>
-              )}
             </div>
             <p className="mt-2 text-[11px]" style={{ color: TEXT }}>
-              Optional. If left empty, the image is generated purely from your prompt. When present, it defines the structure — do not expect its contents to be copied.
+              Optional. Shows how you'd like the final image to look and feel — mood, lighting, composition. The product itself is always taken from Product Source above.
             </p>
           </SectionCard>
+
 
           {/* 4. Quick Presets */}
           <SectionCard title="Quick Presets" right={<span className="text-[11px] font-semibold" style={{ color: GOLD }}>See All</span>}>
