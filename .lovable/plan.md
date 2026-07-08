@@ -1,42 +1,50 @@
-# Fix inflated "today" stats
+## Step 0 — Inventory (from `src/pages/admin/marketing-studio/DisplayTab.tsx`)
 
-## Root cause
+- **Shopify products & variants**: `useHybridProducts({ limit: 100 })` → `products[]`. Local `selectedId` / `selectedVariantId` derive `product` and `variant`. Variants from `product.variants[]`.
+- **Reference image ("Auto" listing image)**: `variantImage = variant?.image?.url || product?.images?.[0]?.url`. When `refs[]` is empty, `variantImage` is auto-used inside `generate()`.
+- **Prompt compiler**: `previewDisplayFinal(controls, brandStyle)` in `src/lib/marketingRouting.ts` (wraps `buildDisplayPrompt`). `controls` built from `goal/style/background/realism/focus/aspect/notes/hasReference/productTitle/productCategory`. Edits handled in `PromptPreview` via `promptOverride`.
+- **Generate call**: `supabase.functions.invoke("ai-image-prep", { body: { imageUrl, mode, aspectRatio, campaignType: "display", productTitle, prompt: promptOverride ?? prompt } })`. `mode = background === "transparent" ? "remove-bg" : "expand"`. Seed via `lastSeed`; result → `resultUrl`.
 
-Shopify orders imported via sync are stamped with `orders.created_at` = the sync timestamp, not the actual order date. Today's DB shows:
-- **3 website orders** actually placed today (created_at = real order time)
-- **52 Shopify Online + 16 Shopify POS orders** backfilled today (created_at ≈ 19:44 local, but real order dates in June/early July stored as ISO strings in `preferred_date`)
+All four stay wired exactly as-is.
 
-Total = 71, which is what the dashboard is (correctly per current logic) summing. The stats query in `useSellerStats.ts` filters by `orders.created_at`, so every Shopify sync spikes "today".
+## Restyle plan (visual only)
 
-Example: order #489 has `created_at = 2026-07-07 19:44` but `preferred_date = 2026-06-24T23:53:56.000Z`.
+**Scope**: only `src/pages/admin/marketing-studio/DisplayTab.tsx` and a light restyle of `src/pages/admin/marketing-studio/PromptPreview.tsx`. No changes to `marketingRouting.ts`, `useHybridProducts`, `ai-image-prep`, `MarketingStudio.tsx` shell, Poster/Video/Library tabs, routing, or auth.
 
-## Fix
+### Tokens (scoped inline to Display tab; no global theme edits)
+bg `#0B0A0D`, card `#161419`, raised `#211E26`, border `#2C2833`, text `#B4AEBE`, white for emphasis, gold `#E0A82E`, gold-2 `#F5C451`, active fill `#E0A82E14`, CTA gradient `linear-gradient(135deg,#E0A82E,#F5C451)` with soft gold glow.
 
-### 1. `src/hooks/useSellerStats.ts`
+### Layout (top → bottom, mobile-first; `lg:` keeps right rail for Live Preview / Result)
 
-Introduce `effectiveOrderDate(order)`:
-- If `source` starts with `"shopify"` **and** `preferred_date` matches `/^\d{4}-\d{2}-\d{2}T/` (ISO): return `new Date(preferred_date)`.
-- Otherwise: return `new Date(created_at)`.
+1. **Product Source** — new segmented toggle `sourceMode: 'shopify' | 'upload' | 'none'`.
+   - `shopify`: card with thumb + "SHOPIFY PRODUCT" gold eyebrow + name + current variant + "Change" button (reopens the existing `<select>`). Variant pills rendered **only if** `product.variants.length > 1`; drives the same `selectedVariantId`. Auto reference flow unchanged.
+   - `upload`: reuses `prepareMarketingSourceImages` → writes into `refs[0]`; shows thumb + Replace.
+   - `none`: dashed card. `hasReference` = `refs.length > 0 || (sourceMode === 'shopify' && !!variantImage)`; `productTitle` empty when `none`. Compiler untouched — only its inputs change.
 
-Replace every place today/week/month scoping uses `created_at`:
-- `periodOrders = ordersData.filter(o => effectiveOrderDate(o) >= startOfPeriod)`
+2. **Describe your image** — a single textarea bound to the existing `notes` state (renamed section, replaces the old "Additional Notes" card entirely per option A). Includes a gold "Auto prompt" chip that focuses the field.
 
-Only the period-scoped block changes. All-time totals (`totalRevenue`, `totalOrders`, `totalUnitsSold`) stay as-is since they aren't date-filtered.
+3. **Reference This Image** — relocates the existing `Reference Images (0/4)` card + Auto thumb here. Copy updated verbatim: "Use this image to create the structure of how the image will look, do not copy any contents inside." Same `refs` state, `MAX_REFS=4`, same upload handler.
 
-Also update the `dateRange` server-side query (`.gte/.lte("created_at", …)`): since Shopify's real date isn't in `created_at`, server-side pre-filter would drop legitimate results. Keep the server-side range filter only when `dateRange` is set (existing analytics behavior); for the "today/week/month" toggle used on the dashboard, no `dateRange` is passed so this doesn't affect it.
+4. **Quick Presets** — existing `DISPLAY_PRESETS` as horizontal-scroll gold pills. Same `applyPreset`.
 
-### 2. `src/hooks/useNextSellerOrders.ts`
+5. **Visual picker rows** (horizontal scroll, cards = swatch tile + label; selected = gold border + `#E0A82E14`):
+   Display Goal · Style · Background · Realism · Product Focus — same option arrays and setters. Background swatch tiles get hinted previews (transparent = checkerboard, studio = grey soft gradient, gradient = warm gradient, lifestyle = scene gradient, solid = flat tint).
 
-Currently orders by `preferred_date` (which is a text column with mixed formats — ISO for Shopify, "Tuesday, July 7, 2026" for website). This is broken sorting. Change ordering to `created_at ASC` on the server and let the UI show status; upcoming pickup dates from mixed-format text are unsafe to sort reliably.
+6. **Choose Shape (Aspect Ratio)** — cards with a mini rectangle in true proportion per `ASPECTS` entry. Same `aspect` state.
 
-Actually keep it simpler: order strictly by `created_at ASC` (oldest first) for pending/confirmed orders. Removes the mixed-format sort risk.
+7. **Final Prompt** — pass-through to existing `PromptPreview`, restyled dark. Compile logic, override state, Edit/Reset/Copy behavior, and 8 ADD TO PROMPT chips unchanged.
 
-### 3. Result after fix
+8. **Live Preview** — existing `LayoutPreview` inside restyled card with small tag chips summarizing selections.
 
-Today (July 7 local) will show only the 3 website orders (order_number 474, 475, 545 — total EC$235, of which 474 & 475 are completed = EC$160). The user reports "$110 off 2 orders", which is close — remaining discrepancy is probably how they count vs the seed data. The dashboard will match reality.
+9. **Result** — existing `resultUrl` render inside restyled dashed placeholder.
 
-## Files touched
-- `src/hooks/useSellerStats.ts` — add `effectiveOrderDate` helper, use it in period filtering
-- `src/hooks/useNextSellerOrders.ts` — swap `preferred_date` sort for `created_at ASC`
+10. **Sticky Generate bar** — full-width gold-gradient "Generate Display Image" + "Regenerate Same Image" underneath. Same `generate()` calls, same seed logic. `sticky bottom-0` with blurred dark backdrop on mobile.
 
-No DB migration needed; no schema changes.
+### What stays exactly the same
+`useHybridProducts`, product/variant state, `controls` shape and `previewDisplayFinal` call, `refs` + `prepareMarketingSourceImages` + `MAX_REFS`, `PromptPreview` compile/override behavior, `supabase.functions.invoke("ai-image-prep", …)` payload, `lastSeed`/`resultUrl`/`downloadImage`, toast messages, Marketing Studio shell (Header, AdminGroupNav, Admin back, Brand Style, Credits & Status, task tabs).
+
+### Files touched
+- `src/pages/admin/marketing-studio/DisplayTab.tsx` — full JSX restyle + `sourceMode` local state + local `VisualPickCard` component.
+- `src/pages/admin/marketing-studio/PromptPreview.tsx` — restyle only (dark card, gold accents, chip pills). Logic unchanged.
+
+No other files touched.

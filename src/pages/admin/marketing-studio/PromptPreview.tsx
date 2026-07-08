@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Pencil, RotateCcw, Plus, Copy, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
+/* LUUT dark palette (must match DisplayTab) */
+const GOLD = "#E0A82E";
+const GOLD2 = "#F5C451";
+const CARD = "#161419";
+const RAISED = "#211E26";
+const LINE = "#2C2833";
+const TEXT = "#B4AEBE";
+const goldGrad = `linear-gradient(135deg, ${GOLD} 0%, ${GOLD2} 100%)`;
+
 interface Props {
-  /** Auto-generated prompt from current settings. */
   prompt: string;
-  /** Optional override — when set, this is the prompt that will be sent. */
   value?: string | null;
-  /** Called whenever the user edits the prompt or resets it (null = use auto). */
   onChange?: (next: string | null) => void;
 }
 
@@ -31,7 +35,6 @@ export default function PromptPreview({ prompt, value, onChange }: Props) {
   const [copied, setCopied] = useState(false);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // When the auto prompt changes and the user has no override, keep the draft in sync.
   useEffect(() => {
     if (value == null) setDraft(prompt);
   }, [prompt, value]);
@@ -71,75 +74,87 @@ export default function PromptPreview({ prompt, value, onChange }: Props) {
   };
 
   return (
-    <div className="rounded-md border bg-muted/30">
+    <div style={{ background: CARD, borderRadius: 14 }}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-xs font-medium"
+        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
       >
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-2 text-[13px] font-semibold text-white">
           Final Prompt
+          <span className="text-[11px] font-normal" style={{ color: TEXT }}>
+            Full prompt preview
+          </span>
           {isOverridden && (
-            <span className="rounded bg-foreground/10 px-1.5 py-0.5 text-[10px] font-normal">
+            <span
+              className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+              style={{ background: `${GOLD}22`, color: GOLD, border: `1px solid ${GOLD}55` }}
+            >
               edited
             </span>
           )}
         </span>
-        {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        {open
+          ? <ChevronUp className="h-4 w-4" color={TEXT} />
+          : <ChevronDown className="h-4 w-4" color={TEXT} />}
       </button>
 
       {open && (
-        <div className="space-y-2 border-t bg-background/50 p-3">
-          <div className="flex flex-wrap gap-1.5">
-            <Button
+        <div className="space-y-3 border-t px-4 py-3" style={{ borderColor: LINE }}>
+          <div className="flex flex-wrap gap-2">
+            <button
               type="button"
-              size="sm"
-              variant={editing ? "default" : "outline"}
-              className="h-7 px-2 text-xs"
               onClick={() => setEditing((v) => !v)}
+              className="flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold"
+              style={
+                editing
+                  ? { background: goldGrad, color: "#1a1400" }
+                  : { background: RAISED, border: `1px solid ${LINE}`, color: "#fff" }
+              }
             >
-              <Pencil className="mr-1 h-3 w-3" />
-              {editing ? "Done" : "Edit"}
-            </Button>
-            <Button
+              <Pencil className="h-3 w-3" /> {editing ? "Done" : "Edit"}
+            </button>
+            <button
               type="button"
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-xs"
               onClick={reset}
               disabled={!isOverridden}
+              className="flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold disabled:opacity-40"
+              style={{ background: RAISED, border: `1px solid ${LINE}`, color: "#fff" }}
             >
-              <RotateCcw className="mr-1 h-3 w-3" /> Reset
-            </Button>
-            <Button
+              <RotateCcw className="h-3 w-3" /> Reset
+            </button>
+            <button
               type="button"
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-xs"
               onClick={copy}
+              className="flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold"
+              style={{ background: RAISED, border: `1px solid ${LINE}`, color: "#fff" }}
             >
-              {copied ? <Check className="mr-1 h-3 w-3" /> : <Copy className="mr-1 h-3 w-3" />}
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               {copied ? "Copied" : "Copy"}
-            </Button>
+            </button>
           </div>
 
           {editing ? (
-            <Textarea
+            <textarea
               ref={taRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onBlur={() => commit(draft)}
               rows={10}
-              className="font-mono text-[11px] leading-relaxed"
+              className="w-full resize-none rounded-lg px-3 py-2 font-mono text-[11px] leading-relaxed outline-none"
+              style={{ background: RAISED, border: `1px solid ${LINE}`, color: "#fff" }}
             />
           ) : (
-            <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded border bg-background p-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
+            <pre
+              className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg px-3 py-2 font-mono text-[11px] leading-relaxed"
+              style={{ background: RAISED, border: `1px solid ${LINE}`, color: TEXT }}
+            >
 {effective || "(empty)"}
             </pre>
           )}
 
           <div>
-            <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: GOLD }}>
               Add to prompt
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -148,9 +163,10 @@ export default function PromptPreview({ prompt, value, onChange }: Props) {
                   key={q.label}
                   type="button"
                   onClick={() => append(q.text)}
-                  className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] hover:border-foreground"
+                  className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition hover:brightness-125"
+                  style={{ background: RAISED, border: `1px solid ${LINE}`, color: "#fff" }}
                 >
-                  <Plus className="h-3 w-3" /> {q.label}
+                  <Plus className="h-3 w-3" style={{ color: GOLD }} /> {q.label}
                 </button>
               ))}
             </div>
