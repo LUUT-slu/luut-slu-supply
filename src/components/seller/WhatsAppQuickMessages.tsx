@@ -168,21 +168,19 @@ export function WhatsAppQuickMessages({ order, sellerName, openKey, onOpenChange
     setActiveKey(key);
   };
 
-  // Reset draft when opened externally
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      setActiveKey(null);
-    } else if (activeKey && !draft) {
+  // Seed draft when parent opens a template externally
+  useEffect(() => {
+    if (activeKey) {
       const t = templates.find((x) => x.key === activeKey);
       if (t) setDraft(t.build(buildCtx(order, sellerName)));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey]);
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) setActiveKey(null);
   };
 
-  // Seed when activeKey changes from parent
-  if (active && !draft) {
-    // lazy seed on first render with an external key
-    setDraft(active.build(buildCtx(order, sellerName)));
-  }
 
   const copyDraft = async () => {
     try {
