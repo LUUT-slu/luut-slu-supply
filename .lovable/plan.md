@@ -1,66 +1,42 @@
-# Dashboard Restructure Plan
+# Fix inflated "today" stats
 
-Only the body of `src/pages/seller/SellerDashboardNew.tsx` changes. Top nav, header (logo, ID, Approved badge), and bottom quick-access grid remain untouched.
+## Root cause
 
-## Data audit (current state)
+Shopify orders imported via sync are stamped with `orders.created_at` = the sync timestamp, not the actual order date. Today's DB shows:
+- **3 website orders** actually placed today (created_at = real order time)
+- **52 Shopify Online + 16 Shopify POS orders** backfilled today (created_at ≈ 19:44 local, but real order dates in June/early July stored as ISO strings in `preferred_date`)
 
-The existing dashboard uses `useSellerStats(profile.id, dateRange)` which queries Supabase live:
-- `order_items` filtered by `seller_id` → joined to `orders` → filters revenue to `status='completed'`.
-- `seller_products` count for active products.
-- All values (Total Revenue, Orders, Units Sold, Active Products, Best Seller) are **live**. Nothing is hardcoded.
+Total = 71, which is what the dashboard is (correctly per current logic) summing. The stats query in `useSellerStats.ts` filters by `orders.created_at`, so every Shopify sync spikes "today".
 
-The dashboard does NOT currently fetch "next orders to complete" or any today-scoped metrics — those need to be added.
+Example: order #489 has `created_at = 2026-07-07 19:44` but `preferred_date = 2026-06-24T23:53:56.000Z`.
 
-## Changes
+## Fix
 
-### 1. Extend `src/hooks/useSellerStats.ts`
-Add today-scoped aggregates without removing existing fields. New returned stats:
-- `todayRevenue` — sum of `order_items.total_price` where the parent order was `created_at >= startOfToday` (local) AND `status='completed'`.
-- `todayOrders` — count of distinct orders `created_at >= startOfToday`.
-- `todayReadyForPickup` — of today's orders, count where `preferred_date = today` OR `status in ('confirmed','pending')` (whichever matches "ready for pickup today"; I'll use `preferred_date = today AND status != 'cancelled'`).
+### 1. `src/hooks/useSellerStats.ts`
 
-All queries reuse the existing `order_items → orders` join pattern — no new tables. Existing `totalRevenue`, `totalOrders`, `totalUnitsSold`, `productsActive` stay live.
+Introduce `effectiveOrderDate(order)`:
+- If `source` starts with `"shopify"` **and** `preferred_date` matches `/^\d{4}-\d{2}-\d{2}T/` (ISO): return `new Date(preferred_date)`.
+- Otherwise: return `new Date(created_at)`.
 
-### 2. New hook `src/hooks/useNextSellerOrders.ts`
-Fetches next 5 pending orders for the seller:
-- `order_items` where `seller_id = profile.id` → `orders` where `status IN ('pending','confirmed')` ordered by `preferred_date ASC NULLS LAST, created_at ASC`, limit 5.
-- Returns `{ id, order_number, items_summary, customer_name, location, total_price, status }`.
+Replace every place today/week/month scoping uses `created_at`:
+- `periodOrders = ordersData.filter(o => effectiveOrderDate(o) >= startOfPeriod)`
 
-All live from Supabase.
+Only the period-scoped block changes. All-time totals (`totalRevenue`, `totalOrders`, `totalUnitsSold`) stay as-is since they aren't date-filtered.
 
-### 3. Rewrite body of `SellerDashboardNew.tsx`
-Keep imports, `SellerNav`, header block (logo/name/ID/Approved), `SellerAIPanel`, and the bottom quick-access grid (Manage Products, View Orders, Analytics, Purchase Orders) exactly as-is.
+Also update the `dateRange` server-side query (`.gte/.lte("created_at", …)`): since Shopify's real date isn't in `created_at`, server-side pre-filter would drop legitimate results. Keep the server-side range filter only when `dateRange` is set (existing analytics behavior); for the "today/week/month" toggle used on the dashboard, no `dateRange` is passed so this doesn't affect it.
 
-Replace the middle section with:
+### 2. `src/hooks/useNextSellerOrders.ts`
 
-**A. KPI grid (2×2 mobile, 4-col desktop)** — new order:
-1. Today's Revenue (green DollarSign) — value `todayRevenue`, subtitle `{todayOrders} orders today`
-2. Today's Orders (blue ShoppingBag) — value `todayOrders`, subtitle `{todayReadyForPickup} ready for pickup`
-3. Total Revenue (purple TrendingUp) — value `totalRevenue`, subtitle "all-time"
-4. Total Orders (gold Package) — value `totalOrders`, subtitle `{totalUnitsSold} units sold`
+Currently orders by `preferred_date` (which is a text column with mixed formats — ISO for Shopify, "Tuesday, July 7, 2026" for website). This is broken sorting. Change ordering to `created_at ASC` on the server and let the UI show status; upcoming pickup dates from mixed-format text are unsafe to sort reliably.
 
-Remove the existing DateRangePicker from the dashboard (it only makes sense on analytics; today/all-time is fixed). Best Seller card also removed to match the reference layout.
+Actually keep it simpler: order strictly by `created_at ASC` (oldest first) for pending/confirmed orders. Removes the mixed-format sort risk.
 
-**B. Marketing Studio card** — full-width `<Card>` with gold Sparkles icon in rounded square, title "Marketing Studio", subtitle "Generate posters & content", ChevronRight on right.
-- **Route note:** the only existing Marketing Studio route is `/admin/marketing-studio` (admin-only). There is no seller-facing marketing studio route. I will wire the card to `/admin/marketing-studio` since admins operate as the primary seller (per project memory), and flag this in the summary so you can confirm or provide a different path.
+### 3. Result after fix
 
-**C. Next Orders to Complete section**
-- Small uppercase label "NEXT ORDERS TO COMPLETE".
-- Rows from `useNextSellerOrders`: colored status dot (green=Ready/confirmed, gold=En route, silver=Processing/pending), order number in gold, item summary (`Nx product · Nx product`), customer + location line, `EC$` amount, status label.
-- Empty state: centered Inbox icon, "No orders logged", subtext "New orders will show up here as they come in.", and a "Create Order" button reusing existing `CreateOrderDialog`.
-
-**D. Quick-access grid** — unchanged.
-
-## Styling
-Uses existing shadcn `Card` + Tailwind semantic tokens; no hardcoded hex values in components. The reference palette (#0A0A0B / #16161A / #26262A / #E0A82E / #A1A1AA) already matches the app's dark theme tokens, so `bg-background`, `bg-card`, `border-border`, `text-muted-foreground`, and existing `text-primary` gold accents cover it. Numbers get `tabular-nums font-mono` (or Space Grotesk if already registered — will check `tailwind.config.ts` at build time and fall back to `font-mono tabular-nums`).
+Today (July 7 local) will show only the 3 website orders (order_number 474, 475, 545 — total EC$235, of which 474 & 475 are completed = EC$160). The user reports "$110 off 2 orders", which is close — remaining discrepancy is probably how they count vs the seed data. The dashboard will match reality.
 
 ## Files touched
-- `src/hooks/useSellerStats.ts` — extend (no removals)
-- `src/hooks/useNextSellerOrders.ts` — new
-- `src/pages/seller/SellerDashboardNew.tsx` — restructure body only
+- `src/hooks/useSellerStats.ts` — add `effectiveOrderDate` helper, use it in period filtering
+- `src/hooks/useNextSellerOrders.ts` — swap `preferred_date` sort for `created_at ASC`
 
-Nothing else — no routing, auth, or other pages.
-
-## Post-change summary I'll report
-- Live: Today's Revenue, Today's Orders, Today's Ready for Pickup subtitle, Total Revenue, Total Orders, Units Sold subtitle, Next Orders list.
-- Placeholder/assumption: Marketing Studio link points to `/admin/marketing-studio` — confirm or supply seller-facing path.
+No DB migration needed; no schema changes.
