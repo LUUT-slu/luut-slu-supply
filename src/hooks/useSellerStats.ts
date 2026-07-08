@@ -217,7 +217,7 @@ export function useSellerStats(
 
       const periodOrders = ordersData.filter((o) => {
         const d = effectiveOrderDate(o);
-        return d >= startOfPeriod && d < endOfTodaySlu ? true : d >= startOfPeriod && period !== "day";
+        return d >= startOfPeriod && d < endOfTodaySlu;
       });
       const periodCompletedIds = new Set(
         periodOrders.filter((o) => o.status === "completed").map((o) => o.id)
