@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { SellerAIPanel } from "@/components/seller/SellerAIPanel";
 import { useNavigate } from "react-router-dom";
 import { SellerNav } from "@/components/seller/SellerNav";
 import { CreateOrderDialog } from "@/components/seller/CreateOrderDialog";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
-import { useSellerStats } from "@/hooks/useSellerStats";
+import { useSellerStats, type StatsPeriod } from "@/hooks/useSellerStats";
 import { useNextSellerOrders } from "@/hooks/useNextSellerOrders";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
