@@ -50,7 +50,13 @@ import {
   Archive,
   CalendarPlus,
   CalendarClock,
+  ExternalLink,
+  MoreHorizontal,
+  ChevronDown,
+  ChevronRight,
+  Send,
 } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
