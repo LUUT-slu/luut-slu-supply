@@ -601,14 +601,14 @@ export default function SellerOrderDetail() {
                 </div>
               )}
 
-              {order.shopify_draft_order_id && (
+              {(order as any).shopify_draft_order_id && (
                 <Button
                   variant="outline"
                   className="w-full h-11 border-dashed"
                   asChild
                 >
                   <a
-                    href={`https://lovable-project-yf43m.myshopify.com/admin/draft_orders/${order.shopify_draft_order_id}`}
+                    href={`https://lovable-project-yf43m.myshopify.com/admin/draft_orders/${(order as any).shopify_draft_order_id}`}
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -619,18 +619,19 @@ export default function SellerOrderDetail() {
               )}
 
               {/* Shopify status badges strip (compact) */}
-              {(order.shopify_sync_status || order.shopify_draft_order_name) && (
+              {((order as any).shopify_sync_status || (order as any).shopify_draft_order_name) && (
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground px-1">
-                  {order.shopify_sync_status && (
+                  {(order as any).shopify_sync_status && (
                     <Badge variant="outline" className="text-[10px]">
-                      Shopify: {String(order.shopify_sync_status).replace(/_/g, " ")}
+                      Shopify: {String((order as any).shopify_sync_status).replace(/_/g, " ")}
                     </Badge>
                   )}
-                  {order.shopify_draft_order_name && (
-                    <span className="font-mono">{order.shopify_draft_order_name}</span>
+                  {(order as any).shopify_draft_order_name && (
+                    <span className="font-mono">{(order as any).shopify_draft_order_name}</span>
                   )}
                 </div>
               )}
+
 
               {/* More options toggle */}
               <button
