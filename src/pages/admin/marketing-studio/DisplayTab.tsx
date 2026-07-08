@@ -690,7 +690,7 @@ export default function DisplayTab({ brandStyle }: { brandStyle: BrandStyle }) {
         </div>
 
         {/* RIGHT rail */}
-        <div className="space-y-5 lg:sticky lg:top-4 lg:self-start">
+        <div className="space-y-5 min-w-0 lg:sticky lg:top-4 lg:self-start">
           <SectionCard title="Live Preview">
             <div className="mb-2 flex flex-wrap gap-1.5">
               {[goal.replace(/_/g, " "), style, background, realism, focus.replace(/_/g, " "), aspect].map((t) => (
