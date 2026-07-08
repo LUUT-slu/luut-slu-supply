@@ -18,7 +18,13 @@ interface SellerStats {
   todayReadyForPickup: number;
 }
 
-export function useSellerStats(sellerId: string | undefined, dateRange: DateRange | undefined) {
+export type StatsPeriod = "day" | "week" | "month";
+
+export function useSellerStats(
+  sellerId: string | undefined,
+  dateRange: DateRange | undefined,
+  period: StatsPeriod = "day"
+) {
   const [stats, setStats] = useState<SellerStats>({
     totalRevenue: 0,
     totalOrders: 0,
@@ -42,7 +48,7 @@ export function useSellerStats(sellerId: string | undefined, dateRange: DateRang
     }
     
     fetchStats();
-  }, [sellerId, dateRange]);
+  }, [sellerId, dateRange, period]);
 
   const fetchStats = async () => {
     if (!sellerId) return;
@@ -170,19 +176,29 @@ export function useSellerStats(sellerId: string | undefined, dateRange: DateRang
         }
       });
 
-      // Today-scoped aggregates (local time)
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      const todayStr = `${startOfToday.getFullYear()}-${String(startOfToday.getMonth() + 1).padStart(2, "0")}-${String(startOfToday.getDate()).padStart(2, "0")}`;
+      // Period-scoped aggregates (local time). Field names kept as `today*` for compatibility.
+      const startOfPeriod = new Date();
+      startOfPeriod.setHours(0, 0, 0, 0);
+      if (period === "week") {
+        // Start of week = Monday
+        const day = startOfPeriod.getDay(); // 0=Sun..6=Sat
+        const diff = day === 0 ? 6 : day - 1;
+        startOfPeriod.setDate(startOfPeriod.getDate() - diff);
+      } else if (period === "month") {
+        startOfPeriod.setDate(1);
+      }
+      const todayOnly = new Date();
+      todayOnly.setHours(0, 0, 0, 0);
+      const todayStr = `${todayOnly.getFullYear()}-${String(todayOnly.getMonth() + 1).padStart(2, "0")}-${String(todayOnly.getDate()).padStart(2, "0")}`;
 
-      const todaysOrders = ordersData.filter(
-        (o) => o.created_at && new Date(o.created_at) >= startOfToday
+      const periodOrders = ordersData.filter(
+        (o) => o.created_at && new Date(o.created_at) >= startOfPeriod
       );
-      const todaysCompletedIds = new Set(
-        todaysOrders.filter((o) => o.status === "completed").map((o) => o.id)
+      const periodCompletedIds = new Set(
+        periodOrders.filter((o) => o.status === "completed").map((o) => o.id)
       );
       const todayRevenue = orderItems
-        .filter((i) => todaysCompletedIds.has(i.order_id))
+        .filter((i) => periodCompletedIds.has(i.order_id))
         .reduce((sum, i) => sum + Number(i.total_price), 0);
       const todayReadyForPickup = ordersData.filter(
         (o) =>
@@ -191,6 +207,9 @@ export function useSellerStats(sellerId: string | undefined, dateRange: DateRang
           o.status !== "completed" &&
           o.status !== "no-show"
       ).length;
+      const todaysOrders = periodOrders;
+
+
 
       setStats({
         totalRevenue,

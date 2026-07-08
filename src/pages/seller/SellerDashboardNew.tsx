@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { SellerAIPanel } from "@/components/seller/SellerAIPanel";
 import { useNavigate } from "react-router-dom";
 import { SellerNav } from "@/components/seller/SellerNav";
 import { CreateOrderDialog } from "@/components/seller/CreateOrderDialog";
 import { useSellerProfile } from "@/hooks/useSellerProfile";
-import { useSellerStats } from "@/hooks/useSellerStats";
+import { useSellerStats, type StatsPeriod } from "@/hooks/useSellerStats";
 import { useNextSellerOrders } from "@/hooks/useNextSellerOrders";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,8 +26,12 @@ import {
 export default function SellerDashboardNew() {
   const navigate = useNavigate();
   const { profile } = useSellerProfile();
-  const { stats, loading: statsLoading } = useSellerStats(profile?.id, undefined);
+  const [period, setPeriod] = useState<StatsPeriod>("day");
+  const { stats, loading: statsLoading } = useSellerStats(profile?.id, undefined, period);
   const { orders: nextOrders, loading: nextLoading } = useNextSellerOrders(profile?.id, 5);
+
+  const periodLabel = period === "day" ? "Today" : period === "week" ? "This Week" : "This Month";
+  const periodSubOrders = period === "day" ? "today" : period === "week" ? "this week" : "this month";
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-US", {
@@ -37,17 +42,17 @@ export default function SellerDashboardNew() {
 
   const kpiCards = [
     {
-      title: "Today's Revenue",
+      title: `${periodLabel}'s Revenue`,
       value: formatCurrency(stats.todayRevenue),
-      subtitle: `${stats.todayOrders} order${stats.todayOrders === 1 ? "" : "s"} today`,
+      subtitle: `${stats.todayOrders} order${stats.todayOrders === 1 ? "" : "s"} ${periodSubOrders}`,
       icon: DollarSign,
       color: "text-green-500",
       bgColor: "bg-green-500/10",
     },
     {
-      title: "Today's Orders",
+      title: `${periodLabel}'s Orders`,
       value: stats.todayOrders.toString(),
-      subtitle: `${stats.todayReadyForPickup} ready for pickup`,
+      subtitle: `${stats.todayReadyForPickup} ready for pickup today`,
       icon: ShoppingBag,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
@@ -145,6 +150,24 @@ export default function SellerDashboardNew() {
                 <span className="hidden sm:inline">View</span> Products
               </Button>
             </div>
+          </div>
+
+          {/* Period toggle */}
+          <div className="mb-3 inline-flex rounded-lg border border-border/60 bg-card p-0.5">
+            {(["day", "week", "month"] as StatsPeriod[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  period === p
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {p === "day" ? "Day" : p === "week" ? "Week" : "Month"}
+              </button>
+            ))}
           </div>
 
           {/* KPI cards (2x2 mobile, 4-col desktop) */}
